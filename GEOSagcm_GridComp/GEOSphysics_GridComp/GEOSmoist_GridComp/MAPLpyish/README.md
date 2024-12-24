@@ -1,9 +1,16 @@
-# Exposing MAPL to python
+# MAPLpyish: Exposing MAPL to Python
+
+This is a prototype that exposes the MAPL Fortran to python via `cffi`. It brings the state into Python as a blind pointer and read-only memory repository (unenforced) and present an API to operate on it
+
+## Example
+
+A small example take `n_modes` from the `AERO` state is given. See commit `56a8470201ecac828ffaae590151a29d96bafa08`
 
 ## [Dev] TODO
 
 - [ ] Make `scalar` and `pointer` interfaces. Scalars should probably be broken down further into types. Pointer can all go through `c_ptr`. As bridle as it is to go through blind pointer, we don't have a way ATM to enforce typing throughout
 - [ ] Refactor: use `cffi` API mode rather ABI to enhance safety and portability
+- [ ] Freeze MAPL state into it's own class and make it read-only
 
 ## Strategy
 
