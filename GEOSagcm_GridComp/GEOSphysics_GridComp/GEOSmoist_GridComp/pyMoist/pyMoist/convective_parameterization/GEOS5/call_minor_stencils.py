@@ -7,6 +7,7 @@ from gt4py.cartesian.gtscript import (
     FORWARD,
     BACKWARD,
     THIS_K,
+    sqrt,
 )
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
@@ -96,6 +97,7 @@ def flipz(flip: FloatField):
 
         flip = kend - THIS_K
 
+
 @gtscript.function
 def setup_driver(
     evap: FloatFieldIJ,
@@ -104,17 +106,34 @@ def setup_driver(
     t: FloatField,
     q: FloatField,
     phis: FloatFieldIJ,
-    frland: FloatFieldIJ
+    frland: FloatFieldIJ,
+    area: FloatFieldIJ,
 ):
-    from __externals__ import kend
-    with computation(FORWARD), interval(0,1):
+    from __externals__ import (
+        kend,
+        USE_SCALE_DEP,
+    )  # if pep8 states that constants should be capitals why is kend not capitalized?
+
+    with computation(FORWARD), interval(0, 1):
         # moisture flux from sfc
-        sflux_r = evap # kg m-2 s-1
+        sflux_r = evap  # kg m-2 s-1
 
         # sensible heat flux (sh) comes in W m-2, below it is converted to K m s-1
         # (air_dens_sfc = ple(:,:,mzp)/( 287.04*TA(:,:)*(1.+0.608*QA(:,:)))))
-        sflux_t = sh /(1004. * ple.at(K=kend)/(287.04*t.at(K=kend))*(1.+0.608*q.at(K=kend))) # K m s-1
+        sflux_t = sh / (
+            1004.0
+            * ple.at(K=kend)
+            / (287.04 * t.at(K=kend))
+            * (1.0 + 0.608 * q.at(K=kend))
+        )  # K m s-1
         # topography height  (m)
-        surface_height = phis/constants.MAPL_GRAV
+        surface_height = phis / constants.MAPL_GRAV
         # land/ocean fraction: land if < 1 ,ocean if = 1
-        xland = 1.0-frland
+        xland = 1.0 - frland
+
+        # grid length for the scale awareness (in the future, pass the dx2d array instead
+        # of the 0-D real number "dx" for the case of non-uniform grid resolution)
+        if USE_SCALE_DEP == 0:
+            dx2d = 100000.0  # meters
+        else:
+            dx2d = sqrt(area)  # meters

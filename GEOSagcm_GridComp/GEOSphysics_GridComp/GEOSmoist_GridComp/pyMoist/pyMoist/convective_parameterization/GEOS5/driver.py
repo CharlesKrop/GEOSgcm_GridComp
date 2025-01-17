@@ -12,7 +12,7 @@ from gt4py.cartesian.gtscript import (
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
-from pyMoist.GEOS5.call_minor_stencils
+from pyMoist.convective_parameterization.GEOS5.call_minor_stencils
 
 
 def driver(
