@@ -19,43 +19,47 @@ import pyMoist.constants as constants
 
 
 def zero_output(
-    cnv_mfc: FloatField,
-    cnv_mf0: FloatField,
-    cnv_prc3: FloatField,
-    cnv_mfd: FloatField,
-    cnv_dqcdt: FloatField,
-    cnv_updf: FloatField,
-    cnv_cvw: FloatField,
-    cnv_qc: FloatField,
-    entlam: FloatField,
-    cnpcprate: FloatField,
-    revsu: FloatField,
-    prfil: FloatField,
-    dqdt_gf: FloatField,
-    dtdt_gf: FloatField,
-    dudt_gf: FloatField,
-    dvdt_gf: FloatField,
-    sigma_deep: FloatField,
-    sigma_mid: FloatField,
-    mupdp: FloatField,
-    mupsh: FloatField,
-    mupmd: FloatField,
-    mfdp: FloatField,
-    mfsh: FloatField,
-    mfmd: FloatField,
-    errdp: FloatField,
-    errsh: FloatField,
-    errmd: FloatField,
-    aa0: FloatField,
-    aa1: FloatField,
-    aa2: FloatField,
-    aa3: FloatField,
-    aa1_bl: FloatField,
-    aa1_cin: FloatField,
-    tau_bl: FloatField,
-    tau_ec: FloatField,
+    WQT_DC: FloatField,
+    CNV_MFC: FloatField,
+    CNV_MF0: FloatField,
+    CNV_PRC3: FloatField,
+    CNV_MFD: FloatField,
+    CNV_DQCDT: FloatField,
+    CNV_UPDF: FloatField,
+    CNV_CVW: FloatField,
+    CNV_QC: FloatField,
+    ENTLAM: FloatField,
+    CNPCPRATE: FloatField,
+    LIGHTN_DENS: FloatField,
+    REVSU: FloatField,
+    PRFIL: FloatField,
+    DQDT_GF: FloatField,
+    DTDT_GF: FloatField,
+    DUDT_GF: FloatField,
+    DVDT_GF: FloatField,
+    SIGMA_DEEP: FloatField,
+    SIGMA_MID: FloatField,
+    MUPDP: FloatField,
+    MDNDP: FloatField,
+    MUPSH: FloatField,
+    MUPMD: FloatField,
+    MFDP: FloatField,
+    MFSH: FloatField,
+    MFMD: FloatField,
+    ERRDP: FloatField,
+    ERRSH: FloatField,
+    ERRMD: FloatField,
+    AA0: FloatField,
+    AA1: FloatField,
+    AA2: FloatField,
+    AA3: FloatField,
+    AA1_BL: FloatField,
+    AA1_CIN: FloatField,
+    TAU_BL: FloatField,
+    TAU_EC: FloatField,
 ):
     with computation(PARALLEL), interval(...):
+        wqt_dc = 0.0
         cnv_mfc = 0.0
         cnv_mf0 = 0.0
         cnv_prc3 = 0.0
@@ -66,15 +70,19 @@ def zero_output(
         cnv_qc = 0.0
         entlam = 0.0
         cnpcprate = 0.0
+        lightn_dens = 0.0
         revsu = 0.0
         prfil = 0.0
+
         dqdt_gf = 0.0
         dtdt_gf = 0.0
         dudt_gf = 0.0
         dvdt_gf = 0.0
+
         sigma_deep = 0.0
         sigma_mid = 0.0
         mupdp = 0.0
+        mdndp = 0.0
         mupsh = 0.0
         mupmd = 0.0
         mfdp = 0.0
@@ -121,6 +129,7 @@ def setup_driver(
     from __externals__ import (
         kend,
         USE_SCALE_DEP,
+        N_TRACERS,
     )  # if pep8 states that constants should be capitals why is kend not capitalized?
 
     with computation(PARALLEL), interval(...):
