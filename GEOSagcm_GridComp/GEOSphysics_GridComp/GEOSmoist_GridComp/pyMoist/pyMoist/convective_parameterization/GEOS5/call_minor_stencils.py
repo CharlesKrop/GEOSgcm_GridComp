@@ -15,7 +15,7 @@ from gt4py.cartesian.gtscript import (
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
-import pyMoist.constants as constants
+import pyMoist.constants as global_constants
 
 
 def zero_output(
@@ -149,7 +149,7 @@ def setup_driver(
             * (1.0 + 0.608 * q.at(K=kend))
         )  # K m s-1
         # topography height  (m)
-        surface_height = phis / constants.MAPL_GRAV
+        surface_height = phis / global_constants.MAPL_GRAV
         # land/ocean fraction: land if < 1 ,ocean if = 1
         xland = 1.0 - frland
 

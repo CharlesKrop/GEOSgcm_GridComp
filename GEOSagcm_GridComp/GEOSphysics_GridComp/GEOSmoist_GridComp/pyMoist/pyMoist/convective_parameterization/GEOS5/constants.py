@@ -1,6 +1,7 @@
 """GEOS5 specific constants"""
 
 from gt4py.cartesian.gtscript import i32, f32
+import pyMoist.constants as global_constants
 
 
 # turn ON/OFF deep/shallow/mid plumes

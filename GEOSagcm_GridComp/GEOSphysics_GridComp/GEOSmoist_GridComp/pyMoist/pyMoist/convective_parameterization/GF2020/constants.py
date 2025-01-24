@@ -124,3 +124,6 @@ XMBMAXSHAL = f32(0.05)  # kg/m2/s
 # mintracer   =  tiny(1.),&  ! kg/kg - tiny(x) #NOTE need a good solution to this 1/17/25
 SMALLERQV = f32(1.0e-16)  # kg/kg
 PI = f32(3.1415926536)
+
+# miscelaneous other constants moved from within the convective scheme
+AOT500 = f32(0.1)

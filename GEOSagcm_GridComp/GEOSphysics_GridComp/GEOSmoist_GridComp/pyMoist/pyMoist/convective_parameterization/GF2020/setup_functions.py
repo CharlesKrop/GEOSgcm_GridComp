@@ -8,6 +8,8 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
 class outputs:
     def __init__(self, quantity_factory):
+        self.cnv_tr = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+
         self.cnv_mfc = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
         self.wqt_dc = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
 
@@ -65,75 +67,98 @@ class outputs:
 
 class temporaries:
     def __init__(self, quantity_factory):
+        self.temp2m = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.sflux_r = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.sflux_t = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.topo_height = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.xland = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.dx2d = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.pbl_top_level = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.dz = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.air_density = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.ec3d = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.p_sfc = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.gsf_t = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.gsf_q = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.sgsf_t = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.sgsf_q = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.advf_t = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.zle_dyn = quantity_factory.zeros([X_DIM, Y_DIM, Z_INTERFACE_DIM], "n/a")
+        self.mass_dyn = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.buoyancy_excess = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.temp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.press = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.rvap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.up = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.vp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.wp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.rvap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.temp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.press = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.zm3d = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.zt3d = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.dm3d = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.ec3d = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.curr_rvap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        self.buoy_exc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.zt = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.zm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         self.khloc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-
-        self.gsf_t = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # grid-scale forcing for temp
-        self.gsf_q = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # advection forcing for rv
-        self.advf_t = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # advection forcing for temp
-        self.sgsf_t = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # sub-grid scale forcing for temp
-        self.sgsf_q = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # sub-grid scale forcing for rv
-        self.src_t = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # temp tendency      from convection
-        self.src_q = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # rv tendency        from convection
-        self.src_ci = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # cloud/ice tendency from convection
-        self.src_u = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # U tendency         from convection
-        self.src_v = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # V tendency         from convection
-        self.src_ni = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # Ice     number tendency from convection
-        self.src_nl = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # Droplet number tendency from convection
-        self.src_buoy = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # buoyancy tendency from downdrafts
-        self.revsu_gf = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # evaporation_or_sublimation of_convective_precipitation kg kg-1 s-1
-        self.prfil_gf = quantity_factory.zeros(
-            [X_DIM, Y_DIM, Z_DIM], "n/a"
-        )  # ice_or_liq convective_precipitation flux: kg m2 s-1 (deep only)
-
-    REAL,  DIMENSION(nmp, mzp , mxp, myp ) ::     &
-                                         mp_ice   &
-                                        ,mp_liq   &
-                                        ,mp_cf
-
-    REAL,  DIMENSION(nmp, mzp , mxp, myp ) ::     &
-                                         SUB_MPQI & ! subsidence transport applied to ice mix ratio
-                                        ,SUB_MPQL & ! subsidence transport applied to cloud mix ratio
-                                        ,SUB_MPCF   ! subsidence transport applied to cloud fraction
+        self.curr_rvap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.ocean_fraction = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.ztexec = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.zqexec = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.zws = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.last_ierr = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.fixout_qv = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.conprr = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.out_chem_1_deep = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.out_chem_2_deep = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.out_chem_1_mid = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.out_chem_2_mid = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.out_chem_1_shal = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.out_chem_2_shal = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.topo_height_no_neg = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.lons_degrees = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.lats_degrees = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.revsu_gf = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.prfil_gf = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.temp_tendqv = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outt_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outt_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outt_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outu_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outu_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outu_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outv_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outv_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outv_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outq_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outq_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outq_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outqc_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outqc_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outqc_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outnice_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outnice_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outnice_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outnliq_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outnliq_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outnliq_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outbuoy_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outbuoy_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.outbuoy_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.omeg_deep = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.omeg_mid = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.omeg_shal = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.ccn = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.sensible_heat_sfc_flux = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.latent_heat_sfc_flux = quantity_factory.zeros([X_DIM, Y_DIM], "n/a")
+        self.dz = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.air_density = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.temp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.pres = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.rvap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.up = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.vp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.wp = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.zt = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.zm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.dm = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.khloc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        self.curr_rvap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
 
 
 class namelist_constants:
