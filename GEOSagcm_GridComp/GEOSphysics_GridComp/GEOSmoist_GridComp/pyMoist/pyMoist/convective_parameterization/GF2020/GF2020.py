@@ -1,4 +1,4 @@
-"""GEOS5 convection parameterization interface"""
+"""GF2020 convection parameterization interface"""
 
 import numpy as np
 from gt4py.cartesian.gtscript import i32
@@ -6,18 +6,22 @@ from gt4py.cartesian.gtscript import i32
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
-from pyMoist.convective_parameterization.GF2020.setup_functions import (
+from pyMoist.convective_parameterization.GF2020.GF2020_internal_variables import (
     outputs,
     temporaries,
     namelist_constants,
 )
 
-# used only during construction
-from pyMoist.convective_parameterization.GF2020.GF2020_flags import GF2020_flags
-from pyMoist.convective_parameterization.GF2020.driver_setup import (
+from pyMoist.convective_parameterization.GF2020.pre_cumulus_param import (
     zero_outputs,
     setup_driver,
 )
+from pyMoist.convective_parameterization.GF2020.cumulus_parameterization_wrapper import (
+    cumulus_parameterization,
+)
+
+# used only during construction
+from pyMoist.convective_parameterization.GF2020.GF2020_flags import GF2020_flags
 
 
 class GEOS5:
@@ -47,6 +51,10 @@ class GEOS5:
                 "USE_SCALE_DEP": GF2020_flags.USE_SCALE_DEP,
                 "N_TRACERS": GF2020_flags.N_TRACERS,
             },
+        )
+
+        self.cumulus_parameterization = cumulus_parameterization(
+            self, stencil_factory, quantity_factory, GF2020_flags
         )
 
     def __call__(
@@ -190,73 +198,6 @@ class GEOS5:
         )
 
         self._setup_driver(
-            dt_moist,
-            t2m,
-            evap,
-            sh,
-            ple,
-            t,
-            q,
-            u,
-            v,
-            w,
-            phis,
-            frland,
-            area,
-            zle,
-            plo,
-            zlo,
-            mass,
-            kh,
-            buoyancy,
-            self.temporaries.temp2m,
-            self.temporaries.sflux_r,
-            self.temporaries.sflux_t,
-            self.temporaries.topo_height,
-            self.temporaries.xland,
-            self.temporaries.dx2d,
-            kpblin,
-            self.temporaries.pbl_top_level,
-            self.temporaries.dz,
-            self.temporaries.air_density,
-            self.temporaries.ec3d,
-            self.temporaries.p_sfc,
-            self.temporaries.gsf_t,
-            self.temporaries.gsf_q,
-            self.temporaries.sgsf_t,
-            self.temporaries.sgsf_q,
-            self.temporaries.advf_t,
-            ple_dyn,  # Z+1
-            self.temporaries.zle_dyn,  # Z+1
-            self.temporaries.mass_dyn,
-            t_dyn,
-            qv_dyn,
-            u_dyn,
-            v_dyn,
-            dtdt_dyn,
-            dqvdt_dyn,
-            dtdt_bl,
-            dqdt_bl,
-            radsw,
-            radlw,
-            cnv_tr,
-            tpwi,
-            tpwi_star,
-            self.temporaries.buoyancy_excess,
-            self.temporaries.temp,
-            self.temporaries.press,
-            self.temporaries.rvap,
-            self.temporaries.up,
-            self.temporaries.vp,
-            self.temporaries.wp,
-            self.temporaries.zt,
-            self.temporaries.zm,
-            self.temporaries.dm,
-            self.temporaries.khloc,
-            self.temporaries.curr_rvap,
-        )
-
-        self._setup_driver(
             # inputs
             dt_moist,
             t2m,
@@ -295,6 +236,14 @@ class GEOS5:
             lats,
             # outputs passed to driver but not handed back to the rest of the model
             self.temporaries.temp2m,
+            self.temporaries.temp_old,
+            self.temporaries.temp_new,
+            self.temporaries.temp_new_bl,
+            self.temporaries.temp_new_adv,
+            self.temporaries.qv_old,
+            self.temporaries.qv_new,
+            self.temporaries.qv_new_bl,
+            self.temporaries.qv_new_adv,
             self.temporaries.ocean_fraction,
             self.temporaries.dx2d,
             self.temporaries.pbl_top_level,
@@ -306,8 +255,8 @@ class GEOS5:
             self.temporaries.sgsf_q,
             self.temporaries.advf_t,
             # end forcings
-            self.temporaries.ztexec,
-            self.temporaries.zqexec,
+            self.temporaries.temp_old,
+            self.temporaries.temp_new_adv,
             self.temporaries.zws,
             self.temporaries.last_ierr,
             self.temporaries.fixout_qv,
@@ -348,9 +297,7 @@ class GEOS5:
             self.temporaries.outbuoy_deep,
             self.temporaries.outbuoy_mid,
             self.temporaries.outbuoy_shal,
-            self.temporaries.omeg_deep,
-            self.temporaries.omeg_mid,
-            self.temporaries.omeg_shal,
+            self.temporaries.omega,
             self.temporaries.ccn,
             self.temporaries.sensible_heat_sfc_flux,
             self.temporaries.latent_heat_sfc_flux,
@@ -373,4 +320,74 @@ class GEOS5:
             self.outputs.cnv_tr,  # also goes to driver
             # outputs passed back to the rest of the model
             self.outputs.entr3d,
+        )
+
+        cumulus_parameterization(
+            self.temporaries.temp2m,
+            self.temporaries.temp_old,
+            self.temporaries.temp_new,
+            self.temporaries.temp_new_bl,
+            self.temporaries.temp_new_adv,
+            self.temporaries.qv_old,
+            self.temporaries.qv_new,
+            self.temporaries.qv_new_bl,
+            self.temporaries.qv_new_adv,
+            self.temporaries.ocean_fraction,
+            self.temporaries.dx2d,
+            self.temporaries.pbl_top_level,
+            # forcings
+            self.temporaries.buoyancy_excess,
+            self.temporaries.gsf_t,
+            self.temporaries.gsf_q,
+            self.temporaries.sgsf_t,
+            self.temporaries.sgsf_q,
+            self.temporaries.advf_t,
+            # end forcings
+            self.temporaries.zws,
+            self.temporaries.last_ierr,
+            self.temporaries.fixout_qv,
+            self.temporaries.conprr,
+            self.temporaries.out_chem_1_deep,
+            self.temporaries.out_chem_2_deep,
+            self.temporaries.out_chem_1_mid,
+            self.temporaries.out_chem_2_mid,
+            self.temporaries.out_chem_1_shal,
+            self.temporaries.out_chem_2_shal,
+            self.temporaries.topo_height_no_neg,
+            self.temporaries.lons_degrees,
+            self.temporaries.lats_degrees,
+            self.temporaries.revsu_gf,
+            self.temporaries.prfil_gf,
+            self.temporaries.temp_tendqv,
+            self.temporaries.outt_deep,
+            self.temporaries.outt_mid,
+            self.temporaries.outt_shal,
+            self.temporaries.outu_deep,
+            self.temporaries.outu_mid,
+            self.temporaries.outu_shal,
+            self.temporaries.outv_deep,
+            self.temporaries.outv_mid,
+            self.temporaries.outv_shal,
+            self.temporaries.outq_deep,
+            self.temporaries.outq_mid,
+            self.temporaries.outq_shal,
+            self.temporaries.outqc_deep,
+            self.temporaries.outqc_mid,
+            self.temporaries.outqc_shal,
+            self.temporaries.outnice_deep,
+            self.temporaries.outnice_mid,
+            self.temporaries.outnice_shal,
+            self.temporaries.outnliq_deep,
+            self.temporaries.outnliq_mid,
+            self.temporaries.outnliq_shal,
+            self.temporaries.outbuoy_deep,
+            self.temporaries.outbuoy_mid,
+            self.temporaries.outbuoy_shal,
+            self.temporaries.omega,
+            self.temporaries.ccn,
+            self.temporaries.sensible_heat_sfc_flux,
+            self.temporaries.latent_heat_sfc_flux,
+            # outputs passed back to the rest of the model
+            self.outputs.lightn_dens,
+            self.outputs.cnv_tr,
         )

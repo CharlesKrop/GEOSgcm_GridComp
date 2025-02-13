@@ -106,6 +106,7 @@ class GF2020_flags:
         FIX_CNV_CLOUD,
         MAXIENS,
         N_TRACERS,
+        SH_MD_DP,
     ):
         # namelist flags
         self.HYDROSTATIC = HYDROSTATIC
@@ -210,3 +211,4 @@ class GF2020_flags:
         # other miscelaneous flags
         self.MAXIENS = MAXIENS
         self.N_TRACERS = N_TRACERS
+        self.SH_MD_DP = SH_MD_DP

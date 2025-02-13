@@ -103,7 +103,6 @@ def zero_outputs(
         tau_ec = 0.0
 
 
-@gtscript.function
 def setup_driver(
     # inputs
     dt: Float,
@@ -143,6 +142,14 @@ def setup_driver(
     lats: FloatField,
     # outputs passed to driver but not handed back to the rest of the model
     temp2m: FloatFieldIJ,
+    temp_old: FloatField,
+    temp_new: FloatField,
+    temp_new_bl: FloatField,
+    temp_new_adv: FloatField,
+    qv_old: FloatField,
+    qv_new: FloatField,
+    qv_new_bl: FloatField,
+    qv_new_adv: FloatField,
     ocean_fraction: FloatFieldIJ,
     dx2d: FloatFieldIJ,
     pbl_top_level: FloatFieldIJ,
@@ -154,8 +161,8 @@ def setup_driver(
     sgsf_q: FloatField,
     advf_t: FloatField,
     # end forcings
-    ztexec: FloatFieldIJ,
-    zqexec: FloatFieldIJ,
+    t_excess: FloatFieldIJ,
+    q_excess: FloatFieldIJ,
     zws: FloatFieldIJ,
     last_ierr: FloatFieldIJ,
     fixout_qv: FloatFieldIJ,
@@ -196,9 +203,7 @@ def setup_driver(
     outbuoy_deep: FloatField,
     outbuoy_mid: FloatField,
     outbuoy_shal: FloatField,
-    omeg_deep: FloatField,
-    omeg_mid: FloatField,
-    omeg_shal: FloatField,
+    omega: FloatField,
     ccn: FloatField,
     sensible_heat_sfc_flux: FloatFieldIJ,
     latent_heat_sfc_flux: FloatFieldIJ,
@@ -378,8 +383,8 @@ def setup_driver(
 
     # reset a bunch of stuff to ensure there is nothing lingering from the previous call
     with computation(FORWARD), interval(-1, None):
-        ztexec = 0.0
-        zqexec = 0.0
+        t_excess = 0.0
+        q_excess = 0.0
         last_ierr = -999
         fixout_qv = 1.0
 
@@ -432,9 +437,7 @@ def setup_driver(
         outbuoy_deep = 0.0
         outbuoy_mid = 0.0
         outbuoy_shal = 0.0
-        omeg_deep = 0.0
-        omeg_mid = 0.0
-        omeg_shal = 0.0
+        omega = 0.0
 
     with computation(PARALLEL), interval(1, None):
         # heigths, current pressure, temp and water vapor mix ratio
@@ -451,10 +454,9 @@ def setup_driver(
         tkeg = convection_constants.tkmin
         rcpg = 0.0
 
-        # wind velocities
-        omeg_deep = -global_constants.MAPL_GRAV * rhoi * w
-        omeg_mid = -global_constants.MAPL_GRAV * rhoi * w
-        omeg_shal = -global_constants.MAPL_GRAV * rhoi * w
+        # vertical velocity
+        omega = -global_constants.MAPL_GRAV * rhoi * w
+
         # temp/water vapor modified only by advection
         temp_new_ADV = temp_old + advf_t * dt
         qv_new_ADV = qv_old + gsf_q * dt
@@ -487,13 +489,15 @@ def setup_driver(
             0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / temp_old.at(K=kend)
         )  # m+3 s-3
 
-        if zws > 0:  # tiny(pgeoh): NOTE need better solution
+        if (
+            zws > 0
+        ):  # tiny(pgeoh): NOTE need better solution, should be zws > tiny(pgeoh)
             # convective-scale velocity w*
             zws = 1.2 * zws**0.3333
             # temperature excess
-            ztexec = max(0.0, -1.5 * pahfs / (zrho * zws * 1004.64))  # K
+            t_excess = max(0.0, -1.5 * pahfs / (zrho * zws * 1004.64))  # K
             # moisture  excess
-            zqexec = max(0.0, -1.5 * pqhfl / (zrho * zws))  # kg kg-1
+            q_excess = max(0.0, -1.5 * pqhfl / (zrho * zws))  # kg kg-1
 
         # zws for shallow convection closure (Grant 2001)
         # depth of the pbl
@@ -501,6 +505,20 @@ def setup_driver(
         # convective-scale velocity W* (m/s)
         zws = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / temp_old.at(K=kend))
         zws = 1.2 * zws**0.3333
+
+    with computation(PARALLEL), interval(...):
+        temp_new = temp_old + (sgsf_t + gsf_t) * dt
+        qv_new = qv_old + (sgsf_q + gsf_q) * dt
+        qv_new = max(GF2020_constants.SMALLERQV, qv_new)
+
+        # moist static energy
+        dhdt = global_constants.MAPL_CP * (sgsf_t + gsf_t) + xlv * (
+            sgsf_q + gsf_q
+        )  # NOTE xlv comes from chemistry, is 64 bit
+
+        # temp/water vapor modified only by bl processes
+        temp_new_bl = temp_old + sgsf_t * dt
+        qv_new_bl = qv_old + sgsf_q * dt
 
     # NOTE NEED GOOD SOLUTION FOR THIS
     # IF(USE_TRACER_TRANSP==1) THEN
