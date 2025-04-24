@@ -1,5 +1,6 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
+from ndsl.dsl.gt4py import (
+    function,
+    GlobalTable,
     FORWARD,
     PARALLEL,
     THIS_K,
@@ -18,7 +19,7 @@ from pyMoist.shared_incloud_processes import ice_fraction
 
 
 # Workaround to create a 1d off-grid axis that can be written to
-GlobalTable_driver_qsat = gtscript.GlobalTable[(Float, (int(constants.LENGTH)))]
+GlobalTable_driver_qsat = GlobalTable[(Float, (int(constants.LENGTH)))]
 
 
 def qs_table_1(length: Int, table1: FloatField, esupc: FloatField):

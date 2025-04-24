@@ -1,5 +1,5 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
+from ndsl.dsl.gt4py import (
+    function,
     PARALLEL,
     computation,
     exp,
@@ -13,7 +13,7 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 
 
-@gtscript.function
+@function
 def get_top_speed(
     p_dry: Float,
     cnv_frc: Float,
