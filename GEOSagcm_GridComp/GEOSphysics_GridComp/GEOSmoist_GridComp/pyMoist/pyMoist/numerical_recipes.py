@@ -1,8 +1,7 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import exp, f64, log
+from ndsl.dsl.gt4py import exp, f64, function, log
 
 
-@gtscript.function
+@function
 def GammLn(xx: f64) -> f64:
     """
     See numerical recipes, w. press et al., 2nd edition.
@@ -34,7 +33,7 @@ def GammLn(xx: f64) -> f64:
     return tmp + log(stp * ser / x)
 
 
-@gtscript.function
+@function
 def gser(a: f64, x: f64, gln: f64) -> f64:
     """
     See numerical recipes, w. press et al., 2nd edition.
@@ -76,7 +75,7 @@ def gser(a: f64, x: f64, gln: f64) -> f64:
     return gamser
 
 
-@gtscript.function
+@function
 def gcf_matrix(a: f64, x: f64, gln: f64) -> f64:
     """
     See numerical recipes, w. press et al., 2nd edition.
@@ -119,7 +118,7 @@ def gcf_matrix(a: f64, x: f64, gln: f64) -> f64:
     return exp(-x + a * log(x) - gln) * h
 
 
-@gtscript.function
+@function
 def GammP(a: f64, x: f64) -> f64:
     """
     See numerical recipes, w. press et al., 2nd edition.
@@ -145,7 +144,7 @@ def GammP(a: f64, x: f64) -> f64:
     return gammp
 
 
-@gtscript.function
+@function
 def Erf(x: f64) -> f64:
     """
     See numerical recipes, w. press et al., 2nd edition.
@@ -160,7 +159,7 @@ def Erf(x: f64) -> f64:
     """
     erf: f64 = f64(0.0)
     if x < f64(0.0e00):
-        erf = f64(-1.0) * GammP(f64(0.5), x ** 2)
+        erf = f64(-1.0) * GammP(f64(0.5), x**2)
     else:
-        erf = GammP(f64(0.5), x ** 2)
+        erf = GammP(f64(0.5), x**2)
     return erf

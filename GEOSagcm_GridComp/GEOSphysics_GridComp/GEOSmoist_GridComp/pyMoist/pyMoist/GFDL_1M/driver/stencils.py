@@ -1,10 +1,10 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
+from ndsl.dsl.gt4py import (
     computation,
+    FORWARD,
+    function,
     i32,
     interval,
+    PARALLEL,
     trunc,
 )
 
@@ -13,7 +13,7 @@ from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
 
 
-@gtscript.function
+@function
 def wqs2(
     ta: Float,
     den: Float,

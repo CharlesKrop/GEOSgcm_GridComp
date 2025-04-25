@@ -1,6 +1,6 @@
 import copy
 
-from gt4py.cartesian.gtscript import (
+from ndsl.dsl.gt4py import (
     PARALLEL,
     computation,
     exp,
@@ -245,16 +245,16 @@ def aer_activation_stencil(
                 ) ** f64(
                     1.5
                 )  # [1]
-                eta = dum ** 3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
-                f1 = f64(0.5) * exp(2.50 * xlogsigm ** 2)  # [1]
+                eta = dum**3 / (TWOPI * DENH2O * gamma * ni[0, 0, 0][n])  # [1]
+                f1 = f64(0.5) * exp(2.50 * xlogsigm**2)  # [1]
                 f2 = f64(1.0) + 0.25 * xlogsigm  # [1]
                 smax = (
                     smax
                     + (
                         f1 * (zeta / eta) ** f64(1.5)
-                        + f2 * (sm ** 2 / (eta + f64(3.0) * zeta)) ** f64(0.75)
+                        + f2 * (sm**2 / (eta + f64(3.0) * zeta)) ** f64(0.75)
                     )
-                    / sm ** 2
+                    / sm**2
                 )  # [1] - eq. (6)
                 n += 1
 

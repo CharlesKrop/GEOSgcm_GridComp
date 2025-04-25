@@ -1,11 +1,11 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
+from ndsl.dsl.gt4py import (
     BACKWARD,
-    FORWARD,
-    PARALLEL,
     computation,
     exp,
+    FORWARD,
+    function,
     interval,
+    PARALLEL,
 )
 
 from ndsl.dsl.typing import BoolField, Float, FloatField, FloatFieldIJ
@@ -177,7 +177,7 @@ def reset(
         m1 = 0.0
 
 
-@gtscript.function
+@function
 def prefall_melting(
     t: Float,
     qv: Float,

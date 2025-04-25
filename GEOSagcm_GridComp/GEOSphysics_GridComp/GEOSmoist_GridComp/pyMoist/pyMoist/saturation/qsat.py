@@ -1,8 +1,16 @@
 import copy
 from typing import Optional
 
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, floor, i32, interval
+from ndsl.dsl.gt4py import (
+    computation,
+    Field,
+    floor,
+    function,
+    i32,
+    interval,
+    K,
+    PARALLEL,
+)
 
 from ndsl import QuantityFactory, StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM
@@ -31,7 +39,7 @@ from pyMoist.saturation.table import get_table
 # Current implementation does not allow for flexible table sizes
 # so if needed this will have to be implemented in another way.
 # DEV NOTE: we have to "type ignore" the indexation due to a misread of mypy
-FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
+FloatField_Extra_Dim = Field[K, (Float, (int(TABLESIZE)))]
 
 
 # The following two functions, QSat_Float_Liquid and QSat_Float_Ice are,
@@ -39,7 +47,7 @@ FloatField_Extra_Dim = gtscript.Field[gtscript.K, (Float, (int(TABLESIZE)))]
 # QSat_Float interpolates a smooth transition between liquid water and ice
 # (based on the parameter TMIX), while the Liquic/Ice versions have a
 # hard transition at zero C.
-@gtscript.function
+@function
 def QSat_Float_Liquid(
     esw: FloatField_Extra_Dim,  # type: ignore  # type: ignore
     estlqu: Float,
@@ -82,7 +90,7 @@ def QSat_Float_Liquid(
     return QS, DQ
 
 
-@gtscript.function
+@function
 def QSat_Float_Ice(
     ese: FloatField_Extra_Dim,  # type: ignore
     estfrz: Float,
@@ -126,7 +134,7 @@ def QSat_Float_Ice(
 
 
 # Function version of QSat_table
-@gtscript.function
+@function
 def QSat_Float(
     ese: FloatField_Extra_Dim,  # type: ignore
     esx: FloatField_Extra_Dim,  # type: ignore

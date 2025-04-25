@@ -1,13 +1,13 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import (
-    FORWARD,
-    PARALLEL,
+from ndsl.dsl.gt4py import (
     computation,
     exp,
+    FORWARD,
+    function,
     i32,
     interval,
     log,
     max,
+    PARALLEL,
     sqrt,
     trunc,
 )
@@ -19,7 +19,7 @@ from pyMoist.GFDL_1M.driver.stencils import wqs2
 from pyMoist.shared_incloud_processes import ice_fraction
 
 
-@gtscript.function
+@function
 def new_ice_condensate(t, ql, qi, cnv_frc, srf_type):
     """
     Calculate amount of new ice to be frozen at a given point
@@ -32,7 +32,7 @@ def new_ice_condensate(t, ql, qi, cnv_frc, srf_type):
     return new_ice_condensate
 
 
-@gtscript.function
+@function
 def icloud_melt_freeze(
     t: Float,
     qv: Float,
@@ -127,7 +127,7 @@ def icloud_melt_freeze(
     return t, qv, ql, qr, qi, qs, qg, qa, cvm, q_liq, q_sol
 
 
-@gtscript.function
+@function
 def acr3d(
     v1: Float,
     v2: Float,
@@ -154,7 +154,7 @@ def acr3d(
     return acr3d
 
 
-@gtscript.function
+@function
 def smow_melt(
     tc: Float,
     dqs: Float,
@@ -176,13 +176,13 @@ def smow_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function smlt
     """
     smow_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qsrho) + c_3 * qsrho ** 0.65625 * sqrt(rhofac)
+        c_2 * sqrt(qsrho) + c_3 * qsrho**0.65625 * sqrt(rhofac)
     ) + c_4 * tc * (psacw + psacr)
 
     return smow_melt
 
 
-@gtscript.function
+@function
 def graupel_melt(
     tc: Float,
     dqs: Float,
@@ -203,13 +203,13 @@ def graupel_melt(
     reference Fortran: gfdl_cloud_microphys.F90: function gmlt
     """
     graupel_melt = (c_0 * tc / rho - c_1 * dqs) * (
-        c_2 * sqrt(qgrho) + c_3 * qgrho ** 0.6875 / rho ** 0.25
+        c_2 * sqrt(qgrho) + c_3 * qgrho**0.6875 / rho**0.25
     ) + c_4 * tc * (pgacw + pgacr)
 
     return graupel_melt
 
 
-@gtscript.function
+@function
 def snow_graupel_coldrain(
     t1: Float,
     qv1: Float,
@@ -748,7 +748,7 @@ def snow_graupel_coldrain(
     )
 
 
-@gtscript.function
+@function
 def iqs1(
     ta: Float,
     den: Float,
@@ -777,7 +777,7 @@ def iqs1(
     return iqs1
 
 
-@gtscript.function
+@function
 def iqs2(
     ta: Float,
     den: Float,
@@ -813,7 +813,7 @@ def iqs2(
     return iqs2, dqdt
 
 
-@gtscript.function
+@function
 def wqs1(
     ta: Float,
     den: Float,
@@ -842,7 +842,7 @@ def wqs1(
     return wqs1
 
 
-@gtscript.function
+@function
 def subgrid_z_proc(
     p_dry: Float,
     den1: Float,
@@ -1082,7 +1082,7 @@ def subgrid_z_proc(
                     * 349138.78
                     * exp(0.875 * log(qi1 * den1))
                     / (
-                        qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1 ** 2)
+                        qsi * den1 * lat2 / (0.0243 * constants.RVGAS * t1**2)
                         + 4.42478e4
                     )
                 )

@@ -1,5 +1,4 @@
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import FORWARD, PARALLEL, computation, interval, sqrt
+from ndsl.dsl.gt4py import computation, FORWARD, function, interval, PARALLEL, sqrt
 
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
@@ -139,7 +138,7 @@ def init_temporaries(
         ice = 0
 
 
-@gtscript.function
+@function
 def fix_negative_core(
     t: Float,
     qv: Float,

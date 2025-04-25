@@ -2,15 +2,14 @@
 These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
-import gt4py.cartesian.gtscript as gtscript
-from gt4py.cartesian.gtscript import PARALLEL, computation, exp, interval, log10, sin
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log10, sin
 
 import pyMoist.constants as constants
 from ndsl.dsl.typing import Float, FloatField
 from pyMoist.shared_generic_math import air_density
 
 
-@gtscript.function
+@function
 def ice_fraction_modis(
     temp: Float,
 ):
@@ -21,16 +20,16 @@ def ice_fraction_modis(
     ptc = (
         7.6725
         + 1.0118 * tc
-        + 0.1422 * tc ** 2
-        + 0.0106 * tc ** 3
-        + 0.000339 * tc ** 4
-        + 0.00000395 * tc ** 5
+        + 0.1422 * tc**2
+        + 0.0106 * tc**3
+        + 0.000339 * tc**4
+        + 0.00000395 * tc**5
     )
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
 
 
-@gtscript.function
+@function
 def ice_fraction(
     temp: Float,
     cnv_frc: Float,
@@ -101,7 +100,7 @@ def ice_fraction(
     return ice_frac
 
 
-@gtscript.function
+@function
 def cloud_effective_radius_liquid(
     PL: Float,
     TE: Float,
@@ -152,7 +151,7 @@ def cloud_effective_radius_liquid(
     return RADIUS
 
 
-@gtscript.function
+@function
 def cloud_effective_radius_ice(
     PL: Float,
     TE: Float,
@@ -188,14 +187,14 @@ def cloud_effective_radius_ice(
         else:
             BB = -2.0 + log10(WC / 50.0) * (1.0e-3 * (constants.MAPL_TICE - TE) ** 1.5)
         BB = min(max(BB, -6.0), -2.0)
-        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB ** 2 + 2.3696 * BB ** 3
+        RADIUS = 377.4 + 203.3 * BB + 37.91 * BB**2 + 2.3696 * BB**3
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         TC = TE - constants.MAPL_TICE
         ZFSR = 1.2351 + 0.0105 * TC
-        AA = 45.8966 * (WC ** 0.2214)
-        BB = 0.79570 * (WC ** 0.2535)
+        AA = 45.8966 * (WC**0.2214)
+        BB = 0.79570 * (WC**0.2535)
         RADIUS = ZFSR * (AA + BB * (TE - 83.15))
         RADIUS = min(150.0e-6, max(5.0e-6, 1.0e-6 * RADIUS * 0.64952))
     return RADIUS
