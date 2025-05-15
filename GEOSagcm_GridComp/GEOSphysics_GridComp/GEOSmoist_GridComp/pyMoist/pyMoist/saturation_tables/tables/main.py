@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import numpy as np
 
 from ndsl.dsl.typing import Float
-from pyMoist.saturation.constants import (
+from pyMoist.saturation_old.constants import (
     DELTA_T,
     MAPL_TICE,
     TABLESIZE,
@@ -11,9 +11,10 @@ from pyMoist.saturation.constants import (
     TMINTBL,
     TMIX,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
-from pyMoist.saturation.qsat_ice import qsat_ice_scalar_exact
-from pyMoist.saturation.qsat_liquid import qsat_liquid_scalar_exact
+from pyMoist.saturation_old.formulation import SaturationFormulation
+from pyMoist.saturation_tables.tables.ice_exact import ice_exact
+from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
+
 
 
 class SaturationVaporPressureTable:
@@ -26,30 +27,20 @@ class SaturationVaporPressureTable:
 
     def __init__(
         self,
-        formulation: SaturationFormulation,
+        formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
         self._estimated_esw = np.empty(TABLESIZE, dtype=Float)
         self._estimated_ese = np.empty(TABLESIZE, dtype=Float)
         self._estimated_esx = np.empty(TABLESIZE, dtype=Float)
-        self._TI = np.empty(TABLESIZE, dtype=Float)
-        self._LOC = np.empty(TABLESIZE, dtype=Float)
 
         for i in range(TABLESIZE):
             t = Float(i * DELTA_T) + TMINTBL
-            (
-                self._estimated_esw[i],
-                self._TI[i],
-                _,
-            ) = qsat_liquid_scalar_exact(t, formulation)
+            self._estimated_esw[i], _ = liquid_exact(t, formulation)
 
             if t > MAPL_TICE:
                 self._estimated_ese[i] = self._estimated_esw[i]
             else:
-                (
-                    self._estimated_ese[i],
-                    self._TI[i],
-                    _,
-                ) = qsat_ice_scalar_exact(t, formulation)
+                self._estimated_ese[i], _ = ice_exact(t, formulation)
 
             t = t - MAPL_TICE
 
@@ -60,8 +51,8 @@ class SaturationVaporPressureTable:
             else:
                 self._estimated_esx[i] = self._estimated_ese[i]
 
-        self._estimated_frz, _, _ = qsat_liquid_scalar_exact(MAPL_TICE, formulation)
-        self._estimated_lqu, _, _ = qsat_liquid_scalar_exact(TMINLQU, formulation)
+        self._estimated_frz, _ = liquid_exact(MAPL_TICE, formulation)
+        self._estimated_lqu, _ = liquid_exact(TMINLQU, formulation)
 
     @property
     def ese(self):
@@ -97,6 +88,7 @@ _cached_estimated_saturation: Dict[
 def get_table(
     formulation: SaturationFormulation = SaturationFormulation.Staars,
 ) -> SaturationVaporPressureTable:
+    print(f"README {formulation}")
     if _cached_estimated_saturation[formulation] is None:
         _cached_estimated_saturation[formulation] = SaturationVaporPressureTable(
             formulation

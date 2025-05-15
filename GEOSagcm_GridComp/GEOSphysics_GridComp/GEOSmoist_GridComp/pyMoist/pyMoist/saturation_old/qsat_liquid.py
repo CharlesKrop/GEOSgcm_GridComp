@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from ndsl.dsl.typing import Float
-from pyMoist.saturation.constants import (
+from pyMoist.saturation_old.constants import (
     DELTA_T,
     ERFAC,
     ESFAC,
@@ -12,7 +12,7 @@ from pyMoist.saturation.constants import (
     TMAXTBL,
     TMINLQU,
 )
-from pyMoist.saturation.formulation import SaturationFormulation
+from pyMoist.saturation_old.formulation import SaturationFormulation
 
 
 f64 = np.float64
