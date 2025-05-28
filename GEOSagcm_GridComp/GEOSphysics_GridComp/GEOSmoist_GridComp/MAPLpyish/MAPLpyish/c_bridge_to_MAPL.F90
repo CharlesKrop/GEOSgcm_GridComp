@@ -27,8 +27,6 @@ module C_BRIDGE_TO_MAPL
         ! Return value
         integer :: return_value
 
-        WRITE (*,*) 'ENTERED MAPLPy_ESMF_AttributeGet_1D_int'
-
         ! Turn the C string into a Fortran string
         call c_f_pointer(name_c_ptr, varname)
 
@@ -83,6 +81,33 @@ module C_BRIDGE_TO_MAPL
 
         call ESMF_AttributeGet(state, name=name, value=field_name_from_esmf)
         call MAPL_GetPointer(state, f_ptr, trim(field_name_from_esmf))
+        c_data_ptr=c_loc(f_ptr)
+    
+    end function    
+
+    function MAPLpy_GetPointer(state_c_ptr, name_c_ptr, name_len, alloc) result(c_data_ptr) bind(c, name="MAPLpy_GetPointer")
+        ! Read in STATE
+        type(c_ptr), intent(in) :: esmf_state_c_ptr
+        type(ESMF_State), pointer :: state
+
+        ! Read in name
+        type(c_ptr), intent(in), value :: name_c_ptr
+        integer(c_int), intent(in), value :: name_len
+        character(len=name_len,kind=c_char), pointer :: name
+        logical(c_bool), intent(in), value :: alloc
+
+        ! Results
+        character(len=ESMF_MAXSTR) :: field_name_from_esmf
+        real, pointer, dimension(:,:,:) :: f_ptr
+        type(c_ptr) :: c_data_ptr
+
+        ! Turn the C string into a Fortran string
+        call c_f_pointer(name_c_ptr, name)
+
+        ! Turn the ESMF State C pointer to a Fortran pointer
+        call c_f_pointer(esmf_state_c_ptr, state)        
+
+        call MAPL_GetPointer(state, f_ptr, trim(name), alloc=alloc)
         c_data_ptr=c_loc(f_ptr)
     
     end function    
