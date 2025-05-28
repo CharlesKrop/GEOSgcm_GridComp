@@ -1,15 +1,23 @@
 import cffi
+import os
 from _cffi_backend import _CDataBase as CFFIObj
 from typing import Any
 
 
 class MAPLBridge:
     def __init__(self) -> None:
+        # We leverage an environment variable to know where to look for the bridge
+        # library
+        geos_dir = os.getenv("GEOSDIR", "Not found")
+        if geos_dir == "Not found":
+            raise RuntimeError(
+                "[MAPLPyish] Libary loads require a GEOSDIR environment variable"
+                "pointing to the install directory of GEOS."
+            )
+
         # FFI & C library setup
         self.ffi = cffi.FFI()
-        self.mapl_c_bridge = self.ffi.dlopen(
-            "/home/fgdeconi/work/git/fp/geos/install_DEBUG/lib/libMAPLpyish.so"
-        )
+        self.mapl_c_bridge = self.ffi.dlopen(f"{geos_dir}lib/libMAPLpyish.so")
 
         # We use CFFI ABI mode, so we need to describe each function cdef
         # to the system
@@ -19,14 +27,19 @@ class MAPLBridge:
             "int MAPLPy_ESMF_AttributeGet_1D_int(void* esmf_state_c_ptr, char* name_c_ptr, int name_len);"
         )
 
+        # MAPLPy_ESMF_MethodExecute
+        self.ffi.cdef(
+            "void MAPLPy_ESMF_MethodExecute(void* esmf_state_c_ptr, char* label_c_ptr, int label_len);"
+        )
+
         # MAPLpy_GetPointer_via_ESMFAttr
         self.ffi.cdef(
             "void* MAPLpy_GetPointer_via_ESMFAttr(void* esmf_state_c_ptr, char* name_c_ptr, int name_len);"
         )
 
-        # MAPLPy_ESMF_MethodExecute
+        # MAPLpy_GetPointer
         self.ffi.cdef(
-            "void MAPLPy_ESMF_MethodExecute(void* esmf_state_c_ptr, char* label_c_ptr, int label_len);"
+            "void* MAPLpy_GetPointer(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc);"
         )
 
     def __del__(self):
@@ -57,4 +70,15 @@ class MAPLBridge:
             state,
             self.ffi.new("char[]", name.encode()),
             len(name),
+        )
+
+    def MAPL_GetPointer(
+        self,
+        state: CFFIObj,
+        name: str,
+        alloc: bool = False,
+    ) -> Any:
+        # TODO: depending on value type, redirect to correct bridge function
+        return self.mapl_c_bridge.MAPLpy_GetPointer(  # type: ignore
+            state, self.ffi.new("char[]", name.encode()), len(name), alloc
         )
