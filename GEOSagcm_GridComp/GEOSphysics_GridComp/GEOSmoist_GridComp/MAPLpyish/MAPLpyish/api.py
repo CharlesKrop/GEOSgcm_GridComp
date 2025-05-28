@@ -2,6 +2,7 @@ import cffi
 import os
 from _cffi_backend import _CDataBase as CFFIObj
 from typing import Any
+import numpy as np
 
 
 class MAPLBridge:
@@ -42,6 +43,20 @@ class MAPLBridge:
             "void* MAPLpy_GetPointer(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool alloc);"
         )
 
+        # MAPL_GetResource
+        self.ffi.cdef(
+            "void* MAPLpy_GetResource_Bool(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default);"
+        )
+        self.ffi.cdef(
+            "void* MAPLpy_GetResource_Int(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default);"
+        )
+        self.ffi.cdef(
+            "void* MAPLpy_GetResource_Float(void* esmf_state_c_ptr, char* name_c_ptr, int name_len, bool default);"
+        )
+
+        # ESMF_TimeIntervalGet
+        self.ffi.cdef("void* MAPLpy_ESMF_TimeIntervalGet(void* esmf_time_state_c_ptr);")
+
     def __del__(self):
         self.ffi.dlclose(self.mapl_c_bridge)
 
@@ -76,9 +91,25 @@ class MAPLBridge:
         self,
         state: CFFIObj,
         name: str,
-        alloc: bool = False,
+        dtype: type,
+        default: bool = False,
     ) -> Any:
-        # TODO: depending on value type, redirect to correct bridge function
-        return self.mapl_c_bridge.MAPLpy_GetPointer(  # type: ignore
-            state, self.ffi.new("char[]", name.encode()), len(name), alloc
-        )
+        if isinstance(dtype, int):
+            return self.mapl_c_bridge.MAPLpy_GetResource_Int(  # type: ignore
+                state, self.ffi.new("char[]", name.encode()), len(name), default
+            )
+        elif isinstance(dtype, float):
+            return self.mapl_c_bridge.MAPLpy_GetResource_Float(  # type: ignore
+                state, self.ffi.new("char[]", name.encode()), len(name), default
+            )
+        elif isinstance(dtype, bool):
+            return self.mapl_c_bridge.MAPLpy_GetResource_Bool(  # type: ignore
+                state, self.ffi.new("char[]", name.encode()), len(name), default
+            )
+        raise NotImplementedError(f"MAPL_GetResource for type {dtype} not implemented.")
+
+    def ESMF_TimeIntervalGet(
+        self,
+        time_state: CFFIObj,
+    ) -> np.float64:
+        return self.mapl_c_bridge.MAPLpy_ESMF_TimeIntervalGet(time_state)
