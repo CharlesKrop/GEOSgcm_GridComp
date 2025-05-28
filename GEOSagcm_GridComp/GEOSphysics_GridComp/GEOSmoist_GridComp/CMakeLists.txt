@@ -136,7 +136,6 @@ if (BUILD_PYMOIST_INTERFACE)
 else ()
   esma_add_library (${this}
     SRCS ${srcs}
-    SUBCOMPONENTS MAPLpyish
     DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL Chem_Shared Chem_Base esmf)
 endif ()
 
