@@ -17,7 +17,8 @@ def init_temporaries(
     qs: FloatField,
     qg: FloatField,
     qa: FloatField,
-    qn: FloatField,
+    ice_conentration: FloatField,
+    liquid_concentration: FloatField,
     qv0: FloatField,
     ql0: FloatField,
     qr0: FloatField,
@@ -118,7 +119,7 @@ def init_temporaries(
         w1 = w
 
         # ccn needs units #/m^3
-        ccn = qn
+        ccn = ice_conentration + liquid_concentration
         c_praut = cpaut * (ccn * constants.RHOR) ** (-1.0 / 3.0)
 
         # Reset precipitation aggregates to zero
@@ -162,12 +163,7 @@ def fix_negative_core(
     # define heat capacity and latent heat coefficient
     # -----------------------------------------------------------------------
 
-    cvm = (
-        c_air
-        + qv * c_vap
-        + (qr + ql) * constants.C_LIQ
-        + (qi + qs + qg) * constants.C_ICE
-    )
+    cvm = c_air + qv * c_vap + (qr + ql) * constants.C_LIQ + (qi + qs + qg) * constants.C_ICE
     lcpk = (lv00 + d0_vap * t) / cvm
     icpk = (constants.LI00 + constants.DC_ICE * t) / cvm
 
@@ -231,17 +227,13 @@ def fix_negative_values(
     # -----------------------------------------------------------------------
 
     with computation(FORWARD), interval(0, -1):
-        t, qv, ql, qr, qi, qs, qg = fix_negative_core(
-            t, qv, ql, qr, qi, qs, qg, c_air, c_vap, lv00, d0_vap
-        )
+        t, qv, ql, qr, qi, qs, qg = fix_negative_core(t, qv, ql, qr, qi, qs, qg, c_air, c_vap, lv00, d0_vap)
         if qv < 0.0:
             qv[0, 0, 1] = qv[0, 0, 1] + qv * dp / dp[0, 0, 1]
             qv = 0.0
 
     with computation(FORWARD), interval(-1, None):
-        t, qv, ql, qr, qi, qs, qg = fix_negative_core(
-            t, qv, ql, qr, qi, qs, qg, c_air, c_vap, lv00, d0_vap
-        )
+        t, qv, ql, qr, qi, qs, qg = fix_negative_core(t, qv, ql, qr, qi, qs, qg, c_air, c_vap, lv00, d0_vap)
 
         if qv < 0.0 and qv[0, 0, -1] > 0.0:
             dq = min(-qv * dp, qv[0, 0, -1] * dp[0, 0, -1])
