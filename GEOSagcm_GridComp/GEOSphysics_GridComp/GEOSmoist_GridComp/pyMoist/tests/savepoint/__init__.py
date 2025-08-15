@@ -17,3 +17,7 @@ from .GFDL_1M.translate_GFDL_1M_setup import TranslateGFDL_1M_setup
 from .saturation_tables.translate_qsat_functions import Translateqsat_functions
 from .saturation_tables.translate_saturation_tables import Translatesaturation_tables
 from .translate_aer_activation import TranslateAerActivation
+from .convective_parameterization.GF_2020.translate_GF_2020_setup import TranslateGF_2020_setup
+from .convective_parameterization.GF_2020.translate_GF_2020_driver_interface import (
+    TranslateGF_2020_driver_interface_setup,
+)
