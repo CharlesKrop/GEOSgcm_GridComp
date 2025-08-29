@@ -20,6 +20,12 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
+        self.quantity_factory.set_extra_dim_lengths(
+            **{
+                "nmp": 2,
+                "maxiens": 3,
+            }
+        )
 
         # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
         self.in_vars["data_vars"] = {
@@ -70,11 +76,22 @@ class TranslateGF_2020_setup(TranslateFortranData2Py):
 
     def compute(self, inputs):
         GF_2020_config = GF2020Config(
+            DT_MOIST=self.constants["DT_MOIST"],
             STOCHASTIC_CONVECTION=bool(self.constants["STOCHASTIC_CNV"]),
             STOCH_TOP=self.constants["STOCH_TOP"],
             STOCH_BOT=self.constants["STOCH_BOT"],
             GF_MIN_AREA=self.constants["GF_MIN_AREA"],
+            GF_ENV_SETTING=int(self.constants["GF_ENV_SETTING"]),
+            ENTRVERSION=self.constants["ENTRVERSION"],
+            CONVECTION_TRACER=self.constants["CONVECTION_TRACER"],
+            C1=self.constants["C1"],
+            ADV_TRIGGER=self.constants["ADV_TRIGGER"],
+            AUTOCONV=self.constants["AUTOCONV"],
+            USE_TRACER_TRANSP=self.constants["USE_TRACER_TRANSP"],
+            SCLM_DEEP=self.constants["SCLM_DEEP"],
+            FIX_CNV_CLOUD=bool(self.constants["FIX_CNV_CLOUD"]),
         )
+
         p_interface = self.make_ijk_quantity(inputs.pop("PLE"), interface=True)
         geopotential_height_interface = self.make_ijk_quantity(inputs.pop("ZLE"), interface=True)
         t = self.make_ijk_quantity(inputs.pop("T"))

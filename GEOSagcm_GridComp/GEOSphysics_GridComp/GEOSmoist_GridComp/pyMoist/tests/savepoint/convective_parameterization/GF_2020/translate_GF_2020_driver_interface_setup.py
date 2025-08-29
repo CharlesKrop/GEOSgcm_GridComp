@@ -5,9 +5,10 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.convective_parameterization.GF_2020.config import GF2020Config
 from pyMoist.convective_parameterization.GF_2020.temporaries import Temporaries
-from pyMoist.convective_parameterization.GF_2020.driver_interface import DriverInterface
+from pyMoist.convective_parameterization.GF_2020.driver_interface.driver_interface import DriverInterface
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convective_parameterization.GF_2020.state import MixingRatios
+from pyMoist.convective_parameterization.GF_2020.GF_2020 import GF2020
 
 # required only for workarounds
 from ndsl.dsl.typing import Int
@@ -24,6 +25,12 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
+        self.quantity_factory.set_extra_dim_lengths(
+            **{
+                "nmp": 2,
+                "maxiens": 3,
+            }
+        )
 
         # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
         self.in_vars["data_vars"] = {
@@ -339,12 +346,9 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
             self.temporaries.dm3d,
             self.temporaries.khloc,
             self.temporaries.curr_rvap,
-            self.temporaries.mp_ice_ls,
-            self.temporaries.mp_liq_ls,
-            self.temporaries.mp_cf_ls,
-            self.temporaries.mp_ice_cn,
-            self.temporaries.mp_liq_cn,
-            self.temporaries.mp_cf_cn,
+            self.temporaries.mp_ice,
+            self.temporaries.mp_liq,
+            self.temporaries.mp_cf,
             self.temporaries.buoy_exc,
             # fields computed here and used immediately after driver conclusion
             self.temporaries.DZ,
@@ -404,37 +408,6 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
             ec3d,
         )
 
-        mp_ice = np.zeros(
-            [
-                2,
-                self.temporaries.mp_ice_ls.field.shape[0],
-                self.temporaries.mp_ice_ls.field.shape[1],
-                self.temporaries.mp_ice_ls.field.shape[2],
-            ]
-        )
-        mp_ice[0, :, :, :] = self.temporaries.mp_ice_ls.field
-        mp_ice[1, :, :, :] = self.temporaries.mp_ice_cn.field
-        mp_liq = np.zeros(
-            [
-                2,
-                self.temporaries.mp_liq_ls.field.shape[0],
-                self.temporaries.mp_liq_ls.field.shape[1],
-                self.temporaries.mp_liq_ls.field.shape[2],
-            ]
-        )
-        mp_liq[0, :, :, :] = self.temporaries.mp_liq_ls.field
-        mp_liq[1, :, :, :] = self.temporaries.mp_liq_cn.field
-        mp_cf = np.zeros(
-            [
-                2,
-                self.temporaries.mp_cf_ls.field.shape[0],
-                self.temporaries.mp_cf_ls.field.shape[1],
-                self.temporaries.mp_cf_ls.field.shape[2],
-            ]
-        )
-        mp_cf[0, :, :, :] = self.temporaries.mp_cf_ls.field
-        mp_cf[1, :, :, :] = self.temporaries.mp_cf_cn.field
-
         ZLE_N.field[:, :, -1] = ZLE_N_surface.field
 
         return {
@@ -457,9 +430,9 @@ class TranslateGF_2020_driver_interface_setup(TranslateFortranData2Py):
             "dm3d": np.moveaxis(self.temporaries.dm3d.field, 2, 0),
             "khloc": np.moveaxis(self.temporaries.khloc.field, 2, 0),
             "curr_rvap": np.moveaxis(self.temporaries.curr_rvap.field, 2, 0),
-            "mp_ice": np.moveaxis(mp_ice, 3, 1),
-            "mp_liq": np.moveaxis(mp_liq, 3, 1),
-            "mp_cf": np.moveaxis(mp_cf, 3, 1),
+            "mp_ice": np.transpose(self.temporaries.mp_ice.field, (3, 2, 0, 1)),
+            "mp_liq": np.transpose(self.temporaries.mp_liq.field, (3, 2, 0, 1)),
+            "mp_cf": np.transpose(self.temporaries.mp_cf.field, (3, 2, 0, 1)),
             "buoy_exc": np.moveaxis(self.temporaries.buoy_exc.field, 2, 0),
             "DZ": self.temporaries.DZ.field,
             "AIR_DEN": self.temporaries.AIR_DEN.field,

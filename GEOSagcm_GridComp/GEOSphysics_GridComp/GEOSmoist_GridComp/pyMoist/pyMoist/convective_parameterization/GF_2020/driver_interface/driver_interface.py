@@ -1,4 +1,5 @@
-from ndsl import StencilFactory
+import copy
+from ndsl import StencilFactory, QuantityFactory
 from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, sqrt, max, min, abs, floor, K, BACKWARD
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, Int
@@ -9,6 +10,7 @@ from pyMoist.convective_parameterization.GF_2020.state import MixingRatios
 from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
 from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.field_types import FloatField_nmp
 
 
 def reset_to_zero(
@@ -168,12 +170,9 @@ def driver_interface(
     dm3d: FloatField,
     khloc: FloatField,
     curr_rvap: FloatField,
-    mp_ice_ls: FloatField,
-    mp_liq_ls: FloatField,
-    mp_cf_ls: FloatField,
-    mp_ice_cn: FloatField,
-    mp_liq_cn: FloatField,
-    mp_cf_cn: FloatField,
+    mp_ice: FloatField_nmp,
+    mp_liq: FloatField_nmp,
+    mp_cf: FloatField_nmp,
     buoy_exc: FloatField,
     # fields computed here and used immediately after driver conclusion
     DZ: FloatField,
@@ -272,12 +271,12 @@ def driver_interface(
                 # NOTE NEED A WAY TO WRITE TO A FLIPPED INDEXs
                 entr3d = ec3d.at(K=flip)
 
-                mp_ice_ls = QILS.at(K=flip)
-                mp_liq_ls = QLLS.at(K=flip)
-                mp_cf_ls = CLLS.at(K=flip)
-                mp_ice_cn = QICN.at(K=flip)
-                mp_liq_cn = QLCN.at(K=flip)
-                mp_cf_cn = CLCN.at(K=flip)
+                mp_ice[0, 0, 0][0] = QILS.at(K=flip)
+                mp_liq[0, 0, 0][0] = QLLS.at(K=flip)
+                mp_cf[0, 0, 0][0] = CLLS.at(K=flip)
+                mp_ice[0, 0, 0][1] = QICN.at(K=flip)
+                mp_liq[0, 0, 0][1] = QLCN.at(K=flip)
+                mp_cf[0, 0, 0][1] = CLCN.at(K=flip)
 
                 # sfc pressure (Pa)
                 sfc_press = PLE.at(K=k_end)
@@ -355,12 +354,12 @@ def driver_interface(
 
                 entr3d = ec3d.at(K=flip)
 
-                mp_ice_ls = QILS.at(K=flip)
-                mp_liq_ls = QLLS.at(K=flip)
-                mp_cf_ls = CLLS.at(K=flip)
-                mp_ice_cn = QICN.at(K=flip)
-                mp_liq_cn = QLCN.at(K=flip)
-                mp_cf_cn = CLCN.at(K=flip)
+                mp_ice[0, 0, 0][0] = QILS.at(K=flip)
+                mp_liq[0, 0, 0][0] = QLLS.at(K=flip)
+                mp_cf[0, 0, 0][0] = CLLS.at(K=flip)
+                mp_ice[0, 0, 0][1] = QICN.at(K=flip)
+                mp_liq[0, 0, 0][1] = QLCN.at(K=flip)
+                mp_cf[0, 0, 0][1] = CLCN.at(K=flip)
 
                 # sfc pressure (Pa)
                 sfc_press = PLE_DYN_IN.at(K=k_end)
@@ -388,7 +387,7 @@ def driver_interface(
 
 class DriverInterface:
     def __init__(self, stencil_factory: StencilFactory, GF_2020_config: GF2020Config):
-
+        # Construct stencils
         self.reset_to_zero = stencil_factory.from_dims_halo(
             func=reset_to_zero,
             compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
@@ -467,12 +466,9 @@ class DriverInterface:
         dm3d: FloatField,
         khloc: FloatField,
         curr_rvap: FloatField,
-        mp_ice_ls: FloatField,
-        mp_liq_ls: FloatField,
-        mp_cf_ls: FloatField,
-        mp_ice_cn: FloatField,
-        mp_liq_cn: FloatField,
-        mp_cf_cn: FloatField,
+        mp_ice: FloatField_nmp,
+        mp_liq: FloatField_nmp,
+        mp_cf: FloatField_nmp,
         buoy_exc: FloatField,
         # fields computed here and used immediately after driver conclusion
         DZ: FloatField,
@@ -631,12 +627,9 @@ class DriverInterface:
             dm3d,
             khloc,
             curr_rvap,
-            mp_ice_ls,
-            mp_liq_ls,
-            mp_cf_ls,
-            mp_ice_cn,
-            mp_liq_cn,
-            mp_cf_cn,
+            mp_ice,
+            mp_liq,
+            mp_cf,
             buoy_exc,
             DZ,
             AIR_DEN,

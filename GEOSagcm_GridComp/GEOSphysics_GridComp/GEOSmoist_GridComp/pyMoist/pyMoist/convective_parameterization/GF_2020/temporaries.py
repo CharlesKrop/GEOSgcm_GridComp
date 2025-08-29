@@ -38,12 +38,9 @@ class Temporaries:
     dm3d: Quantity
     khloc: Quantity
     curr_rvap: Quantity
-    mp_ice_ls: Quantity
-    mp_liq_ls: Quantity
-    mp_cf_ls: Quantity
-    mp_ice_cn: Quantity
-    mp_liq_cn: Quantity
-    mp_cf_cn: Quantity
+    mp_ice: Quantity
+    mp_liq: Quantity
+    mp_cf: Quantity
     buoy_exc: Quantity
     DZ: Quantity
     AIR_DEN: Quantity
@@ -82,12 +79,9 @@ class Temporaries:
         dm3d = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         khloc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         curr_rvap = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        mp_ice_ls = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        mp_liq_ls = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        mp_cf_ls = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        mp_ice_cn = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        mp_liq_cn = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
-        mp_cf_cn = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
+        mp_ice = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "nmp"], "n/a")
+        mp_liq = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "nmp"], "n/a")
+        mp_cf = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM, "nmp"], "n/a")
         buoy_exc = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         DZ = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
         AIR_DEN = quantity_factory.zeros([X_DIM, Y_DIM, Z_DIM], "n/a")
@@ -123,12 +117,9 @@ class Temporaries:
             dm3d,
             khloc,
             curr_rvap,
-            mp_ice_ls,
-            mp_liq_ls,
-            mp_cf_ls,
-            mp_ice_cn,
-            mp_liq_cn,
-            mp_cf_cn,
+            mp_ice,
+            mp_liq,
+            mp_cf,
             buoy_exc,
             DZ,
             AIR_DEN,

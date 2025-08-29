@@ -5,7 +5,7 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from pyMoist.convective_parameterization.GF_2020.config import GF2020Config
 from pyMoist.convective_parameterization.GF_2020.temporaries import Temporaries
-from pyMoist.convective_parameterization.GF_2020.driver.setup import Setup
+from pyMoist.convective_parameterization.GF_2020.driver.setup import DriverSetup
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.convective_parameterization.GF_2020.state import MixingRatios
 
@@ -20,29 +20,17 @@ class TranslateGF_2020_driver_setup(TranslateFortranData2Py):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.quantity_factory = grid.quantity_factory
+        self.quantity_factory.set_extra_dim_lengths(
+            **{
+                "nmp": 2,
+                "maxiens": 3,
+            }
+        )
 
         # grid.compute_dict is workaround to remove grid halo, which is hardcoded to 3
-        self.in_vars["data_vars"] = {
-            "PLE": grid.compute_dict(),
-            "ZLE": grid.compute_dict(),
-            "T": grid.compute_dict(),
-            "Q": grid.compute_dict(),
-            "AREA": grid.compute_dict(),
-            "CNV_FRC": grid.compute_dict(),
-        }
+        self.in_vars["data_vars"] = {}
 
-        self.out_vars = {
-            "TMP2D": grid.compute_dict(),
-            "TPWI_star": grid.compute_dict(),
-            "TPWI": grid.compute_dict(),
-            "ZL0": grid.compute_dict(),
-            "TH": grid.compute_dict(),
-            "MASS": grid.compute_dict(),
-            "ZLE0": grid.compute_dict(),
-            "PL": grid.compute_dict(),
-            "PK": grid.compute_dict(),
-            "SEEDCNV": grid.compute_dict(),
-        }
+        self.out_vars = {}
 
         # Initalize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
@@ -74,43 +62,20 @@ class TranslateGF_2020_driver_setup(TranslateFortranData2Py):
             STOCH_TOP=self.constants["STOCH_TOP"],
             STOCH_BOT=self.constants["STOCH_BOT"],
             GF_MIN_AREA=self.constants["GF_MIN_AREA"],
-        )
-        p_interface = self.make_ijk_quantity(inputs.pop("PLE"), interface=True)
-        geopotential_height_interface = self.make_ijk_quantity(inputs.pop("ZLE"), interface=True)
-        t = self.make_ijk_quantity(inputs.pop("T"))
-        area = self.make_ij_quantity(inputs.pop("AREA"))
-        convection_fraction = self.make_ij_quantity(inputs.pop("CNV_FRC"))
-
-        mixing_ratios = MixingRatios(
-            self.make_ijk_quantity(inputs.pop("Q")), None, None, None, None, None, None, None
+            GF_ENV_SETTING=int(self.constants["GF_ENV_SETTING"]),
+            ENTRVERSION=self.constants["ENTRVERSION"],
+            CONVECTION_TRACER=self.constants["CONVECTION_TRACER"],
+            C1=self.constants["C1"],
+            ADV_TRIGGER=self.constants["ADV_TRIGGER"],
         )
 
         # Construct stencils
-        setup = Setup(
+        driver_setup = DriverSetup(
             stencil_factory=self.stencil_factory,
+            quantity_factory=self.quantity_factory,
             GF_2020_config=GF_2020_config,
         )
 
-        setup(
-            p_interface,
-            geopotential_height_interface,
-            t,
-            mixing_ratios,
-            area,
-            convection_fraction,
-            self.temporaries,
-            self.saturation_tables,
-        )
+        driver_setup()
 
-        return {
-            "TMP2D": self.temporaries.modified_area.field,
-            "TPWI": self.temporaries.tpwi.field,
-            "TPWI_star": self.temporaries.tpwi_star.field,
-            "ZL0": self.temporaries.layer_height_above_surface.field,
-            "TH": self.temporaries.th.field,
-            "MASS": self.temporaries.mass.field,
-            "ZLE0": self.temporaries.edge_height_above_surface.field,
-            "PL": self.temporaries.p.field,
-            "PK": self.temporaries.p_kappa.field,
-            "SEEDCNV": self.temporaries.seed_convection.field,
-        }
+        return {}

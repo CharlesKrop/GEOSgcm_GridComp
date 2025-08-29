@@ -1,3 +1,4 @@
+import copy
 from pyMoist.convective_parameterization.GF_2020.setup import Setup
 from pyMoist.convective_parameterization.GF_2020.config import GF2020Config
 from ndsl import StencilFactory, QuantityFactory
@@ -16,6 +17,9 @@ class GF2020:
         if self.stencil_factory.grid_indexing.n_halo != 0:
             raise ValueError("halo needs to be zero for GFDL Single Moment microphysics")
 
+        # Create extra quantity factories
+        self.nmp_quantity_factory = self.make_nmp_quantity_factory(quantity_factory)
+
         # Initalize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
@@ -24,6 +28,18 @@ class GF2020:
 
         # Initalize submodules and build stencils
         self.setup = Setup(stencil_factory)
+
+    @staticmethod
+    def make_nmp_quantity_factory(
+        quantity_factory: QuantityFactory,
+    ):
+        nmp_quantity_factory = copy.deepcopy(quantity_factory)
+        nmp_quantity_factory.set_extra_dim_lengths(
+            **{
+                "nmp": 2,
+            }
+        )
+        return nmp_quantity_factory
 
     def __call__(
         self,
