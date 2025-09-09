@@ -15,7 +15,7 @@ def init_temporaries(
     qs: FloatField,
     qg: FloatField,
     qa: FloatField,
-    ice_conentration: FloatField,
+    ice_concentration: FloatField,
     liquid_concentration: FloatField,
     qv0: FloatField,
     ql0: FloatField,
@@ -59,7 +59,7 @@ def init_temporaries(
     isubl: FloatField,
 ):
     """
-    Initalize temporary copies of many quantities
+    Initialize temporary copies of many quantities
 
     modification to quantities (t, p, q, etc.) made inside of the driver
     are not returned outside of the driver. these copies are necessary
@@ -117,7 +117,7 @@ def init_temporaries(
         w1 = w
 
         # ccn needs units #/m^3
-        ccn = ice_conentration + liquid_concentration
+        ccn = ice_concentration + liquid_concentration
         c_praut = cpaut * (ccn * constants.RHOR) ** (-1.0 / 3.0)
 
         # Reset precipitation aggregates to zero
@@ -216,7 +216,7 @@ def fix_negative_values(
     adjusts/removes negative mixing ratios
     updates qv based on new values
 
-    refernce Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
+    reference Fortran: gfdl_cloud_microphys.F90: subroutine mpdrv
     """
     from __externals__ import c_air, c_vap, d0_vap, lv00
 

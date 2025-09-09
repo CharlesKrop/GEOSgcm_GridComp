@@ -28,7 +28,7 @@ class GFDL1M:
 
     Performs the following functions to achieve this goal:
     __init__
-        - initalize saturaiton vapor pressure tables, initalize temporary/output fields, construct stencils
+        - initialize saturation vapor pressure tables, initialize temporary/output fields, construct stencils
         Arguments: StencilFactory, QuantityFactory, GFDL1MConfig
 
     __call__
@@ -61,10 +61,10 @@ class GFDL1M:
         self.quantity_factory = quantity_factory
         self.GFDL_1M_config = GFDL_1M_config
 
-        # Initalize saturation tables
+        # Initialize saturation tables
         self.saturation_tables = SaturationVaporPressureTable(self.stencil_factory.backend)
 
-        # Initalize internal fields
+        # Initialize internal fields
         self.masks = Masks.make(quantity_factory=quantity_factory)
         self.temporaries = Temporaries.make(quantity_factory=quantity_factory)
 

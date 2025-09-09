@@ -14,9 +14,9 @@ class Finish:
         config_dependent_constants: ConfigConstants,
     ):
         """
-        Save driver outputs: tentencies & precipitation
+        Save driver outputs: tendencies & precipitation
         """
-        # Initalize stencils
+        # Initialize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         self._update_tendencies = stencil_factory.from_dims_halo(

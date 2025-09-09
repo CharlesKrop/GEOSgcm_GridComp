@@ -27,7 +27,7 @@ def rh_calculations(
             turnrhcrit = TURNRHCRIT_PARAM
 
     with computation(PARALLEL), interval(0, -1):
-        # Use Slingo-Ritter (1985) formulation for critical rel ative humidity
+        # Use Slingo-Ritter (1985) formulation for critical relative humidity
         rh_crit = 1.0
         # lower turn from maxrhcrit=1.0
         if p_mb <= turnrhcrit:

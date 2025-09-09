@@ -197,7 +197,7 @@ def warm_rain_step_1(
     # reference Fortran: gfdl_cloud_microphys.F90: subroutine check_column
     # determine if any precip falls in the column
     # if it falls anywhere in the column, the entire column becomes true
-    # initalized to 0 (false), potentially changed to 1 (true)
+    # initialized to 0 (false), potentially changed to 1 (true)
     with computation(FORWARD), interval(...):
         if qr1 > constants.QPMIN:
             precip_fall = 1

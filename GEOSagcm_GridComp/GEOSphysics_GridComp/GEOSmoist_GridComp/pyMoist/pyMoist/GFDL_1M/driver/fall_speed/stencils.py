@@ -28,8 +28,8 @@ def fall_speed(
         qi (inout): in cloud ice mixing radio (kg/kg)
         qs (inout): in cloud snow mixing radio (kg/kg)
         qg (inout): in cloud graupel mixing radio (kg/kg)
-        t (in): atmopsheric temperature, unmodified throughout the driver (K)
-        t1 (in): atmospheric temperature, modified thorughout the driver (K)
+        t (in): atmospheric temperature, unmodified throughout the driver (K)
+        t1 (in): atmospheric temperature, modified throughout the driver (K)
         dz (in): layer thickness (m)
         dz1 (out): layer thickness
         den (in): density

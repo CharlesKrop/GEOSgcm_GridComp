@@ -221,7 +221,7 @@ class GEOSPyMoistWrapper:
         self._GFDL_1M_driver: Optional[MicrophysicsDriver] = None
         self._GFDL_1M_ready: Optional[bool] = False
 
-        # Initalize MAPL Memory Respositories
+        # Initialize MAPL Memory Repositories
         self._mapl_import = MAPLMemoryRepository(
             mapl_states.import_,
             self.quantity_factory,
@@ -239,7 +239,7 @@ class GEOSPyMoistWrapper:
     def driver(self) -> Callable:
         if not self._GFDL_1M_driver:
             if self.GFDL_1M_config is None:
-                raise RuntimeError("GFDL_1M configuration not initalized")
+                raise RuntimeError("GFDL_1M configuration not initialized")
             with StencilBackendCompilerOverride(
                 MPI.COMM_WORLD,
                 self.stencil_config.dace_config,
@@ -349,7 +349,7 @@ class GEOSPyMoistWrapper:
             **upper_case_dict,
         )
 
-        # Initalize the module
+        # Initialize the module
         with StencilBackendCompilerOverride(
             MPI.COMM_WORLD,
             self.stencil_config.dace_config,

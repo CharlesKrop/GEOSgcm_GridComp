@@ -23,10 +23,10 @@ class WarmRain:
     ):
         self.GFDL_1M_config = GFDL_1M_config
 
-        # Initalize temporaries
+        # Initialize temporaries
         self.temporaries = Temporaries.make(quantity_factory)
 
-        # Initalize stencils
+        # Initialize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         self._warm_rain_step_1 = stencil_factory.from_dims_halo(
@@ -179,7 +179,7 @@ class WarmRain:
         )
         if self.GFDL_1M_config.USE_PPM is False:
             # NOTE: somehow errors pop up in rain1 and m1_sol within implicit fall, despite all of the
-            # imputs being correct and implicit_fall verifying at three separate calls
+            # inputs being correct and implicit_fall verifying at three separate calls
             # within the terminal_fall module. May be a similar issue to the warm_rain_part_1 error
             # (different result despite inputs being identical, possible registry issue??).
             self._implicit_fall(

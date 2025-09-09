@@ -23,7 +23,7 @@ from pyMoist.shared_incloud_processes import fix_up_clouds
 
 class PhaseChange:
     """This class is the wrapper for the GFDL_1M microphysics scheme. I/O and error handling
-    are perfromed at this level, all calculations are performed within deeper functions.
+    are performed at this level, all calculations are performed within deeper functions.
     """
 
     def __init__(
@@ -69,7 +69,7 @@ class PhaseChange:
         self.temporaries = Temporaries.make(quantity_factory)
 
         # -----------------------------------------------------------------------
-        # Initalize QSat tables
+        # Initialize QSat tables
         # -----------------------------------------------------------------------
         self.tables = SaturationVaporPressureTable(
             self.stencil_factory.backend,
@@ -77,7 +77,7 @@ class PhaseChange:
         )
 
         # -----------------------------------------------------------------------
-        # Initalizse stencils
+        # Initializes stencils
         # -----------------------------------------------------------------------
 
         self._rh_calculations = self.stencil_factory.from_dims_halo(

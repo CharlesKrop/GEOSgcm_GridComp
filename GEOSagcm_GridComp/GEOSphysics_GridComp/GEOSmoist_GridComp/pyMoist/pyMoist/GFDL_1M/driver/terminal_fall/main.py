@@ -33,10 +33,10 @@ class TerminalFall:
 
         self.GFDL_1M_config = GFDL_1M_config
 
-        # Initalize temporaries
+        # Initialize temporaries
         self.temporaries = Temporaries.make(quantity_factory)
 
-        # Initalize stencils
+        # Initialize stencils
         orchestrate(obj=self, config=stencil_factory.config.dace_config)
         self._setup = stencil_factory.from_dims_halo(
             func=setup,

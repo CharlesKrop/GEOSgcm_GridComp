@@ -33,7 +33,7 @@ def saturation_specific_humidity_frozen_surface(
     compute_dq: bool,
 ):
     """
-    Computes saturation specific humitidy over liquid water surface, using
+    Computes saturation specific humidity over liquid water surface, using
     data from saturation pressure tables.
 
     Arguments:
@@ -90,7 +90,7 @@ def saturation_specific_humidity_liquid_surface(
     compute_dq: bool = False,
 ):
     """
-    Computes saturation specific humitidy over liquid water surface, using
+    Computes saturation specific humidity over liquid water surface, using
     data from saturation pressure tables.
 
     Arguments:
@@ -152,13 +152,13 @@ def saturation_specific_humidity(
     Compute saturation specific humidity and derivative saturation specific humidity
     with respect to temperature from saturation pressure tables.
 
-    Tables must be initalized before use.
+    Tables must be initialized before use.
 
     Arguments:
         t (in): temperature in Kelvin
         p (in): pressure in Pascals
         ese (in): saturation pressure table in Pascals, specifics unknown
-        esx (in): saturation presure table in Pascals, specifics unknown
+        esx (in): saturation pressure table in Pascals, specifics unknown
         use_ramp (in): trigger for "ramp" option. details unknown
         ramp (in): parameter used for "ramp" option. details unknown
 
