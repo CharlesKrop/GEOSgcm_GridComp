@@ -1,11 +1,12 @@
-from dataclasses import dataclass
+import dataclasses
 
 from ndsl import Quantity, QuantityFactory
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.dsl.dace.orchestration import dace_inhibitor
 from ndsl.dsl.typing import Int
 
 
-@dataclass
+@dataclasses.dataclass
 class Temporaries:
     p_interface_mb: Quantity
     p_mb: Quantity
@@ -106,3 +107,8 @@ class Temporaries:
             dsnow_dt,
             dgraupel_dt,
         )
+
+    @dace_inhibitor
+    def zeros(self):
+        for field in dataclasses.fields(Temporaries):
+            getattr(self, field.name).data[:] = 0

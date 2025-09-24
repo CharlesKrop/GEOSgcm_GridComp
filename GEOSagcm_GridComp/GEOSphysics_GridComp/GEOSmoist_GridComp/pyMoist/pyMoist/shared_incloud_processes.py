@@ -3,7 +3,7 @@ These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
 import pyMoist.constants as constants
-from ndsl.dsl.gt4py import PARALLEL, computation, exp, interval, log10, sin, function
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log10, sin
 from ndsl.dsl.typing import Float, FloatField
 from pyMoist.shared_generic_math import air_density
 
@@ -154,14 +154,14 @@ def cloud_effective_radius_ice(
             # the multiplication "-2.0 * log'd result" is performed differently (~60 ULP), despite the log
             # being correct. Needs to be looked into at some point, but not critital for overall performance.
         bb = min(max(bb, -6.0), -2.0)
-        radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
+        radius = 377.4 + 203.3 * bb + 37.91 * bb ** 2 + 2.3696 * bb ** 3
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
         tc = temperature - constants.MAPL_TICE
         zfsr = 1.2351 + 0.0105 * tc
-        aa = 45.8966 * (wc**0.2214)
-        bb = 0.79570 * (wc**0.2535)
+        aa = 45.8966 * (wc ** 0.2214)
+        bb = 0.79570 * (wc ** 0.2535)
         radius = zfsr * (aa + bb * (temperature - 83.15))
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius * 0.64952))
     return radius

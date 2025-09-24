@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log, max, sqrt, function
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, max, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
@@ -145,6 +145,7 @@ def warm_rain_step_1(
     c_praut: FloatField,
     vtr: FloatField,
     evap1: FloatField,
+    m1_rain: FloatField,
     rh_limited: FloatField,
     eis: FloatFieldIJ,
     onemsig: FloatFieldIJ,
@@ -189,6 +190,10 @@ def warm_rain_step_1(
         vr_max,
         z_slope_liq,
     )
+
+    with computation(PARALLEL), interval(...):
+        # ensure mask is clear of any previous values
+        m1_rain = 0
 
     with computation(FORWARD), interval(...):
         # ensure mask is clear of any previous values
@@ -449,12 +454,6 @@ def warm_rain_step_2(
         lv00,
         tau_revp,
     )
-
-    with computation(PARALLEL), interval(...):
-        # -----------------------------------------------------------------------
-        # terminal speed of rain
-        # -----------------------------------------------------------------------
-        m1_rain = 0.0
 
     # -----------------------------------------------------------------------
     # vertical velocity transportation during sedimentation

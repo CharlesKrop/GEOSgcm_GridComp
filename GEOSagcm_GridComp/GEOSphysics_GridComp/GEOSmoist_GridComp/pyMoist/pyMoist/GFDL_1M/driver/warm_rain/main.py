@@ -162,6 +162,7 @@ class WarmRain:
             c_praut,
             vtr,
             evap1,
+            m1_rain,
             rh_limited,
             eis,
             onemsig,
@@ -178,19 +179,19 @@ class WarmRain:
             des4,
         )
         if self.GFDL_1M_config.USE_PPM is False:
-            # NOTE: somehow errors pop up in rain1 and m1_sol within implicit fall, despite all of the
+            # NOTE: somehow errors pop up in rain1 and m1_rain within implicit fall, despite all of the
             # imputs being correct and implicit_fall verifying at three separate calls
             # within the terminal_fall module. May be a similar issue to the warm_rain_part_1 error
             # (different result despite inputs being identical, possible registry issue??).
             self._implicit_fall(
-                qr1,
-                vtr,
-                ze,
-                dp1,
-                m1,
-                m1_sol,
-                rain1,
-                precip_fall,
+                q=qr1,
+                vt=vtr,
+                ze=ze,
+                dp1=dp1,
+                m1=self.temporaries.unused_m1,
+                m1_sol=m1_rain,
+                precip=rain1,
+                precip_fall=precip_fall,
             )
 
         self._warm_rain_step_2(
