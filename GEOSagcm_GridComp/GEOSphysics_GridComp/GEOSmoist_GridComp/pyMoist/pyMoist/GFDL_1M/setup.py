@@ -2,7 +2,7 @@ from typing import Optional
 
 from ndsl import StencilFactory, orchestrate
 from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, function, interval, log, K
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
 from pyMoist.constants import (
     MAPL_ALHL,
@@ -15,15 +15,17 @@ from pyMoist.constants import (
     MAPL_RGAS,
     MAPL_RVAP,
 )
-from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.masks import Masks
 from pyMoist.GFDL_1M.outputs import Outputs
 from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.interpolations import vertical_interpolation
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    SaturationVaporPressureTable,
+    saturation_specific_humidity,
+)
 
 
 def calculate_derived_states(
@@ -38,15 +40,14 @@ def calculate_derived_states(
     dp: FloatField,
     mass: FloatField,
     t: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     qsat: FloatField,
     dqsat: FloatField,
     u: FloatField,
     u_unmodified: FloatField,
     v: FloatField,
     v_unmodified: FloatField,
-    temporary_3d: FloatField,
     th: FloatField,
 ):
     """
@@ -60,7 +61,7 @@ def calculate_derived_states(
     with computation(PARALLEL), interval(...):
         p_interface_mb = p_interface * 0.01
         edge_height_above_surface = geopotential_height_interface - geopotential_height_interface.at(K=k_end)
-    with computation(FORWARD), interval(0, -1):
+    with computation(PARALLEL), interval(0, -1):
         p_mb = 0.5 * (p_interface_mb + p_interface_mb[0, 0, 1])
         layer_height_above_surface = 0.5 * (edge_height_above_surface + edge_height_above_surface[0, 0, 1])
         layer_thickness = edge_height_above_surface - edge_height_above_surface[0, 0, 1]
@@ -72,10 +73,6 @@ def calculate_derived_states(
         v_unmodified = v
         temporary_3d = (100.0 * p_mb / MAPL_P00) ** (MAPL_KAPPA)
         th = t / temporary_3d
-
-    # reset temporary field for later uses
-    with computation(PARALLEL), interval(...):
-        temporary_3d = 0
 
 
 @function
@@ -104,8 +101,8 @@ def find_k_lcl(
     t: FloatField,
     p_mb: FloatField,
     vapor: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     found_level: BoolFieldIJ,
     k_lcl: IntFieldIJ,
 ):
@@ -161,8 +158,8 @@ def find_eis(
     th700: FloatFieldIJ,
     z700: FloatFieldIJ,
     k_lcl: IntFieldIJ,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
     lower_tropospheric_stability: FloatFieldIJ,
     estimated_inversion_strength: FloatFieldIJ,
 ):
@@ -248,7 +245,7 @@ class Setup:
 
         self.vertical_interpolation = stencil_factory.from_dims_halo(
             func=vertical_interpolation,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
 
         self.find_eis = stencil_factory.from_dims_halo(
@@ -263,6 +260,12 @@ class Setup:
                 "DT_MOIST": GFDL_1M_config.DT_MOIST,
             },
         )
+
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.saturation_tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._ese = self.saturation_tables.ese
+        self._esx = self.saturation_tables.esx
 
     def __call__(
         self,
@@ -318,7 +321,7 @@ class Setup:
             dp=temporaries.dp,
             mass=temporaries.mass,
             t=t,
-            ese=self.saturation_tables.ese,
+            ese=self._ese,
             esx=self.saturation_tables.esx,
             qsat=temporaries.qsat,
             dqsat=temporaries.dqsat,
@@ -326,7 +329,6 @@ class Setup:
             u_unmodified=temporaries.u_unmodified,
             v=v,
             v_unmodified=temporaries.v_unmodified,
-            temporary_3d=temporaries.temporary_3d,
             th=temporaries.th,
         )
 
@@ -334,8 +336,8 @@ class Setup:
             t=t,
             p_mb=temporaries.p_mb,
             vapor=mixing_ratios.vapor,
-            ese=self.saturation_tables.ese,
-            esx=self.saturation_tables.esx,
+            ese=self._ese,
+            esx=self._esx,
             found_level=masks.boolean_2d_mask,
             k_lcl=temporaries.k_lcl,
         )
@@ -366,6 +368,7 @@ class Setup:
             pt=temporaries.temporary_2d_2,
             boolean_2d_mask=masks.boolean_2d_mask,
         )
+
         self.vertical_interpolation(
             field=temporaries.layer_height_above_surface,
             interpolated_field=temporaries.z700,
@@ -384,8 +387,8 @@ class Setup:
             th700=temporaries.th700,
             z700=temporaries.z700,
             k_lcl=temporaries.k_lcl,
-            ese=self.saturation_tables.ese,
-            esx=self.saturation_tables.esx,
+            ese=self._ese,
+            esx=self._esx,
             lower_tropospheric_stability=outputs.lower_tropospheric_stability,
             estimated_inversion_strength=outputs.estimated_inversion_strength,
         )

@@ -1,9 +1,8 @@
 from ndsl import StencilFactory, ndsl_log, orchestrate
-from ndsl.constants import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from ndsl.constants import X_DIM, Y_DIM, Z_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, function, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
-from pyMoist.field_types import GlobalTable_saturaion_tables
 from pyMoist.GFDL_1M.config import GFDL1MConfig
 from pyMoist.GFDL_1M.driver.driver import MicrophysicsDriver
 from pyMoist.GFDL_1M.masks import Masks
@@ -12,8 +11,11 @@ from pyMoist.GFDL_1M.state import CloudFractions, MixingRatios
 from pyMoist.GFDL_1M.temporaries import Temporaries
 from pyMoist.radiation_coupling import GFDL1MRadiationCoupling
 from pyMoist.redistribute_clouds import RedistributeClouds
-from pyMoist.saturation_tables.qsat_functions import saturation_specific_humidity
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    SaturationVaporPressureTable,
+    saturation_specific_humidity,
+)
 
 
 @function
@@ -63,11 +65,16 @@ def finalize_precip(
     graupel: FloatField,
 ):
     """
-    Must be constructed using Z_INTERFACE_DIM
+
+    Dev note on `PFL_LS`, `PFI_LS`, `PFL_AN`, `PFI_AN `:
+        Fortran use large_scale_nonanvil_ice_flux(PFI_LS) & anvil_ice_flux(PFI_AN) etc.,
+        as Z_INTERFACE_DIMS fields, but level == 0 is never touched.
+        It's reset every time to 0 and calculation are done on [1:] everywhere (before and in this code).
+        Therefore, it's not a Z_INTERFACE_DIM and we treat it as a Z_DIM.
     """
     from __externals__ import DT_MOIST
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         # send driver evaporation and sublimation outputs back to the rest of the model
         evaporation = evaporation_from_driver
         sublimation = sublimation_from_driver
@@ -85,12 +92,10 @@ def finalize_precip(
         icefall = precipitated_ice + precipitated_graupel
         freezing_rainfall = 0.0
 
-    with computation(PARALLEL), interval(1, None):
+    with computation(PARALLEL), interval(...):
         # Bring in precipitation fluxes from driver
         large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux_from_driver
         large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux_from_driver
-
-    with computation(PARALLEL), interval(...):
         # Convert precipitation fluxes from (Pa kg/kg) to (kg m-2 s-1)
         large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux / (MAPL_GRAV * DT_MOIST)
         large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux / (MAPL_GRAV * DT_MOIST)
@@ -99,26 +104,26 @@ def finalize_precip(
         # Redistribute precipitation fluxes for chemistry
         anvil_ice_flux = large_scale_nonanvil_ice_flux * min(
             1.0,
-            max(convective_ice[0, 0, -1] / max(ice_for_radiation[0, 0, -1], 1.0e-8), 0.0),
+            max(convective_ice / max(ice_for_radiation, 1.0e-8), 0.0),
         )
         large_scale_nonanvil_ice_flux = large_scale_nonanvil_ice_flux - anvil_ice_flux
 
         anvil_liquid_flux = large_scale_nonanvil_liquid_flux * min(
             1.0,
             max(
-                convective_liquid[0, 0, -1] / max(liquid_for_radiation[0, 0, -1], 1.0e-8),
+                convective_liquid / max(liquid_for_radiation, 1.0e-8),
                 0.0,
             ),
         )
         large_scale_nonanvil_liquid_flux = large_scale_nonanvil_liquid_flux - anvil_liquid_flux
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         # cleanup suspended precipitation condensates
         radiation_rain = fix_negative_precip(radiation_rain)
         radiation_snow = fix_negative_precip(radiation_snow)
         radiation_graupel = fix_negative_precip(radiation_graupel)
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         vapor = radiation_vapor
         rain = radiation_rain
         snow = radiation_snow
@@ -130,8 +135,8 @@ def fix_humidity(
     vapor: FloatField,
     t: FloatField,
     p_mb: FloatField,
-    ese: GlobalTable_saturaion_tables,
-    esx: GlobalTable_saturaion_tables,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
 ):
     with computation(PARALLEL), interval(...):
         qsat, _ = saturation_specific_humidity(t, p_mb * 100, ese, esx)
@@ -279,7 +284,7 @@ class Finalize:
 
         self.finalize_precip = stencil_factory.from_dims_halo(
             func=finalize_precip,
-            compute_dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
             externals={
                 "DT_MOIST": GFDL_1M_config.DT_MOIST,
             },
@@ -325,6 +330,12 @@ class Finalize:
             func=dissipative_ke_heating,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.saturation_tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._ese = self.saturation_tables.ese
+        self._esx = self.saturation_tables.esx
 
     def __call__(
         self,
@@ -416,8 +427,8 @@ class Finalize:
             outputs.liquid_radius,
             outputs.ice_radius,
             outputs.relative_humidity_after_pdf,
-            self.saturation_tables.ese,
-            self.saturation_tables.esx,
+            self._ese,
+            self._esx,
         )
 
         if self.GFDL_1M_config.DO_QA is True:
@@ -426,8 +437,8 @@ class Finalize:
                 vapor=mixing_ratios.vapor,
                 t=t,
                 p_mb=temporaries.p_mb,
-                ese=self.saturation_tables.ese,
-                esx=self.saturation_tables.esx,
+                ese=self._ese,
+                esx=self._esx,
             )
 
         self.fix_mixing_ratio(

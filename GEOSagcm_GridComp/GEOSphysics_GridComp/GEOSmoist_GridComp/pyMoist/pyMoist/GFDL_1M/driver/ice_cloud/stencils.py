@@ -3,15 +3,14 @@ from ndsl.dsl.gt4py import (
     PARALLEL,
     computation,
     exp,
+    function,
     int32,
     interval,
-    function,
     log,
     max,
     sqrt,
     trunc,
 )
-
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from pyMoist.GFDL_1M.driver.constants import constants
 from pyMoist.GFDL_1M.driver.sat_tables import GlobalTable_driver_qsat
@@ -293,7 +292,6 @@ def snow_graupel_coldrain(
         dqs0 = constants.CES0 / p_dry - qv2
 
         if qs2 > constants.QPMIN:
-
             # -----------------------------------------------------------------------
             # psacw: accretion of cloud water by snow
             # only rate is used (for snow melt) since tc > 0.
@@ -401,7 +399,6 @@ def snow_graupel_coldrain(
         # -----------------------------------------------------------------------
 
         if qg2 > constants.QPMIN and tc > 0.0:
-
             # -----------------------------------------------------------------------
             # pgacr: accretion of rain by graupel
             # -----------------------------------------------------------------------
@@ -457,7 +454,6 @@ def snow_graupel_coldrain(
             t2 = t2 - pgmlt * lhi / cvm
 
     else:
-
         # -----------------------------------------------------------------------
         # cloud ice proc:
         # -----------------------------------------------------------------------
@@ -548,7 +544,6 @@ def snow_graupel_coldrain(
         tc = t2 - constants.TICE
 
         if qr2 > constants.QPMIN and tc < 0.0:
-
             # -----------------------------------------------------------------------
             # * sink * terms to qr: psacr + pgfr
             # source terms to qs: psacr
@@ -611,7 +606,6 @@ def snow_graupel_coldrain(
         # # -----------------------------------------------------------------------
 
         if qs2 > constants.QPMIN:
-
             # -----------------------------------------------------------------------
             # accretion: snow -- > graupel
             # -----------------------------------------------------------------------
@@ -646,7 +640,6 @@ def snow_graupel_coldrain(
             qg2 = qg2 + sink
 
         if qg2 > constants.QPMIN and t2 < (constants.TICE - 0.01):
-
             # -----------------------------------------------------------------------
             # pgacw: accretion of cloud water by graupel
             # -----------------------------------------------------------------------

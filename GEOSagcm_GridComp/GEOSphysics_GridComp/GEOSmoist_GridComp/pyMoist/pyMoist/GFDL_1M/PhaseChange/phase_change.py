@@ -16,8 +16,7 @@ from pyMoist.GFDL_1M.PhaseChange.rh_calculations import compute_rh_crit_3D, rh_c
 from pyMoist.GFDL_1M.PhaseChange.sublimate import sublimate
 from pyMoist.GFDL_1M.PhaseChange.temporaries import Temporaries
 from pyMoist.GFDL_1M.state import LiquidWaterStaticEnergy, TotalWater
-from pyMoist.saturation_tables.formulation import SaturationFormulation
-from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
+from pyMoist.saturation_tables import SaturationFormulation, get_saturation_vapor_pressure_table
 from pyMoist.shared_incloud_processes import fix_up_clouds
 
 
@@ -71,9 +70,8 @@ class PhaseChange:
         # -----------------------------------------------------------------------
         # Initalize QSat tables
         # -----------------------------------------------------------------------
-        self.tables = SaturationVaporPressureTable(
-            self.stencil_factory.backend,
-            formulation=formulation,
+        self.tables = get_saturation_vapor_pressure_table(
+            self.stencil_factory.backend, formulation=formulation
         )
 
         # -----------------------------------------------------------------------
@@ -133,6 +131,15 @@ class PhaseChange:
             func=fix_up_clouds,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
+
+        # Dev NOTE: this is an orchestration workaround. Direct call to
+        #           `self.tables.X` fails closure capture for
+        #           argument reconstruction at call time
+        self._ese = self.tables.ese
+        self._esw = self.tables.esw
+        self._esx = self.tables.esx
+        self._estfrz = self.tables.frz
+        self._estlqu = self.tables.lqu
 
     def __call__(
         self,
@@ -218,11 +225,11 @@ class PhaseChange:
             convective_cloud_fraction=convective_cloud_fraction,
             nacti=nacti,
             rhx=rhx,
-            ese=self.tables.ese,
-            esw=self.tables.esw,
-            esx=self.tables.esx,
-            estfrz=self.tables.frz,
-            estlqu=self.tables.lqu,
+            ese=self._ese,
+            esw=self._esw,
+            esx=self._esx,
+            estfrz=self._estfrz,
+            estlqu=self._estlqu,
         )
 
         if self.GFDL_1M_config.MELTFRZ:
@@ -241,7 +248,7 @@ class PhaseChange:
                 large_scale_ice,
             )
 
-        if self.GFDL_1M_config.CCW_EVAP_EFF > 0.0:
+        if self.GFDL_1M_config.CCW_EVAP_EFF > 0.0 and not self.GFDL_1M_config.DO_EVAP:
             self._evap(
                 p_mb,
                 t,
@@ -255,7 +262,7 @@ class PhaseChange:
                 evapc,
             )
 
-        if self.GFDL_1M_config.CCI_EVAP_EFF > 0.0:
+        if self.GFDL_1M_config.CCI_EVAP_EFF > 0.0 and not self.GFDL_1M_config.DO_SUBL:
             self._subl(
                 p_mb,
                 t,

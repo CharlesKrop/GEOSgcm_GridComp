@@ -204,17 +204,6 @@ class TranslateGFDL_1M_driver(TranslateFortranData2Py):
             **inputs,
         )
 
-        extra_outputs = {
-            "REV_LS": self.driver.outputs.revap.view[:],
-            "RSU_LS": self.driver.outputs.isubl.view[:],
-            "PRCP_RAIN": self.driver.outputs.rain.view[:],
-            "PRCP_SNOW": self.driver.outputs.snow.view[:],
-            "PRCP_ICE": self.driver.outputs.ice.view[:],
-            "PRCP_GRAUPEL": self.driver.outputs.graupel.view[:],
-            "PFL_LS": self.driver.outputs.m2_rain.view[:],
-            "PFI_LS": self.driver.outputs.m2_sol.view[:],
-        }
-        # breakpoint()
         inputs.update(
             {
                 "REV_LS": self.driver.outputs.revap.view[:],
