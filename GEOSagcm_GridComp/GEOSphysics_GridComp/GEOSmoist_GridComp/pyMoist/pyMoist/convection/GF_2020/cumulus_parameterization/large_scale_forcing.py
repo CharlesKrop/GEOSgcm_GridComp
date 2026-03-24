@@ -353,6 +353,7 @@ def ensemble_forcing_mid_plume(
             blqe: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(0, -1):
+        # boundary layer quasi-equilibrium (Raymond 1995)
         if (
             error_code[0, 0][plume] == 0
             and updraft_origin_level[0, 0][plume] < pbl_level + 1
@@ -481,8 +482,6 @@ class LargeScaleForcing(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DIURNAL_CYCLE": cumulus_parameterization_config.DIURNAL_CYCLE,
-                "DT_MOIST": config.DT_MOIST,
-                # "ENSEMBLE_MEMBERS": cumulus_parameterization_config.ENSEMBLE_MEMBERS,
             },
         )
 
