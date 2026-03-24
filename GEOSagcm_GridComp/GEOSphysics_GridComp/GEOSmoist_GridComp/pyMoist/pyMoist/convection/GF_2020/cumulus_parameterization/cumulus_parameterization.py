@@ -681,8 +681,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
                 # NOTE test GF2020_CumulusParameterization_EnvironmentConditions_2_{plume}:
-                # NOTE      deep ❌ (two vars, each one point off by two ulp)
-                # NOTE      mid ❌ (two vars, each one point off by two ulp)
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._environment_conditions(
                     p=state.input_output.p_forced,
@@ -707,8 +707,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
                 # environmental values on cloud levels
                 # NOTE test GF2020_CumulusParameterization_EnvironmentCloudLevels_1_{plume}:
-                # NOTE.     deep ❌ (worst fail rate 0.01%, worse fail 32 ULP)
-                # NOTE.     mid ❌ (worst fail rate 0.01%, worse fail 32 ULP)
+                # NOTE.     deep ✅
+                # NOTE.     mid ✅
                 # NOTE.     shallow ✅
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
@@ -737,8 +737,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
                 # NOTE test GF2020_CumulusParameterization_EnvironmentCloudLevels_2_{plume}:
-                # NOTE      deep ❌ (worst fail rate 0.02%, worse fail 84 ULP)
-                # NOTE      mid ❌ (worst fail rate 0.02%, worse fail 84 ULP)
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 p_3d = state.output.p_cloud_levels_forced.field[
                     :, :, :, self.plume_dependent_constants.PLUME_INDEX
@@ -788,7 +788,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
                 # partition between liq/ice cloud contents
                 # NOTE test GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_{plume}:
-                # NOTE      deep ❌ 1 var failing (500 ULP) -> ice_fraction function causing issues
+                # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._partition_liquid_ice(
@@ -894,8 +894,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
                 # determine the vertical entrainment/detrainment rates
                 # NOTE test GF2020_CumulusParameterization_EntrainmentRates_{plume}:
-                # NOTE      deep ❌ (worst fail 2.41% - max 4 ULP)
-                # NOTE      mid ❌ (worst fail 0.88% - max 2 ULP)
+                # NOTE      deep ✅
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._entrainment_rates(
                     vapor_cloud_levels_forced=self.locals.vapor_cloud_levels_forced,
@@ -909,8 +909,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
                 # determine level of convective cloud base
                 # NOTE test GF2020_CumulusParameterization_ConvectiveCloudBaseLevel_{plume}:
-                # NOTE      deep ✅
-                # NOTE      mid ✅
+                # NOTE      deep ❌ REAL BAD, used to be ✅
+                # NOTE      mid ❌ REAL BAD, used to be ✅
                 # NOTE      shallow ✅
                 self._set_start_level(
                     lcl_level=state.output.lcl_level,
@@ -1572,8 +1572,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
 
                 # determine downdraft strength in terms of windshear
                 # NOTE test GF2020_CumulusParameterization_DowndraftWindShear_{plume}:
-                # NOTE      deep ✅
-                # NOTE      mid ❌ one field, one point (0.17%), 4 ULP
+                # NOTE      deep ❌ one field - three points, used to be ✅
+                # NOTE      mid ❌ one field 14 pointss, used to be ❌ one field, one point (0.17%), 4 ULP
                 # NOTE      shallow ✅
                 self._downdraft_windshear(
                     error_code=state.output.error_code,
@@ -1730,7 +1730,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # calculate moist static energy, heights, environmental saturation mixing ratio
                 # NOTE test GF2020_CumulusParameterization_EnvironmentConditions_3_{plume}:
                 # NOTE      deep ✅
-                # NOTE      mid ❌ one field, one point (0.0%), 2 ULP
+                # NOTE      mid ✅
                 # NOTE      shallow ✅
                 self._environment_conditions(
                     p=state.input_output.p_forced,
@@ -1749,8 +1749,8 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # environmental values on cloud levels
                 # NOTE test GF2020_CumulusParameterization_EnvironmentCloudLevels_3_{plume}:
                 # NOTE      deep ✅
-                # NOTE      mid ❌ one field, one point (0.0%), 32 ULP
-                # NOTE      shallow ❌ one field, one point (0.0%), 32 ULP
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
@@ -1809,7 +1809,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 )
 
                 # workfunctions for updraft
-                # NOTE test GF2020_CumulusParameterization_UpdraftWorkfunctions_{plume}:
+                # NOTE test GF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
@@ -1834,9 +1834,9 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # large scale forcing
                 # calculate cloud base mass flux
                 # NOTE test GF2020_CumulusParameterization_LargeScaleForcing_{plume}:
-                # NOTE      deep ✅
-                # NOTE      mid ✅
-                # NOTE      shallow ✅
+                # NOTE      deep ❌ SDFG validation error, used to be ✅
+                # NOTE      mid ❌ SDFG validation error, used to be ✅
+                # NOTE      shallow ❌ SDFG validation error, used to be ✅
                 self._large_scale_forcing(
                     error_code=state.output.error_code,
                     error_code_2=self.locals.error_code_2,
@@ -1876,7 +1876,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 )
 
                 # Include kinetic energy dissipation converted to heating
-                # NOTE test GF2020_CumulusParameterization_KeToHeating_{plume}:
+                # NOTE test GF2020_CumulusParameterization_KineticEnergyToHeating_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
@@ -2047,7 +2047,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 )
 
                 # for tracer convective transport / outputs
-                # NOTE test GF2020_CumulusParameterization_TracerOutput_{plume}:
+                # NOTE test GF2020_CumulusParameterization_OutputUpdraftTemperature_{plume}:
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
