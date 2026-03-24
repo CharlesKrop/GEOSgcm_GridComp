@@ -116,14 +116,12 @@ def convective_transport_of_momentum(
     """
     from __externals__ import ALP1, DT_MOIST, VERTICAL_DISCRETIZATION_OPTION
 
-    with computation(FORWARD), interval(0, 1):
-        # prepare bounds for subsequent computation
-        upper_bound: IntFieldIJ = cloud_top_level[0, 0][plume] + 1
-        upper_bound_up_1: IntFieldIJ = upper_bound + 1
-
-    with computation(FORWARD), interval(0, upper_bound):
+    with computation(FORWARD), interval(...):
         if (
-            error_code[0, 0][plume] == 0 and VERTICAL_DISCRETIZATION_OPTION == 1 and ALP1 == 0.0
+            error_code[0, 0][plume] == 0
+            and VERTICAL_DISCRETIZATION_OPTION == 1
+            and ALP1 == 0.0
+            and K <= cloud_top_level[0, 0][plume] + 1
         ):  # fully time explicit
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
@@ -163,16 +161,24 @@ def convective_transport_of_momentum(
                 * epsilon_forced[0, 0][plume]
             )
 
-    with computation(PARALLEL), interval(0, upper_bound_up_1):
+    with computation(PARALLEL), interval(...):
         if (
-            error_code[0, 0][plume] == 0 and VERTICAL_DISCRETIZATION_OPTION == 1 and ALP1 > 0.0
+            error_code[0, 0][plume] == 0
+            and VERTICAL_DISCRETIZATION_OPTION == 1
+            and ALP1 > 0.0
+            and K <= cloud_top_level[0, 0][plume] + 2
         ):  # time alp0*explict + alp1*implicit + upstream
             alp0 = 1.0 - ALP1
             fp = 0.5 * (environment_massflux + abs(environment_massflux))
             fm = 0.5 * (environment_massflux - abs(environment_massflux))
 
-    with computation(FORWARD), interval(0, upper_bound):
-        if error_code[0, 0][plume] == 0 and VERTICAL_DISCRETIZATION_OPTION == 1 and ALP1 > 0.0:
+    with computation(FORWARD), interval(...):
+        if (
+            error_code[0, 0][plume] == 0
+            and VERTICAL_DISCRETIZATION_OPTION == 1
+            and ALP1 > 0.0
+            and K <= cloud_top_level[0, 0][plume] + 1
+        ):
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
             beta1 = DT_MOIST * constants.MAPL_GRAV / dp
