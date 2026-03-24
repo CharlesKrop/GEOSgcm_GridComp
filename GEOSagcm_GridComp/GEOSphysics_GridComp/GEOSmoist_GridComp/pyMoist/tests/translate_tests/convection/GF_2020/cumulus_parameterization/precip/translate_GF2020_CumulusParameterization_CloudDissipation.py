@@ -125,7 +125,7 @@ class TestCore:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "USE_CLOUD_DISSIPATION": cumulus_parameterization_config.USE_CLOUD_DISSIPATION,
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
             },
         )
 

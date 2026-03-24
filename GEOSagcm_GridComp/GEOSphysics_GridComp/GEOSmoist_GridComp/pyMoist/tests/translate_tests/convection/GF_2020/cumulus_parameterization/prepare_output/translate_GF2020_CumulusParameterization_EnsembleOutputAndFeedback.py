@@ -188,7 +188,7 @@ class TestCore:
             func=ensemble_output_and_feedback,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "DTIME": cumulus_parameterization_config.DTIME,
+                "DT_MOIST": config.DT_MOIST,
                 "MAX_TEMP_VAPOR_TENDENCY": cumulus_parameterization_config.MAX_TEMP_VAPOR_TENDENCY,
                 "APPLY_SUBSIDENCE_MICROPHYSICS": config.APPLY_SUBSIDENCE_MICROPHYSICS,
                 "USE_SMOOTH_TENDENCIES": cumulus_parameterization_config.USE_SMOOTH_TENDENCIES,
