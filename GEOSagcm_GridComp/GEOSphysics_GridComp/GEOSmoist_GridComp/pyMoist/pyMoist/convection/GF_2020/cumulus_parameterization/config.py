@@ -54,7 +54,7 @@ class GF2020CumulusParameterizationConfig:
     CLOSURE_CHOICE_MID: Int
     CLOSURE_CHOICE_DEEP: Int
     # plume independent
-    PLUME_ORDER: Float
+    SHALLOW_MID_DEEP: Bool
     ZERO_DIFF: Int
     MOIST_TRIGGER: Int
     LAMBDA_DEEP: Float

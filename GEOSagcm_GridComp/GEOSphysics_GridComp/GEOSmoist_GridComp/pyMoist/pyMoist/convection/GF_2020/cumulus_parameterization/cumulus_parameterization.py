@@ -580,12 +580,10 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 will be updated within convection. These may come from a variaty of sources, and need to be
                 collected into the expected ConvectionTracers data type before being passed down.
         """
-        if self.cumulus_parameterization_config.PLUME_ORDER == 0:
+        if self.cumulus_parameterization_config.SHALLOW_MID_DEEP:
             plume_types = ["shallow", "mid", "deep"]
-        elif self.cumulus_parameterization_config.PLUME_ORDER == 1:
-            plume_types = ["shallow", "deep", "mid"]
         else:
-            raise NotImplementedError("plume order not impelemented")
+            plume_types = ["shallow", "deep", "mid"]
 
         for plume in plume_types:
             # setup constants for the current plume, reset necessary fields, prefill necessary fields

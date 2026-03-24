@@ -182,7 +182,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         )
 
         # fill state with input data
-        if cumulus_parameterization_config.PLUME_ORDER == 0:
+        if cumulus_parameterization_config.SHALLOW_MID_DEEP:
             # fortran data is saved [deep, shallow, mid] in plume dimension
             # must be reordered to [shallow, mid, deep] for python
             # input fields
