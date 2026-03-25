@@ -4,7 +4,12 @@ from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.air_density import hydrostatic_air_density
 from pyMoist.convection.GF_2020.cumulus_parameterization.buoyancy import get_buoyancy
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, FIRST_GUESS_W
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
+    MAXENS1,
+    MAXENS2,
+    MAXENS3,
+    FIRST_GUESS_W,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.convective_tracers import (
     AtmosphericComposition,
     ColdPoolParameterization,
@@ -1834,9 +1839,9 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # large scale forcing
                 # calculate cloud base mass flux
                 # NOTE test GF2020_CumulusParameterization_LargeScaleForcing_{plume}:
-                # NOTE      deep ❌ SDFG validation error, used to be ✅
-                # NOTE      mid ❌ SDFG validation error, used to be ✅
-                # NOTE      shallow ❌ SDFG validation error, used to be ✅
+                # NOTE      deep ✅
+                # NOTE      mid ✅
+                # NOTE      shallow ✅
                 self._large_scale_forcing(
                     error_code=state.output.error_code,
                     error_code_2=self.locals.error_code_2,
