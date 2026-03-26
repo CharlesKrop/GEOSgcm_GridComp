@@ -745,13 +745,12 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # NOTE      deep ✅
                 # NOTE      mid ✅
                 # NOTE      shallow ✅
-                p_3d = state.output.p_cloud_levels_forced.field[
-                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
-                ]  # TODO this should go in a stencil
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
-                    p_cloud_levels=p_3d,
+                    p_cloud_levels=state.output.p_cloud_levels_forced.field[
+                        :, :, :, self.plume_dependent_constants.PLUME_INDEX
+                    ],
                     topography_height_no_negative=state.input_output.topography_height_no_negative,
                     geopotential_height=state.input_output.geopotential_height_forced,
                     geopotential_height_cloud_levels=self.locals.geopotential_height_cloud_levels_forced,
@@ -774,9 +773,6 @@ class GF2020CumulusParameterization(NDSLRuntime):
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
                 )
-                state.output.p_cloud_levels_forced.field[
-                    :, :, :, self.plume_dependent_constants.PLUME_INDEX
-                ] = p_3d  # TODO this should go in a stencil
 
                 # get air density at full layer (model levels) by hydrostatic balance (kg/m3)
                 # NOTE test GF2020_CumulusParameterization_HydrostaticAirDensity_{plume}:

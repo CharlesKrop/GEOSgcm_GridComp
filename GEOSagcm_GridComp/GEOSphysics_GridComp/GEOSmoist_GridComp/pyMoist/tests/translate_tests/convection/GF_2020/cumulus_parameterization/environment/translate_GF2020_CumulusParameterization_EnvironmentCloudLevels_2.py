@@ -137,11 +137,10 @@ class TestCore:
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
-            p_3d = state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX]
             code(
                 p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
-                p_cloud_levels=p_3d,
+                p_cloud_levels=state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
                 topography_height_no_negative=state.input_output.topography_height_no_negative,
                 geopotential_height=state.input_output.geopotential_height_forced,
                 geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,
@@ -164,7 +163,6 @@ class TestCore:
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
-            state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX] = p_3d
 
         outputs = {
             "local_t_new": locals.t_new.field[:],
