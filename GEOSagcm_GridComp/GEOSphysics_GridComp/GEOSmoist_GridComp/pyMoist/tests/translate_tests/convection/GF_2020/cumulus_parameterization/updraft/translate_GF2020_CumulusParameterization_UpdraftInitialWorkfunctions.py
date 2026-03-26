@@ -143,33 +143,33 @@ class TestCore:
 
         # write output
         outputs = {
-            "error_code": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "updraft_origin_level": state.output.updraft_origin_level.data[
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "updraft_origin_level": state.output.updraft_origin_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "updraft_lfc_level": state.output.updraft_lfc_level.data[
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX]
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
             + 1,
-            "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.data[:],
-            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.data[
+            "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.field[:],
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
                 :
             ],
-            "local_normalized_massflux_updraft": locals.normalized_massflux_updraft.data[:],
-            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.data[
+            "local_normalized_massflux_updraft": locals.normalized_massflux_updraft.field[:],
+            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_d_buoyancy": locals.d_buoyancy.data[:],
-            "local_d_buoyancy_forced": locals.d_buoyancy_forced.data[:],
-            "local_gamma_cloud_levels": locals.gamma_cloud_levels.data[:],
-            "local_gamma_cloud_levels_forced": locals.gamma_cloud_levels_forced.data[:],
-            "local_t_cloud_levels": locals.t_cloud_levels.data[:],
-            "local_t_cloud_levels_forced": locals.t_cloud_levels_forced.data[:],
-            "local_cloud_workfunction_0": locals.cloud_workfunction_0.data[:],
-            "local_cloud_workfunction_1": locals.cloud_workfunction_1.data[:],
+            "local_d_buoyancy": locals.d_buoyancy.field[:],
+            "local_d_buoyancy_forced": locals.d_buoyancy_forced.field[:],
+            "local_gamma_cloud_levels": locals.gamma_cloud_levels.field[:],
+            "local_gamma_cloud_levels_forced": locals.gamma_cloud_levels_forced.field[:],
+            "local_t_cloud_levels": locals.t_cloud_levels.field[:],
+            "local_t_cloud_levels_forced": locals.t_cloud_levels_forced.field[:],
+            "local_cloud_workfunction_0": locals.cloud_workfunction_0.field[:],
+            "local_cloud_workfunction_1": locals.cloud_workfunction_1.field[:],
         }
 
         return outputs
