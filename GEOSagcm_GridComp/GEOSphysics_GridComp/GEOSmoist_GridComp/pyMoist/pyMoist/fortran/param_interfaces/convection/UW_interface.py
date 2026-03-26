@@ -30,6 +30,7 @@ class UWGEOSInterface(UserCode):
 
         # Compile the configuration for UW
         config = UWConfiguration(
+            JASON=jason_uw,
             NCNST=NCNST,
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
@@ -103,6 +104,7 @@ class UWGEOSInterface(UserCode):
 
         self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
         self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
+        self._managed_state.register_2D("input.AREA", "AREA", import_repository, alloc=True)
         self._managed_state.register("input.QLLS", "QLLS", internal_repository)
         self._managed_state.register("input.QILS", "QILS", internal_repository)
         self._managed_state.register("input.QLCN", "QLCN", internal_repository)

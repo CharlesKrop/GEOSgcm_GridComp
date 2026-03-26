@@ -47,6 +47,7 @@ from pyMoist.saturation_tables import (
     get_saturation_vapor_pressure_table,
     saturation_specific_humidity,
 )
+from pyMoist.shared.atmos_recipes import sigma
 
 
 def setup_inputs(
@@ -66,6 +67,7 @@ def setup_inputs(
     RKFRE: FloatFieldIJ,
     QLTOT: FloatField,
     QITOT: FloatField,
+    AREA: FloatFieldIJ,
 ):
     """
     Some preliminary calculations before the main UW calculation.
@@ -87,8 +89,9 @@ def setup_inputs(
         RKFRE [FloatFieldIJ]: Resolution dependent Vertical velocity variance as fraction of tke.
         QLTOT [FloatField]: Total liquid water mixing ratio [kg/kg]
         QITOT [FloatField]: Total ice mixing ratio [kg/kg]
+        AREA [FloatFieldIJ]: [?]
     """
-    from __externals__ import k_end
+    from __externals__ import k_end, JASON
 
     with computation(FORWARD), interval(...):
         PKE = (PLE / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
@@ -104,7 +107,10 @@ def setup_inputs(
         MASS = DP / constants.MAPL_GRAV
 
     with computation(FORWARD), interval(0, 1):
-        RKFRE = 1.0
+        if JASON:
+            RKFRE = 1.0
+        else: 
+            RKFRE = sigma(sqrt(AREA))
 
     with computation(PARALLEL), interval(...):
         QLTOT = QLLS + QLCN
@@ -574,6 +580,7 @@ def compute_thv0_thvl0(
     Once condensation occurs, the UW shallow convection scheme is done
     computing at that column.
 
+    NOTE: Variables ending in '_o' indicate variables used in the second
     NOTE: Variables ending in '_o' indicate variables used in the second
     iteration of the implicit CIN calculation.
 
@@ -1265,6 +1272,38 @@ def find_cumulus_characteristics(
         vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
         tpert_out [FloatFieldIJ]: Temperature perturbation
         qpert_out [FloatFieldIJ]: Humidity perturbation
+    Arguments:
+        condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
+        windsrcavg [Int]: Source air uses PBL mean momentum
+        pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
+        t0 [FloatField]: Environmental temperature [K]
+        qv0 [FloatField]: Environmental specific humidity
+        shfx [FloatFieldIJ]: Surface sensible heat [J]
+        evap [FloatFieldIJ]: Surface evaporation [kg/m^2/s]
+        thlsrc_fac [Float]: Scaling factor for thlsrc perturbation
+        qtsrc_fac [Float]: Scaling factor for qtsrc perturbation
+        qt0 [FloatField]: Mixing ratio [?]
+        qtavg [FloatField]: Average qt over the PBL [?]
+        thvlmin [FloatField]: Minimum 'thvl' within PBL, obtained by comparing top & base
+        uavg [FloatField]: Average u over the PBL [?]
+        vavg [FloatField]: Average v over the PBL [?]
+        kinv [IntField]: Inversion layer with PBL top interface as lower interface
+        u0 [FloatField]: Environmental zonal wind [m/s]
+        v0 [FloatField]: Environmental meridional wind [m/s]
+        ssu0 [FloatField]: [?]
+        ssv0 [FloatField]: [?]
+        pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
+        dotransport [Int]: Transport tracers [1 true]
+        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
+        iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
+        trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
+        qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
+        thvlsrc [FloatField]: Temperature of cumulus source air [K] [?]
+        thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
+        usrc [FloatField]: Zonal wind of cumulus source air [m/s] [?]
+        vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
+        tpert_out [FloatFieldIJ]: Temperature perturbation
+        qpert_out [FloatFieldIJ]: Humidity perturbation
     """
     from __externals__ import dotransport, ncnst, qtsrc_fac, thlsrc_fac, windsrcavg
 
@@ -1272,12 +1311,13 @@ def find_cumulus_characteristics(
         if not condensation:
             if windsrcavg == 1:
                 # Caution: This code has not been tested
+                # tpert_out and qpert_out need to be checked
                 zrho = pifc0.at(K=1) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
                 buoyflx = (-shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap) / zrho  # K m s-1
                 delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
                 wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
                 qpert_out = 0.0
-                tpert_out = 0.0
+                tpert_out = 0.0 
                 if wstar > 0.001:
                     wstar = 1.0 * wstar**0.3333
                     tpert_out = thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)  # K
@@ -7595,6 +7635,7 @@ def setup_outputs(
     MFD_SC: FloatField,
     DETR_SC: FloatField,
     UMF_SC: FloatField,
+    DCM_SC: FloatField,
     DP: FloatField,
     DQADT_SC: FloatField,
     MASS: FloatField,
@@ -7630,6 +7671,7 @@ def setup_outputs(
         MFD_SC [FloatField]: Detrainment mass flux [kg/m2/s]
         DETR_SC [FloatField]: [?]
         UMF_SC [FloatField]: Updraft mass flux at interfaces [kg/m2/s]
+        DCM_SC [FloatField]: Detrained cloudy air mass
         DP [FloatField]: Environmental layer pressure thickness [Pa] > 0
         DQADT_SC [FloatField]: Cloud-fraction tendency [?]
         MASS [FloatField]: [?]
@@ -7650,7 +7692,7 @@ def setup_outputs(
         SHLW_PRC3 [FloatField]: Shallow precipitation [mm] [?]
         SHLW_SNO3 [FloatField]: Shallow snow [mm] [?]
     """
-    from __externals__ import SCLM_SHALLOW, dt
+    from __externals__ import SCLM_SHALLOW, dt, JASON
 
     with computation(PARALLEL), interval(...):
         Q = Q + DQVDT_SC * dt
@@ -7659,10 +7701,13 @@ def setup_outputs(
         V = V + DVDT_SC * dt
 
     with computation(PARALLEL), interval(...):
-        if DETR_SC != constants.MAPL_UNDEF:
-            MFD_SC = 0.5 * (UMF_SC[0, 0, 1] + UMF_SC) * DETR_SC * DP
+        if JASON:
+            if DETR_SC != constants.MAPL_UNDEF:
+                MFD_SC = 0.5 * (UMF_SC[0, 0, 1] + UMF_SC) * DETR_SC * DP
+            else:
+                MFD_SC = 0.0
         else:
-            MFD_SC = 0.0
+            MFD_SC = DCM_SC
 
         DQADT_SC = MFD_SC * SCLM_SHALLOW / MASS
         CLCN = CLCN + DQADT_SC * dt
@@ -7844,6 +7889,7 @@ class ComputeUwshcuInv(NDSLRuntime):
         self._setup_inputs = self.stencil_factory.from_dims_halo(
             func=setup_inputs,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"JASON": config.JASON}
         )
 
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
@@ -8153,6 +8199,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             externals={
                 "dt": config.dt,
                 "SCLM_SHALLOW": config.SCLM_SHALLOW,
+                "JASON": config.JASON,
             },
         )
 
@@ -8585,6 +8632,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             RKFRE=state.output.RKFRE,
             QLTOT=state.output.ql0_inv,
             QITOT=state.output.qi0_inv,
+            AREA=state.input.AREA,
         )
 
         self._compute_uwshcu_invert_before(
@@ -10164,6 +10212,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             MFD_SC=state.output.MFD_SC,
             DETR_SC=state.output.fdr_inv,
             UMF_SC=state.output.umf_inv,
+            DCM_SC=state.output.dcm_inv,
             DP=self.locals.dp0_inv,
             DQADT_SC=state.output.DQADT_SC,
             MASS=self.locals.MASS,

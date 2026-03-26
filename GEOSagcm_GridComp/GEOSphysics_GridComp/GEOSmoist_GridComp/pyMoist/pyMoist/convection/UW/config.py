@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Float, Int, bool
 
 
 @dataclass
 class UWConfiguration:
+    JASON: bool,
     NCNST: Int
     k0: Int
     windsrcavg: Int
