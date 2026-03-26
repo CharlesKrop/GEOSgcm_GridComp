@@ -93,7 +93,7 @@ class TestCore:
             code(
                 array=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                 start_index=state.output.updraft_lfc_level,
-                end_index=state.output.kstabm.field[:, :, plume_dependent_constants.PLUME_INDEX],
+                end_index=state.output.kstabm.data[:, :, plume_dependent_constants.PLUME_INDEX],
                 out_index=state.output.kstabi,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,

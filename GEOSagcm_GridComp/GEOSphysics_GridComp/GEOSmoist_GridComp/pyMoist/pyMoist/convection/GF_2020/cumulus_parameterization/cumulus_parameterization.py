@@ -748,7 +748,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
-                    p_cloud_levels=state.output.p_cloud_levels_forced.field[
+                    p_cloud_levels=state.output.p_cloud_levels_forced.data[
                         :, :, :, self.plume_dependent_constants.PLUME_INDEX
                     ],
                     topography_height_no_negative=state.input_output.topography_height_no_negative,
@@ -994,7 +994,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 self._generic_find_level(
                     array=self.locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                     start_index=state.output.updraft_lfc_level,
-                    end_index=state.output.kstabm.field[:, :, self.plume_dependent_constants.PLUME_INDEX],
+                    end_index=state.output.kstabm.data[:, :, self.plume_dependent_constants.PLUME_INDEX],
                     out_index=state.output.kstabi,
                     error_code=state.output.error_code,
                     plume=self.plume_dependent_constants.PLUME_INDEX,
@@ -1755,7 +1755,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 self._environment_cloud_levels(
                     p=state.input_output.p_forced,
                     p_surface=state.input_output.p_surface,
-                    p_cloud_levels=state.output.p_cloud_levels_forced.field[
+                    p_cloud_levels=state.output.p_cloud_levels_forced.data[
                         :, :, :, self.plume_dependent_constants.PLUME_INDEX
                     ],
                     topography_height_no_negative=state.input_output.topography_height_no_negative,
