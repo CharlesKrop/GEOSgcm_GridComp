@@ -47,7 +47,7 @@ def find_maximum_updraft_origin_level(
                 stop_computation: BoolFieldIJ = True
 
 
-def find_detrainmet_start_level(
+def find_detrainment_start_level(
     geopotential_height: FloatField,
     topography_height_no_negative: FloatFieldIJ,
     error_code: IntFieldIJ_Plume,
@@ -82,7 +82,7 @@ def find_highest_moist_static_energy_level(
     updraft_origin_level: IntFieldIJ_Plume,
     plume: Int,
 ):
-    """Detemine the level with the highest moist static energy. This level will
+    """Determine the level with the highest moist static energy. This level will
         be used as the starting point for any subsequent updrafts
 
     Args:
@@ -93,7 +93,7 @@ def find_highest_moist_static_energy_level(
         plume (Int)
     """
     with computation(FORWARD), interval(0, 1):
-        # prefil output
+        # prefill output
         updraft_origin_level[0, 0][plume] = 0
 
         if plume == cumulus_parameterization_constants.SHALLOW:
@@ -304,7 +304,7 @@ def find_lcl(
 
                     # check to see if cloud is buoyant using fritsch-chappell trigger
                     # function described in kain and fritsch (1992)...w0avg is an
-                    # aproximate value for the running-mean grid-scale vertical
+                    # approximate value for the running-mean grid-scale vertical
                     # velocity, which gives smoother fields of convective initiation
                     # than the instantaneous value...formula relating temperature
                     # perturbation to vertical velocity has been used with the most
@@ -340,7 +340,7 @@ def set_start_level(lcl_level: IntFieldIJ_Plume, start_level: IntFieldIJ, plume:
         start_level (IntFieldIJ)
         plume (Int)
     """
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         start_level = lcl_level[0, 0][plume]
 
 
@@ -432,23 +432,14 @@ def get_convective_cloud_base_level(
     with computation(PARALLEL), interval(...):
         # prefill some fields
         cloud_moist_static_energy_forced_transported = 0.0
-        dby = 0.0
-
-        # make garbage field so the get_cloud_boundary_conditions call does not break
-        # this is never touched so long as compute_perturbation=False
-        dummy_field_no_read = 0.0
 
     with computation(FORWARD), interval(0, 1):
         # internal constants
         frh_crit_O = 0.7
         frh_crit_L = 0.7
 
-        # prefill some fields
+        # prefill some fields / initialize some 2d temporaries
         start_level_internal: IntFieldIJ = 0
-        cap_max_internal = cap_max
-
-        # initialize some 2d temporaries
-        dzh: FloatFieldIJ = 0.0
         found_level: BoolFieldIJ = False
 
     with computation(FORWARD), interval(0, 1):
@@ -460,7 +451,7 @@ def get_convective_cloud_base_level(
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= start_level_internal:
             cloud_moist_static_energy_forced_transported = (
-                moist_static_energy_origin_level_forced  # assumed no entraiment between these layers
+                moist_static_energy_origin_level_forced  # assumed no entrainment between these layers
             )
 
     # determine the level of convective cloud base (updraft_lfc_level)
@@ -470,6 +461,7 @@ def get_convective_cloud_base_level(
         updraft_lfc_level[0, 0][plume] = maximum_updraft_origin_level + 3
         negative_buoyancy_depth = 0.0
         frh_lfc = 0.0
+        cap_max_internal = cap_max
         if error_code[0, 0][plume] == 0:
             continue_outer_while_loop = True
             while error_code[0, 0][plume] == 0 and continue_outer_while_loop == True:
@@ -523,7 +515,7 @@ def get_convective_cloud_base_level(
 
                     if MOIST_TRIGGER == 1:
                         frh_lfc = 0.0
-                        dzh = 0
+                        dzh = 0.0
                         level = updraft_origin_level[0, 0][plume]
                         while level <= updraft_lfc_level[0, 0][plume]:
                             dz = (
@@ -858,8 +850,8 @@ class DowndraftDetrainmentLevel:
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # construct stencils and functions
-        self._find_detrainmet_start_level = stencil_factory.from_dims_halo(
-            func=find_detrainmet_start_level,
+        self._find_detrainment_start_level = stencil_factory.from_dims_halo(
+            func=find_detrainment_start_level,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -869,7 +861,7 @@ class DowndraftDetrainmentLevel:
         locals: GF2020CumulusParameterizationLocals,
         plume_dependent_constants: GF2020PlumeDependentConstants,
     ):
-        self._find_detrainmet_start_level(
+        self._find_detrainment_start_level(
             geopotential_height=locals.geopotential_height_cloud_levels_forced,
             topography_height_no_negative=state.input_output.topography_height_no_negative,
             error_code=state.output.error_code,
