@@ -14,6 +14,12 @@ def check_config(
     Warn about untested options, block execution of unimplemented options.
     """
 
+    if config.GF_ENV_SETTING != 1:
+        ndsl_log.warning(
+            " GF2020-->CumulusParameterization constructed with unsupported GF_ENV_SETTING option. Please"
+            "implement, then disable this error manually to proceed."
+        )
+
     if cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE != 1:
         ndsl_log.warning(
             " GF2020-->CumulusParameterization-->environmental_conditions constructed with"
