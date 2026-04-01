@@ -11,17 +11,18 @@ _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
 
-NUMBER_OF_TRACERS = Int(23)
-
-# Define number of tracers in UW
+# Define number of tracers used in moist physics
 # NOTE deprecate this, change all references of NCNST to NUMBER_OF_TRACERS
+DEFAULT_NUMBER_OF_TRACERS = Int(23)
 EXPERIMENT_TRACERS = {"bomex": 18, "armtwp_ice": 18, "gcm-fp": 23}
 EXP_NAME = os.getenv("EXP_NAME", "")
 if EXP_NAME not in EXPERIMENT_TRACERS:
-    ndsl_log.warning(f"Experiment unknown: choose one of {list(EXPERIMENT_TRACERS.keys())}. Falling back to default number of tracers ({NUMBER_OF_TRACERS}).")
-    NCNST = NUMBER_OF_TRACERS
+    ndsl_log.warning(f"Experiment unknown: choose one of {list(EXPERIMENT_TRACERS.keys())}. Falling back to default number of tracers ({DEFAULT_NUMBER_OF_TRACERS}).")
+    NUMBER_OF_TRACERS = DEFAULT_NUMBER_OF_TRACERS
+    NCNST = DEFAULT_NUMBER_OF_TRACERS
 else:
     NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
+    NUMBER_OF_TRACERS = _i32(EXPERIMENT_TRACERS[EXP_NAME])
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS
