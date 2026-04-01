@@ -8,7 +8,7 @@ import numpy.typing as npt
 from MAPL_PythonBridge import get_MAPLPy
 from MAPL_PythonBridge.python2fortran import MAPLPyAPI
 from MAPL_PythonBridge.types import FFI
-from ndsl.constants import Float
+from ndsl.dsl.typing import Float, Int
 
 
 @dataclasses.dataclass
@@ -80,8 +80,9 @@ class MoistWorkarounds:
                 maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__fscav(), Float, [size_]
             ),
             Vect_Hcts=_fortran_to_numpy(
-                maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__Vect_Hcts(), Float, [4, size_]
+                maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__Vect_Hcts(), Float, [size_, 4]
             ),
+            # NOTE use_gcc_washout should be a boolean, but the interface currently cannot pull boolean values
             use_gcc_washout=_fortran_to_numpy(
                 maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__use_gcc_washout(), bool, [size_]
             ),
