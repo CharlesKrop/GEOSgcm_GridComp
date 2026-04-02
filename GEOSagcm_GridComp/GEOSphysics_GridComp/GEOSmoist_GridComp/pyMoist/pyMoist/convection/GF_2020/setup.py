@@ -19,6 +19,7 @@ from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
+from ndsl.stencils.basic_operations import copy
 
 
 def compute_extra_inputs_from_state(
@@ -111,6 +112,7 @@ def compute_extra_inputs_from_state(
         qsat, _ = saturation_specific_humidity(t, p, ese, esx)
         tpwi_star = tpwi_star + qsat * mass
 
+    with computation(FORWARD), interval(0, 1):
         # initialize stochastic variability for convection
         if STOCHASTIC_CONVECTION == True:  # noqa
             # Create bit-processor-reproducible random white noise for convection [0:1]
@@ -134,6 +136,11 @@ def compute_extra_inputs_from_state(
                 modified_area = area
         else:
             modified_area = area
+
+
+def pass_back_to_model_state(local_seed_convection: FloatFieldIJ, model_state_seed_convection: FloatFieldIJ):
+    with computation(FORWARD), interval(0, 1):
+        model_state_seed_convection = local_seed_convection
 
 
 def zero_state(
@@ -1261,6 +1268,11 @@ class GF2020Setup(NDSLRuntime):
             },
         )
 
+        self._pass_back_to_model_state = stencil_factory.from_dims_halo(
+            func=pass_back_to_model_state,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
         self._zero_state = stencil_factory.from_dims_halo(
             func=zero_state,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -1321,7 +1333,6 @@ class GF2020Setup(NDSLRuntime):
         locals: GF2020Locals,
         cumulus_parameterization_state: GF2020CumulusParameterizationState,
         convection_tracers: ConvectionTracers,
-        scm_stop: bool,
     ):
         """
         Perform setup calculations
@@ -1334,7 +1345,6 @@ class GF2020Setup(NDSLRuntime):
             convection_tracers (ConvectionTracers): Collection of tracers from the rest of the model which
                 will be updated within convection. These may come from a variety of sources, and need to be
                 collected into the expected ConvectionTracers data type before being passed down.
-            scm_stop (bool): flag which can stop the execution of GF2020
 
         """
         self._compute_extra_inputs_from_state(
@@ -1360,6 +1370,12 @@ class GF2020Setup(NDSLRuntime):
             ese=self.saturation_tables.ese,
             esx=self.saturation_tables.esx,
         )
+
+        if state.seed_convection is not None:
+            self._pass_back_to_model_state(
+                local_seed_convection=locals.derived_state.seed_convection,
+                model_state_seed_convection=state.seed_convection,
+            )
 
         self._zero_state(
             dvapordt_deep_convection=state.dvapordt_deep_convection,
@@ -1477,8 +1493,9 @@ class GF2020Setup(NDSLRuntime):
 
         # # if surface temperature is not yet set in single column mode, stop the entire convection scheme
         if self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM]) == (1, 1) and t_2m_max < 1.0e-6:
-            scm_stop = True
-            return
+            # NOTE this value goes into scm_stop - needs to be made a part of the LocalState, but currently
+            # LocalStates cannot support scalars
+            return True
 
         self._set_2d_fields(
             aot500=locals.aot500,
@@ -1575,7 +1592,7 @@ class GF2020Setup(NDSLRuntime):
             grid_length=cumulus_parameterization_state.input_output.grid_length,
             saturation_water_vapor_local=locals.saturation_water_vapor,
             saturation_water_vapor=cumulus_parameterization_state.input.saturation_water_vapor,
-            seed_convection_model_state=state.seed_convection,
+            seed_convection_model_state=locals.derived_state.seed_convection,
             seed_convection=cumulus_parameterization_state.input.seed_convection,
             convection_fraction_model_state=state.convection_fraction,
             convection_fraction=cumulus_parameterization_state.input.convection_fraction,
@@ -1658,3 +1675,7 @@ class GF2020Setup(NDSLRuntime):
             t_excess=cumulus_parameterization_state.input.t_excess,
             vapor_excess=cumulus_parameterization_state.input.vapor_excess,
         )
+
+        # NOTE this value goes into scm_stop - needs to be made a part of the LocalState, but currently
+        # LocalStates cannot support scalars
+        return False

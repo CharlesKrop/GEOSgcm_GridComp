@@ -116,7 +116,7 @@ def convective_transport_of_momentum(
     """
     from __externals__ import ALP1, DT_MOIST, VERTICAL_DISCRETIZATION_OPTION
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if (
             error_code[0, 0][plume] == 0
             and VERTICAL_DISCRETIZATION_OPTION == 1
@@ -172,7 +172,7 @@ def convective_transport_of_momentum(
             fp = 0.5 * (environment_massflux + abs(environment_massflux))
             fm = 0.5 * (environment_massflux - abs(environment_massflux))
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if (
             error_code[0, 0][plume] == 0
             and VERTICAL_DISCRETIZATION_OPTION == 1
@@ -577,7 +577,7 @@ def convective_transport_of_water_vapor_and_condensates(
                 / dp
             )
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 and USE_FCT == 0 and K <= cloud_top_level[0, 0][plume]:
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
             subsidence_tendency = (

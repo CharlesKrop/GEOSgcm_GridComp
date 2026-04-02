@@ -416,7 +416,6 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             locals=locals,
             cumulus_parameterization_state=cumulus_parameterization_state,
             convection_tracers=convection_tracers,
-            scm_stop=False,
         )
 
         # fill output dictionary for testing

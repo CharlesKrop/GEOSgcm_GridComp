@@ -112,7 +112,7 @@ def updraft_vertical_velocity(
             if K <= updraft_lfc_level[0, 0][plume]:
                 vertical_velocity_3d = max(1.0, convective_scale_velocity**2)
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K >= updraft_lfc_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume]:
                 dz = (
@@ -218,7 +218,7 @@ def updraft_vertical_velocity(
                 vertical_velocity_3d = 0.1
 
     # get the column average vertical velocity
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 or error_code[0, 0][plume] == 54:
             if K >= updraft_lfc_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume]:
                 dz = (
@@ -272,6 +272,6 @@ def tridiag(
             q = -c * p
             f = p * (f - a * f[0, 0, -1])
 
-    with computation(BACKWARD), interval(...):
+    with computation(BACKWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 and K < m[0, 0][plume]:
             f = f + q * f[0, 0, 1]

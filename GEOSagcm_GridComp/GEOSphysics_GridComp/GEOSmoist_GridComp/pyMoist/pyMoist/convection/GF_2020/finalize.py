@@ -569,6 +569,10 @@ def feed_3d_model_from_plumes(
         ):
             # deep convective total water flux
             # assumes .033 fractional area
+            # NOTE fortran calls to MAPL_EQsat here, while python saturation_specific_humidity_liquid_surface
+            # is based off of the fortran GEOSQsat. These two functions are effectively identical, as they
+            # evaluate the same calculations in the same order; however, due to different uses of buffers,
+            # slight differences arise (OoM 10^2 - 10^3 ULP).
             saturation_specific_humidity_updraft, _ = saturation_specific_humidity_liquid_surface(
                 esw=esw,
                 lqu=estlqu,

@@ -828,7 +828,7 @@ def cloud_workfunction_aa0(
             lower_bound: IntFieldIJ = updraft_origin_level[0, 0][plume]
             upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 and K >= lower_bound and K <= upper_bound:
             dz = geopotential_height[0, 0, 1] - geopotential_height
             workfunction_current_level = (
@@ -895,7 +895,7 @@ def compute_precipitation_ensemble(
                 member = 0
                 while member < ENSEMBLE_MEMBERS:
                     precipitation_ensemble[0, 0][member] = 0.0
-                member += 1
+                    member += 1
 
             member = 0
             while member < ENSEMBLE_MEMBERS:

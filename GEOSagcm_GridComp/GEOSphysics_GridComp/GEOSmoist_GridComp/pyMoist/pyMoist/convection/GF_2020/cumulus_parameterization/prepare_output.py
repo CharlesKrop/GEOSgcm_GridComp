@@ -347,7 +347,7 @@ def total_evaporation_flux(
         evaporation_sublimation_tendency (FloatField)
         plume (Int)
     """
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
                 dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])

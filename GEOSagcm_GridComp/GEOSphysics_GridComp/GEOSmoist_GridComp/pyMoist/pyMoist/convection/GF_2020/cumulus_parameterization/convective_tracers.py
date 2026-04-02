@@ -175,7 +175,7 @@ def updraft_chemistry(
                     chemistry_tracers_sc_updraft[0, 0, 0][tracer] = tracer_cloud_boundary[0, 0][tracer]
                 tracer += 1
 
-    with computation(FORWARD), interval(1, None):
+    with computation(FORWARD), interval(1, -1):
         if (
             error_code[0, 0][plume] == 0
             and K >= updraft_origin_level[0, 0][plume] + 1
@@ -493,7 +493,7 @@ def vertical_transport_part_1(
                 fp = 0.5 * (environment_massflux + abs(environment_massflux))
                 fm = 0.5 * (environment_massflux - abs(environment_massflux))
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if (
             error_code[0, 0][plume] == 0
             and USE_FLUX_FORM == 1

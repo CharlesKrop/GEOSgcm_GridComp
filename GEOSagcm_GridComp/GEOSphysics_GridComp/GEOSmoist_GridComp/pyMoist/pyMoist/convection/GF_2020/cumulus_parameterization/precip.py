@@ -176,7 +176,7 @@ def get_precip_fluxes(
         precipitation_flux = 0.0
         evaporation_flux = 0.0
 
-    with computation(BACKWARD), interval(...):
+    with computation(BACKWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
                 precipitation_flux = precipitation_flux[0, 0, 1] + cloud_base_mass_flux_modified[0, 0][
@@ -273,7 +273,7 @@ def rain_evaporation_below_cloud_base(
                 1.0 - ocean_fraction
             )
 
-    with computation(BACKWARD), interval(...):
+    with computation(BACKWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
                 dp: FloatFieldIJ = 100.0 * (

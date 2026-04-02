@@ -35,7 +35,7 @@ def kinetic_energy_to_heating(
             dts: FloatFieldIJ = 0.0
             fpi: FloatFieldIJ = 0.0
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
                 dp = (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]) * 100.0

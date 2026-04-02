@@ -130,7 +130,7 @@ def cloud_workfunction_1_pbl(
         cloud_work_function_1_pbl = 0.0
         cloud_work_function_1_fa = 0.0
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 and K <= pbl_level:
             dz = (
                 geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced

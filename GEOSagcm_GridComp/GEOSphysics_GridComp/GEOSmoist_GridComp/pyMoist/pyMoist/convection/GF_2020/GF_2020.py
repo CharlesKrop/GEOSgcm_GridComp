@@ -103,17 +103,15 @@ class GF2020(NDSLRuntime):
                 will be updated within convection. These may come from a variety of sources, and need to be
                 collected into the expected ConvectionTracers data type before being passed down.
         """
-        # flag to stop convection scheme for single column models
-        # this can be set in setup if surface temperature is very near zero Kelvin
-        scm_stop = False
+        # scm_stop flag stops convection scheme for single column models
+        # this will be triggered in setup if surface temperature is very near zero Kelvin
 
         # call the there parts of the scheme
-        self._setup(
+        scm_stop = self._setup(
             state=state,
             locals=self.locals,
             cumulus_parameterization_state=self.cumulus_parameterization_state,
             convection_tracers=convection_tracers,
-            scm_stop=scm_stop,
         )
 
         if not scm_stop:
