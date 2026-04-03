@@ -137,7 +137,7 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
         self.convection_tracers_input = data_loader.load("GF2020_ConvectionTracers")
 
         # workaround because translate test cannot read in 4d fields
-        self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-In")
+        self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-In", use_dynamic_i_call=True)
 
     def compute_func(self, **inputs):
         # initialize constants

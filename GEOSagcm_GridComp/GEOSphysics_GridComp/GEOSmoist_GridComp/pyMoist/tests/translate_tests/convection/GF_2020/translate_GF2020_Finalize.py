@@ -243,7 +243,7 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
             "cloud_workfunction_1_cin_bugworkaroundname": {},
             "pbl_time_scale_bugworkaroundname": {},
             "cape_removal_time_scale_bugworkaroundname": {},
-            "lighting_density_bugworkaroundname": {},
+            "lightning_density_bugworkaroundname": {},
             "convection_tracer_bugworkaroundname": {},
         }
 
@@ -838,7 +838,7 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
             "cloud_workfunction_1_cin_bugworkaroundname": state.cloud_workfunction_1_cin.field[:],
             "pbl_time_scale_bugworkaroundname": state.pbl_time_scale.field[:],
             "cape_removal_time_scale_bugworkaroundname": state.cape_removal_time_scale.field[:],
-            "lighting_density_bugworkaroundname": state.lightning_density.field[:],
+            "lightning_density_bugworkaroundname": state.lightning_density.field[:],
             "convection_tracer_bugworkaroundname": state.convection_tracer.field[:],
         }
 
