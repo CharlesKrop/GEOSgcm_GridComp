@@ -209,6 +209,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindShear_mid(TranslateFo
     def __init__(
         self,
         grid: Grid,
+        _namelist: Namelist,
         stencil_factory: StencilFactory,
     ):
         super().__init__(grid, stencil_factory)
@@ -229,6 +230,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindShear_deep(TranslateF
     def __init__(
         self,
         grid: Grid,
+        _namelist: Namelist,
         stencil_factory: StencilFactory,
     ):
         super().__init__(grid, stencil_factory)
