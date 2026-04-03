@@ -100,6 +100,14 @@ class TestCore:
         )
 
         # initialize convection tracers
+        self.quantity_factory.update_data_dimensions(
+            {
+                "convection_tracers": config.NUMBER_OF_TRACERS,
+                "size_three_dimension": 3,
+                "size_four_dimension": 4,
+            }
+        )
+
         convection_tracers = ConvectionTracers.ones(
             self.quantity_factory,
             data_dimensions={
@@ -108,6 +116,7 @@ class TestCore:
                 "size_four_dimension": 4,
             },
         )
+        # convection_tracers = ConvectionTracers.ones(self.quantity_factory)
 
         convection_tracers.tracers.field[:] = np.moveaxis(convection_tracers_input["tracers"], 0, 3)
         convection_tracers.vect_hcts.field[:] = convection_tracers_input["vect_hcts"]

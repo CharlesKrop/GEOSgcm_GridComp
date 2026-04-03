@@ -724,7 +724,10 @@ class AtmosphericComposition(NDSLRuntime):
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
-        quantity_factory.add_data_dimensions({"convection_tracers": config.NUMBER_OF_TRACERS})
+        # ensure that the correct data dimension exists
+        quantity_factory.update_data_dimensions({"convection_tracers": config.NUMBER_OF_TRACERS})
+
+        # initialize locals
         self._aa: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
         self._bb: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
         self._cc: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")

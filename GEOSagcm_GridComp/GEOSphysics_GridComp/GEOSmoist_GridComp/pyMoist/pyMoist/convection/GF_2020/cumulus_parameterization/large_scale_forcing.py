@@ -446,14 +446,16 @@ class LargeScaleForcing(NDSLRuntime):
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
-        # initialize locals
-        quantity_factory.add_data_dimensions(
+        # ensure correct data dimensions exist
+        quantity_factory.update_data_dimensions(
             {
                 "ensemble_members": cumulus_parameterization_constants.MAXENS1
                 * cumulus_parameterization_constants.MAXENS2
                 * cumulus_parameterization_constants.MAXENS3
             }
         )
+
+        # initialize locals
         self._internal_mass_flux_ensemble: Local = quantity_factory.zeros(
             [I_DIM, J_DIM, "ensemble_members"], "n/a"
         )

@@ -589,8 +589,8 @@ class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
         super().__init__(stencil_factory)
 
         # add dimension to quantityfactory and create classes for constants
-        quantity_factory.add_data_dimensions({"G_RATIO_Table": len(G_RATIO)})
-        quantity_factory.add_data_dimensions(
+        quantity_factory.update_data_dimensions({"G_RATIO_Table": len(G_RATIO)})
+        quantity_factory.update_data_dimensions(
             {"RADIATIVE_EFFECTIVE_RADIUS_Table": len(RADIATIVE_EFFECTIVE_RADIUS)}
         )
 
