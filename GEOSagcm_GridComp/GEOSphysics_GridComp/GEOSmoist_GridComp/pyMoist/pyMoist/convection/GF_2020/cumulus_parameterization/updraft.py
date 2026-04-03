@@ -899,8 +899,8 @@ def compute_precipitation_ensemble(
 
             member = 0
             while member < ENSEMBLE_MEMBERS:
-                if precipitation_ensemble[0, 0][plume] < 1.0e-5:
-                    precipitation_ensemble[0, 0][plume] = 0.0
+                if precipitation_ensemble[0, 0][member] < 1.0e-5:
+                    precipitation_ensemble[0, 0][member] = 0.0
                 member += 1
 
 
@@ -926,7 +926,7 @@ class UpdraftMassFlux(NDSLRuntime):
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
         # add dimension to quantity factory and create classes for constants
-        quantity_factory.add_data_dimensions({"UpdraftMassFlux_constants": len(_X_ALPHA)})
+        quantity_factory.update_data_dimensions({"UpdraftMassFlux_constants": len(_X_ALPHA)})
 
         self._X_ALPHA: Local = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")
         self._G_ALPHA: Local = quantity_factory.zeros(["UpdraftMassFlux_constants"], "n/a")

@@ -135,7 +135,10 @@ def get_downdraft_origin_level(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            if plume == cumulus_parameterization_constants.DEEP and cumulus_parameterization_constants.MELT_GLAC == True:  # noqa
+            if (
+                plume == cumulus_parameterization_constants.DEEP
+                and cumulus_parameterization_constants.MELT_GLAC == True
+            ):  # noqa
                 _, max_index = column_max(melting_layer, 0, k_end)
                 downdraft_origin_level[0, 0][plume] = max(downdraft_origin_level[0, 0][plume], max_index)
 
@@ -504,12 +507,14 @@ def downdraft_moist_static_energy_and_buoyancy(
         u_c_downdraft = u_cloud_levels
         v_c_downdraft = v_cloud_levels
         buoyancy_downdraft_forced = 0.0
-        buoyancy_downdraft = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        # initialize 2D temporaries
+        buoyancy_downdraft: FloatFieldIJ = 0.0
+        wetbulb_adjustment: IntFieldIJ = 0
 
     with computation(FORWARD), interval(0, -1):
-        buoyancy_downdraft: FloatFieldIJ = 0.0
         if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0, 0][plume]:
-            wetbulb_adjustment: IntFieldIJ = 0
             # for future test)
             if USE_WETBULB == 1:
                 cloud_moist_static_energy_downdraft_forced = 0.5 * (
@@ -934,9 +939,13 @@ def downdraft_windshear(
         sdp: FloatFieldIJ = 0.0
         vws: FloatFieldIJ = 0.0
 
-
     with computation(FORWARD), interval(0, -1):
-        if plume != 0 and error_code[0, 0][plume] == 0 and K >= updraft_lfc_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume]:
+        if (
+            plume != 0
+            and error_code[0, 0][plume] == 0
+            and K >= updraft_lfc_level[0, 0][plume]
+            and K <= cloud_top_level[0, 0][plume]
+        ):
             dp = p_forced - p_forced[0, 0, 1]
             vws = (
                 vws
