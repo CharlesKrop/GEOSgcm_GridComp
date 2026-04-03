@@ -49,8 +49,8 @@ class TranslateGF2020_CumulusParameterization(TranslateFortranData2Py):
                 "dcloudicedt": {},
                 "dudt": {},
                 "dvdt": {},
-                "dnliquiddt": {},
-                "dnicedt": {},
+                # "dnliquiddt": {}, # disabled b/c of bug in fortran (bug not replicated in python)
+                # "dnicedt": {}, # disabled b/c of bug in fortran (bug not replicated in python)
                 "dbuoyancydt": {},
                 "dconvectiveicedt": {},
                 "dlargescaleicedt": {},
