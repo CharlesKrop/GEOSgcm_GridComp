@@ -144,15 +144,6 @@ class GF2020Locals(State):
                 "dtype": Float,
             }
         )
-        scalar_diffusivity: Quantity = dataclasses.field(
-            metadata={
-                "name": "scalar_diffusivity",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
 
     @dataclasses.dataclass
     class FlippedCopy:

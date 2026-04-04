@@ -238,7 +238,8 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.convection_tracers_input = data_loader.load("GF2020_ConvectionTracers")
+        self.convection_tracers_input = data_loader.load("GF2020_ConvectionTracers", use_dynamic_i_call=True)
+        self.DEBUG_output = data_loader.load("GF2020_Setup-Out", use_dynamic_i_call=True)
 
     def compute(self, inputs):
         config = GF2020Config(**self.constants)
@@ -466,7 +467,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "local_vertical_velocity": locals.derived_state.vertical_velocity.field[:],
             "local_dz": locals.derived_state.dz.field[:],
             "local_air_density": locals.derived_state.air_density.field[:],
-            "local_scalar_diffusivity": np.moveaxis(locals.derived_state.scalar_diffusivity.field[:], 2, 0),
+            "local_scalar_diffusivity": np.moveaxis(locals.flipped_copy.scalar_diffusivity.field[:], 2, 0),
             "local_vapor_current": np.moveaxis(locals.flipped_copy.vapor_current.field[:], 2, 0),
             # GF2020 CumulusParameterization fields
             # input fields

@@ -596,7 +596,7 @@ def set_2d_fields(
 
         # sensible–heat_flux comes in W m-2, below it is converted to K m s-1
         sensible_heat_flux_local = sensible_heat_flux / (
-            1004.0 * p_interface.at(K=k_end) / (287.04 * t.at(K=k_end) * (1.0 + 0.608 * vapor.at(K=k_end)))
+            1004.0 * p_interface.at(K=k_end + 1) / (287.04 * t.at(K=k_end) * (1.0 + 0.608 * vapor.at(K=k_end)))
         )  # K m s-1
 
         # topography height  (m)
@@ -1211,7 +1211,7 @@ def prepare_cumulus_paramaterization_state(
         # convective_scale_velocity for shallow convection closure (Grant 2001)
 
         # depth of the pbl
-        pgeoh = pbl_level * constants.MAPL_GRAV
+        pgeoh = pbl_internal * constants.MAPL_GRAV
 
         # convective_scale_velocity W* (m/s)
         convective_scale_velocity = max(0.0, 0.001 - 1.5 * 0.41 * zkhvfl * pgeoh / pten)
