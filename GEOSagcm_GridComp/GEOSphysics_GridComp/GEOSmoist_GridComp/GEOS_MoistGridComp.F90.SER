@@ -33,7 +33,7 @@ module GEOS_MoistGridCompMod
   use Lightning_mod, only: HEMCO_FlashRate
   use GEOSmoist_Process_Library
   use GEOS_UtilsMod
-  #ifdef PYMOIST_INTEGRATION
+#ifdef PYMOIST_INTEGRATION
   use pymoist_interface_mod
   use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 #endif
