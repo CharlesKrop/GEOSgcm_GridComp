@@ -1,5 +1,7 @@
 esma_set_this()
 
+option(BUILD_SERIALBOX_SER "Build with Serialbox serialization statements" OFF)
+
 set (srcs
   Process_Library.F90
   GEOS_RAS_InterfaceMod.F90 RASPARAMS.F90 ras.F90 ddf.F90 rascnvv2_v.F90
@@ -53,6 +55,28 @@ endif ()
 esma_add_library (${this}
   SRCS ${srcs}
   DEPENDENCIES GEOS_Shared GMAO_mpeu MAPL fms_r4 Chem_Shared Chem_Base ESMF::ESMF TYPE SHARED)
+
+if(BUILD_SERIALBOX_SER)
+  message(STATUS "Building with Serialbox serialization statements")
+  message(STATUS "  Serialbox root ${SERIALBOX_ROOT}")
+  add_definitions(-DSERIALIZE)
+  target_include_directories(${this} PRIVATE ${SERIALBOX_ROOT}/include)
+  target_link_directories(${this} PRIVATE ${SERIALBOX_ROOT}/lib/)
+  find_library(SERIALBOX_FORTRAN_LIB
+      NAMES SerialboxFortran
+      HINTS ${SERIALBOX_ROOT}/lib/
+      REQUIRED
+  )
+  find_library(SERIALBOX_C_LIB
+      NAMES SerialboxC
+      HINTS ${SERIALBOX_ROOT}/lib/
+      REQUIRED
+  )
+  message(STATUS "  Serialbox Fortran library found: ${SERIALBOX_FORTRAN_LIB}")
+  message(STATUS "  Serialbox C library found: ${SERIALBOX_C_LIB}")
+  target_link_libraries(${this} PRIVATE ${SERIALBOX_FORTRAN_LIB} ${SERIALBOX_C_LIB})
+endif()
+
 
 # We need to add_dependencies for fms_r4 because CMake doesn't know we
 # need it for include purposes. In R4R8, we only ever link against

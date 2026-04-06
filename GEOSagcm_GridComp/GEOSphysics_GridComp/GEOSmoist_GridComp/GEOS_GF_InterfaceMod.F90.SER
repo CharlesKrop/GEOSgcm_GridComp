@@ -1,0 +1,1173 @@
+! $Id$
+
+#include "MAPL_Generic.h"
+
+!=============================================================================
+!BOP
+
+! !MODULE: GEOS_GF_InterfaceMod -- A Module to interface with the
+!   GF convection
+
+module GEOS_GF_InterfaceMod
+
+  use ESMF
+  use MAPL
+  use GEOS_UtilsMod
+  use GEOSmoist_Process_Library
+  use Aer_Actv_Single_Moment
+  use ConvPar_GF_SharedParams
+  use ConvPar_GF_GEOS5
+  use ConvPar_GF2020
+
+  implicit none
+
+  private
+
+  character(len=ESMF_MAXSTR)              :: IAm
+  integer                                 :: STATUS
+
+  ! specify how to handle friendlies with DYN:TRB:CHM:ANA
+  type FRIENDLIES_TYPE
+         character(len=ESMF_MAXSTR) :: CNV_TR
+  end type FRIENDLIES_TYPE
+  type (FRIENDLIES_TYPE) FRIENDLIES
+
+  integer :: USE_GF2020
+  logical :: LHYDROSTATIC
+  logical :: STOCHASTIC_CNV
+  real    :: STOCH_TOP, STOCH_BOT
+  real    :: SCLM_DEEP
+  real    :: GF_MIN_AREA
+  logical :: FIX_CNV_CLOUD
+  logical :: USE_PYMOIST_GF2020
+
+  public :: GF_Setup, GF_Initialize, GF_Run, GF_Finalize
+
+contains
+
+subroutine GF_Setup (GC, CF, RC)
+    type(ESMF_GridComp), intent(INOUT) :: GC  ! gridded component
+    type(ESMF_Config),   intent(inout) :: CF
+    integer, optional                  :: RC  ! return code
+    character(len=ESMF_MAXSTR)         :: COMP_NAME
+
+    IAm = "GEOS_GF_InterfaceMod"
+    call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
+    VERIFY_(STATUS)
+    Iam = trim(COMP_NAME) // Iam
+
+    call MAPL_GetResource( CF ,CONVECTION_TRACER, Label='CONVECTION_TRACER:', default= 0, RC=STATUS );VERIFY_(STATUS)
+    if (CONVECTION_TRACER == 1) then
+       FRIENDLIES%CNV_TR   = trim(COMP_NAME)//"DYNAMICS"
+    else
+       FRIENDLIES%CNV_TR   = trim(COMP_NAME)
+    endif
+    call MAPL_AddInternalSpec(GC,                                  &
+         SHORT_NAME ='CNV_TR',                                     &
+         LONG_NAME  ='convection_tracer',                          &
+         UNITS      ='1',                                          &
+         FRIENDLYTO = trim(FRIENDLIES%CNV_TR),                     &
+         DIMS       = MAPL_DimsHorzVert,                           &
+         VLOCATION  = MAPL_VLocationCenter,                        &
+         RESTART    = MAPL_RestartSkip,                            &
+         DEFAULT    = 0.0,   RC=STATUS  )
+         VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LONS',                       &
+         LONG_NAME  = 'DSL_longitude',                           &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_AddInternalSpec(GC,                                &
+         SHORT_NAME = 'DSL__GF2020_LATS',                       &
+         LONG_NAME  = 'DSL_longitude',                          &
+         UNITS      = 'radians',                                &
+         DIMS       = MAPL_DimsHorzOnly,                        &
+         VLOCATION  = MAPL_VLocationNone,             RC=STATUS  )
+    VERIFY_(STATUS)
+
+    call MAPL_TimerAdd(GC, name="--GF", RC=STATUS)
+    VERIFY_(STATUS)
+
+end subroutine GF_Setup
+
+subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
+    type (MAPL_MetaComp), intent(inout) :: MAPL
+    type (ESMF_Config),   intent(inout) :: CF
+    type (ESMF_State),    intent(inout) :: IMPORT
+    type (ESMF_State),    intent(inout) :: EXPORT
+    type (ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+    integer, optional                   :: RC  ! return code
+    integer :: LM
+    type (ESMF_Alarm   )            :: ALARM
+    type (ESMF_TimeInterval)        :: TINT
+    real(ESMF_KIND_R8)              :: DT_R8
+    real                            :: MOIST_DT
+    real                            :: GF_DT
+
+    type(ESMF_Calendar)     :: calendar
+    type(ESMF_Time)         :: currentTime
+    type(ESMF_Alarm)        :: GF_RunAlarm
+    type(ESMF_Time)         :: ringTime
+    type(ESMF_TimeInterval) :: ringInterval
+    integer                 :: year, month, day, hh, mm, ss
+
+    call MAPL_Get(MAPL, RUNALARM=ALARM, LM=LM, RC=STATUS );VERIFY_(STATUS)
+    call ESMF_AlarmGet(ALARM, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    MOIST_DT = DT_R8
+    call MAPL_GetResource(MAPL, GF_DT, 'GF_DT:', default=MOIST_DT, RC=STATUS); VERIFY_(STATUS)
+
+    call ESMF_ClockGet(CLOCK, calendar=calendar, currTime=currentTime, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeGet(currentTime, YY=year, MM=month, DD=day, H=hh, M=mm, S=ss, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeSet(ringTime, YY=year, MM=month, DD=day, H=0, M=0, S=0, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalSet(ringInterval, S=nint(GF_DT), calendar=calendar, RC=STATUS); VERIFY_(STATUS)
+
+    GF_RunAlarm = ESMF_AlarmCreate(Clock        = CLOCK,        &
+                                   Name         = 'GF_RunAlarm',&
+                                   RingInterval = ringInterval, &
+                                   RingTime     = currentTime,  &
+                                   Enabled      = .true.   ,    &
+                                   Sticky       = .false.  , RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetResource(MAPL, USE_PYMOIST_GF2020, 'USE_PYMOIST_GF2020:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_ConfigSetAttribute(CF, MOIST_DT, 'DSL__GF2020_DT', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+      if (trim(GF_ENV_SETTING)=='CURRENT') then
+         call MAPL_ConfigSetAttribute(CF, 0, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      elseif (trim(GF_ENV_SETTING)=='DYNAMICS') then 
+         call MAPL_ConfigSetAttribute(CF, 1, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
+      endif
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+    else
+    if (LM .eq. 72) then
+      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+    else
+      call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+    endif
+    IF (USE_GF2020==1) THEN
+      call MAPL_GetResource(MAPL, LHYDROSTATIC              , 'HYDROSTATIC:'           ,default=.TRUE., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ZERO_DIFF                 , 'ZERO_DIFF:'             ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ICUMULUS_GF(DEEP)         , 'DEEP:'                  ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ICUMULUS_GF(SHAL)         , 'SHALLOW:'               ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ICUMULUS_GF(MID)          , 'CONGESTUS:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(DEEP)      , 'CLOSURE_DEEP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(SHAL)      , 'CLOSURE_SHALLOW:'       ,default= 7,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CLOSURE_CHOICE(MID)       , 'CLOSURE_CONGESTUS:'     ,default= 3,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      if (ZERO_DIFF == 0) then
+        call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.3e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+                                    SGS_W_TIMESCALE = 1
+                 if (LHYDROSTATIC)  SGS_W_TIMESCALE = 0
+        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= SGS_W_TIMESCALE, RC=STATUS );VERIFY_(STATUS)
+      else
+        call MAPL_GetResource(MAPL, ENTRVERSION               , 'ENTRVERSION:'           ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, MIN_ENTR_RATE             , 'MIN_ENTR_RATE:'         ,default= 0.1e-4,RC=STATUS );VERIFY_(STATUS)  
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP)       , 'ENTR_DP:'               ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)        , 'ENTR_MD:'               ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL)       , 'ENTR_SH:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+        call MAPL_GetResource(MAPL, SGS_W_TIMESCALE           , 'SGS_W_TIMESCALE:'       ,default= 0     ,RC=STATUS );VERIFY_(STATUS)
+      endif
+      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(DEEP)    , 'FADJ_MASSFLX_DP:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(SHAL)    , 'FADJ_MASSFLX_SH:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_FADJ_MASSFLX(MID)     , 'FADJ_MASSFLX_MD:'       ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_TRACER_TRANSP         , 'USE_TRACER_TRANSP:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN         , 'USE_TRACER_SCAVEN:'     ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_SCALE_DEP             , 'USE_SCALE_DEP:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_MOMENTUM_TRANSP       , 'USE_MOMENTUM_TRANSP:'   ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, DICYCLE                   , 'DICYCLE:'               ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, OUTPUT_SOUND              , 'OUTPUT_SOUND:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_MEMORY                , 'USE_MEMORY:'            ,default=-1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_OCEA_CP               , 'TAU_OCEA_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_LAND_CP               , 'TAU_LAND_CP:'           ,default= 21600., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, DOWNDRAFT                 , 'DOWNDRAFT:'             ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_FLUX_FORM             , 'USE_FLUX_FORM:'         ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_TRACER_EVAP           , 'USE_TRACER_EVAP:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, APPLY_SUB_MP              , 'APPLY_SUB_MP:'          ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ALP1                      , 'ALP1:'                  ,default= 1.,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, LIGHTNING_DIAG            , 'LIGHTNING_DIAG:'        ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, OVERSHOOT                 , 'OVERSHOOT:'             ,default= 0.,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_WETBULB               , 'USE_WETBULB:'           ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, LAMBAU_SHDN               , 'LAMBAU_SHDN:'           ,default= 2.,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, MAX_TQ_TEND               , 'MAX_TQ_TEND:'           ,default= 100., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_CLOUD_DISSIPATION     , 'USE_CLOUD_DISSIPATION:' ,default= 1.0,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_SMOOTH_TEND           , 'USE_SMOOTH_TEND:'       ,default= 1,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, BETA_SH                   , 'BETA_SH:'               ,default= 2.2,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_LINEAR_SUBCL_MF       , 'USE_LINEAR_SUBCL_MF:'   ,default= 0,    RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CAP_MAXS                  , 'CAP_MAXS:'              ,default= 50.,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING            , 'GF_ENV_SETTING:'        ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, STOCH_TOP                 , 'STOCH_TOP:'             ,default= 2.50,  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, STOCH_BOT                 , 'STOCH_BOT:'             ,default= 0.75,  RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, STOCHASTIC_CNV            , 'STOCHASTIC_CNV:'        ,default= .FALSE.,RC=STATUS); VERIFY_(STATUS)
+      if (ZERO_DIFF == 0) then
+         call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 10800.,RC=STATUS );VERIFY_(STATUS)
+      else
+         call MAPL_GetResource(MAPL, GF_MIN_AREA               , 'GF_MIN_AREA:'           ,default= 1.e6,   RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_MID                   , 'TAU_MID:'               ,default= 3600., RC=STATUS );VERIFY_(STATUS)
+         call MAPL_GetResource(MAPL, TAU_DEEP                  , 'TAU_DEEP:'              ,default= 5400., RC=STATUS );VERIFY_(STATUS)
+      endif
+      call MAPL_GetResource(MAPL, CLEV_GRID                 , 'CLEV_GRID:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, VERT_DISCR                , 'VERT_DISCR:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_FCT                   , 'USE_FCT:'               ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SATUR_CALC                , 'SATUR_CALC:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, BC_METH                   , 'BC_METH:'               ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_REBCB                 , 'USE_REBCB:'             ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, AUTOCONV                  , 'AUTOCONV:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, LAMBAU_DEEP               , 'LAMBAU_DEEP:'           ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, MOIST_TRIGGER             , 'MOIST_TRIGGER:'         ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL ,FRAC_MODIS                , 'FRAC_MODIS:'            ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL ,EVAP_FIX                  , 'EVAP_FIX:'              ,default= 1,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ADV_TRIGGER               , 'ADV_TRIGGER:'           ,default= 0,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(DEEP)       , 'AVE_LAYER_DP:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(SHAL)       , 'AVE_LAYER_SH:'          ,default= 30.,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_AVE_LAYER(MID)        , 'AVE_LAYER_MD:'          ,default= 40.,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_USE_EXCESS(DEEP)      , 'USE_EXCESS_DP:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_USE_EXCESS(SHAL)      , 'USE_EXCESS_SH:'         ,default= 3,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_USE_EXCESS(MID)       , 'USE_EXCESS_MD:'         ,default= 2,     RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_DEEP                   , 'C0_DEEP:'               ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID                    , 'C0_MID:'                ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_SHAL                   , 'C0_SHAL:'               ,default= 0.0   ,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_OCN              , 'QRC_CRIT_OCN:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT_LND              , 'QRC_CRIT_LND:'          ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1                        , 'C1:'                    ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      if (ZERO_DIFF == 0) then
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.6,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.4,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.3,   RC=STATUS );VERIFY_(STATUS)
+      else
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(DEEP)   , 'HEI_DOWN_LAND_DP:'      ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(SHAL)   , 'HEI_DOWN_LAND_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_LAND(MID)    , 'HEI_DOWN_LAND_MD:'      ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(DEEP)  , 'HEI_DOWN_OCEAN_DP:'     ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(SHAL)  , 'HEI_DOWN_OCEAN_SH:'     ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_DOWN_OCEAN(MID)   , 'HEI_DOWN_OCEAN_MD:'     ,default= 0.5,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(DEEP)   , 'HEI_UPDF_LAND_DP:'      ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(SHAL)   , 'HEI_UPDF_LAND_SH:'      ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_LAND(MID)    , 'HEI_UPDF_LAND_MD:'      ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(DEEP)  , 'HEI_UPDF_OCEAN_DP:'     ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(SHAL)  , 'HEI_UPDF_OCEAN_SH:'     ,default= 0.2,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_HEI_UPDF_OCEAN(MID)   , 'HEI_UPDF_OCEAN_MD:'     ,default= 0.65,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(DEEP)    , 'MIN_EDT_LAND_DP:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(SHAL)    , 'MIN_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_LAND(MID)     , 'MIN_EDT_LAND_MD:'       ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(DEEP)   , 'MIN_EDT_OCEAN_DP:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(SHAL)   , 'MIN_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MIN_EDT_OCEAN(MID)    , 'MIN_EDT_OCEAN_MD:'      ,default= 0.1,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(DEEP)    , 'MAX_EDT_LAND_DP:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(SHAL)    , 'MAX_EDT_LAND_SH:'       ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_LAND(MID)     , 'MAX_EDT_LAND_MD:'       ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(DEEP)   , 'MAX_EDT_OCEAN_DP:'      ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(SHAL)   , 'MAX_EDT_OCEAN_SH:'      ,default= 0.0,   RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_MAX_EDT_OCEAN(MID)    , 'MAX_EDT_OCEAN_MD:'      ,default= 0.9,   RC=STATUS );VERIFY_(STATUS)
+      endif
+      call MAPL_GetResource(MAPL, SCLM_DEEP                 , 'SCLM_DEEP:'             ,default= 1.0,   RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD             , 'FIX_CNV_CLOUD:'         ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
+    ELSE
+      ! Inititialize parameters of convection scheme GF (circa 2019)
+      call MAPL_GetResource(MAPL, icumulus_gf(deep)   ,'DEEP:'             ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, icumulus_gf(shal)   ,'SHALLOW:'          ,default= 0 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, icumulus_gf(mid)    ,'CONGESTUS:'        ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, closure_choice(deep),'CLOSURE_DEEP:'     ,default= 0 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, closure_choice(shal),'CLOSURE_SHALLOW:'  ,default= 7 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, closure_choice(mid) ,'CLOSURE_CONGESTUS:',default= 3 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(DEEP) ,'ENTR_DP:'          ,default= 1.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(SHAL) ,'ENTR_SH:'          ,default= 1.4e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, CUM_ENTR_RATE(MID)  ,'ENTR_MD:'          ,default= 9.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C1                  ,'C1:'               ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_TRACER_TRANSP   ,'USE_TRACER_TRANSP:',default= 1 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_TRACER_SCAVEN   ,'USE_TRACER_SCAVEN:',default= 1 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_SCALE_DEP       ,'USE_SCALE_DEP:'    ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, DICYCLE             ,'DICYCLE:'          ,default= 1 , RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, STOCHASTIC_CNV      ,'STOCHASTIC_CNV:'   ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_MIN_AREA         ,'GF_MIN_AREA:'      ,default= 1.e6,  RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_DEEP            ,'TAU_DEEP:'         ,default= 5400.0, RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, TAU_MID             ,'TAU_MID:'          ,default= 3600.0, RC=STATUS ); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_FLUX_FORM       ,'USE_FLUX_FORM:'    ,default= 1 , RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_FCT             ,'USE_FCT:'          ,default= 0 , RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, USE_TRACER_EVAP     ,'USE_TRACER_EVAP:'  ,default= 1 , RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, ALP1                ,'ALP1:'             ,default= 1., RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, BC_METH             ,'BC_METH:'          ,default= 0 , RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_DEEP             ,'C0_DEEP:'          ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_MID              ,'C0_MID:'           ,default= 2.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, C0_SHAL             ,'C0_SHAL:'          ,default= 1.0e-3,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, QRC_CRIT            ,'QRC_CRIT:'         ,default= 2.0e-4,RC=STATUS );VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, GF_ENV_SETTING      ,'GF_ENV_SETTING:'   ,default= 'DYNAMICS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, SCLM_DEEP           ,'SCLM_DEEP:'        ,default= 1.0    , RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetResource(MAPL, FIX_CNV_CLOUD       ,'FIX_CNV_CLOUD:'    ,default= .FALSE., RC=STATUS); VERIFY_(STATUS)
+    ENDIF
+
+    endif ! USE_PYMOIST_GF2020
+
+end subroutine GF_Initialize
+
+
+subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
+    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+    type(ESMF_Clock),    intent(inout) :: CLOCK  ! The clock
+    integer, optional,   intent(  out) :: RC     ! Error code:
+
+    ! Local derived type aliases
+
+    type (MAPL_MetaComp), pointer   :: MAPL
+    type (ESMF_Config  )            :: CF
+    type (ESMF_State   )            :: INTERNAL
+    type (ESMF_TimeInterval)        :: TINT
+    real(ESMF_KIND_R8)              :: DT_R8
+    real                            :: GF_DT
+    type(ESMF_Alarm)                :: alarm
+    logical                         :: alarm_is_ringing
+
+    ! Local variables
+    integer                         :: I, J, L
+    integer                         :: IM,JM,LM
+    real, pointer, dimension(:,:)   :: LONS
+    real, pointer, dimension(:,:)   :: LATS
+    real                            :: minrhx
+
+    ! Internals
+    real, pointer, dimension(:,:,:) :: Q, QLLS, QLCN, CLLS, CLCN, QILS, QICN
+    real, pointer, dimension(:,:,:) :: CNV_TR ! tracer memory
+
+    ! Imports
+    real, pointer, dimension(:,:,:) :: ZLE, PLE, T, U, V, W, KH, OMEGA
+    real, pointer, dimension(:,:  ) :: FRLAND, AREA
+    real, pointer, dimension(:,:,:) :: DQVDTDYN
+    real, pointer, dimension(:,:,:) :: DTDTDYN
+    real, pointer, dimension(:,:,:) :: QV_DYN_IN
+    real, pointer, dimension(:,:,:) :: U_DYN_IN
+    real, pointer, dimension(:,:,:) :: V_DYN_IN
+    real, pointer, dimension(:,:,:) :: T_DYN_IN
+    real, pointer, dimension(:,:,:) :: PLE_DYN_IN
+    real, pointer, dimension(:,:,:) :: DTDT_BL
+    real, pointer, dimension(:,:,:) :: DQDT_BL
+    real, pointer, dimension(:,:  ) :: KPBL
+    real, pointer, dimension(:,:,:) :: RADSW, RADLW
+
+    ! allocatable derived quantities
+    real,    allocatable, dimension(:,:,:) :: ZLE0
+    real,    allocatable, dimension(:,:,:) :: PL, PK, ZL0
+    real,    allocatable, dimension(:,:,:) :: MASS, fQi, QST3
+    real,    allocatable, dimension(:,:,:) :: TH
+    real,    allocatable, dimension(:,:,:) :: REVSU, PRFIL
+    integer, allocatable, dimension(:,:)   :: SEEDINI
+    real,    allocatable, dimension(:,:)   :: SEEDCNV
+    real,    allocatable, dimension(:,:,:) :: TMP3D
+    real,    allocatable, dimension(:,:)   :: TMP2D
+
+    ! Required Exports (connectivities to moist siblings)
+    real, pointer, dimension(:,:,:) :: MFD_DC, UMF_DC, CNV_CVW, CNV_QC, CNV_DQCDT, CNV_PRC3, CNV_UPDF
+    real, pointer, dimension(:,:,:) :: DUDT_DC, DVDT_DC, DTDT_DC, DQVDT_DC, DQIDT_DC, DQLDT_DC, DQADT_DC
+    real, pointer, dimension(:,:  ) :: CNV_FRC, SRF_TYPE
+    ! Exports
+    real, pointer, dimension(:,:,:) :: BYNCY, CNV_MF0, ENTLAM
+    real, pointer, dimension(:,:,:) :: MUPDP,MDNDP,MUPSH,MUPMD,WQT_DC
+    real, pointer, dimension(:,:  ) :: T2M,Q2M,TA,QA,SH,EVAP,PHIS
+    real, pointer, dimension(:,:  ) :: MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD
+    real, pointer, dimension(:,:  ) :: AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC
+    real, pointer, dimension(:,:  ) :: TPWI,TPWI_star,LFR_GF,CNPCPRATE
+    real, pointer, dimension(:,:,:) :: RSU_CN,REV_CN,PFL_CN,PFI_CN
+    real, pointer, dimension(:,:  ) :: SIGMA_DEEP, SIGMA_MID
+    real, pointer, dimension(:,:,:) :: ENTR, ENTR_DP, ENTR_MD, ENTR_SH
+    real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
+    real, pointer, dimension(:,:,:) :: PTR3D
+    real, pointer, dimension(:,:  ) :: PTR2D
+
+    !$ser verbatim integer :: SER_VAR_1
+    !$ser verbatim integer :: ser_tracer_index, ser_miscellaneous_index
+
+    call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
+    alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
+
+    if (alarm_is_ringing) then
+
+!!! call WRITE_PARALLEL('GF is Running')
+    call ESMF_AlarmRingerOff(alarm, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_AlarmGet(alarm, RingInterval=TINT, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
+    GF_DT = DT_R8
+
+    !$ser verbatim if (trim(GF_ENV_SETTING)=='CURRENT') then 
+      !$ser verbatim SER_VAR_1 = 0
+    !$ser verbatim else
+      !$ser verbatim SER_VAR_1 = 1
+    !$ser verbatim endif
+
+    !$ser savepoint GF2020-constants
+    !$ser data STOCHASTIC_CNV=STOCHASTIC_CNV STOCH_TOP=STOCH_TOP STOCH_BOT=STOCH_BOT GF_MIN_AREA=GF_MIN_AREA
+    !$ser data DT_MOIST=GF_DT GF_ENV_SETTING=SER_VAR_1 ENTRVERSION=ENTRVERSION LHYDROSTATIC=LHYDROSTATIC
+    !$ser data CONVECTION_TRACER=CONVECTION_TRACER C1=C1 ADV_TRIGGER=ADV_TRIGGER AUTOCONV=AUTOCONV
+    !$ser data USE_TRACER_TRANSPORT=USE_TRACER_TRANSP SCLM_DEEP=SCLM_DEEP FIX_CONVECTIVE_CLOUD=FIX_CNV_CLOUD
+    !$ser data APPLY_SUBSIDENCE_MICROPHYSICS=APPLY_SUB_MP USE_MOMENTUM_TRANSPORT=USE_MOMENTUM_TRANSP
+    !$ser verbatim SER_VAR_1=size(CNV_Tracers)
+    !$ser data NUMBER_OF_TRACERS=SER_VAR_1
+
+    call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS ); VERIFY_(STATUS)
+
+    ! Get my internal MAPL_Generic state
+    !-----------------------------------
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_TimerOn (MAPL,"--GF")
+
+    ! Get parameters from generic state.
+    !-----------------------------------
+
+    call MAPL_Get( MAPL, IM=IM, JM=JM, LM=LM,   &
+         CF       = CF,                &
+         LONS     = LONS,              &
+         LATS     = LATS,              &
+         INTERNAL_ESMF_STATE=INTERNAL, &
+         RC=STATUS )
+    VERIFY_(STATUS)
+
+    if (USE_PYMOIST_GF2020) then
+      call MAPL_GetPointer(INTERNAL, LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+    else
+
+    ! Internals
+    call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QLCN,   'QLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLCN,   'CLCN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLLS,   'CLLS'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QILS,   'QILS'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, QICN,   'QICN'    , RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CNV_TR, 'CNV_TR'  , RC=STATUS); VERIFY_(STATUS)
+
+    ! Imports
+    call MAPL_GetPointer(IMPORT, FRLAND    ,'FRLAND'    ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, AREA      ,'AREA'      ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, ZLE       ,'ZLE'       ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PLE       ,'PLE'       ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, U         ,'U'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, V         ,'V'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, W         ,'W'         ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, OMEGA     ,'OMEGA'     ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, KH        ,'KH'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, SH        ,'SH'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, EVAP      ,'EVAP'      ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T2M       ,'T2M'       ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, Q2M       ,'Q2M'       ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, TA        ,'TA'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, QA        ,'QA'        ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PHIS      ,'PHIS'      ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DQVDTDYN  ,'DQVDTDYN'  ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DTDTDYN   ,'DTDTDYN'   ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, QV_DYN_IN ,'QV_DYN_IN' ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, U_DYN_IN  ,'U_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, V_DYN_IN  ,'V_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, T_DYN_IN  ,'T_DYN_IN'  ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, PLE_DYN_IN,'PLE_DYN_IN',RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DTDT_BL   ,'DTDT_BL'   ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, DQDT_BL   ,'DQDT_BL'   ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, RADSW     ,'RADSW'     ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, RADLW     ,'RADLW'     ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(IMPORT, KPBL      ,'KPBL'      ,RC=STATUS); VERIFY_(STATUS)
+
+    ! Allocatables
+     ! Edge variables
+    ALLOCATE ( ZLE0 (IM,JM,0:LM) )
+    ALLOCATE ( PRFIL(IM,JM,0:LM) )
+     ! Layer variables
+    ALLOCATE ( ZL0  (IM,JM,LM  ) )
+    ALLOCATE ( PL   (IM,JM,LM  ) )
+    ALLOCATE ( PK   (IM,JM,LM  ) )
+    ALLOCATE ( TH   (IM,JM,LM  ) )
+    ALLOCATE ( MASS (IM,JM,LM  ) )
+    ALLOCATE ( fQi  (IM,JM,LM  ) )
+    ALLOCATE ( QST3 (IM,JM,LM  ) )
+    ALLOCATE ( REVSU(IM,JM,LM  ) )
+    ALLOCATE ( TMP3D(IM,JM,LM  ) )
+     ! 2D Variables
+    ALLOCATE ( SEEDINI(IM,JM) )
+    ALLOCATE ( SEEDCNV(IM,JM) )
+    ALLOCATE ( TMP2D  (IM,JM) )
+
+    ! derived quantaties
+    ! Derived States
+    PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
+    PK       = (PL/MAPL_P00)**(MAPL_KAPPA)
+    DO L=0,LM
+       ZLE0(:,:,L)= ZLE(:,:,L) - ZLE(:,:,LM)   ! Edge Height (m) above the surface
+    END DO
+    ZL0      = 0.5*(ZLE0(:,:,0:LM-1) + ZLE0(:,:,1:LM) ) ! Layer Height (m) above the surface
+    TH       = T/PK
+    MASS     = ( PLE(:,:,1:LM)-PLE(:,:,0:LM-1) )/MAPL_GRAV
+
+    ! Required Exports (connectivities to moist siblings)
+    call MAPL_GetPointer(EXPORT, MFD_DC,     'MFD_DC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, UMF_DC,     'UMF_DC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_CVW,    'CNV_CVW'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_QC,     'CNV_QC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_DQCDT,  'CNV_DQCDT' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_PRC3,   'CNV_PRC3'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_UPDF,   'CNV_UPDF'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_FRC,    'CNV_FRC'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SRF_TYPE,   'SRF_TYPE'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    ! Exports used below
+    call MAPL_GetPointer(EXPORT, BYNCY,      'BYNCY'     ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_MF0,    'CNV_MF0'   ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNPCPRATE,  'CNPCPRATE' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTLAM,     'ENTLAM'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SIGMA_DEEP, 'SIGMA_DEEP',  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, SIGMA_MID,  'SIGMA_MID' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, TPWI,       'TPWI'      ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, TPWI_star,  'TPWI_star' ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    TPWI       = SUM( Q*MASS, 3 )
+    TPWI_star  = SUM( GEOS_QSAT(T,PL,PASCALS=.true.)*MASS, 3 )
+    call MAPL_GetPointer(EXPORT, LFR_GF   ,'LFR_GF'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MUPDP    ,'MUPDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MDNDP    ,'MDNDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MUPSH    ,'MUPSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MUPMD    ,'MUPMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MFDP     ,'MFDP'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MFSH     ,'MFSH'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, MFMD     ,'MFMD'      ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ERRDP    ,'ERRDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ERRSH    ,'ERRSH'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ERRMD    ,'ERRMD'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, RSU_CN   ,'RSU_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, REV_CN   ,'REV_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFI_CN   ,'PFI_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, PFL_CN   ,'PFL_CN'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AA0      ,'AA0'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AA1      ,'AA1'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AA2      ,'AA2'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AA3      ,'AA3'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AA1_BL   ,'AA1_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, AA1_CIN  ,'AA1_CIN'   ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, TAU_BL   ,'TAU_BL'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, TAU_EC   ,'TAU_EC'    ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, WQT_DC   ,'WQT_DC'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR,    'ENTR'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_DP, 'ENTR_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_MD, 'ENTR_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_SH, 'ENTR_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetPointer(EXPORT, ENTR,    'ENTR'    ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_DP, 'ENTR_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_MD, 'ENTR_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, ENTR_SH, 'ENTR_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
+    call MAPL_GetPointer(EXPORT, CNV_TOPP_DP, 'CNV_TOPP_DP' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_TOPP_MD, 'CNV_TOPP_MD' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, CNV_TOPP_SH, 'CNV_TOPP_SH' ,ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
+    ! Initialize tendencies
+    call MAPL_GetPointer(EXPORT,  DUDT_DC,    'DUDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DVDT_DC,    'DVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT,  DTDT_DC,    'DTDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQVDT_DC,   'DQVDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQLDT_DC,   'DQLDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQIDT_DC,   'DQIDT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+    call MAPL_GetPointer(EXPORT, DQADT_DC,   'DQADT_DC'  ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+
+    if (STOCHASTIC_CNV) then
+       ! Create bit-processor-reproducible random white noise for convection [0:1]
+       SEEDINI = 1000000 * ( 100*T(:,:,LM)   - INT( 100*T(:,:,LM) ) )
+       SEEDCNV = SQRT(MAX(MIN(SEEDINI/1000000.0,1.0),0.0))
+       ! Create stochastic variability to GF sigma
+       SEEDCNV = SQRT(1.0-(1.0-SEEDCNV))*(STOCH_TOP-STOCH_BOT)+STOCH_BOT
+    else
+       SEEDCNV = 1.0
+    endif
+    CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
+    if(associated(PTR2D)) PTR2D = SEEDCNV
+
+    ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
+    if (GF_MIN_AREA > 0) then
+       where (AREA > GF_MIN_AREA)
+          TMP2D = GF_MIN_AREA*CNV_FRC + AREA*(1.0-CNV_FRC)
+       elsewhere
+          TMP2D =  AREA
+       endwhere
+    else if (GF_MIN_AREA < 0) then
+       where (AREA > ABS(GF_MIN_AREA))
+          TMP2D = AREA*CNV_FRC + ABS(GF_MIN_AREA)*(1.0-CNV_FRC)
+       elsewhere
+          TMP2D =  AREA
+       endwhere
+    else
+       TMP2D = AREA
+    endif
+
+    ! NOTE this savepoint is also used as GF2020_Setup-In
+    ! this savepoint also tests all the code above it in Run, but is serialized here
+    ! becuase this is the first point where all inputs are available
+    !$ser savepoint GF2020-In
+    !$ser data latitude_bugworkaroundname=LATS
+    !$ser data longitude_bugworkaroundname=LONS
+    !$ser data p_interface_bugworkaroundname=PLE
+    !$ser data t_bugworkaroundname=T
+    !$ser data u_bugworkaroundname=U
+    !$ser data v_bugworkaroundname=V
+    !$ser data w_bugworkaroundname=W
+    !$ser data omega_bugworkaroundname=OMEGA
+    !$ser data t_2m_bugworkaroundname=T2M
+    !$ser data specific_humidity_2m_bugworkaroundname=Q2M
+    !$ser data t_surface_bugworkaroundname=TA
+    !$ser data specific_humidity_surface_bugworkaroundname=QA
+    !$ser data vapor_bugworkaroundname=Q
+    !$ser data convective_liquid_bugworkaroundname=QLCN
+    !$ser data convective_ice_bugworkaroundname=QICN
+    !$ser data convective_cloud_fraction_bugworkaroundname=CLCN
+    !$ser data large_scale_liquid_bugworkaroundname=QLLS
+    !$ser data large_scale_ice_bugworkaroundname=QILS
+    !$ser data large_scale_cloud_fraction_bugworkaroundname=CLLS
+    !$ser data p_interface_timestep_start_bugworkaroundname=PLE_DYN_IN
+    !$ser data t_timestep_start_bugworkaroundname=T_DYN_IN
+    !$ser data u_timestep_start_bugworkaroundname=U_DYN_IN
+    !$ser data v_timestep_start_bugworkaroundname=V_DYN_IN
+    !$ser data vapor_timestep_start_bugworkaroundname=QV_DYN_IN
+    !$ser data geopotential_height_interface_bugworkaroundname=ZLE
+    !$ser data geopotential_height_surface_bugworkaroundname=PHIS
+    !$ser data area_bugworkaroundname=AREA
+    !$ser data pbl_level_bugworkaroundname=KPBL
+    !$ser data convection_fraction_bugworkaroundname=CNV_FRC
+    !$ser data surface_type_bugworkaroundname=SRF_TYPE
+    !$ser data seed_convection_bugworkaroundname=SEEDCNV
+    !$ser data land_fraction_bugworkaroundname=FRLAND
+    !$ser data scalar_diffusivity_bugworkaroundname=KH
+    !$ser data buoyancy_bugworkaroundname=BYNCY
+    !$ser data convective_precipitation_GF_bugworkaroundname=CNPCPRATE
+    !$ser data convective_precipitation_RAS_bugworkaroundname=CNV_PRC3
+    !$ser data sensible_heat_flux_bugworkaroundname=SH
+    !$ser data total_water_flux_deep_convection_interface_bugworkaroundname=WQT_DC
+    !$ser data evaporation_bugworkaroundname=EVAP
+    !$ser data sublimation_of_convective_precipitation_bugworkaroundname=RSU_CN
+    !$ser data evaporation_of_convective_precipitation_bugworkaroundname=REV_CN
+    !$ser data ice_precip_flux_interface_bugworkaroundname=PFI_CN
+    !$ser data liquid_precip_flux_interface_bugworkaroundname=PFL_CN
+    !$ser data convective_condensate_source_bugworkaroundname=CNV_DQCDT
+    !$ser data convective_condensate_grid_mean_bugworkaroundname=CNV_QC
+    !$ser data entrainment_parameter_bugworkaroundname=ENTLAM
+    !$ser data lateral_entrainment_rate_bugworkaroundname=ENTR
+    !$ser data lateral_entrainment_rate_shallow_bugworkaroundname=ENTR_SH
+    !$ser data lateral_entrainment_rate_mid_bugworkaroundname=ENTR_MD
+    !$ser data lateral_entrainment_rate_deep_bugworkaroundname=ENTR_DP
+    !$ser data updraft_areal_fraction_bugworkaroundname=CNV_UPDF
+    !$ser data updraft_vertical_velocity_bugworkaroundname=CNV_CVW
+    !$ser data dtdt_shortwave_bugworkaroundname=RADSW
+    !$ser data dtdt_longwave_bugworkaroundname=RADLW
+    !$ser data dspecific_humiditydt_pbl_bugworkaroundname=DQDT_BL
+    !$ser data dtdt_pbl_bugworkaroundname=DTDT_BL
+    !$ser data dtdt_from_dynamics_bugworkaroundname=DTDTDYN
+    !$ser data dvapordt_from_dynamics_bugworkaroundname=DQVDTDYN
+    !$ser data sigma_mid_bugworkaroundname=SIGMA_MID
+    !$ser data sigma_deep_bugworkaroundname=SIGMA_DEEP
+    !$ser data total_precipitable_water_initial_bugworkaroundname=TPWI
+    !$ser data saturation_total_precipitable_water_initial_bugworkaroundname=TPWI_star
+    !$ser data dvapordt_deep_convection_bugworkaroundname=DQVDT_DC
+    !$ser data dtdt_deep_convection_bugworkaroundname=DTDT_DC
+    !$ser data dudt_deep_convection_bugworkaroundname=DUDT_DC
+    !$ser data dvdt_deep_convection_bugworkaroundname=DVDT_DC
+    !$ser data dliquiddt_deep_convection_bugworkaroundname=DQLDT_DC
+    !$ser data dicedt_deep_convection_bugworkaroundname=DQIDT_DC
+    !$ser data dcloudfractiondt_deep_convection_bugworkaroundname=DQADT_DC
+    !$ser data pressure_shallow_convective_cloud_top_bugworkaroundname=CNV_TOPP_SH
+    !$ser data pressure_mid_convective_cloud_top_bugworkaroundname=CNV_TOPP_MD
+    !$ser data pressure_deep_convective_cloud_top_bugworkaroundname=CNV_TOPP_DP
+    !$ser data mass_flux_shallow_bugworkaroundname=MUPSH
+    !$ser data mass_flux_mid_bugworkaroundname=MUPMD
+    !$ser data mass_flux_deep_updraft_bugworkaroundname=MUPDP
+    !$ser data mass_flux_deep_updraft_interface_bugworkaroundname=UMF_DC
+    !$ser data mass_flux_deep_updraft_detrained_bugworkaroundname=MFD_DC
+    !$ser data mass_flux_deep_downdraft_bugworkaroundname=MDNDP
+    !$ser data mass_flux_cloud_base_bugworkaroundname=CNV_MF0
+    !$ser data mass_flux_cloud_base_shallow_bugworkaroundname=MFSH
+    !$ser data mass_flux_cloud_base_mid_bugworkaroundname=MFMD
+    !$ser data mass_flux_cloud_base_deep_bugworkaroundname=MFDP
+    !$ser data convection_code_shallow_bugworkaroundname=ERRSH
+    !$ser data convection_code_mid_bugworkaroundname=ERRMD
+    !$ser data convection_code_deep_bugworkaroundname=ERRDP
+    !$ser data cloud_workfunction_0_bugworkaroundname=AA0
+    !$ser data cloud_workfunction_1_bugworkaroundname=AA1
+    !$ser data cloud_workfunction_2_bugworkaroundname=AA2
+    !$ser data cloud_workfunction_3_bugworkaroundname=AA3
+    !$ser data cloud_workfunction_1_pbl_bugworkaroundname=AA1_BL
+    !$ser data cloud_workfunction_1_cin_bugworkaroundname=AA1_CIN
+    !$ser data pbl_time_scale_bugworkaroundname=TAU_BL
+    !$ser data cape_removal_time_scale_bugworkaroundname=TAU_EC
+    !$ser data lightning_density_bugworkaroundname=LFR_GF
+    !$ser data convection_tracer_bugworkaroundname=CNV_TR
+   
+    IF (USE_GF2020==1) THEN
+         !- Determine which W is proper import
+         IF (LHYDROSTATIC) THEN
+            TMP3D = -1*OMEGA/(MAPL_GRAV*PL/(MAPL_RDRY*T*(1.0+MAPL_VIREPS*Q)))
+         ELSE
+            TMP3D = W
+         ENDIF
+         !- call GF2020 interface routine
+         ! PLE and PL are passed in Pa
+         !$ser savepoint GF2020_ConvectionTracers
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),IM,JM,LM)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim do I=1,IM
+               !$ser verbatim do J=1,JM
+                     !$ser verbatim do L=1,LM
+                           !$ser verbatim call ser_set_indices(ser_tracer_index,I,J,L)
+                           !$ser data_buffered Dx=4 tracers=CNV_Tracers(ser_tracer_index)%Q(I,J,L)
+                     !$ser verbatim enddo
+               !$ser verbatim enddo
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),4,1,1)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim do ser_miscellaneous_index=1,4
+               !$ser verbatim call ser_set_indices(ser_tracer_index,ser_miscellaneous_index,1,1)
+               !$ser data_buffered Dx=2 vect_hcts=CNV_Tracers(ser_tracer_index)%vect_hcts(ser_miscellaneous_index)
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),3,1,1)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim do ser_miscellaneous_index=1,3
+               !$ser verbatim call ser_set_indices(ser_tracer_index,ser_miscellaneous_index,1,1)
+               !$ser data_buffered Dx=2 kc_scal=CNV_Tracers(ser_tracer_index)%kcscal(ser_miscellaneous_index)
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+         !$ser verbatim call ser_set_Dx(size(CNV_Tracers),1,1,1)
+         !$ser verbatim do ser_tracer_index=1,size(CNV_Tracers)
+            !$ser verbatim call ser_set_D2(1)
+            !$ser verbatim call ser_set_indices(ser_tracer_index,1,1,1)
+            !$ser data_buffered Dx=1 fscav=CNV_Tracers(ser_tracer_index)%fscav
+            !$ser data_buffered Dx=1 convfaci2g=CNV_Tracers(ser_tracer_index)%convfaci2g
+            !$ser data_buffered Dx=1 retfactor=CNV_Tracers(ser_tracer_index)%retfactor
+            !$ser data_buffered Dx=1 liq_and_gas=CNV_Tracers(ser_tracer_index)%liq_and_gas
+            !$ser data_buffered Dx=1 online_cldliq=CNV_Tracers(ser_tracer_index)%online_cldliq
+            !$ser data_buffered Dx=1 online_vud=CNV_Tracers(ser_tracer_index)%online_vud
+            !$ser data_buffered Dx=1 ftemp_threshold=CNV_Tracers(ser_tracer_index)%ftemp_threshold
+            !$ser data_buffered Dx=1 use_gcc_washout=CNV_Tracers(ser_tracer_index)%use_gcc_washout
+            !$ser data_buffered Dx=1 use_gocart=CNV_Tracers(ser_tracer_index)%use_gocart
+            !$ser data_buffered Dx=1 is_wetdep=CNV_Tracers(ser_tracer_index)%is_wetdep
+         !$ser verbatim enddo
+         !$ser flush_savepoint GF2020_ConvectionTracers
+         call GF2020_Interface(   IM,JM,LM,LONS,LATS,GF_DT                       &
+                                 ,PLE, PL, ZLE0, ZL0, PK, MASS, KH                  &
+                                 ,T, TH, Q, U, V, TMP3D, BYNCY, QLCN, QICN, QLLS, QILS, CNPCPRATE &
+                                 ,CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT, ENTLAM      &
+                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC, CLCN, CLLS     &
+                                 ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
+                                 ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
+                                 ,FRLAND, TMP2D, T2M           &
+                                 ,Q2M ,TA ,QA ,SH ,EVAP ,PHIS                       &
+                                 ,KPBL ,CNV_FRC, SRF_TYPE                           &
+                                 ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
+                                 ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
+                                 ,CNV_TOPP_DP,CNV_TOPP_MD,CNV_TOPP_SH               &
+                                 ,MUPDP,MUPSH,MUPMD,MDNDP                           &
+                                 ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD,WQT_DC           &
+                                 ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
+                                 ,DTDTDYN,DQVDTDYN                                  &
+                                 ,REVSU, ENTR, ENTR_DP, ENTR_MD, ENTR_SH,  PRFIL    &
+                                 ,TPWI, TPWI_star, LFR_GF, CNV_TR)
+         
+         ! CumulusParameterization savepoints
+         !$ser flush_savepoint GF2020_CumulusParameterization_4D-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_4D-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_Setup-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_Setup-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentConditions_1-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentConditions_1-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentConditions_2-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentConditions_2-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_1-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_1-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_2-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_2-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_HydrostaticAirDensity-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_HydrostaticAirDensity-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_HighestMoistStaticEnergyLevel-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetLCL-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_1-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EntrainmentRates-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EntrainmentRates-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectiveCloudBaseLevel-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectiveCloudBaseLevel-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftEntrainmentProfiles-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftEntrainmentProfiles-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_2-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ParcelMoistStaticEnergy_2-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_StableDetrainment-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_StableDetrainment-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudTop-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudTop-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMassFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_CalculateMassEntrainmentDetrainment-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_FirstGuessMoistStaticEnergy-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_FirstGuessMoistStaticEnergy-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_1-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_C1DProfile-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_C1DProfile-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoisture-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoisture-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_MeltingProfile-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftMoistStaticEnergyAndMomentumBudget-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_2-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_GetBuoyancy_3-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftTemperature-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftVerticalVelocity-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftVerticalVelocity-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftOriginLevel-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftOriginLevel-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMassFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftLateralMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftLateralMassFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMSEAndBuoyancy-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMoisture-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftMoisture-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftInitialWorkfunctions-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftCIN-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdraftCIN-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectionTrigger-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ConvectionTrigger-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftTemperature-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DiurnalCycle-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DiurnalCycle-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftWindShear-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DowndraftWindShear-Out     
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentMassFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentMassFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_MassConservation-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_MassConservation-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_VerticalDiscretization-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_VerticalDiscretization-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_SmoothTendencies-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_SmoothTendencies-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_ModifyEnvironmentProfiles-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_ModifyEnvironmentProfiles-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentConditions_3-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentConditions_3-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnvironmentCloudLevels_3-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_MoistStaticEnergyInsideCloud-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_MoistStaticEnergyInsideCloud-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_StaticControl-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_StaticControl-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_KineticEnergyToHeating-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_KineticEnergyToHeating-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnsembleOutputAndFeedback-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_EnsembleOutputAndFeedback-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_PrecipitationFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_PrecipitationFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_RainEvaporationBelowCloudBase-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_RainEvaporationBelowCloudBase-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudDissipation-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_CloudDissipation-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_TotalEvaporationFlux-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_TotalEvaporationFlux-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_DeepPrecipitationOutput-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_DeepPrecipitationOutput-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_OutputUpdraftTemperature-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_OutputUpdraftTemperature-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_PrepareOutput-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_AtmosphericComposition-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_AtmosphericComposition-Out
+         !$ser flush_savepoint GF2020_CumulusParameterization_LargeScaleForcing-In
+         !$ser flush_savepoint GF2020_CumulusParameterization_LargeScaleForcing-Out
+    ELSE
+         !- call GF/GEOS5 interface routine
+         ! PLE and PL are passed in Pa
+         call GF_GEOS5_Interface( IM,JM,LM,LONS,LATS,GF_DT                       &
+                                 ,PLE, PL, ZLE0, ZL0, PK, MASS, OMEGA               &
+                                 ,T, TH, Q, U, V, QLCN, QICN, QLLS, QILS, CNPCPRATE &
+                                 ,CNV_MF0, CNV_PRC3, MFD_DC, CNV_DQCDT,ENTLAM       &
+                                 ,UMF_DC, CNV_UPDF, CNV_CVW, CNV_QC , CLCN          &
+                                 ,QV_DYN_IN,PLE_DYN_IN,U_DYN_IN,V_DYN_IN,T_DYN_IN   &
+                                 ,RADSW   ,RADLW  ,DQDT_BL  ,DTDT_BL                &
+                                 ,FRLAND, TMP2D, T2M, Q2M      &
+                                 ,TA ,QA ,SH ,EVAP ,PHIS                            &
+                                 ,KPBL ,CNV_FRC, SRF_TYPE                           &
+                                 ,SEEDCNV, SIGMA_DEEP, SIGMA_MID                    &
+                                 ,DQVDT_DC,DTDT_DC,DUDT_DC,DVDT_DC                  &
+                                 ,MUPDP,MUPSH,MUPMD                                 &
+                                 ,MFDP,MFSH,MFMD,ERRDP,ERRSH,ERRMD                  &
+                                 ,AA0,AA1,AA2,AA3,AA1_BL,AA1_CIN,TAU_BL,TAU_EC      &
+                                 ,DTDTDYN,DQVDTDYN                                  &
+                                 ,REVSU, PRFIL)
+    ENDIF
+
+    ! add tendencies to the moist import state
+      U  = U  +  DUDT_DC*GF_DT
+      V  = V  +  DVDT_DC*GF_DT
+      Q  = Q  + DQVDT_DC*GF_DT
+      T  = T  +  DTDT_DC*GF_DT
+      TH = T/PK
+    ! update DeepCu QL/QI/CF tendencies
+      fQi = ice_fraction( T, CNV_FRC, SRF_TYPE )
+      TMP3D    = CNV_DQCDT/MASS
+      DQLDT_DC = (1.0-fQi)*TMP3D
+      DQIDT_DC =      fQi *TMP3D
+      DQADT_DC = MFD_DC*SCLM_DEEP/MASS
+    ! evap/subl and precip fluxes
+      do L=1,LM
+         !--- sublimation/evaporation tendencies (kg/kg/s)
+           RSU_CN (:,:,L) = REVSU(:,:,L)*     fQi(:,:,L)
+           REV_CN (:,:,L) = REVSU(:,:,L)*(1.0-fQi(:,:,L))
+         !--- preciptation fluxes (kg/kg/s)
+           PFI_CN (:,:,L) = PRFIL(:,:,L)*     fQi(:,:,L)
+           PFL_CN (:,:,L) = PRFIL(:,:,L)*(1.0-fQi(:,:,L))
+      enddo
+    ! add QI/QL/CL tendencies
+      QLCN =         QLCN + DQLDT_DC*GF_DT
+      QICN =         QICN + DQIDT_DC*GF_DT
+      CLCN = MAX(MIN(CLCN + DQADT_DC*GF_DT, 1.0), 0.0)
+    ! Export
+      call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_FICE', RC=STATUS); VERIFY_(STATUS)
+      !$ser verbatim if (associated(PTR3D)) then
+         !$ser savepoint GF2020-In_extra_1
+         !$ser data ice_fraction_in_convective_tower_bugworkaroundname=PTR3D
+      !$ser verbatim endif
+      if (associated(PTR3D)) PTR3D = fQi
+      !$ser verbatim if (associated(PTR3D)) then
+         !$ser savepoint GF2020-Out_extra_1
+         !$ser data ice_fraction_in_convective_tower_bugworkaroundname=PTR3D
+      !$ser verbatim endif
+    ! fix 'convective' cloud fraction
+      if (FIX_CNV_CLOUD) then
+      ! fix convective cloud
+      TMP3D = GEOS_DQSAT(T, PL, PASCALS=.true., QSAT=QST3)
+      TMP3D = QST3
+      WHERE (CLCN < 1.0)
+         TMP3D = ( Q - QST3 * CLCN )/(1.-CLCN)
+      END WHERE
+      minrhx = 0.001
+      WHERE ( (( TMP3D - minrhx*QST3 ) < 0.0 ) .AND. (CLCN > 0.0) )
+         CLCN = (Q  - minrhx*QST3 )/( QST3*(1.0-minrhx) )
+      END WHERE
+      ! If still cant make suitable env RH then destroy anvil
+      WHERE ( CLCN < 0.0 )
+         CLCN = 0.
+         DQLDT_DC = DQLDT_DC - (QLCN       )/GF_DT
+         DQIDT_DC = DQIDT_DC - (       QICN)/GF_DT
+         DQVDT_DC = DQVDT_DC + (QLCN + QICN)/GF_DT
+          Q       =  Q       + (QLCN + QICN)
+         TMP3D    = (MAPL_ALHL*QLCN + MAPL_ALHS*QICN)/MAPL_CP
+         DTDT_DC  = DTDT_DC  - TMP3D/GF_DT
+          T       =  T       - TMP3D
+          TH      =  T/PK
+         QLCN = 0.
+         QICN = 0.
+      END WHERE
+      endif
+
+      !--------------------------------------------------------------
+      !  For Now add DeepCu contribution to total/detraining mass flux exports
+      !--------------------------------------------------------------
+       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFC', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       !$ser savepoint GF2020-In_extra_2
+       !$ser data total_cumulative_mass_flux_interface_bugworkaroundname=PTR3D
+       PTR3D = PTR3D + UMF_DC
+       !$ser savepoint GF2020-Out_extra_2
+       !$ser data total_cumulative_mass_flux_interface_bugworkaroundname=PTR3D
+       call MAPL_GetPointer(EXPORT, PTR3D, 'CNV_MFD', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
+       !$ser savepoint GF2020-In_extra_3
+       !$ser data total_detraining_mass_flux_bugworkaroundname=PTR3D
+       PTR3D = PTR3D + MFD_DC
+       !$ser savepoint GF2020-Out_extra_3
+       !$ser data total_detraining_mass_flux_bugworkaroundname=PTR3D
+
+      call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
+       !$ser verbatim if (associated(PTR3D)) then
+         !$ser savepoint GF2020-Out_extra_4
+         !$ser data convective_rainwater_source_bugworkaroundname=PTR3D
+       !$ser verbatim endif
+      if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
+       !$ser verbatim if (associated(PTR3D)) then
+         !$ser savepoint GF2020-Out_extra_4
+         !$ser data convective_rainwater_source_bugworkaroundname=PTR3D
+       !$ser verbatim endif
+
+    ! NOTE this savepoint is also used as GF2020_Finalize-Out
+    ! savepoint is defined above this block (after calls to cumulus parameterization schemes)
+    ! so that the temporary export field PTR3D can be serialized numerous times
+    !$ser savepoint GF2020-Out
+    !$ser data latitude_bugworkaroundname=LATS
+    !$ser data longitude_bugworkaroundname=LONS
+    !$ser data p_interface_bugworkaroundname=PLE
+    !$ser data t_bugworkaroundname=T
+    !$ser data u_bugworkaroundname=U
+    !$ser data v_bugworkaroundname=V
+    !$ser data w_bugworkaroundname=W
+    !$ser data omega_bugworkaroundname=OMEGA
+    !$ser data t_2m_bugworkaroundname=T2M
+    !$ser data specific_humidity_2m_bugworkaroundname=Q2M
+    !$ser data t_surface_bugworkaroundname=TA
+    !$ser data specific_humidity_surface_bugworkaroundname=QA
+    !$ser data vapor_bugworkaroundname=Q
+    !$ser data convective_liquid_bugworkaroundname=QLCN
+    !$ser data convective_ice_bugworkaroundname=QICN
+    !$ser data convective_cloud_fraction_bugworkaroundname=CLCN
+    !$ser data large_scale_liquid_bugworkaroundname=QLLS
+    !$ser data large_scale_ice_bugworkaroundname=QILS
+    !$ser data large_scale_cloud_fraction_bugworkaroundname=CLLS
+    !$ser data p_interface_timestep_start_bugworkaroundname=PLE_DYN_IN
+    !$ser data t_timestep_start_bugworkaroundname=T_DYN_IN
+    !$ser data u_timestep_start_bugworkaroundname=U_DYN_IN
+    !$ser data v_timestep_start_bugworkaroundname=V_DYN_IN
+    !$ser data vapor_timestep_start_bugworkaroundname=QV_DYN_IN
+    !$ser data geopotential_height_interface_bugworkaroundname=ZLE
+    !$ser data geopotential_height_surface_bugworkaroundname=PHIS
+    !$ser data area_bugworkaroundname=AREA
+    !$ser data pbl_level_bugworkaroundname=KPBL
+    !$ser data convection_fraction_bugworkaroundname=CNV_FRC
+    !$ser data surface_type_bugworkaroundname=SRF_TYPE
+    !$ser data seed_convection_bugworkaroundname=SEEDCNV
+    !$ser data land_fraction_bugworkaroundname=FRLAND
+    !$ser data scalar_diffusivity_bugworkaroundname=KH
+    !$ser data buoyancy_bugworkaroundname=BYNCY
+    !$ser data convective_precipitation_GF_bugworkaroundname=CNPCPRATE
+    !$ser data convective_precipitation_RAS_bugworkaroundname=CNV_PRC3
+    !$ser data sensible_heat_flux_bugworkaroundname=SH
+    !$ser data total_water_flux_deep_convection_interface_bugworkaroundname=WQT_DC
+    !$ser data evaporation_bugworkaroundname=EVAP
+    !$ser data sublimation_of_convective_precipitation_bugworkaroundname=RSU_CN
+    !$ser data evaporation_of_convective_precipitation_bugworkaroundname=REV_CN
+    !$ser data ice_precip_flux_interface_bugworkaroundname=PFI_CN
+    !$ser data liquid_precip_flux_interface_bugworkaroundname=PFL_CN
+    !$ser data convective_condensate_source_bugworkaroundname=CNV_DQCDT
+    !$ser data convective_condensate_grid_mean_bugworkaroundname=CNV_QC
+    !$ser data entrainment_parameter_bugworkaroundname=ENTLAM
+    !$ser data lateral_entrainment_rate_bugworkaroundname=ENTR
+    !$ser data lateral_entrainment_rate_shallow_bugworkaroundname=ENTR_SH
+    !$ser data lateral_entrainment_rate_mid_bugworkaroundname=ENTR_MD
+    !$ser data lateral_entrainment_rate_deep_bugworkaroundname=ENTR_DP
+    !$ser data updraft_areal_fraction_bugworkaroundname=CNV_UPDF
+    !$ser data updraft_vertical_velocity_bugworkaroundname=CNV_CVW
+    !$ser data dtdt_shortwave_bugworkaroundname=RADSW
+    !$ser data dtdt_longwave_bugworkaroundname=RADLW
+    !$ser data dspecific_humiditydt_pbl_bugworkaroundname=DQDT_BL
+    !$ser data dtdt_pbl_bugworkaroundname=DTDT_BL
+    !$ser data dtdt_from_dynamics_bugworkaroundname=DTDTDYN
+    !$ser data dvapordt_from_dynamics_bugworkaroundname=DQVDTDYN
+    !$ser data sigma_mid_bugworkaroundname=SIGMA_MID
+    !$ser data sigma_deep_bugworkaroundname=SIGMA_DEEP
+    !$ser data total_precipitable_water_initial_bugworkaroundname=TPWI
+    !$ser data saturation_total_precipitable_water_initial_bugworkaroundname=TPWI_star
+    !$ser data dvapordt_deep_convection_bugworkaroundname=DQVDT_DC
+    !$ser data dtdt_deep_convection_bugworkaroundname=DTDT_DC
+    !$ser data dudt_deep_convection_bugworkaroundname=DUDT_DC
+    !$ser data dvdt_deep_convection_bugworkaroundname=DVDT_DC
+    !$ser data dliquiddt_deep_convection_bugworkaroundname=DQLDT_DC
+    !$ser data dicedt_deep_convection_bugworkaroundname=DQIDT_DC
+    !$ser data dcloudfractiondt_deep_convection_bugworkaroundname=DQADT_DC
+    !$ser data pressure_shallow_convective_cloud_top_bugworkaroundname=CNV_TOPP_SH
+    !$ser data pressure_mid_convective_cloud_top_bugworkaroundname=CNV_TOPP_MD
+    !$ser data pressure_deep_convective_cloud_top_bugworkaroundname=CNV_TOPP_DP
+    !$ser data mass_flux_shallow_bugworkaroundname=MUPSH
+    !$ser data mass_flux_mid_bugworkaroundname=MUPMD
+    !$ser data mass_flux_deep_updraft_bugworkaroundname=MUPDP
+    !$ser data mass_flux_deep_updraft_interface_bugworkaroundname=UMF_DC
+    !$ser data mass_flux_deep_updraft_detrained_bugworkaroundname=MFD_DC
+    !$ser data mass_flux_deep_downdraft_bugworkaroundname=MDNDP
+    !$ser data mass_flux_cloud_base_bugworkaroundname=CNV_MF0
+    !$ser data mass_flux_cloud_base_shallow_bugworkaroundname=MFSH
+    !$ser data mass_flux_cloud_base_mid_bugworkaroundname=MFMD
+    !$ser data mass_flux_cloud_base_deep_bugworkaroundname=MFDP
+    !$ser data convection_code_shallow_bugworkaroundname=ERRSH
+    !$ser data convection_code_mid_bugworkaroundname=ERRMD
+    !$ser data convection_code_deep_bugworkaroundname=ERRDP
+    !$ser data cloud_workfunction_0_bugworkaroundname=AA0
+    !$ser data cloud_workfunction_1_bugworkaroundname=AA1
+    !$ser data cloud_workfunction_2_bugworkaroundname=AA2
+    !$ser data cloud_workfunction_3_bugworkaroundname=AA3
+    !$ser data cloud_workfunction_1_pbl_bugworkaroundname=AA1_BL
+    !$ser data cloud_workfunction_1_cin_bugworkaroundname=AA1_CIN
+    !$ser data pbl_time_scale_bugworkaroundname=TAU_BL
+    !$ser data cape_removal_time_scale_bugworkaroundname=TAU_EC
+    !$ser data lightning_density_bugworkaroundname=LFR_GF
+    !$ser data convection_tracer_bugworkaroundname=CNV_TR
+    call MAPL_TimerOff (MAPL,"--GF")
+
+    endif
+
+    endif ! USE_PYMOIST_GF2020
+
+end subroutine GF_Run
+
+subroutine GF_Finalize(gc, import, export, rc)
+
+  type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+  type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+  type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+  integer, optional,   intent(  out) :: RC     ! Error code
+  
+  type (MAPL_MetaComp), pointer   :: MAPL
+  
+  ! Get my internal MAPL_Generic state
+  !-----------------------------------
+  call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+  VERIFY_(STATUS)
+
+
+  if (USE_PYMOIST_GF2020) then
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+  endif
+
+end subroutine GF_Finalize
+
+end module GEOS_GF_InterfaceMod
