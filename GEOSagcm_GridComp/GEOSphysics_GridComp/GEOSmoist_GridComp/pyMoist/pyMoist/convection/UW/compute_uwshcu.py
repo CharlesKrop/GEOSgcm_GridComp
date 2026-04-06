@@ -1272,38 +1272,6 @@ def find_cumulus_characteristics(
         vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
         tpert_out [FloatFieldIJ]: Temperature perturbation
         qpert_out [FloatFieldIJ]: Humidity perturbation
-    Arguments:
-        condensation [BoolFieldIJ]: Mask that indicates if condensation has occurred
-        windsrcavg [Int]: Source air uses PBL mean momentum
-        pifc0 [FloatField]: Environmental pressure at the interfaces [Pa]
-        t0 [FloatField]: Environmental temperature [K]
-        qv0 [FloatField]: Environmental specific humidity
-        shfx [FloatFieldIJ]: Surface sensible heat [J]
-        evap [FloatFieldIJ]: Surface evaporation [kg/m^2/s]
-        thlsrc_fac [Float]: Scaling factor for thlsrc perturbation
-        qtsrc_fac [Float]: Scaling factor for qtsrc perturbation
-        qt0 [FloatField]: Mixing ratio [?]
-        qtavg [FloatField]: Average qt over the PBL [?]
-        thvlmin [FloatField]: Minimum 'thvl' within PBL, obtained by comparing top & base
-        uavg [FloatField]: Average u over the PBL [?]
-        vavg [FloatField]: Average v over the PBL [?]
-        kinv [IntField]: Inversion layer with PBL top interface as lower interface
-        u0 [FloatField]: Environmental zonal wind [m/s]
-        v0 [FloatField]: Environmental meridional wind [m/s]
-        ssu0 [FloatField]: [?]
-        ssv0 [FloatField]: [?]
-        pmid0 [FloatField]: Environmental pressure at the layer mid-point [Pa]
-        dotransport [Int]: Transport tracers [1 true]
-        tr0 [FloatField_NTracers]: Environmental tracers [#, kg/kg]
-        iteration [int32]: Iteration of implicit CIN loop (i.e., 0 or 1)
-        trsrc [FloatFieldIJ_NTracers]: Tracers of cumulus source air [?]
-        qtsrc [FloatField]: Mixing ratio of cumulus source air [?]
-        thvlsrc [FloatField]: Temperature of cumulus source air [K] [?]
-        thlsrc [FloatField]: Temperature of cumulus source air [K] [?]
-        usrc [FloatField]: Zonal wind of cumulus source air [m/s] [?]
-        vsrc [FloatField]: Meridional wind of cumulus source air [m/s] [?]
-        tpert_out [FloatFieldIJ]: Temperature perturbation
-        qpert_out [FloatFieldIJ]: Humidity perturbation
     """
     from __externals__ import dotransport, ncnst, qtsrc_fac, thlsrc_fac, windsrcavg
 
@@ -1312,7 +1280,7 @@ def find_cumulus_characteristics(
             if windsrcavg == 1:
                 # Caution: This code has not been tested
                 # tpert_out and qpert_out need to be checked
-                zrho = pifc0.at(K=1) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
+                zrho = pifc0.at(K=0) / (287.04 * (t0.at(K=0) * (1.0 + 0.608 * qv0.at(K=0))))
                 buoyflx = (-shfx / constants.MAPL_CP - 0.608 * t0.at(K=0) * evap) / zrho  # K m s-1
                 delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
                 wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
