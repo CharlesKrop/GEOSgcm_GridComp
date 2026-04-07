@@ -7472,7 +7472,7 @@ ENDIF ! vertical discretization
          !$ser verbatim call ser_set_D4(MAXIENS*mtp)
          !$ser verbatim do kk=mtp*(SER_CURRENT_PLUME-1)+1,mtp*SER_CURRENT_PLUME
             !$ser verbatim call ser_set_idx_d4(kk)
-            !$ser data_buffered Dx=4 chemistry_tracers=se_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
+            !$ser data_buffered Dx=4 chemistry_tracers_databuffered=se_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
             !$ser data_buffered Dx=4 chemistry_tracers_output=out_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
             !$ser data_buffered Dx=4 local_chemistry_tracers_cloud_levels=se_cup_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
             !$ser data_buffered Dx=4 local_chemistry_tracers_sc_updraft=sc_up_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
@@ -7752,7 +7752,7 @@ ENDIF !- end of section for atmospheric composition
          !$ser verbatim call ser_set_D4(MAXIENS*mtp)
          !$ser verbatim do kk=mtp*(SER_CURRENT_PLUME-1)+1,mtp*SER_CURRENT_PLUME
             !$ser verbatim call ser_set_idx_d4(kk)
-            !$ser data_buffered Dx=4 chemistry_tracers=se_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
+            !$ser data_buffered Dx=4 chemistry_tracers_databuffered=se_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
             !$ser data_buffered Dx=4 chemistry_tracers_output=out_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
             !$ser data_buffered Dx=4 local_chemistry_tracers_cloud_levels=se_cup_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
             !$ser data_buffered Dx=4 local_chemistry_tracers_sc_updraft=sc_up_chem(kk-mtp*(SER_CURRENT_PLUME-1),i,k)
