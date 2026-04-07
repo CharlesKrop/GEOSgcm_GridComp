@@ -1141,11 +1141,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data cape_removal_time_scale_bugworkaroundname=TAU_EC
     !$ser data lightning_density_bugworkaroundname=LFR_GF
     !$ser data convection_tracer_bugworkaroundname=CNV_TR
+    endif ! USE_PYMOIST_GF2020
+   
     call MAPL_TimerOff (MAPL,"--GF")
 
     endif
-
-    endif ! USE_PYMOIST_GF2020
 
 end subroutine GF_Run
 
