@@ -122,10 +122,10 @@ class TranslateGF2020(TranslateFortranData2Py):
         self.convection_tracers_input = data_loader.load("GF2020_ConvectionTracers")
 
         # workaround because translate test cannot read in 4d fields
-        self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-Out")
+        self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-Out", use_dynamic_i_call=True)
 
         # load data from GF2020-In to fill in unmodified fields from the state
-        self.unmodified_state = data_loader.load("GF2020-In")
+        self.unmodified_state = data_loader.load("GF2020-In", use_dynamic_i_call=True)
 
     def compute(self, inputs):
         config = GF2020Config(**self.constants)
