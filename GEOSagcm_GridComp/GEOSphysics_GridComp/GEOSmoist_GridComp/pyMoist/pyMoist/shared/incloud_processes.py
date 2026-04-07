@@ -17,7 +17,7 @@ from ndsl.dsl.gt4py import (
     round_away_from_zero,
     sin,
 )
-from ndsl.dsl.typing import Float, FloatField
+from ndsl.dsl.typing import Float, FloatField, Int
 from pyMoist.shared.atmos_recipes import air_density
 
 
@@ -34,36 +34,66 @@ def ice_fraction_modis(
 
 @function
 def ice_fraction(
-    temp: Float,
-    cnv_frc: Float,
-    srf_type: Float,
+    temp,
+    cnv_frc,
+    srf_type,
 ):
+    """Determine the ice/liquid fraction.
+
+    Args:
+        temp (Float): temperature (Kelvin)
+        cnv_frc (Float): convection fraction within the column
+        srf_type (Float): surface type
+
+    Returns:
+        Float: ice fraction
+    """
     # Anvil clouds
     # Anvil-Convective sigmoidal function like figure 6(right)
     # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-    if temp <= constants.JaT_ICE_ALL:
-        icefrct_c = 1.000
-    elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
-        icefrct_c = sin(
-            0.5
-            * constants.MAPL_PI
-            * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL))
-        )
+    if constants.ICE_RADII_PARAM == 1:
+        # Jason formula
+        if temp <= constants.JaT_ICE_ALL:
+            icefrct_c = 1.000
+        elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
+            icefrct_c = sin(
+                0.5
+                * constants.MAPL_PI
+                * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL))
+            )
+        else:
+            icefrct_c = 0.00
     else:
-        icefrct_c = 0.00
+        # Default formula
+        if temp <= constants.aT_ICE_ALL:
+            icefrct_c = 1.000
+        elif temp > constants.aT_ICE_ALL and temp <= constants.aT_ICE_MAX:
+            icefrct_c = sin(
+                0.5
+                * constants.MAPL_PI
+                * (1.00 - (temp - constants.aT_ICE_ALL) / (constants.aT_ICE_MAX - constants.aT_ICE_ALL))
+            )
+        else:
+            icefrct_c = 0.00
     icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** constants.aICEFRPWR
+
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-    if srf_type == 2.0:
-        if temp <= constants.JiT_ICE_ALL:
+    srf_type_int = round(srf_type)
+
+    if srf_type_int == 2 or srf_type_int == 3:  # 2 = snow, 3 = ice
+        if temp <= constants.iT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.JiT_ICE_ALL and temp <= constants.JiT_ICE_MAX:
-            icefrct_m = 1.00 - (temp - constants.JiT_ICE_ALL) / (
-                constants.JiT_ICE_MAX - constants.JiT_ICE_ALL
+        elif temp > constants.iT_ICE_ALL and temp <= constants.iT_ICE_MAX:
+            icefrct_m = sin(
+                0.5
+                * constants.MAPL_PI
+                * (1.00 - (temp - constants.iT_ICE_ALL) / (constants.iT_ICE_MAX - constants.iT_ICE_ALL))
             )
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
-    elif srf_type > 1.0:
+
+    elif srf_type_int == 1:  # land
         if temp <= constants.lT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
@@ -75,7 +105,8 @@ def ice_fraction(
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
-    else:
+
+    elif srf_type_int == 0:  # ocean
         if temp <= constants.oT_ICE_ALL:
             icefrct_m = 1.000
         elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
@@ -87,6 +118,11 @@ def ice_fraction(
         else:
             icefrct_m = 0.00
         icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
+
+    else:
+        # unknown surface type detected - you should not be here
+        icefrct_m = -999
+
     ice_frac = icefrct_m * (1.0 - cnv_frc) + icefrct_c * cnv_frc
     return ice_frac
 

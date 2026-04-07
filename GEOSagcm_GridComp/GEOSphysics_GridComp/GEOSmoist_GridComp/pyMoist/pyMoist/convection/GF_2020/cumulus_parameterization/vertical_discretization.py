@@ -335,18 +335,7 @@ def convective_transport_of_mse(
 
                     del_moist_static_energy_cloud_ensemble = (
                         del_moist_static_energy_cloud_ensemble
-                        + cumulus_parameterization_constants.XLF
-                        * (
-                            (1.0 - partition_liquid_ice)
-                            * 0.5
-                            * (
-                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
-                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            )
-                            - melting
-                        )
-                        * constants.MAPL_GRAV
-                        / dp
+                        - cumulus_parameterization_constants.XLF * melting * constants.MAPL_GRAV / dp
                     )
 
                     # for output only
