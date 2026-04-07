@@ -20,7 +20,7 @@ from .convection.GF_2020.cumulus_parameterization.buoyancy.translate_GF2020_Cumu
     TranslateGF2020_CumulusParameterization_GetBuoyancy_3_mid,
     TranslateGF2020_CumulusParameterization_GetBuoyancy_3_shallow,
 )
-from .convection.GF_2020.cumulus_parameterization.convection_tracers.translate_GF2020_Cumulus_Parameterization_AtmosphericComposition import (
+from .convection.GF_2020.cumulus_parameterization.convection_tracers.translate_GF2020_CumulusParameterization_AtmosphericComposition import (
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_deep,
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_mid,
     TranslateGF2020_CumulusParameterization_AtmosphericComposition_shallow,
@@ -180,7 +180,7 @@ from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_Cumulu
     TranslateGF2020_CumulusParameterization_CloudDissipation_mid,
     TranslateGF2020_CumulusParameterization_CloudDissipation_shallow,
 )
-from .convection.GF_2020.cumulus_parameterization.precip.translate_GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels import (
+from .convection.GF_2020.cumulus_parameterization.get_levels.translate_GF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels import (
     TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_deep,
     TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_mid,
     TranslateGF2020_CumulusParameterization_PartitionLiquidIceAndGetLevels_shallow,
