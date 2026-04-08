@@ -193,7 +193,6 @@ class TranslateGF2020(TranslateFortranData2Py):
         state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"] - 1
         state.convection_fraction.field[:] = inputs["convection_fraction_bugworkaroundname"]
         state.surface_type.field[:] = inputs["surface_type_bugworkaroundname"]
-        state.seed_convection.field[:] = inputs["seed_convection_bugworkaroundname"]
         state.land_fraction.field[:] = inputs["land_fraction_bugworkaroundname"]
         state.scalar_diffusivity.field[:] = inputs["scalar_diffusivity_bugworkaroundname"]
         state.buoyancy.field[:] = inputs["buoyancy_bugworkaroundname"]

@@ -596,7 +596,9 @@ def set_2d_fields(
 
         # sensible–heat_flux comes in W m-2, below it is converted to K m s-1
         sensible_heat_flux_local = sensible_heat_flux / (
-            1004.0 * p_interface.at(K=k_end + 1) / (287.04 * t.at(K=k_end) * (1.0 + 0.608 * vapor.at(K=k_end)))
+            1004.0
+            * p_interface.at(K=k_end + 1)
+            / (287.04 * t.at(K=k_end) * (1.0 + 0.608 * vapor.at(K=k_end)))
         )  # K m s-1
 
         # topography height  (m)
@@ -1275,7 +1277,7 @@ class GF2020Setup(NDSLRuntime):
 
         self._zero_state = stencil_factory.from_dims_halo(
             func=zero_state,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
 
         self._prefill_cumulus_parameterization_state = stencil_factory.from_dims_halo(

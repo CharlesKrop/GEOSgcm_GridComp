@@ -7,38 +7,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-from pyMoist.shared.incloud_processes import ice_fraction
-
-
-@function
-def liquid_fraction(
-    t,
-    convection_fraction,
-    surface_type,
-    FRAC_MODIS,
-):
-    """
-    Get the fraction of liquid condensates
-
-    Args:
-        t (in): temperature
-        convection_fraction (in)
-        surface_type (in)
-        FRAC_MODIS (in): use fraction liq/ice content derived from MODIS/CALIPO sensors
-    """
-    if FRAC_MODIS == 1:
-        liquid_fraction = 1.0 - ice_fraction(t, convection_fraction, surface_type)
-    else:
-        liquid_fraction = min(
-            1.0,
-            (
-                max(0.0, (t - cumulus_parameterization_constants.T_ICE))
-                / (cumulus_parameterization_constants.T_0 - cumulus_parameterization_constants.T_ICE)
-            )
-            ** 2,
-        )
-
-    return liquid_fraction
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import liquid_fraction
 
 
 def partition_liquid_ice(

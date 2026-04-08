@@ -732,11 +732,11 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
+    endif ! USE_PYMOIST_GF2020
+   
     call MAPL_TimerOff (MAPL,"--GF")
 
     endif
-
-    endif ! USE_PYMOIST_GF2020
 
 end subroutine GF_Run
 
