@@ -84,8 +84,6 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "dvapordt_from_dynamics_bugworkaroundname": {},
             "sigma_mid_bugworkaroundname": {},
             "sigma_deep_bugworkaroundname": {},
-            "total_precipitable_water_initial_bugworkaroundname": {},
-            "saturation_total_precipitable_water_initial_bugworkaroundname": {},
             "dvapordt_deep_convection_bugworkaroundname": {},
             "dtdt_deep_convection_bugworkaroundname": {},
             "dudt_deep_convection_bugworkaroundname": {},
@@ -323,12 +321,6 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.dvapordt_from_dynamics.field[:] = inputs["dvapordt_from_dynamics_bugworkaroundname"]
         state.sigma_mid.field[:] = inputs["sigma_mid_bugworkaroundname"]
         state.sigma_deep.field[:] = inputs["sigma_deep_bugworkaroundname"]
-        state.total_precipitable_water_initial.field[:] = inputs[
-            "total_precipitable_water_initial_bugworkaroundname"
-        ]
-        state.saturation_total_precipitable_water_initial.field[:] = inputs[
-            "saturation_total_precipitable_water_initial_bugworkaroundname"
-        ]
         state.dvapordt_deep_convection.field[:] = inputs["dvapordt_deep_convection_bugworkaroundname"]
         state.dtdt_deep_convection.field[:] = inputs["dtdt_deep_convection_bugworkaroundname"]
         state.dudt_deep_convection.field[:] = inputs["dudt_deep_convection_bugworkaroundname"]

@@ -258,6 +258,10 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
         # load data from GF2020-In to fill in unmodified fields from the state
         self.unmodified_state = data_loader.load("GF2020-In", use_dynamic_i_call=True)
 
+        # load data from GF2020_Finalize-Out to get total_precipitable_water_initial and
+        # saturation total_precipitable_water_initial
+        self.manual_outputs = data_loader.load("GF2020_Finalize-Out", use_dynamic_i_call=True)
+
     def compute(self, inputs):
         config = GF2020Config(**self.constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**self.cu_param_constants)
@@ -360,10 +364,10 @@ class TranslateGF2020_Finalize(TranslateFortranData2Py):
         ]
         # state.sigma_mid.field[:] = self.unmodified_state["sigma_mid_bugworkaroundname"]
         # state.sigma_deep.field[:] = self.unmodified_state["sigma_deep_bugworkaroundname"]
-        state.total_precipitable_water_initial.field[:] = self.unmodified_state[
+        state.total_precipitable_water_initial.field[:] = self.manual_outputs[
             "total_precipitable_water_initial_bugworkaroundname"
         ]
-        state.saturation_total_precipitable_water_initial.field[:] = self.unmodified_state[
+        state.saturation_total_precipitable_water_initial.field[:] = self.manual_outputs[
             "saturation_total_precipitable_water_initial_bugworkaroundname"
         ]
         # state.dvapordt_deep_convection.field[:] = self.unmodified_state["dvapordt_deep_convection_bugworkaroundname"]
