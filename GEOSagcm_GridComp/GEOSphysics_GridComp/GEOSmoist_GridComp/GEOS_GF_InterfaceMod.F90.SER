@@ -697,8 +697,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data dvapordt_from_dynamics_bugworkaroundname=DQVDTDYN
     !$ser data sigma_mid_bugworkaroundname=SIGMA_MID
     !$ser data sigma_deep_bugworkaroundname=SIGMA_DEEP
-    !$ser data total_precipitable_water_initial_bugworkaroundname=TPWI
-    !$ser data saturation_total_precipitable_water_initial_bugworkaroundname=TPWI_star
     !$ser data dvapordt_deep_convection_bugworkaroundname=DQVDT_DC
     !$ser data dtdt_deep_convection_bugworkaroundname=DTDT_DC
     !$ser data dudt_deep_convection_bugworkaroundname=DUDT_DC
