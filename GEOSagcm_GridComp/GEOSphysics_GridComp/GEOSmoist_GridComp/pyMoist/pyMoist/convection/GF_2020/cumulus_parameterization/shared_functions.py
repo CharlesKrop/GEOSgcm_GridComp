@@ -186,7 +186,15 @@ def liquid_fraction(
     surface_type,
     FRAC_MODIS,
 ):
+    """
+    Get the fraction of liquid condensates
 
+    Args:
+        t (in): temperature
+        convection_fraction (in)
+        surface_type (in)
+        FRAC_MODIS (in): use fraction liq/ice content derived from MODIS/CALIPO sensors
+    """
     if FRAC_MODIS == 1:
         liquid_fraction = 1.0 - ice_fraction(t, convection_fraction, surface_type)
     else:
@@ -200,28 +208,3 @@ def liquid_fraction(
         )
 
     return liquid_fraction
-
-
-# @function
-# def get_delmix(
-#     ocean_fraction,
-#     sub_cloud_level,
-#     p_forced,
-#     in_var,
-#     out_var,
-# ):
-#     internal_var = out_var.at(K=0)
-#     x1 = 0.0
-#     x2 = 0.0
-#     level = 0
-#     while level <= sub_cloud_level:
-#         dp = p_forced[0,0,1] - p_forced
-#         x1 = x1 + dp*in_var
-#         x2 = x2 + dp
-#         level += 1
-
-#     delta = abs(internal_var-x1/(x2 + 1.e-12))
-
-#     level = 0
-#     while level <= sub_cloud_level:
-#         out_var =

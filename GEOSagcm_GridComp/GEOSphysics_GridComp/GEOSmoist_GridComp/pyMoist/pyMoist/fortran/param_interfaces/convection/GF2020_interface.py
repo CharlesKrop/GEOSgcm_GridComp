@@ -507,11 +507,11 @@ class GF2020Interface(UserCode):
         self._managed_state.register("entrainment_parameter", "ENTLAM", export_repository, alloc=True)
         self._managed_state.register("lateral_entrainment_rate", "ENTR", export_repository, alloc=True)
         self._managed_state.register(
-            "lateral_entrainment_rate_shallow", "ENTR_DP", export_repository, alloc=True
+            "lateral_entrainment_rate_shallow", "ENTR_SH", export_repository, alloc=True
         )
         self._managed_state.register("lateral_entrainment_rate_mid", "ENTR_MD", export_repository, alloc=True)
         self._managed_state.register(
-            "lateral_entrainment_rate_deep", "ENTR_SH", export_repository, alloc=True
+            "lateral_entrainment_rate_deep", "ENTR_DP", export_repository, alloc=True
         )
         self._managed_state.register("updraft_areal_fraction", "CNV_UPDF", export_repository, alloc=True)
         self._managed_state.register("updraft_vertical_velocity", "CNV_CVW", export_repository, alloc=True)
