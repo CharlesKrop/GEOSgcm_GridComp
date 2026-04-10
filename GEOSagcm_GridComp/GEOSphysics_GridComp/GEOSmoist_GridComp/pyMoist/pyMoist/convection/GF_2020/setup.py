@@ -1298,8 +1298,8 @@ class GF2020Setup(NDSLRuntime):
             func=set_2d_fields,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "SIZE_I_DIM": stencil_factory.grid_indexing.get_shape([I_DIM])[0],
-                "SIZE_J_DIM": stencil_factory.grid_indexing.get_shape([J_DIM])[0],
+                "SIZE_I_DIM": stencil_factory.grid_indexing.domain[0],
+                "SIZE_J_DIM": stencil_factory.grid_indexing.domain[1],
             },
         )
 
