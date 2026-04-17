@@ -405,6 +405,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+    
+    ! DSL fields
+    real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
 
     call ESMF_ClockGetAlarm(clock, 'GF_RunAlarm', alarm, RC=STATUS); VERIFY_(STATUS)
     alarm_is_ringing = ESMF_AlarmIsRinging(alarm, RC=STATUS); VERIFY_(STATUS)
@@ -438,8 +441,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
 
     if (USE_PYMOIST_GF2020) then
-      call MAPL_GetPointer(INTERNAL, LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      DSL__GF2020_LONS = LONS
+      DSL__GF2020_LATS = LATS
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
 
@@ -502,6 +507,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( SEEDINI(IM,JM) )
     ALLOCATE ( SEEDCNV(IM,JM) )
     ALLOCATE ( TMP2D  (IM,JM) )
+
+    ! DSL fields
+   !  ALLOCATE ( DSL__GF2020_LONS(IM,JM) )
+   !  ALLOCATE ( DSL__GF2020_LATS(IM,JM) )
 
     ! derived quantaties
     ! Derived States

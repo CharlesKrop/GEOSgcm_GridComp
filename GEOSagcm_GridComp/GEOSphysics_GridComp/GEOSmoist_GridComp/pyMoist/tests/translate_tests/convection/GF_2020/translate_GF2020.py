@@ -77,8 +77,6 @@ class TranslateGF2020(TranslateFortranData2Py):
             "dvapordt_from_dynamics_bugworkaroundname": {},
             "sigma_mid_bugworkaroundname": {},
             "sigma_deep_bugworkaroundname": {},
-            "total_precipitable_water_initial_bugworkaroundname": {},
-            "saturation_total_precipitable_water_initial_bugworkaroundname": {},
             "dvapordt_deep_convection_bugworkaroundname": {},
             "dtdt_deep_convection_bugworkaroundname": {},
             "dudt_deep_convection_bugworkaroundname": {},
@@ -122,10 +120,10 @@ class TranslateGF2020(TranslateFortranData2Py):
         self.convection_tracers_input = data_loader.load("GF2020_ConvectionTracers")
 
         # workaround because translate test cannot read in 4d fields
-        self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-Out")
+        self.manual_inputs = data_loader.load("GF2020_CumulusParameterization-Out", use_dynamic_i_call=True)
 
         # load data from GF2020-In to fill in unmodified fields from the state
-        self.unmodified_state = data_loader.load("GF2020-In")
+        self.unmodified_state = data_loader.load("GF2020-In", use_dynamic_i_call=True)
 
     def compute(self, inputs):
         config = GF2020Config(**self.constants)
@@ -226,12 +224,6 @@ class TranslateGF2020(TranslateFortranData2Py):
         state.dvapordt_from_dynamics.field[:] = inputs["dvapordt_from_dynamics_bugworkaroundname"]
         state.sigma_mid.field[:] = inputs["sigma_mid_bugworkaroundname"]
         state.sigma_deep.field[:] = inputs["sigma_deep_bugworkaroundname"]
-        state.total_precipitable_water_initial.field[:] = inputs[
-            "total_precipitable_water_initial_bugworkaroundname"
-        ]
-        state.saturation_total_precipitable_water_initial.field[:] = inputs[
-            "saturation_total_precipitable_water_initial_bugworkaroundname"
-        ]
         state.dvapordt_deep_convection.field[:] = inputs["dvapordt_deep_convection_bugworkaroundname"]
         state.dtdt_deep_convection.field[:] = inputs["dtdt_deep_convection_bugworkaroundname"]
         state.dudt_deep_convection.field[:] = inputs["dudt_deep_convection_bugworkaroundname"]
