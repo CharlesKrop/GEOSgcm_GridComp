@@ -129,6 +129,9 @@ class GF2020Interface(UserCode):
             min_entrainment_rate = Float(
                 maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.3e-4))
             )
+            entrainment_rate_shallow=Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_mid=Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_deep=Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
         else:
             entrversion = Int(maplpy.get_resource("ENTRVERSION:", mapl_state, default=Int(1)))
 
@@ -212,6 +215,9 @@ class GF2020Interface(UserCode):
             min_entrainment_rate = Float(
                 maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.1e-4))
             )
+            entrainment_rate_shallow=Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_mid=Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
+            entrainment_rate_deep=Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
 
         config = GF2020Config(
             DT_MOIST=Float(maplpy.get_resource("DSL__GF2020_DT", mapl_state, default=Float(0.0))),
@@ -288,11 +294,9 @@ class GF2020Interface(UserCode):
             ENABLE_SHALLOW=Int(maplpy.get_resource("SHALLOW:", mapl_state, default=Int(0))),
             ENABLE_MID=Int(maplpy.get_resource("CONGESTUS:", mapl_state, default=Int(1))),
             ENABLE_DEEP=Int(maplpy.get_resource("DEEP:", mapl_state, default=Int(1))),
-            ENTRAINMENT_RATE_SHALLOW=Float(
-                maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4))
-            ),
-            ENTRAINMENT_RATE_MID=Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(1.0e-4))),
-            ENTRAINMENT_RATE_DEEP=Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4))),
+            ENTRAINMENT_RATE_SHALLOW=entrainment_rate_shallow,
+            ENTRAINMENT_RATE_MID=entrainment_rate_mid,
+            ENTRAINMENT_RATE_DEEP=entrainment_rate_deep,
             C0_SHAL=Float(maplpy.get_resource("C0_SHAL:", mapl_state, default=Float(0.0))),
             C0_MID=Float(maplpy.get_resource("C0_MID:", mapl_state, default=Float(2.0e-3))),
             C0_DEEP=Float(maplpy.get_resource("C0_DEEP:", mapl_state, default=Float(2.0e-3))),
@@ -429,9 +433,7 @@ class GF2020Interface(UserCode):
         self._managed_state.register("large_scale_liquid", "QLLS", internal_repository)
         self._managed_state.register("large_scale_ice", "QILS", internal_repository)
         self._managed_state.register("large_scale_cloud_fraction", "CLLS", internal_repository)
-        self._managed_state.register(
-            "ice_fraction_in_convective_tower", "CNV_FICE", export_repository, alloc=True
-        )
+        self._managed_state.register("ice_fraction_in_convective_tower", "CNV_FICE", export_repository)
         self._managed_state.register(
             "p_interface_timestep_start",
             "PLE_DYN_IN",
@@ -468,7 +470,7 @@ class GF2020Interface(UserCode):
         self._managed_state.register(
             "convective_precipitation_RAS", "CNV_PRC3", export_repository, alloc=True
         )
-        self._managed_state.register("convective_rainwater_source", "DQRC", export_repository, alloc=True)
+        self._managed_state.register("convective_rainwater_source", "DQRC", export_repository)
         self._managed_state.register("sensible_heat_flux", "SH", import_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register(
             "total_water_flux_deep_convection_interface",
@@ -662,7 +664,6 @@ class GF2020Interface(UserCode):
 
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
                 self._managed_state.record("GF2020-In_python")
-                self._managed_state.save_recorded()
                 self._gf_2020(
                     state=self._managed_state.ndsl_state,
                     convection_tracers=self._managed_convection_tracers.ndsl_state,
@@ -671,7 +672,6 @@ class GF2020Interface(UserCode):
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
-                self._managed_state.record("GF2020-Out")
 
     def finalize(
         self,
