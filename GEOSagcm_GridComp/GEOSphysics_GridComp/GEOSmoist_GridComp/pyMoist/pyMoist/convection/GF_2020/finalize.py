@@ -945,7 +945,6 @@ def update_state_with_tendencies(
     convective_precip_flux: FloatField,
     sublimation_of_convective_precipitation: FloatField,
     evaporation_of_convective_precipitation: FloatField,
-    ice_fraction_in_convective_tower: FloatField,
     ice_precip_flux_interface: FloatField,
     liquid_precip_flux_interface: FloatField,
     convective_liquid: FloatField,
@@ -955,6 +954,7 @@ def update_state_with_tendencies(
     convective_precipitation_RAS: FloatField,
     ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
+    fraction_ice: FloatField,
 ):
     """Update the model state (excluding the few fields which have already been updated in earlier
     stencils) with the output from the cumulus parameterization core.
@@ -988,7 +988,6 @@ def update_state_with_tendencies(
         convective_precip_flux (FloatField)
         sublimation_of_convective_precipitation (FloatField)
         evaporation_of_convective_precipitation (FloatField)
-        ice_fraction_in_convective_tower (FloatField)
         ice_precip_flux_interface (FloatField)
         liquid_precip_flux_interface (FloatField)
         convective_liquid (FloatField)
@@ -998,6 +997,7 @@ def update_state_with_tendencies(
         convective_precipitation_RAS (FloatField)
         ese (GlobalTable_saturation_tables)
         esx (GlobalTable_saturation_tables)
+        fraction_ice (FloatField)
     """
     from __externals__ import DT_MOIST, FIX_CONVECTIVE_CLOUD, SCLM_DEEP
 
@@ -1030,8 +1030,6 @@ def update_state_with_tendencies(
         convective_cloud_fraction = max(
             min(convective_cloud_fraction + dcloudfractiondt_deep_convection * DT_MOIST, 1.0), 0.0
         )
-
-        ice_fraction_in_convective_tower = fraction_ice
 
         # fix convective cloud fraction
         if FIX_CONVECTIVE_CLOUD == True:
@@ -1069,8 +1067,35 @@ def update_state_with_tendencies(
             total_cumulative_mass_flux_interface + mass_flux_deep_updraft_interface
         )
         total_detraining_mass_flux = total_detraining_mass_flux + mass_flux_deep_updraft_detrained
-        convective_rainwater_source = convective_precipitation_RAS / DT_MOIST
 
+
+def update_ice_fraction_in_convective_tower(
+    fraction_ice: FloatField,
+    ice_fraction_in_convective_tower: FloatField,
+):
+    """Update convective tower ice fraction - only called if the field is allocated in the fortran
+
+    Args:
+        fraction_ice (FloatField)
+        ice_fraction_in_convective_tower (FloatField)
+    """
+    with computation(PARALLEL), interval(...):
+        ice_fraction_in_convective_tower = fraction_ice
+
+def update_convective_rainwater_source(
+    convective_precipitation_RAS: FloatField,
+    convective_rainwater_source: FloatField,
+):
+    """Update convective rainwater source - only called if the field is allocated in the fortran
+
+    Args:
+        convective_precipitation_RAS (FloatField)
+        convective_rainwater_source (FloatField)
+    """
+    from __externals__ import DT_MOIST
+
+    with computation(PARALLEL), interval(...):
+        convective_rainwater_source = convective_precipitation_RAS / DT_MOIST
 
 class GF2020Finalize(NDSLRuntime):
     """This class performs the entire finalization sequence for the GF2020 convection parameterization scheme
@@ -1112,6 +1137,9 @@ class GF2020Finalize(NDSLRuntime):
         self._esx = saturation_tables.esx
         self._estfrz = saturation_tables.frz
         self._estlqu = saturation_tables.lqu
+
+        # initialized local
+        self.fraction_ice = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
 
         # construct stencils
         self._copy_from_cumulus_parameterization_state = stencil_factory.from_dims_halo(
@@ -1216,6 +1244,17 @@ class GF2020Finalize(NDSLRuntime):
                 "DT_MOIST": config.DT_MOIST,
                 "FIX_CONVECTIVE_CLOUD": config.FIX_CONVECTIVE_CLOUD,
             },
+        )
+
+        self._update_ice_fraction_in_convective_tower = stencil_factory.from_dims_halo(
+            func=update_ice_fraction_in_convective_tower,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._update_convective_rainwater_source = stencil_factory.from_dims_halo(
+            func=update_convective_rainwater_source,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"DT_MOIST": config.DT_MOIST}
         )
 
     def __call__(
@@ -1451,7 +1490,6 @@ class GF2020Finalize(NDSLRuntime):
             convective_precip_flux=locals.convective_precip_flux,
             sublimation_of_convective_precipitation=state.sublimation_of_convective_precipitation,
             evaporation_of_convective_precipitation=state.evaporation_of_convective_precipitation,
-            ice_fraction_in_convective_tower=state.ice_fraction_in_convective_tower,
             ice_precip_flux_interface=state.ice_precip_flux_interface,
             liquid_precip_flux_interface=state.liquid_precip_flux_interface,
             convective_liquid=state.convective_liquid,
@@ -1461,4 +1499,17 @@ class GF2020Finalize(NDSLRuntime):
             convective_precipitation_RAS=state.convective_precipitation_RAS,
             ese=self._ese,
             esx=self._esx,
+            fraction_ice=self.fraction_ice,
         )
+
+        if state.ice_fraction_in_convective_tower is not None:
+            self._update_ice_fraction_in_convective_tower(
+                fraction_ice=self.fraction_ice,
+                ice_fraction_in_convective_tower=state.ice_fraction_in_convective_tower,
+            )
+
+        if state.convective_rainwater_source is not None:
+            self._update_convective_rainwater_source(
+                convective_precipitation_RAS=state.convective_precipitation_RAS,
+                convective_rainwater_source=state.convective_rainwater_source,
+            )
