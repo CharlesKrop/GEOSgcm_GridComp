@@ -175,7 +175,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  ! controls if the inner savepoints are written
  ! SETTING THIS TO TRUE SIGNIFICANTLY INCREASES COMPUTATION TIME
- !$ser verbatim logical :: SAVE_DEBUG_SAVEPOINTS = .false.
+ !$ser verbatim logical :: SAVE_DEBUG_SAVEPOINTS = .true.
 
 CONTAINS
 !---------------------------------------------------------------------------------------------------
@@ -5149,13 +5149,15 @@ loop0:       do k=kts,ktf
       else
            T_star=40.
       endif
-      ! $ser savepoint GF2020_CumulusParameterization_DiurnalCycle-Out
-      ! $ser verbatim do i=its,ite
-      !   $ser verbatim do k=kts,kte
-      !      $ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
-      !      $ser data_buffered Dx=4 local_T_star_diurnalcycle=T_star
-      !   $ser verbatim enddo
-      ! $ser verbatim enddo
+      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
+         !$ser savepoint GF2020_CumulusParameterization_DiurnalCycle-Out
+         !$ser verbatim do i=its,ite
+            !$ser verbatim do k=kts,kte
+               !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
+               !$ser data_buffered Dx=4 local_T_star_diurnalcycle=T_star
+            !$ser verbatim enddo
+         !$ser verbatim enddo
+      !$ser verbatim endif
 !
 !--- Bechtold et al 2008 time-scale of cape removal
 !
