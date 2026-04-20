@@ -405,6 +405,9 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:  ) :: CNV_TOPP_DP, CNV_TOPP_MD, CNV_TOPP_SH
     real, pointer, dimension(:,:,:) :: PTR3D
     real, pointer, dimension(:,:  ) :: PTR2D
+    
+    ! DSL fields
+    real, pointer, dimension(:,:) :: DSL__GF2020_LONS, DSL__GF2020_LATS
 
     !$ser verbatim integer :: SER_VAR_1
     !$ser verbatim integer :: ser_tracer_index, ser_miscellaneous_index
@@ -456,8 +459,10 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
 
     if (USE_PYMOIST_GF2020) then
-      call MAPL_GetPointer(INTERNAL, LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL, LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      DSL__GF2020_LONS = LONS
+      DSL__GF2020_LATS = LATS
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
 
