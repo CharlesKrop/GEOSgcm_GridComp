@@ -175,7 +175,7 @@ USE GEOSmoist_Process_Library, only : sigma, SH_MD_DP, ICE_FRACTION, make_Drople
 
  ! controls if the inner savepoints are written
  ! SETTING THIS TO TRUE SIGNIFICANTLY INCREASES COMPUTATION TIME
- !$ser verbatim logical :: SAVE_DEBUG_SAVEPOINTS = .true.
+ !$ser verbatim logical :: SAVE_DEBUG_SAVEPOINTS = .false.
 
 CONTAINS
 !---------------------------------------------------------------------------------------------------
