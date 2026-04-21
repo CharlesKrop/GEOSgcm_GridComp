@@ -5149,15 +5149,6 @@ loop0:       do k=kts,ktf
       else
            T_star=40.
       endif
-      !$ser verbatim if (SAVE_DEBUG_SAVEPOINTS) then
-         !$ser savepoint GF2020_CumulusParameterization_DiurnalCycle-Out
-         !$ser verbatim do i=its,ite
-            !$ser verbatim do k=kts,kte
-               !$ser verbatim call ser_set_indices(i,SER_CURRENT_J,k,SER_CURRENT_PLUME)
-               !$ser data_buffered Dx=4 local_T_star_diurnalcycle=T_star
-            !$ser verbatim enddo
-         !$ser verbatim enddo
-      !$ser verbatim endif
 !
 !--- Bechtold et al 2008 time-scale of cape removal
 !
@@ -5400,6 +5391,7 @@ ENDIF
                !$ser data_buffered Dx=4 pbl_time_scale=tau_bl_(i)
                !$ser data_buffered Dx=4 local_cloud_work_function_1_pbl=aa1_bl(i)
                !$ser data_buffered Dx=4 local_cloud_work_function_1_fa=aa1_fa(i)
+               !$ser data_buffered Dx=4 local_T_star_diurnalcycle=T_star
             !$ser verbatim enddo
          !$ser verbatim enddo
       !$ser verbatim endif
