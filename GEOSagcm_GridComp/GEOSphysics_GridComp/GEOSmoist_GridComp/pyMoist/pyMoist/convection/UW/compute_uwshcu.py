@@ -5168,12 +5168,7 @@ def non_buoyancy_sorting_fluxes(
                 qtflx[0, 0, 1] = cbmf * (
                     qtsrc - (qt0[0, 0, 1] + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
-                slflx[0, 0, 1] = (
-                    cbmf
-                    * (thlsrc - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))
-                    * constants.MAPL_CP
-                    * exnifc0[0, 0, 1]
-                )
+                slflx[0, 0, 1] = cbmf * (thlsrc - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))* constants.MAPL_CP* exnifc0[0, 0, 1]
 
                 uplus = uplus + PGFc * ssu0 * (pifc0[0, 0, 1] - pifc0)
                 vplus = vplus + PGFc * ssv0 * (pifc0[0, 0, 1] - pifc0)
@@ -8203,7 +8198,7 @@ class ComputeUwshcuInv(NDSLRuntime):
         self.stop_buoyancy_sort = self.make_local(quantity_factory, [I_DIM, J_DIM], dtype=bool)
 
         # Create 4D tracer fields
-        self.quantity_factory.add_data_dimensions(
+        self.quantity_factory.update_data_dimensions(
             {
                 "ntracers": constants.NCNST,
             }
@@ -8575,7 +8570,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             state: UWState
         """
         self._reset_locals()
-
+        
         # Initialize masks, default for all masks is False.
         self._reset_mask(self.condensation, False)
         self._reset_mask(self.stop_cin, False)
@@ -10082,6 +10077,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             cush_inout=self.locals.cush_inout,
         )
 
+
         self._update_output_variables2(
             condensation=self.condensation,
             kpen=self.locals.kpen,
@@ -10199,7 +10195,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             SHLW_PRC3=state.output.SHLW_PRC3,
             SHLW_SNO3=state.output.SHLW_SNO3,
         )
-
+        print("SC_QT IN: ",state.output.SC_QT)
         if state.output.SC_QT is not None:
             self._update_total_water_tendency(
                 SC_QT=state.output.SC_QT,
@@ -10214,6 +10210,8 @@ class ComputeUwshcuInv(NDSLRuntime):
                 QIDET_SC=state.output.qidet_inv,
                 MASS=self.locals.MASS,
             )
+            print("SC_QT OUT: ",state.output.SC_QT.view[:])
+          
 
         if state.output.SC_MSE is not None:
             self._update_moist_static_energy_tendency(
