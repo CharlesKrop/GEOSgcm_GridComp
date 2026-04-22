@@ -243,6 +243,7 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     VERIFY_(STATUS)
     
     if (USE_PYMOIST_UW) then
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT )
       call CNV_Tracers_To_SOA()
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
       call CNV_Tracers_To_AOS()
