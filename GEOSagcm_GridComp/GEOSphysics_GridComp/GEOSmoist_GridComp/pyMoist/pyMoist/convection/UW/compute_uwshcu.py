@@ -8570,46 +8570,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             state: UWState
         """
         self._reset_locals()
-
-        state.output.RKFRE.data[:] = 0.0
-        state.output.MFD_SC.data[:] = 0.0
-        state.output.DQADT_SC.data[:] = 0.0
-        state.output.QLENT_SC.data[:] = 0.0
-        state.output.QIENT_SC.data[:] = 0.0
-        state.output.umf_inv.data[:] = 0.0
-        state.output.dcm_inv.data[:] = 0.0
-        state.output.qtflx_inv.data[:] = 0.0
-        state.output.slflx_inv.data[:] = 0.0
-        state.output.uflx_inv.data[:] = 0.0
-        state.output.vflx_inv.data[:] = 0.0
-        state.output.qvten_inv.data[:] = 0.0
-        state.output.qlten_inv.data[:] = 0.0
-        state.output.qiten_inv.data[:] = 0.0
-        state.output.tten_inv.data[:] = 0.0
-        state.output.uten_inv.data[:] = 0.0
-        state.output.vten_inv.data[:] = 0.0
-        state.output.qrten_inv.data[:] = 0.0
-        state.output.qsten_inv.data[:] = 0.0
-        state.output.cufrc_inv.data[:] = 0.0
-        state.output.fer_inv.data[:] = 0.0
-        state.output.fdr_inv.data[:] = 0.0
-        state.output.ndrop_inv.data[:] = 0.0
-        state.output.nice_inv.data[:] = 0.0
-        state.output.qldet_inv.data[:] = 0.0
-        state.output.qlsub_inv.data[:] = 0.0
-        state.output.qidet_inv.data[:] = 0.0
-        state.output.qisub_inv.data[:] = 0.0
-        state.output.tpert_out.data[:] = 0.0
-        state.output.qpert_out.data[:] = 0.0
-        #state.output.CNV_MFC.data[:] = 0.0
-        #state.output.CNV_MFD.data[:] = 0.0
-        state.output.SHLW_PRC3.data[:] = 0.0
-        state.output.SHLW_SNO3.data[:] = 0.0
-        #state.output.SC_QT.data[:] = 0.0
-        #state.output.SC_MSE.data[:] = 0.0
-        #state.output.CUSH_SC.data[:] = 0.0
-        state.output.ql0_inv.data[:] = 0.0
-        state.output.qi0_inv.data[:] = 0.0
         
         # Initialize masks, default for all masks is False.
         self._reset_mask(self.condensation, False)
@@ -10235,7 +10195,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             SHLW_PRC3=state.output.SHLW_PRC3,
             SHLW_SNO3=state.output.SHLW_SNO3,
         )
-        print("SC_QT IN: ",state.output.SC_QT)
+
         if state.output.SC_QT is not None:
             self._update_total_water_tendency(
                 SC_QT=state.output.SC_QT,
@@ -10250,9 +10210,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 QIDET_SC=state.output.qidet_inv,
                 MASS=self.locals.MASS,
             )
-            print("SC_QT OUT: ",state.output.SC_QT.view[:])
           
-
         if state.output.SC_MSE is not None:
             self._update_moist_static_energy_tendency(
                 SC_MSE=state.output.SC_MSE,
