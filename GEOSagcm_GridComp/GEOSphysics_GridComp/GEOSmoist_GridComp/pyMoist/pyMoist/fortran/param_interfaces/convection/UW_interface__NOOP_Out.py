@@ -166,6 +166,8 @@ class UWGEOSInterface_NOOP_OUT(UserCode):
         # CLLS = MAPLPy.get_pointer("CLLS", internal_state, dtype=np.float32)
         # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
         # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
+        
+        debug = False
 
         with TimedCUDAProfiler("UW", {}):
             with TimedCUDAProfiler("UW - State copy", {}):
@@ -174,7 +176,8 @@ class UWGEOSInterface_NOOP_OUT(UserCode):
                     self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
                     MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
                 )
-                self._managed_state.record("UW-Fortran-Out")
+                if debug:
+                    self._managed_state.record("UW-Fortran-Out")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         self._managed_state.save_recorded()
