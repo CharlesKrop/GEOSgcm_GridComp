@@ -619,7 +619,15 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        SEEDCNV = 1.0
     endif
     CALL MAPL_GetPointer(EXPORT, PTR2D,  'STOCH_CNV', RC=STATUS); VERIFY_(STATUS)
+    !$ser verbatim if (associated(PTR2D)) then
+       !$ser savepoint GF2020-In_extra_0
+       !$ser data stochastic_factor_for_convection_bugworkaroundname=PTR2D
+    !$ser verbatim endif
     if(associated(PTR2D)) PTR2D = SEEDCNV
+    !$ser verbatim if (associated(PTR2D)) then
+       !$ser savepoint GF2020-Out_extra_0
+       !$ser data stochastic_factor_for_convection_bugworkaroundname=PTR2D
+    !$ser verbatim endif
 
     ! Modify AREA (m^2) here so GF scale dependence has a CNV_FRC dependence
     if (GF_MIN_AREA > 0) then
