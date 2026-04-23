@@ -27,25 +27,11 @@ def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict
     return default if name_in_namelist not in namelist else namelist[name_in_namelist]
 
 
-import xarray as xr
-
-
-def fix_data_from_netcdf(nc_path, timestep_index, var_name):
-    with xr.open_dataset(nc_path) as ds:
-        var = ds[var_name]
-        result = var.isel({var.dims[0]: timestep_index})
-        return result.values
-
-
-class GF2020Interface(UserCode):
+class GF2020Interface_no_op_out(UserCode):
     def __init__(self) -> None:
         pass
 
     def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
-        ##### DEBUG
-        self.DEBUG_TIMESTEP = 0
-        ##### END DEBUG
-
         maplpy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
 
@@ -145,11 +131,9 @@ class GF2020Interface(UserCode):
             min_entrainment_rate = Float(
                 maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.3e-4))
             )
-            entrainment_rate_shallow = Float(
-                maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4))
-            )
-            entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(1.0e-4)))
-            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_shallow=Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_mid=Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_deep=Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
         else:
             entrversion = Int(maplpy.get_resource("ENTRVERSION:", mapl_state, default=Int(1)))
 
@@ -233,11 +217,9 @@ class GF2020Interface(UserCode):
             min_entrainment_rate = Float(
                 maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.1e-4))
             )
-            entrainment_rate_shallow = Float(
-                maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4))
-            )
-            entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
-            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
+            entrainment_rate_shallow=Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_mid=Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
+            entrainment_rate_deep=Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
 
         ##### DEBUG
         print(f"CHECK ENTR_SH PYTHON {entrainment_rate_shallow}")
@@ -693,66 +675,7 @@ class GF2020Interface(UserCode):
                 )
 
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
-                self._managed_state.record("GF2020-In_python")
-                # adjust pbl_level from fortran indexing to python indexing
-                print("SHIFTING PBL LEVEL F TO P")
-                self._managed_state.ndsl_state.pbl_level.field[:] = (
-                    self._managed_state.ndsl_state.pbl_level.field[:] - 1
-                )
-
-                # run GF 2020 Convection
-                self._gf_2020(
-                    state=self._managed_state.ndsl_state,
-                    convection_tracers=self._managed_convection_tracers.ndsl_state,
-                )
-
-                ##### DEBUG
-                # manually fix total_water_flux_at_deep_convection_interface
-                print(
-                    f"TOTAL WATER AT TIMESTEP {self.DEBUG_TIMESTEP}:\n{self._managed_state.ndsl_state.total_water_flux_deep_convection_interface.field[:]}"
-                )
-                if self.DEBUG_TIMESTEP != 0:
-                    old = self._managed_state.ndsl_state.total_water_flux_deep_convection_interface.field[
-                        :
-                    ].copy()
-                    self._managed_state.ndsl_state.total_water_flux_deep_convection_interface.field[:] = (
-                        fix_data_from_netcdf(
-                            "/Users/ckropiew/GF2020_debug/GF2020-Out_fortran.nc",
-                            self.DEBUG_TIMESTEP,
-                            "total_water_flux_deep_convection_interface",
-                        )
-                    )
-                    new = self._managed_state.ndsl_state.total_water_flux_deep_convection_interface.field[
-                        :
-                    ].copy()
-                    diff = old - new
-                    print(
-                        f"CHANGED TWDC AT TIMESTEP {self.DEBUG_TIMESTEP}:\nOld: {old}\nNew: {new}\nDiff: {diff}"
-                    )
-
-                self.DEBUG_TIMESTEP += 1
-
-                # print stuff for comparison to fortran prints
-                print("FIELDS TO COMPARE (PYTHON):")
-                print(f"3D float (t): {self._managed_state.ndsl_state.t.field[:]}")
-                print(
-                    f"3D interface float (mass_flux_deep_updraft_interface): {self._managed_state.ndsl_state.mass_flux_deep_updraft_interface.field[:]}"
-                )
-                print(
-                    f"2D float (cloud_workfunction_0): {self._managed_state.ndsl_state.cloud_workfunction_0.field[:]}"
-                )
-                print(
-                    f"2D int (convection_code_deep): {self._managed_state.ndsl_state.convection_code_deep.field[:]}"
-                )
-                ##### END DEBUG
-
-                # adjust pbl_level from python indexing to fortran indexing
-                print("SHIFTING PBL LEVEL P TO F")
-                self._managed_state.ndsl_state.pbl_level.field[:] = (
-                    self._managed_state.ndsl_state.pbl_level.field[:] + 1
-                )
-
-                self._managed_state.record("GF2020-Out_python")
+                self._managed_state.record("GF2020-Out_fortran")
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
@@ -766,4 +689,4 @@ class GF2020Interface(UserCode):
         self._managed_state.save_recorded()
 
 
-CODE = GF2020Interface()
+CODE = GF2020Interface_no_op_out()

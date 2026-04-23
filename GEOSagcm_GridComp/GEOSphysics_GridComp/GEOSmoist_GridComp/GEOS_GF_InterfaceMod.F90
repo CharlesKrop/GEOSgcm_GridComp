@@ -144,7 +144,9 @@ subroutine GF_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
          call MAPL_ConfigSetAttribute(CF, 1, 'DSL__GF_ENV_SETTING:', RC=STATUS); VERIFY_(STATUS)
       endif
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
-    else
+   else
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface_no_op_in", MAPL, IMPORT, EXPORT )
+      call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.GF2020_interface_no_op_out", MAPL, IMPORT, EXPORT )
     if (LM .eq. 72) then
       call MAPL_GetResource(MAPL, USE_GF2020                , 'USE_GF2020:'            ,default= 0,    RC=STATUS );VERIFY_(STATUS)
     else
@@ -446,7 +448,23 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       DSL__GF2020_LONS = LONS
       DSL__GF2020_LATS = LATS
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      ! DEBUG
+      call MAPL_GetPointer(IMPORT, T         ,'T'         ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, UMF_DC,     'UMF_DC'    ,  ALLOC = .TRUE., RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, AA0      ,'AA0'       ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(EXPORT, ERRDP    ,'ERRDP'     ,ALLOC = .TRUE. ,RC=STATUS); VERIFY_(STATUS)
+      PRINT *, "FIELDS TO COMPARE (FORTRAN):"
+      PRINT *, "3D float (t):", T
+      PRINT *, "3D interface float (mass_flux_deep_updraft_interface):", UMF_DC
+      PRINT *, "2D float (cloud_workfunction_0):", AA0
+      PRINT *, "2D int (convection_code_deep):", ERRDP
+      ! END DEBUG
     else
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LONS, 'DSL__GF2020_LONS', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL, DSL__GF2020_LATS, 'DSL__GF2020_LATS', RC=STATUS); VERIFY_(STATUS)
+      DSL__GF2020_LONS = LONS
+      DSL__GF2020_LATS = LATS
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface_no_op_in", MAPL, IMPORT, EXPORT, INTERNAL )
 
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
@@ -741,6 +759,8 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_GetPointer(EXPORT, PTR3D, 'DQRC', RC=STATUS); VERIFY_(STATUS)
       if(associated(PTR3D)) PTR3D = CNV_PRC3 / GF_DT
 
+      call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.GF2020_interface_no_op_out", MAPL, IMPORT, EXPORT, INTERNAL )
+
     endif ! USE_PYMOIST_GF2020
    
     call MAPL_TimerOff (MAPL,"--GF")
@@ -766,6 +786,9 @@ subroutine GF_Finalize(gc, import, export, rc)
 
   if (USE_PYMOIST_GF2020) then
     call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.GF2020_interface", MAPL, IMPORT, EXPORT )
+  else
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.GF2020_interface_no_op_in", MAPL, IMPORT, EXPORT )
+    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.GF2020_interface_no_op_out", MAPL, IMPORT, EXPORT )
   endif
 
 end subroutine GF_Finalize
