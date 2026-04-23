@@ -664,10 +664,23 @@ class GF2020Interface(UserCode):
 
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
                 self._managed_state.record("GF2020-In_python")
+                # adjust pbl_level from fortran indexing to python indexing
+                print("SHIFTING PBL LEVEL F TO P")
+                self._managed_state.ndsl_state.pbl_level.field[:] = (
+                    self._managed_state.ndsl_state.pbl_level.field[:] - 1
+                )
+
+                # run GF 2020 Convection
                 self._gf_2020(
                     state=self._managed_state.ndsl_state,
                     convection_tracers=self._managed_convection_tracers.ndsl_state,
                 )
+                # adjust pbl_level from python indexing to fortran indexing
+                print("SHIFTING PBL LEVEL P TO F")
+                self._managed_state.ndsl_state.pbl_level.field[:] = (
+                    self._managed_state.ndsl_state.pbl_level.field[:] + 1
+                )
+
                 self._managed_state.record("GF2020-Out_python")
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
