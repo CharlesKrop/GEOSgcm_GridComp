@@ -97,8 +97,8 @@ def updraft_vertical_velocity(
             ftun1: FloatFieldIJ = 1.0
             ftun2: FloatFieldIJ = 0.5
         else:
-            ftun1: FloatFieldIJ = 0.25
-            ftun2: FloatFieldIJ = 1.0
+            ftun1: FloatFieldIJ = 0.25  # type: ignore[no-redef]
+            ftun2: FloatFieldIJ = 1.0  # type: ignore[no-redef]
 
     # initialize arrays to zero
     with computation(PARALLEL), interval(...):
@@ -183,7 +183,7 @@ def updraft_vertical_velocity(
                         vertical_velocity_3d = vs / (1.0e-16 + nvs)
                 else:
                     if K <= cloud_top_level[0, 0][plume] + 1:
-                        vs: FloatFieldIJ = 0.0
+                        vs: FloatFieldIJ = 0.0  # type: ignore[no-redef]
                         dz1m: FloatFieldIJ = 0.0
                         level_inner_loop = max(K - n_smooth, 0)
                         while level_inner_loop <= min(K + n_smooth, k_end - 1):

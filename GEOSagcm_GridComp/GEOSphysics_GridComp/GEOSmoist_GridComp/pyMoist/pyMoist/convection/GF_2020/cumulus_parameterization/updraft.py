@@ -823,11 +823,11 @@ def cloud_workfunction_aa0(
             lower_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume]
             upper_bound: IntFieldIJ = cloud_top_level[0, 0][plume]
         elif mode == 1:
-            lower_bound: IntFieldIJ = 0
-            upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1
+            lower_bound: IntFieldIJ = 0  # type: ignore[no-redef]
+            upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1  # type: ignore[no-redef]
         elif mode == 2:
-            lower_bound: IntFieldIJ = updraft_origin_level[0, 0][plume]
-            upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1
+            lower_bound: IntFieldIJ = updraft_origin_level[0, 0][plume]  # type: ignore[no-redef]
+            upper_bound: IntFieldIJ = updraft_lfc_level[0, 0][plume] - 1  # type: ignore[no-redef]
 
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 and K >= lower_bound and K <= upper_bound:

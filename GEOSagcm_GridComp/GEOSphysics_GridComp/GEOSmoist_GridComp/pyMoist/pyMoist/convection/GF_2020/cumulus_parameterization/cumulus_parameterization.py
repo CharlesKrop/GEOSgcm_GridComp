@@ -1136,7 +1136,7 @@ class GF2020CumulusParameterization(NDSLRuntime):
                 # NOTE      shallow ⚠️⚠️⚠️ DOES NOT EXECUTE IN CURRENT SIMULATION
                 # NOTE UNFINISHED - MANUALLY DISABLED (see class docstring)
                 if False:
-                    self._c1d_profile(
+                    self._c1d_profile(  # type: ignore[unreachable]
                         state=state,
                         locals=self.locals,
                         plume_dependent_constants=self.plume_dependent_constants,

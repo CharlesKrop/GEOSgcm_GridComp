@@ -45,7 +45,7 @@ def find_maximum_updraft_origin_level(
         if error_code[0, 0][plume] == 0 and stop_computation == 0:
             if geopotential_height > MAX_UPDRAFT_ORIGIN_HEIGHT + topography_height_no_negative:
                 maximum_updraft_origin_level = K
-                stop_computation: BoolFieldIJ = True
+                stop_computation: BoolFieldIJ = True  # type: ignore[no-redef]
 
 
 def find_detrainment_start_level(
@@ -73,7 +73,7 @@ def find_detrainment_start_level(
         if error_code[0, 0][plume] == 0 and stop_computation == 0:
             if geopotential_height > DETRAINMENT_CRITICAL_DEPTH + topography_height_no_negative:
                 detrainment_start_level = K
-                stop_computation: BoolFieldIJ = True
+                stop_computation: BoolFieldIJ = True  # type: ignore[no-redef]
 
 
 def find_highest_moist_static_energy_level(
@@ -102,7 +102,7 @@ def find_highest_moist_static_energy_level(
             start_level: IntFieldIJ = 0
         else:
             # start above surface
-            start_level: IntFieldIJ = 1
+            start_level: IntFieldIJ = 1  # type: ignore[no-redef]
 
         if error_code[0, 0][plume] == 0:
             level = start_level
@@ -732,7 +732,7 @@ def get_cloud_top(
 
     with computation(FORWARD), interval(0, 1):
         # set up mask for next computation
-        stop_computation: BoolFieldIJ = False
+        stop_computation: BoolFieldIJ = False  # type: ignore[no-redef]
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0 and plume != 0 and OVERSHOOT > 0:

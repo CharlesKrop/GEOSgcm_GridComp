@@ -227,9 +227,9 @@ def rain_evaporation_below_cloud_base(
             critical_rh_land: FloatFieldIJ = 1.0
             eff_c_conv: FloatFieldIJ = min(0.2, max(cloud_base_mass_flux_modified[0, 0][plume], c_conv))
         else:
-            critical_rh_ocean: FloatFieldIJ = 0.95
-            critical_rh_land: FloatFieldIJ = 0.85
-            eff_c_conv: FloatFieldIJ = c_conv
+            critical_rh_ocean: FloatFieldIJ = 0.95  # type: ignore[no-redef]
+            critical_rh_land: FloatFieldIJ = 0.85  # type: ignore[no-redef]
+            eff_c_conv: FloatFieldIJ = c_conv  # type: ignore[no-redef]
 
         total_evaporation_below_cloud_base: FloatFieldIJ = 0.0
 

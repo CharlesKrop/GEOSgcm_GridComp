@@ -150,9 +150,11 @@ def updraft_chemistry(
             while tracer < NUMBER_OF_TRACERS:
                 level = 0
                 while level <= k_end:
-                    chemistry_tracers_cloud_levels_3d[0, 0, level] = chemistry_tracers_cloud_levels[
+                    chemistry_tracers_cloud_levels_3d[0, 0, level] = chemistry_tracers_cloud_levels[  # type: ignore[index]
                         0, 0, level
-                    ][tracer]
+                    ][
+                        tracer
+                    ]
                     level += 1
                 tracer_cloud_boundary[0, 0][tracer] = get_cloud_boundary_conditions(
                     field=chemistry_tracers_cloud_levels_3d,
@@ -324,7 +326,7 @@ def downdraft_chemistry(
             if USE_TRACER_EVAPORATION == 0:
                 internal_precip: FloatFieldIJ = 0.0
             else:
-                internal_precip: FloatFieldIJ = (
+                internal_precip: FloatFieldIJ = (  # type: ignore[no-redef]
                     evaporate_in_downdraft_forced.at(K=level, ddim=[plume])
                     / (1.0e-16 + total_normalized_integrated_evaporate_forced)
                     * evaporation_fraction

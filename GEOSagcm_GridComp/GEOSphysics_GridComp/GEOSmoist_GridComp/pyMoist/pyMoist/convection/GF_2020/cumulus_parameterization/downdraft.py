@@ -127,7 +127,7 @@ def get_downdraft_origin_level(
             beta: FloatFieldIJ = 0.02
         elif plume == cumulus_parameterization_constants.DEEP:
             # setup internal constants
-            beta: FloatFieldIJ = 0.05
+            beta: FloatFieldIJ = 0.05  # type: ignore[no-redef]
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
