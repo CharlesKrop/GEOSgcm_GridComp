@@ -91,7 +91,7 @@ def setup_inputs(
         QITOT [FloatField]: Total ice mixing ratio [kg/kg]
         AREA [FloatFieldIJ]: [?]
     """
-    from __externals__ import k_end, JASON
+    from __externals__ import JASON, k_end
 
     with computation(FORWARD), interval(...):
         PKE = (PLE / constants.MAPL_P00) ** (constants.MAPL_KAPPA)
@@ -109,7 +109,7 @@ def setup_inputs(
     with computation(FORWARD), interval(0, 1):
         if JASON:
             RKFRE = 1.0
-        else: 
+        else:
             RKFRE = sigma(sqrt(AREA))
 
     with computation(PARALLEL), interval(...):
@@ -1285,7 +1285,7 @@ def find_cumulus_characteristics(
                 delzg = (50.0) * constants.MAPL_GRAV  # assume 50m surface scale
                 wstar = max(0.0, 0.001 - 0.41 * buoyflx * delzg / t0.at(K=0))  # m3 s-3
                 qpert_out = 0.0
-                tpert_out = 0.0 
+                tpert_out = 0.0
                 if wstar > 0.001:
                     wstar = 1.0 * wstar**0.3333
                     tpert_out = thlsrc_fac * shfx / (zrho * wstar * constants.MAPL_CP)  # K
@@ -5168,7 +5168,12 @@ def non_buoyancy_sorting_fluxes(
                 qtflx[0, 0, 1] = cbmf * (
                     qtsrc - (qt0[0, 0, 1] + ssqt0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1]))
                 )
-                slflx[0, 0, 1] = cbmf * (thlsrc - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))* constants.MAPL_CP* exnifc0[0, 0, 1]
+                slflx[0, 0, 1] = (
+                    cbmf
+                    * (thlsrc - (thl0[0, 0, 1] + ssthl0[0, 0, 1] * (pifc0[0, 0, 1] - pmid0[0, 0, 1])))
+                    * constants.MAPL_CP
+                    * exnifc0[0, 0, 1]
+                )
 
                 uplus = uplus + PGFc * ssu0 * (pifc0[0, 0, 1] - pifc0)
                 vplus = vplus + PGFc * ssv0 * (pifc0[0, 0, 1] - pifc0)
@@ -7655,7 +7660,7 @@ def setup_outputs(
         SHLW_PRC3 [FloatField]: Shallow precipitation [mm] [?]
         SHLW_SNO3 [FloatField]: Shallow snow [mm] [?]
     """
-    from __externals__ import SCLM_SHALLOW, dt, JASON
+    from __externals__ import JASON, SCLM_SHALLOW, dt
 
     with computation(PARALLEL), interval(...):
         Q = Q + DQVDT_SC * dt
@@ -7850,9 +7855,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             )
 
         self._setup_inputs = self.stencil_factory.from_dims_halo(
-            func=setup_inputs,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"JASON": config.JASON}
+            func=setup_inputs, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"JASON": config.JASON}
         )
 
         self._compute_uwshcu_invert_before = self.stencil_factory.from_dims_halo(
@@ -8570,7 +8573,7 @@ class ComputeUwshcuInv(NDSLRuntime):
             state: UWState
         """
         self._reset_locals()
-        
+
         # Initialize masks, default for all masks is False.
         self._reset_mask(self.condensation, False)
         self._reset_mask(self.stop_cin, False)
@@ -10077,7 +10080,6 @@ class ComputeUwshcuInv(NDSLRuntime):
             cush_inout=self.locals.cush_inout,
         )
 
-
         self._update_output_variables2(
             condensation=self.condensation,
             kpen=self.locals.kpen,
@@ -10210,7 +10212,7 @@ class ComputeUwshcuInv(NDSLRuntime):
                 QIDET_SC=state.output.qidet_inv,
                 MASS=self.locals.MASS,
             )
-          
+
         if state.output.SC_MSE is not None:
             self._update_moist_static_energy_tendency(
                 SC_MSE=state.output.SC_MSE,

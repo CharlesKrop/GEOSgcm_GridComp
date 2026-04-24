@@ -107,9 +107,6 @@ subroutine UW_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
       call MAPL_ConfigSetAttribute(CF, UW_DT, 'DSL__UW_DT:', RC=STATUS); VERIFY_(STATUS)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT )
     else
-    call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.UW_interface__NOOP_In", MAPL, IMPORT, EXPORT )
-    call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.convection.UW_interface__NOOP_Out", MAPL, IMPORT, EXPORT )
-
     call MAPL_GetResource(MAPL, USE_TRACER_TRANSP_UW,        'USE_TRACER_TRANSP_UW:',default= 1      , RC=STATUS) ; VERIFY_(STATUS)
     if (LM==72) then
       call MAPL_GetResource(MAPL, JASON_UW,                  'JASON_UW:'            ,default= .TRUE. , RC=STATUS) ; VERIFY_(STATUS)
@@ -247,9 +244,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT, INTERNAL )
       call CNV_Tracers_To_AOS()
     else
-    call CNV_Tracers_To_SOA()
-    call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.UW_interface__NOOP_In", MAPL, IMPORT, EXPORT, INTERNAL ) 
-    call CNV_Tracers_To_AOS()
     ! Internals
     call MAPL_GetPointer(INTERNAL, Q,      'Q'       , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, QLLS,   'QLLS'    , RC=STATUS); VERIFY_(STATUS)
@@ -436,7 +430,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                          +   QISUB_SC(:,:,L) )*MASS(:,:,L) &
                          +   QLDET_SC(:,:,L)+QIDET_SC(:,:,L)
         END DO
-        print *, "SC_QT: ",PTR2D
         end if
         
         call MAPL_GetPointer(EXPORT, PTR2D, 'SC_MSE', RC=STATUS); VERIFY_(STATUS)
@@ -460,8 +453,6 @@ subroutine UW_Run (GC, IMPORT, EXPORT, CLOCK, RC)
 
         call MAPL_GetPointer(EXPORT, PTR2D,  'CUSH_SC', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR2D)) PTR2D = CUSH
-
-        call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.convection.UW_interface__NOOP_Out", MAPL, IMPORT, EXPORT, INTERNAL )
   
     endif ! USE_PYMOIST_UW
 
@@ -488,9 +479,6 @@ subroutine UW_Finalize(gc, import, export, rc)
 
   if (USE_PYMOIST_UW) then
     call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.UW_interface", MAPL, IMPORT, EXPORT )
-  else
-    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.UW_interface__NOOP_In", MAPL, IMPORT, EXPORT )
-    call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.convection.UW_interface__NOOP_Out", MAPL, IMPORT, EXPORT )
   endif
 
 end subroutine UW_Finalize
