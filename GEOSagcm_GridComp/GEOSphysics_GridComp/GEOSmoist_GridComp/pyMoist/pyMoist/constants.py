@@ -1,28 +1,24 @@
 """File containing constants used in multiple components of pyMoist"""
 
-import numpy as np
 import os
 
+import numpy as np
 from ndsl.dsl.typing import Float, Int
-from ndsl import ndsl_log
 
 
 _f32 = np.float32
 _f64 = np.float64
 _i32 = np.int32
 
-# Define number of tracers used in moist physics
-# NOTE deprecate this, change all references of NCNST to NUMBER_OF_TRACERS
-DEFAULT_NUMBER_OF_TRACERS = Int(23)
-EXPERIMENT_TRACERS = {"bomex": 18, "armtwp_ice": 18, "gcm-fp": 23}
+# Define number of tracers in UW
+EXPERIMENT_TRACERS = {"arm_97jul": 18, "arm_97jun": 18, "armtwp_ice": 18, "bomex": 18, "gcm-fp": 23}
 EXP_NAME = os.getenv("EXP_NAME", "")
+if EXP_NAME == "":
+    raise ValueError(f"EXP_NAME env var is not set - experiment unknown. Options are {list(EXPERIMENT_TRACERS.keys())}")
 if EXP_NAME not in EXPERIMENT_TRACERS:
-    ndsl_log.warning(f"Experiment unknown: choose one of {list(EXPERIMENT_TRACERS.keys())}. Falling back to default number of tracers ({DEFAULT_NUMBER_OF_TRACERS}).")
-    NUMBER_OF_TRACERS = DEFAULT_NUMBER_OF_TRACERS
-    NCNST = DEFAULT_NUMBER_OF_TRACERS
-else:
-    NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
-    NUMBER_OF_TRACERS = _i32(EXPERIMENT_TRACERS[EXP_NAME])
+    raise ValueError(f"Experiment {EXP_NAME} unknown - tracers can't be initialized.")
+NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
+NUMBER_OF_TRACERS = NCNST
 
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS

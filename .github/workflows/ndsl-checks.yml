@@ -1,8 +1,8 @@
 name: NDSL Lint & Translate Tests
 
 on:
-  pull_request:
-    branches: [ dsl/develop, dsl/v11/develop ]
+  push:
+    paths: "./GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/**"
   workflow_dispatch:
 
 # cancel running jobs if theres a newer push
@@ -59,4 +59,4 @@ jobs:
       - name: Run translate tests
         run: |
           cd GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSmoist_GridComp/pyMoist/tests/scripts/
-          ./run_all.sh ../../${{ env.DATA_PATH }} dace:cpu_kfirst
+          ./run_all.sh ../../${{ env.DATA_PATH }} st:dace:cpu:KIJ

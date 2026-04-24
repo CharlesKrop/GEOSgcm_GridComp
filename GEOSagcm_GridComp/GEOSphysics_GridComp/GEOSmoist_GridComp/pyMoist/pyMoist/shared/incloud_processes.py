@@ -2,7 +2,6 @@
 These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
-import pyMoist.constants as constants
 from ndsl.dsl.gt4py import (
     PARALLEL,
     GlobalTable,
@@ -17,7 +16,9 @@ from ndsl.dsl.gt4py import (
     round_away_from_zero,
     sin,
 )
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.typing import Float, FloatField
+
+import pyMoist.constants as constants
 from pyMoist.shared.atmos_recipes import air_density
 
 

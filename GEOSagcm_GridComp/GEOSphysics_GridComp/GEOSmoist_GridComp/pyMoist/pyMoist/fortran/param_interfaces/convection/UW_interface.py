@@ -5,13 +5,13 @@ from ndsl.dsl.typing import Float, Int
 from ndsl.utils import safe_assign_array
 
 from pyMoist.constants import NCNST
+from pyMoist.convection.UW import ComputeUwshcuInv, UWConfiguration, UWState
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.fortran.profiler import TimedCUDAProfiler
-from pyMoist.convection.UW import ComputeUwshcuInv, UWConfiguration, UWState
 
 
 class UWGEOSInterface(UserCode):
@@ -30,6 +30,7 @@ class UWGEOSInterface(UserCode):
 
         # Compile the configuration for UW
         config = UWConfiguration(
+            JASON=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
             NCNST=NCNST,
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
@@ -81,7 +82,9 @@ class UWGEOSInterface(UserCode):
         self._managed_state = MAPLManagedState(
             UWState.empty(
                 ndsl_stack.quantity_factory,
-                data_dimensions=ndsl_stack.quantity_factory.sizer.data_dimensions,
+                data_dimensions={
+                    "ntracers": config.NCNST,
+                },
             ),
             ndsl_stack.interface_type,
         )
@@ -103,6 +106,7 @@ class UWGEOSInterface(UserCode):
 
         self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
         self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
+        self._managed_state.register_2D("input.AREA", "AREA", import_repository)
         self._managed_state.register("input.QLLS", "QLLS", internal_repository)
         self._managed_state.register("input.QILS", "QILS", internal_repository)
         self._managed_state.register("input.QLCN", "QLCN", internal_repository)
@@ -160,9 +164,9 @@ class UWGEOSInterface(UserCode):
         self._managed_state.register("output.CNV_MFD", "CNV_MFD", export_repository, alloc=True)
         self._managed_state.register("output.SHLW_PRC3", "SHLW_PRC3", export_repository, alloc=True)
         self._managed_state.register("output.SHLW_SNO3", "SHLW_SNO3", export_repository, alloc=True)
-        self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository, alloc=True)
-        self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository, alloc=True)
-        self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository, alloc=True)
+        self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository)
+        self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository)
+        self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository)
         self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
 
         # Unused from GEOS ?!
@@ -170,24 +174,46 @@ class UWGEOSInterface(UserCode):
         # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
         # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
 
-        with TimedCUDAProfiler("UW", {}):
-            with TimedCUDAProfiler("UW - State copy", {}):
-                self._managed_state.fortran_to_ndsl()
-                safe_assign_array(
-                    self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                )
+        debug = False
 
-            with TimedCUDAProfiler("UW Numerics", {}):
-                self._uw(self._managed_state.ndsl_state)
+        if not debug:
+            with TimedCUDAProfiler("UW", {}):
+                with TimedCUDAProfiler("UW - State copy", {}):
+                    self._managed_state.fortran_to_ndsl()
+                    safe_assign_array(
+                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                    )
 
-            with TimedCUDAProfiler("UW - State copy-back", {}):
-                safe_assign_array(
-                    MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                    self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                )
-                self._managed_state.ndsl_to_fortran()
-                self._managed_state.record("UW-Out")
+                with TimedCUDAProfiler("UW Numerics", {}):
+                    self._uw(self._managed_state.ndsl_state)
+
+                with TimedCUDAProfiler("UW - State copy-back", {}):
+                    safe_assign_array(
+                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                    )
+                    self._managed_state.ndsl_to_fortran()
+        else:
+            with TimedCUDAProfiler("UW", {}):
+                with TimedCUDAProfiler("UW - State copy", {}):
+                    self._managed_state.fortran_to_ndsl()
+                    safe_assign_array(
+                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                    )
+                    self._managed_state.record("UW-In")
+
+                with TimedCUDAProfiler("UW Numerics", {}):
+                    self._uw(self._managed_state.ndsl_state)
+
+                with TimedCUDAProfiler("UW - State copy-back", {}):
+                    safe_assign_array(
+                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                    )
+                    self._managed_state.ndsl_to_fortran()
+                    self._managed_state.record("UW-Out")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         self._managed_state.save_recorded()
