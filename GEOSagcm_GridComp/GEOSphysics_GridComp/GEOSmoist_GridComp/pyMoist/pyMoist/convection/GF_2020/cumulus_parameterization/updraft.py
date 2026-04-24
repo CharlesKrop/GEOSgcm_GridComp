@@ -517,7 +517,7 @@ def updraft_moisture(
 
                     stop_current_index = True
 
-                if stop_current_index == False:
+                if not stop_current_index:
                     if AUTOCONV == 1:
                         min_liq = (
                             ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN

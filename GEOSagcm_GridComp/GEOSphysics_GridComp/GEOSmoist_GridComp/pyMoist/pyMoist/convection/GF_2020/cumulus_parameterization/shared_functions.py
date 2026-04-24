@@ -144,7 +144,7 @@ def get_cloud_boundary_conditions(
             level_c = 0
             stop_computation = False
             level = start_index
-            while level <= k_end - 1 and stop_computation == False:
+            while level <= k_end - 1 and not stop_computation:
                 dp = -(p.at(K=level + 1) - p.at(K=level))
                 if dp_layer + dp <= average_layer:
                     dp_layer = dp_layer + dp

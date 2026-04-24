@@ -56,7 +56,7 @@ def get_critical_level(
         stop_computation: BoolFieldIJ = False
 
     with computation(FORWARD), interval(...):
-        if error_code[0, 0][plume] == 0 and stop_computation == False:
+        if error_code[0, 0][plume] == 0 and not stop_computation:
             if geopotential_height_cloud_levels_forced >= cloud_top_height:
                 critical_level = K
                 stop_computation = True
@@ -159,7 +159,7 @@ def get_downdraft_origin_level(
                 dh = 0.0
                 level = level_initial - 1
                 stop_k_while_loop = False
-                while level >= 0 and stop_k_while_loop == False:
+                while level >= 0 and not stop_k_while_loop:
                     moist_static_energy_internal = (
                         environment_saturation_moist_static_energy_cloud_levels_forced[
                             0, 0, downdraft_origin_level_internal

@@ -271,7 +271,7 @@ def compute_scale_dependence_factor(
                 if seed_convection < 0.0:
                     error_code[0, 0][plume] = 1
                     error_at_point = True
-                if error_at_point == False:
+                if not error_at_point:
                     scale_dependence_factor[0, 0][plume] = sigma(grid_length)
                 if seed_convection != 1.0:
                     scale_dependence_factor[0, 0][plume] = scale_dependence_factor[0, 0][plume] ** (

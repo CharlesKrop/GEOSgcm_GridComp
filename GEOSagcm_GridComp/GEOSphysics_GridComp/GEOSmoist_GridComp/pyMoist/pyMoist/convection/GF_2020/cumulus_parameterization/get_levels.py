@@ -274,7 +274,7 @@ def find_lcl(
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if dz_lcl >= 0.0:
-                if geopotential_height_cloud_levels >= z_source + dz_lcl and stop_computation == False:
+                if geopotential_height_cloud_levels >= z_source + dz_lcl and not stop_computation:
                     lcl_level[0, 0][plume] = max(K, updraft_origin_level[0, 0][plume])
                     stop_computation = True
 
@@ -604,7 +604,7 @@ def get_convective_cloud_base_level(
                 ) / denom
 
     with computation(FORWARD), interval(0, -2):
-        if error_code[0, 0][plume] == 0 and K > start_level_internal and found_level == False:
+        if error_code[0, 0][plume] == 0 and K > start_level_internal and not found_level:
             if (
                 cloud_moist_static_energy_forced_transported
                 < environment_saturation_moist_static_energy_cloud_levels_forced
@@ -634,7 +634,7 @@ def get_convective_cloud_base_level(
             error_code[0, 0][plume] == 0
             and OVERSHOOT >= 1.0e-6
             and K >= cloud_top_level[0, 0][plume]
-            and found_level == False
+            and not found_level
         ):
             if z_overshoot < geopotential_height_cloud_levels_forced:
                 cloud_top_level[0, 0][plume] = min(K - 1, k_end - 2)
@@ -710,7 +710,7 @@ def get_cloud_top(
 
     with computation(FORWARD), interval(...):
         if plume != 0 and error_code[0, 0][plume] == 0:
-            if K > start_level and K < k_end - 2 and stop_computation == False:
+            if K > start_level and K < k_end - 2 and not stop_computation:
                 # find the height where the parcel is no longer saturated
                 if (
                     cloud_moist_static_energy_forced_transported
@@ -736,7 +736,7 @@ def get_cloud_top(
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0 and plume != 0 and OVERSHOOT > 0:
-            if K >= cloud_top_level[0, 0][plume] and K < k_end - 1 and stop_computation == False:
+            if K >= cloud_top_level[0, 0][plume] and K < k_end - 1 and not stop_computation:
                 if z_overshoot < geopotential_height_cloud_levels_forced:
                     cloud_top_level[0, 0][plume] = min(K - 1, k_end - 3)
                     stop_computation = True

@@ -396,7 +396,7 @@ def cloud_dissipation(
             out_precip_dissipation = (precip_dissipation * (1.0 - f_rh)) / cloud_lifetime
 
             # NOTE other option (if this is true) is not implemented
-            if not (version_x == 1 or cumulus_parameterization_constants.COUPLE_MICROPHYSICS == False):
+            if not (version_x == 1 or not cumulus_parameterization_constants.COUPLE_MICROPHYSICS):
                 dcloudicedt[0, 0, 0][plume] = (
                     dcloudicedt[0, 0, 0][plume]
                     + out_precip_dissipation * fractional_area * USE_CLOUD_DISSIPATION
