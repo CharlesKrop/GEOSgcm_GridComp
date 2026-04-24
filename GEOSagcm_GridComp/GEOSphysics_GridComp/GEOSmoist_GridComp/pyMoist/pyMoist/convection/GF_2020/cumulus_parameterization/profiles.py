@@ -31,10 +31,7 @@ def melting_profile(
     from __externals__ import k_end
 
     with computation(FORWARD), interval(...):
-        if (
-            cumulus_parameterization_constants.MELT_GLAC == True
-            and plume == cumulus_parameterization_constants.DEEP
-        ):
+        if cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP:
             solid_phase_precipitable_water = 0.0
             effective_precipitable_water = 0.0
             melting = 0.0
@@ -43,7 +40,7 @@ def melting_profile(
 
     with computation(FORWARD), interval(0, -2):
         if (
-            cumulus_parameterization_constants.MELT_GLAC == True
+            cumulus_parameterization_constants.MELT_GLAC
             and plume == cumulus_parameterization_constants.DEEP
             and error_code[0, 0][plume] == 0
         ):
@@ -62,7 +59,7 @@ def melting_profile(
 
     with computation(PARALLEL), interval(0, -1):
         if (
-            cumulus_parameterization_constants.MELT_GLAC == True
+            cumulus_parameterization_constants.MELT_GLAC
             and plume == cumulus_parameterization_constants.DEEP
             and error_code[0, 0][plume] == 0
         ):
@@ -80,8 +77,7 @@ def melting_profile(
 
     with computation(PARALLEL), interval(...):
         if not (
-            cumulus_parameterization_constants.MELT_GLAC == True
-            and plume == cumulus_parameterization_constants.DEEP
+            cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP
         ):
             melting = 0.0
 

@@ -701,7 +701,7 @@ def modify_environment_profiles(
 
             # do not feed del_t_cloud_ensemble with del_cloud_liquid_cloud_ensemble if the
             # detrainment of liquid water will be used as a source for cloud microphysics
-            if cumulus_parameterization_constants.COUPLE_MICROPHYSICS == True:
+            if cumulus_parameterization_constants.COUPLE_MICROPHYSICS:
                 del_t_cloud_ensemble = (1.0 / cumulus_parameterization_constants.CP) * (
                     del_moist_static_energy_cloud_ensemble
                     - cumulus_parameterization_constants.XLV * del_vapor_cloud_ensemble

@@ -240,12 +240,12 @@ def updraft_chemistry(
                     # tracer gas phase scavenging
                     elif convection_tracers_vect_hcts.A[tracer, 1] > 1.0e-6:
                         option_not_implemented = True
-                        if is_gcc == True:
+                        if is_gcc:
                             option_not_implemented = True
                         if USE_TRACER_SCAVENGE == 3:
                             option_not_implemented = True
                         else:
-                            if is_gcc == True:
+                            if is_gcc:
                                 option_not_implemented = True
                             else:
                                 option_not_implemented = True

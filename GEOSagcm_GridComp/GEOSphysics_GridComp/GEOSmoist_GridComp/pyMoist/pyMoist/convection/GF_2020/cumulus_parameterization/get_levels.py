@@ -281,10 +281,7 @@ def find_lcl(
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             lcl_level[0, 0][plume] = min(lcl_level[0, 0][plume], k_end - 5)
-            if (
-                cumulus_parameterization_constants.USE_LCL == True
-                and plume == cumulus_parameterization_constants.MID
-            ):
+            if cumulus_parameterization_constants.USE_LCL and plume == cumulus_parameterization_constants.MID:
                 error_code[0, 0][plume] = 21
 
             if ADV_TRIGGER == 1 and plume == cumulus_parameterization_constants.SHALLOW:
@@ -465,7 +462,7 @@ def get_convective_cloud_base_level(
         cap_max_internal = cap_max
         if error_code[0, 0][plume] == 0:
             continue_outer_while_loop = True
-            while error_code[0, 0][plume] == 0 and continue_outer_while_loop == True:
+            while error_code[0, 0][plume] == 0 and continue_outer_while_loop:
                 updraft_lfc_level[0, 0][plume] = start_level_internal
                 level = start_level_internal + 1
                 while level <= maximum_updraft_origin_level + 3:
@@ -496,7 +493,7 @@ def get_convective_cloud_base_level(
                     < environment_saturation_moist_static_energy_cloud_levels_forced.at(
                         K=updraft_lfc_level[0, 0][plume]
                     )
-                ) and continue_inner_while_loop == True:
+                ) and continue_inner_while_loop:
                     updraft_lfc_level[0, 0][plume] = updraft_lfc_level[0, 0][plume] + 1
                     if updraft_lfc_level[0, 0][plume] > maximum_updraft_origin_level + 2:
                         error_code[0, 0][plume] = 3
@@ -506,7 +503,7 @@ def get_convective_cloud_base_level(
                     continue_outer_while_loop = False
                     skip_last_check = True
 
-                if continue_outer_while_loop == True:
+                if continue_outer_while_loop:
                     # cloud base pressure and max moist static energy pressure
                     # i.e., the depth (in mb) of the layer of negative buoyancy
                     negative_buoyancy_depth = -(
@@ -546,7 +543,7 @@ def get_convective_cloud_base_level(
                         continue_outer_while_loop = False
                         skip_last_check = True
 
-                if continue_outer_while_loop == True:
+                if continue_outer_while_loop:
                     # if am here -> updraft_lfc_level not found for air parcels from updraft_origin_level
                     updraft_origin_level[0, 0][plume] = updraft_origin_level[0, 0][plume] + 1
 
@@ -576,7 +573,7 @@ def get_convective_cloud_base_level(
                         moist_static_energy_origin_level_forced
                     )
 
-            if skip_last_check == True:
+            if skip_last_check:
                 # last check for updraft_lfc_level
                 if updraft_lfc_level[0, 0][plume] == 0:
                     error_code[0, 0][plume] = 33
@@ -657,7 +654,7 @@ def get_cloud_top(
     plume: Int,
 ):
     """Determine the initial estimate for the cloud top level. This can include an overshooting top above the
-    equilibrium level, if the configuration option OVERSHOOT == True.
+    equilibrium level, if the configuration option OVERSHOOT is True.
 
     Args:
         entrainment_rate (FloatField_Plume)

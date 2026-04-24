@@ -170,7 +170,7 @@ def updraft_vertical_velocity(
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
-            if smooth == True:  # noqa
+            if smooth:
                 if ZERO_DIFF == 1:
                     if K <= cloud_top_level[0, 0][plume] - 2:
                         nvs: IntFieldIJ = 0

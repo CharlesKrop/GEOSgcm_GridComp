@@ -459,7 +459,7 @@ def feed_3d_model(
     from __externals__ import DT_MOIST, USE_TRACER_TRANSPORT, k_end
 
     with computation(FORWARD), interval(0, 1):
-        if cumulus_parameterization_constants.FEED_3D_MODEL == True and do_this_column != 0:
+        if cumulus_parameterization_constants.FEED_3D_MODEL and do_this_column != 0:
             # convective precip rate: mm/s = kg m-2 s-1
             if cumulus_parameterization_constants.ITEST == 0:
                 convective_precipitation_GF = 0.0
@@ -467,7 +467,7 @@ def feed_3d_model(
                 convective_precipitation_GF = precip
 
     with computation(PARALLEL), interval(...):
-        if cumulus_parameterization_constants.FEED_3D_MODEL == True and do_this_column != 0:
+        if cumulus_parameterization_constants.FEED_3D_MODEL and do_this_column != 0:
             # sublimation/evaporation tendencies (kg/kg/s)
             evaporation_sublimation_tendency = (
                 evaporation_sublimation_tendency_from_cumulus_parameterization.at(K=k_end - K)
@@ -565,7 +565,7 @@ def feed_3d_model_from_plumes(
 
     with computation(FORWARD), interval(...):
         if (
-            cumulus_parameterization_constants.FEED_3D_MODEL == True
+            cumulus_parameterization_constants.FEED_3D_MODEL
             and K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
             and error_code_from_cumulus_parameterization[0, 0][plume] == 0
         ):
@@ -597,7 +597,7 @@ def feed_3d_model_from_plumes(
 
     with computation(PARALLEL), interval(...):
         if (
-            cumulus_parameterization_constants.FEED_3D_MODEL == True
+            cumulus_parameterization_constants.FEED_3D_MODEL
             and K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
             and error_code_from_cumulus_parameterization[0, 0][plume] == 0
         ):
@@ -685,7 +685,7 @@ def feed_3d_model_from_plumes(
 
     with computation(BACKWARD), interval(...):
         # this must be done in a separate computation because the offset write is incompatable with PARALLEL
-        if cumulus_parameterization_constants.FEED_3D_MODEL == True:
+        if cumulus_parameterization_constants.FEED_3D_MODEL:
             if (
                 K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
                 and error_code_from_cumulus_parameterization[0, 0][plume] == 0

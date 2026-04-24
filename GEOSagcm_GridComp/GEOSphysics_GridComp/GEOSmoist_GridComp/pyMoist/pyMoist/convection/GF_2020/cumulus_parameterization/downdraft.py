@@ -138,8 +138,8 @@ def get_downdraft_origin_level(
         if error_code[0, 0][plume] == 0:
             if (
                 plume == cumulus_parameterization_constants.DEEP
-                and cumulus_parameterization_constants.MELT_GLAC == True
-            ):  # noqa
+                and cumulus_parameterization_constants.MELT_GLAC
+            ):
                 _, max_index = column_max(melting_layer, 0, k_end)
                 downdraft_origin_level[0, 0][plume] = max(downdraft_origin_level[0, 0][plume], max_index)
 
@@ -147,7 +147,7 @@ def get_downdraft_origin_level(
             # no entrainment/detrainment
             downdraft_origin_level_internal = downdraft_origin_level[0, 0][plume]
             keep_going = True
-            while keep_going == True:
+            while keep_going:
                 keep_going = False
                 if downdraft_origin_level_internal - 1 < detrainment_start_level:
                     detrainment_start_level = downdraft_origin_level_internal - 1
@@ -821,7 +821,7 @@ def downdraft_moisture(
             and plume != 0
             and ZERO_DIFF == 0
             and EVAP_FIX == 1
-            and abs_check == True
+            and abs_check
             and K <= downdraft_origin_level[0, 0][plume]
         ):
             evaporate_in_downdraft_forced[0, 0, 0][plume] = (
@@ -836,13 +836,7 @@ def downdraft_moisture(
             cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced + dq_eva
 
     with computation(FORWARD), interval(0, 1):
-        if (
-            error_code[0, 0][plume] == 0
-            and plume != 0
-            and ZERO_DIFF == 0
-            and EVAP_FIX == 1
-            and abs_check == True
-        ):
+        if error_code[0, 0][plume] == 0 and plume != 0 and ZERO_DIFF == 0 and EVAP_FIX == 1 and abs_check:
             if total_normalized_integrated_evaporate_forced >= 0.0:
                 error_code[0, 0][plume] = 70
 

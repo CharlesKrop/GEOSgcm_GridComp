@@ -161,7 +161,7 @@ def get_cloud_boundary_conditions(
             level_c = max(start_index, level)
 
         # this perturbation is only used for moist static energy
-        if compute_perturbation == True:
+        if compute_perturbation:
             source_parcel_value = updraft_origin_conditions_perturbation(
                 value=source_parcel_value,
                 perturbation=perturbation_field,

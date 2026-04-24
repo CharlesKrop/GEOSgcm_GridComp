@@ -114,7 +114,7 @@ def compute_extra_inputs_from_state(
 
     with computation(FORWARD), interval(0, 1):
         # initialize stochastic variability for convection
-        if STOCHASTIC_CONVECTION == True:  # noqa
+        if STOCHASTIC_CONVECTION:
             # Create bit-processor-reproducible random white noise for convection [0:1]
             seedini = 1000000 * (100 * t.at(K=k_end) - floor(100 * t.at(K=k_end)))
             seed_convection = sqrt(max(min(seedini / 1000000.0, 1.0), 0.0))
