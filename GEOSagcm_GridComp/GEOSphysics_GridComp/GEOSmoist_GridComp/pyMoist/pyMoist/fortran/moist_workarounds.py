@@ -8,7 +8,7 @@ import numpy.typing as npt
 from MAPL_PythonBridge import get_MAPLPy
 from MAPL_PythonBridge.python2fortran import MAPLPyAPI
 from MAPL_PythonBridge.types import FFI
-from ndsl.dsl.typing import Float, Int
+from ndsl.dsl.typing import Float
 
 
 @dataclasses.dataclass

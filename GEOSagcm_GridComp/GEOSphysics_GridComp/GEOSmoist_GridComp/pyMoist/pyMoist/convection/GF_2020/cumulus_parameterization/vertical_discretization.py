@@ -1,7 +1,7 @@
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval
-from ndsl.dsl.typing import FloatField, Int, IntFieldIJ
+from ndsl.dsl.typing import FloatField, Int
 from ndsl.stencils.column_operations import column_max
 
 import pyMoist.constants as constants

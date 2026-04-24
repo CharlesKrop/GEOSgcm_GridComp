@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, sqrt
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, interval, sqrt
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
 
 import pyMoist.constants as constants
