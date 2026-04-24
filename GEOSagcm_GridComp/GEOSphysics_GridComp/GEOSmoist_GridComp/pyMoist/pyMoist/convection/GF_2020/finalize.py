@@ -784,7 +784,7 @@ def update_outputs(
 
     with computation(FORWARD), interval(0, 1):
         if (
-            ENABLE_SHALLOW == True
+            ENABLE_SHALLOW == 1
             and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW]
             == 0
         ):
@@ -798,7 +798,7 @@ def update_outputs(
             ]
 
         if (
-            ENABLE_MID == True
+            ENABLE_MID == 1
             and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID] == 0
         ):
             pressure_mid_convective_cloud_top = p_flipped.at(
@@ -812,7 +812,7 @@ def update_outputs(
             ]
 
         if (
-            ENABLE_DEEP == True
+            ENABLE_DEEP == 1
             and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP] == 0
         ):
             pressure_deep_convective_cloud_top = p_flipped.at(
@@ -827,7 +827,7 @@ def update_outputs(
 
     with computation(PARALLEL), interval(...):
         if (
-            ENABLE_SHALLOW == True
+            ENABLE_SHALLOW == 1
             and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW]
             == 0
         ):
@@ -836,7 +836,7 @@ def update_outputs(
             )
 
         if (
-            ENABLE_MID == True
+            ENABLE_MID == 1
             and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID] == 0
         ):
             mass_flux_mid = normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
@@ -844,7 +844,7 @@ def update_outputs(
             )
 
         if (
-            ENABLE_DEEP == True
+            ENABLE_DEEP == 1
             and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP] == 0
         ):
             mass_flux_deep_updraft = normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
@@ -1033,7 +1033,7 @@ def update_state_with_tendencies(
         )
 
         # fix convective cloud fraction
-        if FIX_CONVECTIVE_CLOUD == True:
+        if FIX_CONVECTIVE_CLOUD:
             saturation_humidity, _ = saturation_specific_humidity(t, p, ese, esx)
 
             if convective_cloud_fraction < 1.0:
