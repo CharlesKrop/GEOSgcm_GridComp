@@ -1,10 +1,10 @@
 from f90nml import Namelist
-
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
@@ -134,7 +134,7 @@ class TranslateGF2020_CumulusParameterization_MeltingProfile_shallow(TranslateFo
     ):
         super().__init__(grid, stencil_factory)
 
-        self.test_core = TestCore(grid,  stencil_factory, self.in_vars, self.out_vars)
+        self.test_core = TestCore(grid, stencil_factory, self.in_vars, self.out_vars)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")

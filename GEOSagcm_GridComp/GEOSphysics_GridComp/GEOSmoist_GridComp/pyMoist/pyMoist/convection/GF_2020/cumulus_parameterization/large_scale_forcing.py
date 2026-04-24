@@ -1,9 +1,10 @@
-import pyMoist.constants as constants
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import Local, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, K, computation, interval
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
+
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
@@ -373,7 +374,9 @@ def ensemble_forcing_mid_plume(
                 trash = max(
                     (
                         cloud_moist_static_energy_forced.at(K=updraft_lfc_level[0, 0][plume])
-                        - environment_moist_static_energy_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
+                        - environment_moist_static_energy_cloud_levels_forced.at(
+                            K=updraft_lfc_level[0, 0][plume]
+                        )
                     ),
                     1.0e1,
                 )

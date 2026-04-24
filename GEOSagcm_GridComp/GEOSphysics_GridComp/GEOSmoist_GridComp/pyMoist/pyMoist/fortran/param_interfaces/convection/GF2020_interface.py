@@ -1,24 +1,22 @@
-import os
 from typing import Any
 
-import f90nml
 from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
 from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
-from ndsl.utils import safe_assign_array
 from ndsl.dsl.typing import Float, Int
+from ndsl.utils import safe_assign_array
 
+from pyMoist.constants import NUMBER_OF_TRACERS
+from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020CumulusParameterizationConfig, GF2020State
+from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
-from pyMoist.fortran.profiler import TimedCUDAProfiler
-from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020State, GF2020CumulusParameterizationConfig
-from pyMoist.saturation_tables import SaturationVaporPressureTable
-from pyMoist.constants import NUMBER_OF_TRACERS
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
-from pyMoist.convection_tracers import ConvectionTracers
+from pyMoist.fortran.profiler import TimedCUDAProfiler
+from pyMoist.saturation_tables import SaturationVaporPressureTable
 
 
 def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
@@ -129,9 +127,11 @@ class GF2020Interface(UserCode):
             min_entrainment_rate = Float(
                 maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.3e-4))
             )
-            entrainment_rate_shallow=Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
-            entrainment_rate_mid=Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(1.0e-4)))
-            entrainment_rate_deep=Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_shallow = Float(
+                maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4))
+            )
+            entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(1.0e-4)))
+            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
         else:
             entrversion = Int(maplpy.get_resource("ENTRVERSION:", mapl_state, default=Int(1)))
 
@@ -215,9 +215,11 @@ class GF2020Interface(UserCode):
             min_entrainment_rate = Float(
                 maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.1e-4))
             )
-            entrainment_rate_shallow=Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
-            entrainment_rate_mid=Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
-            entrainment_rate_deep=Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
+            entrainment_rate_shallow = Float(
+                maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4))
+            )
+            entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
+            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
 
         config = GF2020Config(
             DT_MOIST=Float(maplpy.get_resource("DSL__GF2020_DT", mapl_state, default=Float(0.0))),

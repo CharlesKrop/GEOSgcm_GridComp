@@ -1,9 +1,10 @@
-import pyMoist.constants as constants
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, floor, interval, max, min, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntFieldIJ
+
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_ConvectionTracers,
@@ -19,7 +20,6 @@ from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
-from ndsl.stencils.basic_operations import copy
 
 
 def compute_extra_inputs_from_state(

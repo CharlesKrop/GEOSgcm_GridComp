@@ -1,6 +1,7 @@
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import WRTGRADS
 
+
 class Sounding:
     def __init__(self, cumulus_parameterization_config: GF2020CumulusParameterizationConfig):
         if cumulus_parameterization_config.OUTPUT_SOUNDING == 1:

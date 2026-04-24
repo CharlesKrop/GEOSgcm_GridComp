@@ -1,9 +1,9 @@
 from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval
+from ndsl.dsl.gt4py import function
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from ndsl.dsl.gt4py import function
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (

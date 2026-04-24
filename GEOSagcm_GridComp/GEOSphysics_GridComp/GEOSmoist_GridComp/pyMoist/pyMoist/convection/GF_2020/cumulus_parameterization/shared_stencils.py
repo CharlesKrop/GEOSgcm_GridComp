@@ -1,8 +1,8 @@
 from gt4py.cartesian.gtscript import BACKWARD, FORWARD, PARALLEL, K, computation, interval, sqrt
-
-import pyMoist.constants as constants
 from ndsl.dsl.typing import BoolFieldIJ, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_max
+
+import pyMoist.constants as constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 
 

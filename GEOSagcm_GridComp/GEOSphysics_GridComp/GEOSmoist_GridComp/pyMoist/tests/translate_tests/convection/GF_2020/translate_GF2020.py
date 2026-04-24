@@ -1,11 +1,11 @@
 import numpy as np
 from f90nml import Namelist
-
 from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.convection.GF_2020 import GF2020Config, GF2020CumulusParameterizationConfig, GF2020, GF2020State
+
+from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020CumulusParameterizationConfig, GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 

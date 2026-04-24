@@ -1,10 +1,10 @@
 from f90nml import Namelist
-
 from ndsl import StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
+
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
@@ -139,7 +139,9 @@ class TestCore:
             code(
                 p=state.input_output.p_forced,
                 p_surface=state.input_output.p_surface,
-                p_cloud_levels=state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
+                p_cloud_levels=state.output.p_cloud_levels_forced.data[
+                    :, :, :, plume_dependent_constants.PLUME_INDEX
+                ],
                 topography_height_no_negative=state.input_output.topography_height_no_negative,
                 geopotential_height=state.input_output.geopotential_height_forced,
                 geopotential_height_cloud_levels=locals.geopotential_height_cloud_levels_forced,

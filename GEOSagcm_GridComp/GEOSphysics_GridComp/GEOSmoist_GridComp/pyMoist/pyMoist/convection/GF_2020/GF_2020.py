@@ -1,9 +1,10 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization import (
     GF2020CumulusParameterization,
-    GF2020CumulusParameterizationConstants,
     GF2020CumulusParameterizationConfig,
+    GF2020CumulusParameterizationConstants,
     GF2020CumulusParameterizationState,
 )
 from pyMoist.convection.GF_2020.finalize import GF2020Finalize

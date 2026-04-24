@@ -1,10 +1,11 @@
-import pyMoist.constants as constants
-import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, interval, max, min
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_min
+
+import pyMoist.constants as constants
+import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
@@ -1082,6 +1083,7 @@ def update_ice_fraction_in_convective_tower(
     with computation(PARALLEL), interval(...):
         ice_fraction_in_convective_tower = fraction_ice
 
+
 def update_convective_rainwater_source(
     convective_precipitation_RAS: FloatField,
     convective_rainwater_source: FloatField,
@@ -1096,6 +1098,7 @@ def update_convective_rainwater_source(
 
     with computation(PARALLEL), interval(...):
         convective_rainwater_source = convective_precipitation_RAS / DT_MOIST
+
 
 class GF2020Finalize(NDSLRuntime):
     """This class performs the entire finalization sequence for the GF2020 convection parameterization scheme
@@ -1254,7 +1257,7 @@ class GF2020Finalize(NDSLRuntime):
         self._update_convective_rainwater_source = stencil_factory.from_dims_halo(
             func=update_convective_rainwater_source,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DT_MOIST": config.DT_MOIST}
+            externals={"DT_MOIST": config.DT_MOIST},
         )
 
     def __call__(
