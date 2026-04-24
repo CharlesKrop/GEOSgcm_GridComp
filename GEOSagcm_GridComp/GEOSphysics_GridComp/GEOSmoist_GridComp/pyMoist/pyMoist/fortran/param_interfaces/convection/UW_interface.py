@@ -206,7 +206,7 @@ class UWGEOSInterface(UserCode):
 
                 with TimedCUDAProfiler("UW Numerics", {}):
                     self._uw(self._managed_state.ndsl_state)
-
+                    
                 with TimedCUDAProfiler("UW - State copy-back", {}):
                     safe_assign_array(
                         MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
