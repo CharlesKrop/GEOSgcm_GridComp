@@ -5,13 +5,13 @@ from ndsl.dsl.typing import Float, Int
 from ndsl.utils import safe_assign_array
 
 from pyMoist.constants import NCNST
-from pyMoist.convection.UW import UWConfiguration, UWState
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.fortran.profiler import TimedCUDAProfiler
+from pyMoist.convection.UW import UWConfiguration, UWState
 
 
 class UWGEOSInterface_NOOP_OUT(UserCode):
@@ -30,7 +30,7 @@ class UWGEOSInterface_NOOP_OUT(UserCode):
 
         # Compile the configuration for UW
         config = UWConfiguration(
-            JASON=True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
+            JASON= True if ndsl_stack.quantity_factory.sizer.nz == 72 else False,
             NCNST=NCNST,
             k0=ndsl_stack.quantity_factory.sizer.nz,
             dotransport=1 if MAPLPy.get_resource("USE_TRACER_TRANSP_UW:", mapl_state, default=True) else 0,
@@ -75,9 +75,9 @@ class UWGEOSInterface_NOOP_OUT(UserCode):
         self._managed_state = MAPLManagedState(
             UWState.empty(
                 ndsl_stack.quantity_factory,
-                data_dimensions={
+                data_dimensions= {
                     "ntracers": config.NCNST,
-                },
+                }
             ),
             ndsl_stack.interface_type,
         )
@@ -166,7 +166,7 @@ class UWGEOSInterface_NOOP_OUT(UserCode):
         # CLLS = MAPLPy.get_pointer("CLLS", internal_state, dtype=np.float32)
         # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
         # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
-
+        
         debug = False
 
         with TimedCUDAProfiler("UW", {}):

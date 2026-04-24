@@ -22,6 +22,8 @@ if EXP_NAME not in EXPERIMENT_TRACERS:
 NCNST = _i32(EXPERIMENT_TRACERS[EXP_NAME])
 NUMBER_OF_TRACERS = NCNST
 
+NUMBER_OF_TRACERS = NCNST
+
 # MAPL_UNDEF is set to 1E15 in the Fortran
 # We keep it as is for now to match 11.5.2 GEOS
 MAPL_UNDEF = Float(1e15)
