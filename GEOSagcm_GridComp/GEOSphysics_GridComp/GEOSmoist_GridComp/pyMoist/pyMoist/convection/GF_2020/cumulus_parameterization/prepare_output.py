@@ -327,7 +327,7 @@ def ensemble_output_and_feedback(
     # smooth the tendencies (future work: include outbuoy, outmpc* and tracers)
     with computation(PARALLEL), interval(...):
         if USE_SMOOTH_TENDENCIES < 0:
-            option_not_implemented = 0.0
+            option_not_implemented = True
 
 
 def total_evaporation_flux(

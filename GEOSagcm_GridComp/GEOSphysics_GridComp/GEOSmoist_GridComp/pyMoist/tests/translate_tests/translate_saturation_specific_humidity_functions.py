@@ -105,7 +105,7 @@ class Translatesaturation_specific_humidity_functions(TranslateFortranData2Py):
         }
 
         # FloatField Outputs
-        self.out_vars = {
+        self.out_vars: dict = {
             # regular data fields
             "SER_QSATICE": {},
             "SER_DQSI": {},
