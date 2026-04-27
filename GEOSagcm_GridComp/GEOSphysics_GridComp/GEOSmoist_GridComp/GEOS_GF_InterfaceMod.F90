@@ -508,10 +508,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     ALLOCATE ( SEEDCNV(IM,JM) )
     ALLOCATE ( TMP2D  (IM,JM) )
 
-    ! DSL fields
-   !  ALLOCATE ( DSL__GF2020_LONS(IM,JM) )
-   !  ALLOCATE ( DSL__GF2020_LATS(IM,JM) )
-
     ! derived quantaties
     ! Derived States
     PL       = 0.5*(PLE(:,:,0:LM-1) + PLE(:,:,1:LM))
