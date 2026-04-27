@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -120,8 +121,8 @@ class MAPLMemoryRepository:
             raise KeyError(f"Pointer {name} was never registered.")
         return fmem.associated
 
-    def get_resource(self, name: str, dtype: npt.DTypeLike, default) -> npt.DTypeLike:
-        return self._bridge.MAPL_GetResource(self._state, name, dtype(default))
+    def get_resource(self, name: str, dtype: npt.DTypeLike, default: Any) -> npt.DTypeLike:
+        return self._bridge.MAPL_GetResource(self._state, name, dtype(default))  # type: ignore
 
 
 class MAPLManagedMemory:
