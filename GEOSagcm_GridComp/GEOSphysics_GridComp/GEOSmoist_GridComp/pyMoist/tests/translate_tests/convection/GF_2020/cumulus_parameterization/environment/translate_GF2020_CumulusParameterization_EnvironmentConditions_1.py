@@ -7,17 +7,10 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment import environment_conditions
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -53,9 +46,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -81,9 +72,7 @@ class TestCore:
         locals.geopotential_height.data[:] = inputs["local_geopotential_height"]
         locals.environment_saturation_mixing_ratio.data[:] = inputs["local_env_saturation_mixing_ratio"]
         locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy"]
-        locals.environment_saturation_moist_static_energy.data[:] = inputs[
-            "local_env_saturation_moist_static_energy"
-        ]
+        locals.environment_saturation_moist_static_energy.data[:] = inputs["local_env_saturation_moist_static_energy"]
         state.input_output.t_old.data[:] = inputs["t_old"]
         state.input_output.vapor_old.data[:] = inputs["vapor_old"]
         state.input_output.p_forced.data[:] = inputs["p_forced"]
@@ -94,9 +83,7 @@ class TestCore:
         code = self.stencil_factory.from_dims_halo(
             func=environment_conditions,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={
-                "SATURATION_CALCULATION_CHOICE": cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE
-            },
+            externals={"SATURATION_CALCULATION_CHOICE": cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE},
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
@@ -119,9 +106,7 @@ class TestCore:
             "local_geopotential_height": locals.geopotential_height.field[:],
             "local_env_saturation_mixing_ratio": locals.environment_saturation_mixing_ratio.field[:],
             "local_env_moist_static_energy": locals.environment_moist_static_energy.field[:],
-            "local_env_saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[
-                :
-            ],
+            "local_env_saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[:],
             "t_old": state.input_output.t_old.field[:],
             "vapor_old": state.input_output.vapor_old.field[:],
             "p_forced": state.input_output.p_forced.field[:],

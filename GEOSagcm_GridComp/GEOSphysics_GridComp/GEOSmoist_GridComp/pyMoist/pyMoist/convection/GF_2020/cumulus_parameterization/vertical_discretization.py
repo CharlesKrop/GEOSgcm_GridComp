@@ -8,14 +8,8 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import tridiag
 
 
@@ -118,25 +112,18 @@ def convective_transport_of_momentum(
     from __externals__ import ALP1, DT_MOIST, VERTICAL_DISCRETIZATION_OPTION
 
     with computation(FORWARD), interval(0, -1):
-        if (
-            error_code[0, 0][plume] == 0
-            and VERTICAL_DISCRETIZATION_OPTION == 1
-            and ALP1 == 0.0
-            and K <= cloud_top_level[0, 0][plume] + 1
-        ):  # fully time explicit
+        if error_code[0, 0][plume] == 0 and VERTICAL_DISCRETIZATION_OPTION == 1 and ALP1 == 0.0 and K <= cloud_top_level[0, 0][plume] + 1:  # fully time explicit
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
             del_u_cloud_ensemble = (
                 -(
-                    normalized_massflux_updraft_forced[0, 0, 1][plume]
-                    * (u_c[0, 0, 1] - u_cloud_levels[0, 0, 1])
+                    normalized_massflux_updraft_forced[0, 0, 1][plume] * (u_c[0, 0, 1] - u_cloud_levels[0, 0, 1])
                     - normalized_massflux_updraft_forced[0, 0, 0][plume] * (u_c - u_cloud_levels)
                 )
                 * constants.MAPL_GRAV
                 / dp
                 + (
-                    normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    * (u_c_downdraft[0, 0, 1] - u_cloud_levels[0, 0, 1])
+                    normalized_massflux_downdraft_forced[0, 0, 1][plume] * (u_c_downdraft[0, 0, 1] - u_cloud_levels[0, 0, 1])
                     - normalized_massflux_downdraft_forced[0, 0, 0][plume] * (u_c_downdraft - u_cloud_levels)
                 )
                 * constants.MAPL_GRAV
@@ -146,15 +133,13 @@ def convective_transport_of_momentum(
 
             del_v_cloud_ensemble = (
                 -(
-                    normalized_massflux_updraft_forced[0, 0, 1][plume]
-                    * (v_c_downdraft[0, 0, 1] - v_cloud_levels[0, 0, 1])
+                    normalized_massflux_updraft_forced[0, 0, 1][plume] * (v_c_downdraft[0, 0, 1] - v_cloud_levels[0, 0, 1])
                     - normalized_massflux_updraft_forced[0, 0, 0][plume] * (v_c_downdraft - v_cloud_levels)
                 )
                 * constants.MAPL_GRAV
                 / dp
                 + (
-                    normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    * (v_c_downdraft[0, 0, 1] - v_cloud_levels[0, 0, 1])
+                    normalized_massflux_downdraft_forced[0, 0, 1][plume] * (v_c_downdraft[0, 0, 1] - v_cloud_levels[0, 0, 1])
                     - normalized_massflux_downdraft_forced[0, 0, 0][plume] * (v_c_downdraft - v_cloud_levels)
                 )
                 * constants.MAPL_GRAV
@@ -164,22 +149,14 @@ def convective_transport_of_momentum(
 
     with computation(PARALLEL), interval(...):
         if (
-            error_code[0, 0][plume] == 0
-            and VERTICAL_DISCRETIZATION_OPTION == 1
-            and ALP1 > 0.0
-            and K <= cloud_top_level[0, 0][plume] + 2
+            error_code[0, 0][plume] == 0 and VERTICAL_DISCRETIZATION_OPTION == 1 and ALP1 > 0.0 and K <= cloud_top_level[0, 0][plume] + 2
         ):  # time alp0*explicit + alp1*implicit + upstream
             alp0 = 1.0 - ALP1
             fp = 0.5 * (environment_massflux + abs(environment_massflux))
             fm = 0.5 * (environment_massflux - abs(environment_massflux))
 
     with computation(FORWARD), interval(0, -1):
-        if (
-            error_code[0, 0][plume] == 0
-            and VERTICAL_DISCRETIZATION_OPTION == 1
-            and ALP1 > 0.0
-            and K <= cloud_top_level[0, 0][plume] + 1
-        ):
+        if error_code[0, 0][plume] == 0 and VERTICAL_DISCRETIZATION_OPTION == 1 and ALP1 > 0.0 and K <= cloud_top_level[0, 0][plume] + 1:
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
             beta1 = DT_MOIST * constants.MAPL_GRAV / dp
@@ -189,43 +166,25 @@ def convective_transport_of_momentum(
 
             ddu = (
                 u
-                - (
-                    normalized_massflux_updraft_forced[0, 0, 1][plume] * u_c[0, 0, 1]
-                    - normalized_massflux_updraft_forced[0, 0, 0][plume] * u_c[0, 0, 0]
-                )
-                * beta1
-                + (
-                    normalized_massflux_downdraft_forced[0, 0, 1][plume] * u_c_downdraft[0, 0, 1]
-                    - normalized_massflux_downdraft_forced[0, 0, 1][plume] * u_c_downdraft
-                )
+                - (normalized_massflux_updraft_forced[0, 0, 1][plume] * u_c[0, 0, 1] - normalized_massflux_updraft_forced[0, 0, 0][plume] * u_c[0, 0, 0]) * beta1
+                + (normalized_massflux_downdraft_forced[0, 0, 1][plume] * u_c_downdraft[0, 0, 1] - normalized_massflux_downdraft_forced[0, 0, 1][plume] * u_c_downdraft)
                 * beta1
                 * epsilon_forced[0, 0][plume]
             )
 
             _, max_index = column_max(u, 0, K - 1)
-            ddu = ddu + alp0 * beta1 * (
-                -fm * u.at(K=max_index) + (fm[0, 0, 1] - fp) * u + fp[0, 0, 1] * u[0, 0, 1]
-            )
+            ddu = ddu + alp0 * beta1 * (-fm * u.at(K=max_index) + (fm[0, 0, 1] - fp) * u + fp[0, 0, 1] * u[0, 0, 1])
 
             ddv = (
                 v
-                - (
-                    normalized_massflux_updraft_forced[0, 0, 1][plume] * v_c[0, 0, 1]
-                    - normalized_massflux_updraft_forced[0, 0, 0][plume] * v_c
-                )
-                * beta1
-                + (
-                    normalized_massflux_downdraft_forced[0, 0, 1][plume] * v_c_downdraft[0, 0, 1]
-                    - normalized_massflux_downdraft_forced[0, 0, 0][plume] * v_c_downdraft
-                )
+                - (normalized_massflux_updraft_forced[0, 0, 1][plume] * v_c[0, 0, 1] - normalized_massflux_updraft_forced[0, 0, 0][plume] * v_c) * beta1
+                + (normalized_massflux_downdraft_forced[0, 0, 1][plume] * v_c_downdraft[0, 0, 1] - normalized_massflux_downdraft_forced[0, 0, 0][plume] * v_c_downdraft)
                 * beta1
                 * epsilon_forced[0, 0][plume]
             )
 
             _, max_index = column_max(u, 0, K - 1)
-            ddv = ddv + alp0 * beta1 * (
-                -fm * v.at(K=max_index) + (fm[0, 0, 1] - fp) * v + fp[0, 0, 1] * v[0, 0, 1]
-            )
+            ddv = ddv + alp0 * beta1 * (-fm * v.at(K=max_index) + (fm[0, 0, 1] - fp) * v + fp[0, 0, 1] * v[0, 0, 1])
 
 
 def update_after_tridiag(
@@ -298,36 +257,22 @@ def convective_transport_of_mse(
             # moist static energy : flux form + source/sink terms + time explicit
             if USE_FCT == 0:
                 if K <= cloud_top_level[0, 0][plume]:
-                    dp = 100.0 * (
-                        p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]
-                    )
+                    dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
                     del_moist_static_energy_cloud_ensemble = (
                         -(
                             normalized_massflux_updraft_forced[0, 0, 1][plume]
-                            * (
-                                cloud_moist_static_energy_forced[0, 0, 1]
-                                - environment_moist_static_energy_cloud_levels_forced[0, 0, 1]
-                            )
+                            * (cloud_moist_static_energy_forced[0, 0, 1] - environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
                             - normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            * (
-                                cloud_moist_static_energy_forced
-                                - environment_moist_static_energy_cloud_levels_forced
-                            )
+                            * (cloud_moist_static_energy_forced - environment_moist_static_energy_cloud_levels_forced)
                         )
                         * constants.MAPL_GRAV
                         / dp
                         + (
                             normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                            * (
-                                cloud_moist_static_energy_downdraft_forced[0, 0, 1]
-                                - environment_moist_static_energy_cloud_levels_forced[0, 0, 1]
-                            )
+                            * (cloud_moist_static_energy_downdraft_forced[0, 0, 1] - environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
                             - normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                            * (
-                                cloud_moist_static_energy_downdraft_forced
-                                - environment_moist_static_energy_cloud_levels_forced
-                            )
+                            * (cloud_moist_static_energy_downdraft_forced - environment_moist_static_energy_cloud_levels_forced)
                         )
                         * constants.MAPL_GRAV
                         / dp
@@ -335,25 +280,20 @@ def convective_transport_of_mse(
                     )
 
                     del_moist_static_energy_cloud_ensemble = (
-                        del_moist_static_energy_cloud_ensemble
-                        - cumulus_parameterization_constants.XLF * melting * constants.MAPL_GRAV / dp
+                        del_moist_static_energy_cloud_ensemble - cumulus_parameterization_constants.XLF * melting * constants.MAPL_GRAV / dp
                     )
 
                     # for output only
                     moist_static_energy_tendency_from_environmental_subsidence = (
                         -(
-                            normalized_massflux_updraft_forced[0, 0, 1][plume]
-                            * (-environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
-                            - normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            * (-environment_moist_static_energy_cloud_levels_forced)
+                            normalized_massflux_updraft_forced[0, 0, 1][plume] * (-environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
+                            - normalized_massflux_updraft_forced[0, 0, 0][plume] * (-environment_moist_static_energy_cloud_levels_forced)
                         )
                         * constants.MAPL_GRAV
                         / dp
                         + (
-                            normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                            * (-environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
-                            - normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                            * (-environment_moist_static_energy_cloud_levels_forced)
+                            normalized_massflux_downdraft_forced[0, 0, 1][plume] * (-environment_moist_static_energy_cloud_levels_forced[0, 0, 1])
+                            - normalized_massflux_downdraft_forced[0, 0, 0][plume] * (-environment_moist_static_energy_cloud_levels_forced)
                         )
                         * constants.MAPL_GRAV
                         / dp
@@ -418,17 +358,11 @@ def convective_transport_of_water_vapor_and_condensates(
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
             # take out cloud liquid/ice water for detrainment
-            if (
-                plume == cumulus_parameterization_constants.SHALLOW
-                or plume == cumulus_parameterization_constants.MID
-            ):  # shallow or mid plume
+            if plume == cumulus_parameterization_constants.SHALLOW or plume == cumulus_parameterization_constants.MID:  # shallow or mid plume
                 del_cloud_liquid_cloud_ensemble = (
                     mass_detrainment_updraft_forced[0, 0, 0][plume]
                     * 0.5
-                    * (
-                        cloud_liquid_after_rain_forced[0, 0, 1][plume]
-                        + cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                    )
+                    * (cloud_liquid_after_rain_forced[0, 0, 1][plume] + cloud_liquid_after_rain_forced[0, 0, 0][plume])
                     * constants.MAPL_GRAV
                     / dp
                 )
@@ -437,10 +371,7 @@ def convective_transport_of_water_vapor_and_condensates(
                     del_cloud_liquid_cloud_ensemble = (
                         mass_detrainment_updraft_forced[0, 0, 0][plume]
                         * 0.5
-                        * (
-                            cloud_liquid_after_rain_forced[0, 0, 1][plume]
-                            + cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                        )
+                        * (cloud_liquid_after_rain_forced[0, 0, 1][plume] + cloud_liquid_after_rain_forced[0, 0, 0][plume])
                         * constants.MAPL_GRAV
                         / dp
                     )
@@ -449,72 +380,39 @@ def convective_transport_of_water_vapor_and_condensates(
                         del_cloud_liquid_cloud_ensemble = (
                             mass_detrainment_updraft_forced[0, 0, 0][plume]
                             * 0.5
-                            * (
-                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
-                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            )
+                            * (cloud_liquid_after_rain_forced[0, 0, 1][plume] + cloud_liquid_after_rain_forced[0, 0, 0][plume])
                             * constants.MAPL_GRAV
                             / dp
                         )
                     else:
-                        dz = (
-                            geopotential_height_cloud_levels_forced[0, 0, 1]
-                            - geopotential_height_cloud_levels_forced
-                        )
+                        dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
                         del_cloud_liquid_cloud_ensemble = (
-                            normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            * c1d
-                            * cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            * dz
-                            / dp
-                            * constants.MAPL_GRAV
+                            normalized_massflux_updraft_forced[0, 0, 0][plume] * c1d * cloud_liquid_after_rain_forced[0, 0, 0][plume] * dz / dp * constants.MAPL_GRAV
                         )
                 else:
                     if K == cloud_top_level[0, 0][plume]:
                         del_cloud_liquid_cloud_ensemble = (
                             mass_detrainment_updraft_forced[0, 0, 0][plume]
                             * 0.5
-                            * (
-                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
-                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            )
+                            * (cloud_liquid_after_rain_forced[0, 0, 1][plume] + cloud_liquid_after_rain_forced[0, 0, 0][plume])
                             * constants.MAPL_GRAV
                             / dp
                         )
                     else:
-                        dz = (
-                            geopotential_height_cloud_levels_forced[0, 0, 1]
-                            - geopotential_height_cloud_levels_forced
-                        )
+                        dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
                         del_cloud_liquid_cloud_ensemble = (
-                            normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            * c1d
-                            * cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            * dz
-                            / dp
-                            * constants.MAPL_GRAV
+                            normalized_massflux_updraft_forced[0, 0, 0][plume] * c1d * cloud_liquid_after_rain_forced[0, 0, 0][plume] * dz / dp * constants.MAPL_GRAV
                             + mass_detrainment_updraft_forced[0, 0, 0][plume]
                             * 0.5
-                            * (
-                                cloud_liquid_after_rain_forced[0, 0, 1][plume]
-                                + cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                            )
+                            * (cloud_liquid_after_rain_forced[0, 0, 1][plume] + cloud_liquid_after_rain_forced[0, 0, 0][plume])
                             * constants.MAPL_GRAV
                             / dp
                         ) * 0.5
 
-            g_rain = (
-                0.5
-                * (condensate_to_fall_forced[0, 0, 0][plume] + condensate_to_fall_forced[0, 0, 1][plume])
-                * constants.MAPL_GRAV
-                / dp
-            )
+            g_rain = 0.5 * (condensate_to_fall_forced[0, 0, 0][plume] + condensate_to_fall_forced[0, 0, 1][plume]) * constants.MAPL_GRAV / dp
             e_dn = (
                 -0.5
-                * (
-                    evaporate_in_downdraft_forced[0, 0, 0][plume]
-                    + evaporate_in_downdraft_forced[0, 0, 1][plume]
-                )
+                * (evaporate_in_downdraft_forced[0, 0, 0][plume] + evaporate_in_downdraft_forced[0, 0, 1][plume])
                 * constants.MAPL_GRAV
                 / dp
                 * epsilon_forced[0, 0][plume]
@@ -524,10 +422,8 @@ def convective_transport_of_water_vapor_and_condensates(
             c_up = (
                 del_cloud_liquid_cloud_ensemble
                 + (
-                    normalized_massflux_updraft_forced[0, 0, 1][plume]
-                    * cloud_liquid_after_rain_forced[0, 0, 1][plume]
-                    - normalized_massflux_updraft_forced[0, 0, 0][plume]
-                    * cloud_liquid_after_rain_forced[0, 0, 0][plume]
+                    normalized_massflux_updraft_forced[0, 0, 1][plume] * cloud_liquid_after_rain_forced[0, 0, 1][plume]
+                    - normalized_massflux_updraft_forced[0, 0, 0][plume] * cloud_liquid_after_rain_forced[0, 0, 0][plume]
                 )
                 * constants.MAPL_GRAV
                 / dp
@@ -538,18 +434,14 @@ def convective_transport_of_water_vapor_and_condensates(
             # = flux divergence z*(Q_c - Q_env)_up_and_down  - condensation term + evaporation
             del_vapor_cloud_ensemble = (
                 -(
-                    normalized_massflux_updraft_forced[0, 0, 1][plume]
-                    * cloud_total_water_after_entrainment_forced[0, 0, 1]
-                    - normalized_massflux_updraft_forced[0, 0, 0][plume]
-                    * cloud_total_water_after_entrainment_forced
+                    normalized_massflux_updraft_forced[0, 0, 1][plume] * cloud_total_water_after_entrainment_forced[0, 0, 1]
+                    - normalized_massflux_updraft_forced[0, 0, 0][plume] * cloud_total_water_after_entrainment_forced
                 )
                 * constants.MAPL_GRAV
                 / dp
                 + (
-                    normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    * cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
-                    - normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                    * cloud_total_water_after_entrainment_downdraft_forced
+                    normalized_massflux_downdraft_forced[0, 0, 1][plume] * cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
+                    - normalized_massflux_downdraft_forced[0, 0, 0][plume] * cloud_total_water_after_entrainment_downdraft_forced
                 )
                 * constants.MAPL_GRAV
                 / dp
@@ -578,8 +470,7 @@ def convective_transport_of_water_vapor_and_condensates(
                 * constants.MAPL_GRAV
                 / dp
                 + (
-                    normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    * (-vapor_cloud_levels_forced[0, 0, 1])
+                    normalized_massflux_downdraft_forced[0, 0, 1][plume] * (-vapor_cloud_levels_forced[0, 0, 1])
                     - normalized_massflux_downdraft_forced[0, 0, 0][plume] * (-vapor_cloud_levels_forced)
                 )
                 * constants.MAPL_GRAV

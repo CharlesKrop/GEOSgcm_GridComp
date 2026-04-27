@@ -279,9 +279,7 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.u_timestep_start.field[:] = inputs["u_timestep_start_bugworkaroundname"]
         state.v_timestep_start.field[:] = inputs["v_timestep_start_bugworkaroundname"]
         state.vapor_timestep_start.field[:] = inputs["vapor_timestep_start_bugworkaroundname"]
-        state.geopotential_height_interface.field[:] = inputs[
-            "geopotential_height_interface_bugworkaroundname"
-        ]
+        state.geopotential_height_interface.field[:] = inputs["geopotential_height_interface_bugworkaroundname"]
         state.geopotential_height_surface.field[:] = inputs["geopotential_height_surface_bugworkaroundname"]
         state.area.field[:] = inputs["area_bugworkaroundname"]
         state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"] - 1
@@ -294,23 +292,15 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.convective_precipitation_GF.field[:] = inputs["convective_precipitation_GF_bugworkaroundname"]
         state.convective_precipitation_RAS.field[:] = inputs["convective_precipitation_RAS_bugworkaroundname"]
         state.sensible_heat_flux.field[:] = inputs["sensible_heat_flux_bugworkaroundname"]
-        state.total_water_flux_deep_convection_interface.field[:] = inputs[
-            "total_water_flux_deep_convection_interface_bugworkaroundname"
-        ]
+        state.total_water_flux_deep_convection_interface.field[:] = inputs["total_water_flux_deep_convection_interface_bugworkaroundname"]
         state.evaporation.field[:] = inputs["evaporation_bugworkaroundname"]
         state.convective_condensate_source.field[:] = inputs["convective_condensate_source_bugworkaroundname"]
-        state.convective_condensate_grid_mean.field[:] = inputs[
-            "convective_condensate_grid_mean_bugworkaroundname"
-        ]
+        state.convective_condensate_grid_mean.field[:] = inputs["convective_condensate_grid_mean_bugworkaroundname"]
         state.entrainment_parameter.field[:] = inputs["entrainment_parameter_bugworkaroundname"]
         state.lateral_entrainment_rate.field[:] = inputs["lateral_entrainment_rate_bugworkaroundname"]
-        state.lateral_entrainment_rate_shallow.field[:] = inputs[
-            "lateral_entrainment_rate_shallow_bugworkaroundname"
-        ]
+        state.lateral_entrainment_rate_shallow.field[:] = inputs["lateral_entrainment_rate_shallow_bugworkaroundname"]
         state.lateral_entrainment_rate_mid.field[:] = inputs["lateral_entrainment_rate_mid_bugworkaroundname"]
-        state.lateral_entrainment_rate_deep.field[:] = inputs[
-            "lateral_entrainment_rate_deep_bugworkaroundname"
-        ]
+        state.lateral_entrainment_rate_deep.field[:] = inputs["lateral_entrainment_rate_deep_bugworkaroundname"]
         state.updraft_areal_fraction.field[:] = inputs["updraft_areal_fraction_bugworkaroundname"]
         state.updraft_vertical_velocity.field[:] = inputs["updraft_vertical_velocity_bugworkaroundname"]
         state.dtdt_shortwave.field[:] = inputs["dtdt_shortwave_bugworkaroundname"]
@@ -325,24 +315,14 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
         state.dtdt_deep_convection.field[:] = inputs["dtdt_deep_convection_bugworkaroundname"]
         state.dudt_deep_convection.field[:] = inputs["dudt_deep_convection_bugworkaroundname"]
         state.dvdt_deep_convection.field[:] = inputs["dvdt_deep_convection_bugworkaroundname"]
-        state.pressure_shallow_convective_cloud_top.field[:] = inputs[
-            "pressure_shallow_convective_cloud_top_bugworkaroundname"
-        ]
-        state.pressure_mid_convective_cloud_top.field[:] = inputs[
-            "pressure_mid_convective_cloud_top_bugworkaroundname"
-        ]
-        state.pressure_deep_convective_cloud_top.field[:] = inputs[
-            "pressure_deep_convective_cloud_top_bugworkaroundname"
-        ]
+        state.pressure_shallow_convective_cloud_top.field[:] = inputs["pressure_shallow_convective_cloud_top_bugworkaroundname"]
+        state.pressure_mid_convective_cloud_top.field[:] = inputs["pressure_mid_convective_cloud_top_bugworkaroundname"]
+        state.pressure_deep_convective_cloud_top.field[:] = inputs["pressure_deep_convective_cloud_top_bugworkaroundname"]
         state.mass_flux_shallow.field[:] = inputs["mass_flux_shallow_bugworkaroundname"]
         state.mass_flux_mid.field[:] = inputs["mass_flux_mid_bugworkaroundname"]
         state.mass_flux_deep_updraft.field[:] = inputs["mass_flux_deep_updraft_bugworkaroundname"]
-        state.mass_flux_deep_updraft_interface.field[:] = inputs[
-            "mass_flux_deep_updraft_interface_bugworkaroundname"
-        ]
-        state.mass_flux_deep_updraft_detrained.field[:] = inputs[
-            "mass_flux_deep_updraft_detrained_bugworkaroundname"
-        ]
+        state.mass_flux_deep_updraft_interface.field[:] = inputs["mass_flux_deep_updraft_interface_bugworkaroundname"]
+        state.mass_flux_deep_updraft_detrained.field[:] = inputs["mass_flux_deep_updraft_detrained_bugworkaroundname"]
         state.mass_flux_deep_downdraft.field[:] = inputs["mass_flux_deep_downdraft_bugworkaroundname"]
         state.mass_flux_cloud_base.field[:] = inputs["mass_flux_cloud_base_bugworkaroundname"]
         state.mass_flux_cloud_base_shallow.field[:] = inputs["mass_flux_cloud_base_shallow_bugworkaroundname"]
@@ -415,20 +395,15 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
 
         # collapse plume dim for chemistry_tracers_output
         # NOTE ideally this has no numpy dependency
-        chemistry_tracers_output_5d_reordered = (
-            cumulus_parameterization_state.input_output.chemistry_tracers_output.field[:, :, :, [2, 0, 1], :]
-        )
+        chemistry_tracers_output_5d_reordered = cumulus_parameterization_state.input_output.chemistry_tracers_output.field[:, :, :, [2, 0, 1], :]
         grid_size = self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM, K_DIM])
-        chemistry_tracers_output_4d = np.full(
-            [grid_size[0], grid_size[1], grid_size[2], NUMBER_OF_PLUMES * NUMBER_OF_TRACERS], np.nan
-        )
+        chemistry_tracers_output_4d = np.full([grid_size[0], grid_size[1], grid_size[2], NUMBER_OF_PLUMES * NUMBER_OF_TRACERS], np.nan)
         for plume in range(NUMBER_OF_PLUMES):
             chemistry_tracers_output_4d[
                 :,
                 :,
                 :,
-                plume * config.NUMBER_OF_TRACERS : plume * config.NUMBER_OF_TRACERS
-                + config.NUMBER_OF_TRACERS,
+                plume * config.NUMBER_OF_TRACERS : plume * config.NUMBER_OF_TRACERS + config.NUMBER_OF_TRACERS,
             ] = chemistry_tracers_output_5d_reordered[:, :, :, plume, :]
 
         # fill top level of a few fields with nans to make test pass
@@ -466,21 +441,15 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "t_excess": cumulus_parameterization_state.input.t_excess.field[:],
             "vapor_excess": cumulus_parameterization_state.input.vapor_excess.field[:],
             "grid_scale_forcing_t": cumulus_parameterization_state.input.grid_scale_forcing_t.field[:],
-            "grid_scale_forcing_vapor": cumulus_parameterization_state.input.grid_scale_forcing_vapor.field[
-                :
-            ],
+            "grid_scale_forcing_vapor": cumulus_parameterization_state.input.grid_scale_forcing_vapor.field[:],
             "subgrid_scale_forcing_t": cumulus_parameterization_state.input.subgrid_scale_forcing_t.field[:],
-            "subgrid_scale_forcing_vapor": cumulus_parameterization_state.input.subgrid_scale_forcing_vapor.field[
-                :
-            ],
+            "subgrid_scale_forcing_vapor": cumulus_parameterization_state.input.subgrid_scale_forcing_vapor.field[:],
             "seed_convection": cumulus_parameterization_state.input.seed_convection.field[:],
             "saturation_water_vapor": cumulus_parameterization_state.input.saturation_water_vapor.field[:],
             "ocean_fraction": cumulus_parameterization_state.input.ocean_fraction.field[:],
             "convection_fraction": cumulus_parameterization_state.input.convection_fraction.field[:],
             "surface_type": cumulus_parameterization_state.input.surface_type.field[:],
-            "lateral_entrainment_rate": cumulus_parameterization_state.input.lateral_entrainment_rate.field[
-                :
-            ],
+            "lateral_entrainment_rate": cumulus_parameterization_state.input.lateral_entrainment_rate.field[:],
             "last_error_code": cumulus_parameterization_state.input.last_error_code.field[:],
             # output fields
             "dtdt": cumulus_parameterization_state.output.dtdt.field[:, :, :, [2, 0, 1]],
@@ -491,102 +460,48 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "dnliquiddt": cumulus_parameterization_state.output.dnliquiddt.field[:, :, :, [2, 0, 1]],
             "dnicedt": cumulus_parameterization_state.output.dnicedt.field[:, :, :, [2, 0, 1]],
             "dbuoyancydt": cumulus_parameterization_state.output.dbuoyancydt.field[:, :, :, [2, 0, 1]],
-            "dconvectiveicedt": cumulus_parameterization_state.output.dconvectiveicedt.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "dlargescaleicedt": cumulus_parameterization_state.output.dlargescaleicedt.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "dconvectiveliquiddt": cumulus_parameterization_state.output.dconvectiveliquiddt.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "dlargescaleliquiddt": cumulus_parameterization_state.output.dlargescaleliquiddt.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "dconvectivecloudfractiondt": cumulus_parameterization_state.output.dconvectivecloudfractiondt.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "dlargescalecloudfractiondt": cumulus_parameterization_state.output.dlargescalecloudfractiondt.field[
-                :, :, :, [2, 0, 1]
-            ],
+            "dconvectiveicedt": cumulus_parameterization_state.output.dconvectiveicedt.field[:, :, :, [2, 0, 1]],
+            "dlargescaleicedt": cumulus_parameterization_state.output.dlargescaleicedt.field[:, :, :, [2, 0, 1]],
+            "dconvectiveliquiddt": cumulus_parameterization_state.output.dconvectiveliquiddt.field[:, :, :, [2, 0, 1]],
+            "dlargescaleliquiddt": cumulus_parameterization_state.output.dlargescaleliquiddt.field[:, :, :, [2, 0, 1]],
+            "dconvectivecloudfractiondt": cumulus_parameterization_state.output.dconvectivecloudfractiondt.field[:, :, :, [2, 0, 1]],
+            "dlargescalecloudfractiondt": cumulus_parameterization_state.output.dlargescalecloudfractiondt.field[:, :, :, [2, 0, 1]],
             "error_code": cumulus_parameterization_state.output.error_code.field[:, :, [2, 0, 1]],
-            "downdraft_origin_level": cumulus_parameterization_state.output.downdraft_origin_level.field[
-                :, :, [2, 0, 1]
-            ],
+            "downdraft_origin_level": cumulus_parameterization_state.output.downdraft_origin_level.field[:, :, [2, 0, 1]],
             "lcl_level": cumulus_parameterization_state.output.lcl_level.field[:, :, [2, 0, 1]],
-            "updraft_origin_level": cumulus_parameterization_state.output.updraft_origin_level.field[
-                :, :, [2, 0, 1]
-            ],
-            "updraft_lfc_level": cumulus_parameterization_state.output.updraft_lfc_level.field[
-                :, :, [2, 0, 1]
-            ],
+            "updraft_origin_level": cumulus_parameterization_state.output.updraft_origin_level.field[:, :, [2, 0, 1]],
+            "updraft_lfc_level": cumulus_parameterization_state.output.updraft_lfc_level.field[:, :, [2, 0, 1]],
             "cloud_top_level": cumulus_parameterization_state.output.cloud_top_level.field[:, :, [2, 0, 1]],
             "kstabi": cumulus_parameterization_state.output.kstabi.field[:, :, [2, 0, 1]],
             "kstabm": cumulus_parameterization_state.output.kstabm.field[:, :, [2, 0, 1]],
             "precip": cumulus_parameterization_state.output.precip.field[:, :, [2, 0, 1]],
-            "cloud_base_mass_flux_modified": cumulus_parameterization_state.output.cloud_base_mass_flux_modified.field[
-                :, :, [2, 0, 1]
-            ],
+            "cloud_base_mass_flux_modified": cumulus_parameterization_state.output.cloud_base_mass_flux_modified.field[:, :, [2, 0, 1]],
             "epsilon_forced": cumulus_parameterization_state.output.epsilon_forced.field[:, :, [2, 0, 1]],
-            "total_normalized_integrated_condensate_forced": cumulus_parameterization_state.output.total_normalized_integrated_condensate_forced.field[
-                :, :, [2, 0, 1]
-            ],
-            "scale_dependence_factor": cumulus_parameterization_state.output.scale_dependence_factor.field[
-                :, :, [2, 0, 1]
-            ],
-            "p_cloud_levels_forced": cumulus_parameterization_state.output.p_cloud_levels_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "entrainment_rate": cumulus_parameterization_state.output.entrainment_rate.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "mass_entrainment_updraft_forced": cumulus_parameterization_state.output.mass_entrainment_updraft_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "mass_entrainment_downdraft_forced": cumulus_parameterization_state.output.mass_entrainment_downdraft_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "mass_detrainment_updraft_forced": cumulus_parameterization_state.output.mass_detrainment_updraft_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "mass_detrainment_downdraft_forced": cumulus_parameterization_state.output.mass_detrainment_downdraft_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "normalized_massflux_updraft_forced": cumulus_parameterization_state.output.normalized_massflux_updraft_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "normalized_massflux_downdraft_forced": cumulus_parameterization_state.output.normalized_massflux_downdraft_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "condensate_to_fall_forced": cumulus_parameterization_state.output.condensate_to_fall_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "evaporate_in_downdraft_forced": cumulus_parameterization_state.output.evaporate_in_downdraft_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
-            "cloud_liquid_after_rain_forced": cumulus_parameterization_state.output.cloud_liquid_after_rain_forced.field[
-                :, :, :, [2, 0, 1]
-            ],
+            "total_normalized_integrated_condensate_forced": cumulus_parameterization_state.output.total_normalized_integrated_condensate_forced.field[:, :, [2, 0, 1]],
+            "scale_dependence_factor": cumulus_parameterization_state.output.scale_dependence_factor.field[:, :, [2, 0, 1]],
+            "p_cloud_levels_forced": cumulus_parameterization_state.output.p_cloud_levels_forced.field[:, :, :, [2, 0, 1]],
+            "entrainment_rate": cumulus_parameterization_state.output.entrainment_rate.field[:, :, :, [2, 0, 1]],
+            "mass_entrainment_updraft_forced": cumulus_parameterization_state.output.mass_entrainment_updraft_forced.field[:, :, :, [2, 0, 1]],
+            "mass_entrainment_downdraft_forced": cumulus_parameterization_state.output.mass_entrainment_downdraft_forced.field[:, :, :, [2, 0, 1]],
+            "mass_detrainment_updraft_forced": cumulus_parameterization_state.output.mass_detrainment_updraft_forced.field[:, :, :, [2, 0, 1]],
+            "mass_detrainment_downdraft_forced": cumulus_parameterization_state.output.mass_detrainment_downdraft_forced.field[:, :, :, [2, 0, 1]],
+            "normalized_massflux_updraft_forced": cumulus_parameterization_state.output.normalized_massflux_updraft_forced.field[:, :, :, [2, 0, 1]],
+            "normalized_massflux_downdraft_forced": cumulus_parameterization_state.output.normalized_massflux_downdraft_forced.field[:, :, :, [2, 0, 1]],
+            "condensate_to_fall_forced": cumulus_parameterization_state.output.condensate_to_fall_forced.field[:, :, :, [2, 0, 1]],
+            "evaporate_in_downdraft_forced": cumulus_parameterization_state.output.evaporate_in_downdraft_forced.field[:, :, :, [2, 0, 1]],
+            "cloud_liquid_after_rain_forced": cumulus_parameterization_state.output.cloud_liquid_after_rain_forced.field[:, :, :, [2, 0, 1]],
             "t_updraft": cumulus_parameterization_state.output.t_updraft.field[:, :, :, [2, 0, 1]],
-            "convective_cloud_fraction_output": cumulus_parameterization_state.output.convective_cloud_fraction.field[
-                :, :, :, [2, 0, 1]
-            ],
+            "convective_cloud_fraction_output": cumulus_parameterization_state.output.convective_cloud_fraction.field[:, :, :, [2, 0, 1]],
             "cloud_workfunction_0": cumulus_parameterization_state.output.cloud_workfunction_0.field[:],
             "cloud_workfunction_1": cumulus_parameterization_state.output.cloud_workfunction_1.field[:],
             "cloud_workfunction_2": cumulus_parameterization_state.output.cloud_workfunction_2.field[:],
             "cloud_workfunction_3": cumulus_parameterization_state.output.cloud_workfunction_3.field[:],
-            "cloud_workfunction_1_pbl": cumulus_parameterization_state.output.cloud_workfunction_1_pbl.field[
-                :
-            ],
-            "cloud_workfunction_1_cin": cumulus_parameterization_state.output.cloud_workfunction_1_cin.field[
-                :
-            ],
+            "cloud_workfunction_1_pbl": cumulus_parameterization_state.output.cloud_workfunction_1_pbl.field[:],
+            "cloud_workfunction_1_cin": cumulus_parameterization_state.output.cloud_workfunction_1_cin.field[:],
             "cape_removal_time_scale": cumulus_parameterization_state.output.cape_removal_time_scale.field[:],
             "pbl_time_scale": cumulus_parameterization_state.output.pbl_time_scale.field[:],
             "lightning_density": cumulus_parameterization_state.output.lightning_density.field[:],
-            "evaporation_sublimation_tendency": cumulus_parameterization_state.output.evaporation_sublimation_tendency.field[
-                :
-            ],
+            "evaporation_sublimation_tendency": cumulus_parameterization_state.output.evaporation_sublimation_tendency.field[:],
             "convective_precip_flux": cumulus_parameterization_state.output.convective_precip_flux.field[:],
             "t_perturbation": cumulus_parameterization_state.output.t_perturbation.field[:],
             # input/output fields
@@ -595,24 +510,16 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "ccn": cumulus_parameterization_state.input_output.ccn.field[:],
             "air_density": cumulus_parameterization_state.input_output.air_density.field[:],
             "omega": cumulus_parameterization_state.input_output.omega.field[:],
-            "topography_height_no_negative": cumulus_parameterization_state.input_output.topography_height_no_negative.field[
-                :
-            ],
+            "topography_height_no_negative": cumulus_parameterization_state.input_output.topography_height_no_negative.field[:],
             "sensible_heat_flux": cumulus_parameterization_state.input_output.sensible_heat_flux.field[:],
             "latent_heat_flux": cumulus_parameterization_state.input_output.latent_heat_flux.field[:],
             "longitude_degrees": cumulus_parameterization_state.input_output.longitude_degrees.field[:],
             "latitude_degrees": cumulus_parameterization_state.input_output.latitude_degrees.field[:],
             "t_old": cumulus_parameterization_state.input_output.t_old.field[:],
             "vapor_old": cumulus_parameterization_state.input_output.vapor_old.field[:],
-            "t_modified_by_advection": cumulus_parameterization_state.input_output.t_modified_by_advection.field[
-                :
-            ],
-            "vapor_modified_by_advection": cumulus_parameterization_state.input_output.vapor_modified_by_advection.field[
-                :
-            ],
-            "geopotential_height_forced": cumulus_parameterization_state.input_output.geopotential_height_forced.field[
-                :
-            ],
+            "t_modified_by_advection": cumulus_parameterization_state.input_output.t_modified_by_advection.field[:],
+            "vapor_modified_by_advection": cumulus_parameterization_state.input_output.vapor_modified_by_advection.field[:],
+            "geopotential_height_forced": cumulus_parameterization_state.input_output.geopotential_height_forced.field[:],
             "p_forced": cumulus_parameterization_state.input_output.p_forced.field[:],
             "p_surface": cumulus_parameterization_state.input_output.p_surface.field[:],
             "t_surface": cumulus_parameterization_state.input_output.t_surface.field[:],
@@ -620,20 +527,14 @@ class TranslateGF2020_Setup(TranslateFortranData2Py):
             "v": cumulus_parameterization_state.input_output.v.field[:],
             "w": cumulus_parameterization_state.input_output.w.field[:],
             "mass": cumulus_parameterization_state.input_output.mass.field[:],
-            "convective_scale_velocity": cumulus_parameterization_state.input_output.convective_scale_velocity.field[
-                :
-            ],
+            "convective_scale_velocity": cumulus_parameterization_state.input_output.convective_scale_velocity.field[:],
             "buoyancy_excess": cumulus_parameterization_state.input_output.buoyancy_excess.field[:],
             "large_scale_ice": cumulus_parameterization_state.input_output.large_scale_ice.field[:],
             "convective_ice": cumulus_parameterization_state.input_output.convective_ice.field[:],
             "large_scale_liquid": cumulus_parameterization_state.input_output.large_scale_liquid.field[:],
             "convective_liquid": cumulus_parameterization_state.input_output.convective_liquid.field[:],
-            "large_scale_cloud_fraction": cumulus_parameterization_state.input_output.large_scale_cloud_fraction.field[
-                :
-            ],
-            "convective_cloud_fraction": cumulus_parameterization_state.input_output.convective_cloud_fraction.field[
-                :
-            ],
+            "large_scale_cloud_fraction": cumulus_parameterization_state.input_output.large_scale_cloud_fraction.field[:],
+            "convective_cloud_fraction": cumulus_parameterization_state.input_output.convective_cloud_fraction.field[:],
             "chemistry_tracers": cumulus_parameterization_state.input_output.chemistry_tracers.field[:],
             "chemistry_tracers_output": chemistry_tracers_output_4d,
         }

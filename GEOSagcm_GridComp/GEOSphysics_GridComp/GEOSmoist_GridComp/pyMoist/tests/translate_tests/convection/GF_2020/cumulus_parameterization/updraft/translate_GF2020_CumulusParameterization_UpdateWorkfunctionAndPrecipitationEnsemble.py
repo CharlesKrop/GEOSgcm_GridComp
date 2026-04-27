@@ -6,21 +6,12 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
-from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import (
-    UpdateWorkfunctionAndPrecipitationEnsemble,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.updraft import UpdateWorkfunctionAndPrecipitationEnsemble
 
 
 class TestCore:
@@ -59,9 +50,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -85,34 +74,18 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_origin_level"] - 1
-        )
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_lfc_level"] - 1
-        )
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level"] - 1
-        )
-        locals.geopotential_height_cloud_levels_modified.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_modified"
-        ]
-        locals.normalized_massflux_updraft_modified.data[:] = inputs[
-            "local_normalized_massflux_updraft_modified"
-        ]
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        locals.geopotential_height_cloud_levels_modified.data[:] = inputs["local_geopotential_height_cloud_levels_modified"]
+        locals.normalized_massflux_updraft_modified.data[:] = inputs["local_normalized_massflux_updraft_modified"]
         locals.d_buoyancy_modified.data[:] = inputs["local_d_buoyancy_modified"]
         locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels"]
         locals.t_cloud_levels_modified.data[:] = inputs["local_t_cloud_levels_modified"]
         locals.cloud_workfunction_0_modified.data[:] = inputs["local_cloud_workfunction_0_modified"]
-        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "condensate_to_fall_forced"
-        ]
-        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["evaporate_in_downdraft_forced"]
-        )
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "epsilon_forced"
-        ]
+        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
+        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
+        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
         if MAXENS1 * MAXENS2 * MAXENS3 != 16:
             raise NotImplementedError(
                 "Due to limitations in the translate test, the size of the ensemble"
@@ -151,32 +124,17 @@ class TestCore:
         # write output
         outputs = {
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "updraft_origin_level": state.output.updraft_origin_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "updraft_lfc_level": state.output.updraft_lfc_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
-            + 1,
-            "local_geopotential_height_cloud_levels_modified": locals.geopotential_height_cloud_levels_modified.field[
-                :
-            ],
-            "local_normalized_massflux_updraft_modified": locals.normalized_massflux_updraft_modified.field[
-                :
-            ],
+            "updraft_origin_level": state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "local_geopotential_height_cloud_levels_modified": locals.geopotential_height_cloud_levels_modified.field[:],
+            "local_normalized_massflux_updraft_modified": locals.normalized_massflux_updraft_modified.field[:],
             "local_d_buoyancy_modified": locals.d_buoyancy_modified.field[:],
             "local_gamma_cloud_levels": locals.gamma_cloud_levels.field[:],
             "local_t_cloud_levels_modified": locals.t_cloud_levels_modified.field[:],
             "local_cloud_workfunction_0_modified": locals.cloud_workfunction_0_modified.field[:],
-            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "evaporate_in_downdraft_forced": state.output.evaporate_in_downdraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
             "epsilon_forced": state.output.epsilon_forced.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "local_precipitation_ensemble": locals.precipitation_ensemble.field[:],
         }
@@ -184,9 +142,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -209,9 +165,7 @@ class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitation
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -234,9 +188,7 @@ class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitation
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_UpdateWorkfunctionAndPrecipitationEnsemble_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

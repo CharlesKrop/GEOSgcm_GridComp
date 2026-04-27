@@ -183,9 +183,7 @@ class TranslateGF2020(TranslateFortranData2Py):
         state.u_timestep_start.field[:] = inputs["u_timestep_start_bugworkaroundname"]
         state.v_timestep_start.field[:] = inputs["v_timestep_start_bugworkaroundname"]
         state.vapor_timestep_start.field[:] = inputs["vapor_timestep_start_bugworkaroundname"]
-        state.geopotential_height_interface.field[:] = inputs[
-            "geopotential_height_interface_bugworkaroundname"
-        ]
+        state.geopotential_height_interface.field[:] = inputs["geopotential_height_interface_bugworkaroundname"]
         state.geopotential_height_surface.field[:] = inputs["geopotential_height_surface_bugworkaroundname"]
         state.area.field[:] = inputs["area_bugworkaroundname"]
         state.pbl_level.field[:] = inputs["pbl_level_bugworkaroundname"] - 1
@@ -197,23 +195,15 @@ class TranslateGF2020(TranslateFortranData2Py):
         state.convective_precipitation_GF.field[:] = inputs["convective_precipitation_GF_bugworkaroundname"]
         state.convective_precipitation_RAS.field[:] = inputs["convective_precipitation_RAS_bugworkaroundname"]
         state.sensible_heat_flux.field[:] = inputs["sensible_heat_flux_bugworkaroundname"]
-        state.total_water_flux_deep_convection_interface.field[:] = inputs[
-            "total_water_flux_deep_convection_interface_bugworkaroundname"
-        ]
+        state.total_water_flux_deep_convection_interface.field[:] = inputs["total_water_flux_deep_convection_interface_bugworkaroundname"]
         state.evaporation.field[:] = inputs["evaporation_bugworkaroundname"]
         state.convective_condensate_source.field[:] = inputs["convective_condensate_source_bugworkaroundname"]
-        state.convective_condensate_grid_mean.field[:] = inputs[
-            "convective_condensate_grid_mean_bugworkaroundname"
-        ]
+        state.convective_condensate_grid_mean.field[:] = inputs["convective_condensate_grid_mean_bugworkaroundname"]
         state.entrainment_parameter.field[:] = inputs["entrainment_parameter_bugworkaroundname"]
         state.lateral_entrainment_rate.field[:] = inputs["lateral_entrainment_rate_bugworkaroundname"]
-        state.lateral_entrainment_rate_shallow.field[:] = inputs[
-            "lateral_entrainment_rate_shallow_bugworkaroundname"
-        ]
+        state.lateral_entrainment_rate_shallow.field[:] = inputs["lateral_entrainment_rate_shallow_bugworkaroundname"]
         state.lateral_entrainment_rate_mid.field[:] = inputs["lateral_entrainment_rate_mid_bugworkaroundname"]
-        state.lateral_entrainment_rate_deep.field[:] = inputs[
-            "lateral_entrainment_rate_deep_bugworkaroundname"
-        ]
+        state.lateral_entrainment_rate_deep.field[:] = inputs["lateral_entrainment_rate_deep_bugworkaroundname"]
         state.updraft_areal_fraction.field[:] = inputs["updraft_areal_fraction_bugworkaroundname"]
         state.updraft_vertical_velocity.field[:] = inputs["updraft_vertical_velocity_bugworkaroundname"]
         state.dtdt_shortwave.field[:] = inputs["dtdt_shortwave_bugworkaroundname"]
@@ -228,24 +218,14 @@ class TranslateGF2020(TranslateFortranData2Py):
         state.dtdt_deep_convection.field[:] = inputs["dtdt_deep_convection_bugworkaroundname"]
         state.dudt_deep_convection.field[:] = inputs["dudt_deep_convection_bugworkaroundname"]
         state.dvdt_deep_convection.field[:] = inputs["dvdt_deep_convection_bugworkaroundname"]
-        state.pressure_shallow_convective_cloud_top.field[:] = inputs[
-            "pressure_shallow_convective_cloud_top_bugworkaroundname"
-        ]
-        state.pressure_mid_convective_cloud_top.field[:] = inputs[
-            "pressure_mid_convective_cloud_top_bugworkaroundname"
-        ]
-        state.pressure_deep_convective_cloud_top.field[:] = inputs[
-            "pressure_deep_convective_cloud_top_bugworkaroundname"
-        ]
+        state.pressure_shallow_convective_cloud_top.field[:] = inputs["pressure_shallow_convective_cloud_top_bugworkaroundname"]
+        state.pressure_mid_convective_cloud_top.field[:] = inputs["pressure_mid_convective_cloud_top_bugworkaroundname"]
+        state.pressure_deep_convective_cloud_top.field[:] = inputs["pressure_deep_convective_cloud_top_bugworkaroundname"]
         state.mass_flux_shallow.field[:] = inputs["mass_flux_shallow_bugworkaroundname"]
         state.mass_flux_mid.field[:] = inputs["mass_flux_mid_bugworkaroundname"]
         state.mass_flux_deep_updraft.field[:] = inputs["mass_flux_deep_updraft_bugworkaroundname"]
-        state.mass_flux_deep_updraft_interface.field[:] = inputs[
-            "mass_flux_deep_updraft_interface_bugworkaroundname"
-        ]
-        state.mass_flux_deep_updraft_detrained.field[:] = inputs[
-            "mass_flux_deep_updraft_detrained_bugworkaroundname"
-        ]
+        state.mass_flux_deep_updraft_interface.field[:] = inputs["mass_flux_deep_updraft_interface_bugworkaroundname"]
+        state.mass_flux_deep_updraft_detrained.field[:] = inputs["mass_flux_deep_updraft_detrained_bugworkaroundname"]
         state.mass_flux_deep_downdraft.field[:] = inputs["mass_flux_deep_downdraft_bugworkaroundname"]
         state.mass_flux_cloud_base.field[:] = inputs["mass_flux_cloud_base_bugworkaroundname"]
         state.mass_flux_cloud_base_shallow.field[:] = inputs["mass_flux_cloud_base_shallow_bugworkaroundname"]
@@ -319,19 +299,13 @@ class TranslateGF2020(TranslateFortranData2Py):
             "convective_precipitation_GF_bugworkaroundname": state.convective_precipitation_GF.field[:],
             "convective_precipitation_RAS_bugworkaroundname": state.convective_precipitation_RAS.field[:],
             "sensible_heat_flux_bugworkaroundname": state.sensible_heat_flux.field[:],
-            "total_water_flux_deep_convection_interface_bugworkaroundname": state.total_water_flux_deep_convection_interface.field[
-                :
-            ],
+            "total_water_flux_deep_convection_interface_bugworkaroundname": state.total_water_flux_deep_convection_interface.field[:],
             "evaporation_bugworkaroundname": state.evaporation.field[:],
             "convective_condensate_source_bugworkaroundname": state.convective_condensate_source.field[:],
-            "convective_condensate_grid_mean_bugworkaroundname": state.convective_condensate_grid_mean.field[
-                :
-            ],
+            "convective_condensate_grid_mean_bugworkaroundname": state.convective_condensate_grid_mean.field[:],
             "entrainment_parameter_bugworkaroundname": state.entrainment_parameter.field[:],
             "lateral_entrainment_rate_bugworkaroundname": state.lateral_entrainment_rate.field[:],
-            "lateral_entrainment_rate_shallow_bugworkaroundname": state.lateral_entrainment_rate_shallow.field[
-                :
-            ],
+            "lateral_entrainment_rate_shallow_bugworkaroundname": state.lateral_entrainment_rate_shallow.field[:],
             "lateral_entrainment_rate_mid_bugworkaroundname": state.lateral_entrainment_rate_mid.field[:],
             "lateral_entrainment_rate_deep_bugworkaroundname": state.lateral_entrainment_rate_deep.field[:],
             "updraft_areal_fraction_bugworkaroundname": state.updraft_areal_fraction.field[:],
@@ -344,34 +318,20 @@ class TranslateGF2020(TranslateFortranData2Py):
             "dvapordt_from_dynamics_bugworkaroundname": state.dvapordt_from_dynamics.field[:],
             "sigma_mid_bugworkaroundname": state.sigma_mid.field[:],
             "sigma_deep_bugworkaroundname": state.sigma_deep.field[:],
-            "total_precipitable_water_initial_bugworkaroundname": state.total_precipitable_water_initial.field[
-                :
-            ],
-            "saturation_total_precipitable_water_initial_bugworkaroundname": state.saturation_total_precipitable_water_initial.field[
-                :
-            ],
+            "total_precipitable_water_initial_bugworkaroundname": state.total_precipitable_water_initial.field[:],
+            "saturation_total_precipitable_water_initial_bugworkaroundname": state.saturation_total_precipitable_water_initial.field[:],
             "dvapordt_deep_convection_bugworkaroundname": state.dvapordt_deep_convection.field[:],
             "dtdt_deep_convection_bugworkaroundname": state.dtdt_deep_convection.field[:],
             "dudt_deep_convection_bugworkaroundname": state.dudt_deep_convection.field[:],
             "dvdt_deep_convection_bugworkaroundname": state.dvdt_deep_convection.field[:],
-            "pressure_shallow_convective_cloud_top_bugworkaroundname": state.pressure_shallow_convective_cloud_top.field[
-                :
-            ],
-            "pressure_mid_convective_cloud_top_bugworkaroundname": state.pressure_mid_convective_cloud_top.field[
-                :
-            ],
-            "pressure_deep_convective_cloud_top_bugworkaroundname": state.pressure_deep_convective_cloud_top.field[
-                :
-            ],
+            "pressure_shallow_convective_cloud_top_bugworkaroundname": state.pressure_shallow_convective_cloud_top.field[:],
+            "pressure_mid_convective_cloud_top_bugworkaroundname": state.pressure_mid_convective_cloud_top.field[:],
+            "pressure_deep_convective_cloud_top_bugworkaroundname": state.pressure_deep_convective_cloud_top.field[:],
             "mass_flux_shallow_bugworkaroundname": state.mass_flux_shallow.field[:],
             "mass_flux_mid_bugworkaroundname": state.mass_flux_mid.field[:],
             "mass_flux_deep_updraft_bugworkaroundname": state.mass_flux_deep_updraft.field[:],
-            "mass_flux_deep_updraft_interface_bugworkaroundname": state.mass_flux_deep_updraft_interface.field[
-                :
-            ],
-            "mass_flux_deep_updraft_detrained_bugworkaroundname": state.mass_flux_deep_updraft_detrained.field[
-                :
-            ],
+            "mass_flux_deep_updraft_interface_bugworkaroundname": state.mass_flux_deep_updraft_interface.field[:],
+            "mass_flux_deep_updraft_detrained_bugworkaroundname": state.mass_flux_deep_updraft_detrained.field[:],
             "mass_flux_deep_downdraft_bugworkaroundname": state.mass_flux_deep_downdraft.field[:],
             "mass_flux_cloud_base_bugworkaroundname": state.mass_flux_cloud_base.field[:],
             "mass_flux_cloud_base_shallow_bugworkaroundname": state.mass_flux_cloud_base_shallow.field[:],

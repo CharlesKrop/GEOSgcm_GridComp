@@ -90,15 +90,7 @@ def compute_extra_inputs_from_state(
         mass = (p_interface[0, 0, 1] - p_interface) / constants.MAPL_GRAV
 
         if LHYDROSTATIC:
-            vertical_motion = (
-                -1
-                * omega
-                / (
-                    constants.MAPL_GRAV
-                    * p
-                    / (constants.MAPL_RDRY * t * (1.0 + constants.MAPL_VIREPS * vapor))
-                )
-            )
+            vertical_motion = -1 * omega / (constants.MAPL_GRAV * p / (constants.MAPL_RDRY * t * (1.0 + constants.MAPL_VIREPS * vapor)))
         else:
             vertical_motion = w
 
@@ -595,11 +587,7 @@ def set_2d_fields(
         evaporation_local = evaporation  # kg m-2 s-1
 
         # sensible–heat_flux comes in W m-2, below it is converted to K m s-1
-        sensible_heat_flux_local = sensible_heat_flux / (
-            1004.0
-            * p_interface.at(K=k_end + 1)
-            / (287.04 * t.at(K=k_end) * (1.0 + 0.608 * vapor.at(K=k_end)))
-        )  # K m s-1
+        sensible_heat_flux_local = sensible_heat_flux / (1004.0 * p_interface.at(K=k_end + 1) / (287.04 * t.at(K=k_end) * (1.0 + 0.608 * vapor.at(K=k_end))))  # K m s-1
 
         # topography height  (m)
         topography_height = geopotential_height_surface / constants.MAPL_GRAV
@@ -797,43 +785,25 @@ def choose_environment_and_flip_k_axis(
     # "Q" just after dynamics is saved in the var named "QV_DYN_IN" in "GEOS_AgcmGridComp.F90".
     with computation(PARALLEL), interval(...):
         if GF_ENV_SETTING == 1:
-            mass_n = (p_interface_timestep_start[0, 0, 1] - p_interface_timestep_start) * (
-                1.0 / constants.MAPL_GRAV
-            )
+            mass_n = (p_interface_timestep_start[0, 0, 1] - p_interface_timestep_start) * (1.0 / constants.MAPL_GRAV)
             p_n = 0.5 * (p_interface_timestep_start + p_interface_timestep_start[0, 0, 1])
-            p_kappa_interface_n = (p_interface_timestep_start / constants.MAPL_P00) ** (
-                constants.MAPL_RGAS / constants.MAPL_CP
-            )
+            p_kappa_interface_n = (p_interface_timestep_start / constants.MAPL_P00) ** (constants.MAPL_RGAS / constants.MAPL_CP)
             if K == k_end:
-                p_kappa_surface_n = (p_interface_timestep_start[0, 0, 1] / constants.MAPL_P00) ** (
-                    constants.MAPL_RGAS / constants.MAPL_CP
-                )
+                p_kappa_surface_n = (p_interface_timestep_start[0, 0, 1] / constants.MAPL_P00) ** (constants.MAPL_RGAS / constants.MAPL_CP)
             p_kappa_n = (p_n / constants.MAPL_P00) ** (constants.MAPL_RGAS / constants.MAPL_CP)
-            edge_height_above_surface_n = (t_timestep_start / p_kappa_n) * (
-                1.0 + constants.MAPL_VIREPS * vapor_timestep_start
-            )
+            edge_height_above_surface_n = (t_timestep_start / p_kappa_n) * (1.0 + constants.MAPL_VIREPS * vapor_timestep_start)
 
     with computation(BACKWARD), interval(...):
         if GF_ENV_SETTING == 1:
             if K == k_end:
-                layer_height_above_surface_n = (
-                    0
-                    + (constants.MAPL_CP / constants.MAPL_GRAV)
-                    * (p_kappa_surface_n - p_kappa_n)
-                    * edge_height_above_surface_n
-                )
+                layer_height_above_surface_n = 0 + (constants.MAPL_CP / constants.MAPL_GRAV) * (p_kappa_surface_n - p_kappa_n) * edge_height_above_surface_n
             else:
                 layer_height_above_surface_n = (
                     edge_height_above_surface_n[0, 0, 1]
-                    + (constants.MAPL_CP / constants.MAPL_GRAV)
-                    * (p_kappa_interface_n[0, 0, 1] - p_kappa_n)
-                    * edge_height_above_surface_n
+                    + (constants.MAPL_CP / constants.MAPL_GRAV) * (p_kappa_interface_n[0, 0, 1] - p_kappa_n) * edge_height_above_surface_n
                 )
             edge_height_above_surface_n = (
-                layer_height_above_surface_n
-                + (constants.MAPL_CP / constants.MAPL_GRAV)
-                * (p_kappa_n - p_kappa_interface_n)
-                * edge_height_above_surface_n
+                layer_height_above_surface_n + (constants.MAPL_CP / constants.MAPL_GRAV) * (p_kappa_n - p_kappa_interface_n) * edge_height_above_surface_n
             )
 
     with computation(PARALLEL), interval(...):
@@ -859,11 +829,7 @@ def choose_environment_and_flip_k_axis(
             scalar_diffusivity_flipped = scalar_diffusivity.at(K=k_end - K)
 
             # Grid and sub-grid scale forcings for convection
-            grid_scale_forcing_t = (
-                dtdt_from_dynamics.at(K=k_end - K)
-                + dtdt_shortwave.at(K=k_end - K)
-                + dtdt_longwave.at(K=k_end - K)
-            )
+            grid_scale_forcing_t = dtdt_from_dynamics.at(K=k_end - K) + dtdt_shortwave.at(K=k_end - K) + dtdt_longwave.at(K=k_end - K)
             grid_scale_forcing_vapor = dvapordt_from_dynamics.at(K=k_end - K)
             subgrid_scale_forcing_t = dtdt_pbl.at(K=k_end - K)
             subgrid_scale_forcing_vapor = dspecific_humiditydt_pbl.at(K=k_end - K)
@@ -884,9 +850,7 @@ def choose_environment_and_flip_k_axis(
 
         if ENTRVERSION == 0:
             # eq 6 of https://doi.org/10.1029/2021JD034881
-            lateral_entrainment_rate_flipped = (
-                0.71 * max(0.5, w.at(K=k_end - K)) ** (-1.17) * max(0.1, buoyancy.at(K=k_end - K)) ** (-0.36)
-            )
+            lateral_entrainment_rate_flipped = 0.71 * max(0.5, w.at(K=k_end - K)) ** (-1.17) * max(0.1, buoyancy.at(K=k_end - K)) ** (-0.36)
         else:
             lateral_entrainment_rate_flipped = 1.0
 
@@ -902,9 +866,7 @@ def choose_environment_and_flip_k_axis(
     with computation(FORWARD), interval(0, 1):
         # saturation column_water_vapor
         if CONVECTION_TRACER == 1:
-            saturation_water_vapor = total_precipitable_water_initial / (
-                1.0e-6 + saturation_total_precipitable_water_initial
-            )
+            saturation_water_vapor = total_precipitable_water_initial / (1.0e-6 + saturation_total_precipitable_water_initial)
             saturation_water_vapor = min(1.0, max(0.0, saturation_water_vapor))
 
 
@@ -1161,9 +1123,7 @@ def prepare_cumulus_paramaterization_state(
         if USE_TRACER_TRANSPORT == 1:
             tracer = 0
             while tracer < constants.NUMBER_OF_TRACERS:
-                chemistry_tracers[0, 0, 0][tracer] = max(
-                    convection_tracers.at(K=k_end - K, ddim=[tracer]), constants.FLOAT_TINY
-                )
+                chemistry_tracers[0, 0, 0][tracer] = max(convection_tracers.at(K=k_end - K, ddim=[tracer]), constants.FLOAT_TINY)
                 tracer += 1
 
     with computation(FORWARD), interval(0, 1):
@@ -1192,9 +1152,7 @@ def prepare_cumulus_paramaterization_state(
         # depth of 1st model layer
         # geopotential_height_forced.at(K=0) - topography_height is ~ 1/2 of the depth
         # of 1st model layer, so multiply by 2
-        pgeoh = (
-            2.0 * (geopotential_height_forced.at(K=0) - topography_height) * constants.MAPL_GRAV
-        )  # m+2 s-2
+        pgeoh = 2.0 * (geopotential_height_forced.at(K=0) - topography_height) * constants.MAPL_GRAV  # m+2 s-2
 
         # convective-scale velocity w*
         # in the future, change 0.001 by ustar^3

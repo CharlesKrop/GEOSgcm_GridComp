@@ -7,15 +7,8 @@ import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Ensemble,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Ensemble, FloatFieldIJ_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.shared.atmos_recipes import sigma
 
@@ -88,9 +81,9 @@ def set_plume_dependent_fields(
         vapor_forced_pbl = vapor_old + (subgrid_scale_forcing_vapor) * DT_MOIST
 
         # moist static energy
-        dmoist_static_energydt = cumulus_parameterization_constants.CP * (
-            subgrid_scale_forcing_t + grid_scale_forcing_t
-        ) + cumulus_parameterization_constants.XLV * (subgrid_scale_forcing_vapor + grid_scale_forcing_vapor)
+        dmoist_static_energydt = cumulus_parameterization_constants.CP * (subgrid_scale_forcing_t + grid_scale_forcing_t) + cumulus_parameterization_constants.XLV * (
+            subgrid_scale_forcing_vapor + grid_scale_forcing_vapor
+        )
 
 
 def prefill_internal_fields(
@@ -274,12 +267,8 @@ def compute_scale_dependence_factor(
                 if not error_at_point:
                     scale_dependence_factor[0, 0][plume] = sigma(grid_length)
                 if seed_convection != 1.0:
-                    scale_dependence_factor[0, 0][plume] = scale_dependence_factor[0, 0][plume] ** (
-                        seed_convection * max(1.0, scale_dependence_factor[0, 0][plume])
-                    )
-                scale_dependence_factor[0, 0][plume] = max(
-                    0.1, min(scale_dependence_factor[0, 0][plume], 1.0)
-                )
+                    scale_dependence_factor[0, 0][plume] = scale_dependence_factor[0, 0][plume] ** (seed_convection * max(1.0, scale_dependence_factor[0, 0][plume]))
+                scale_dependence_factor[0, 0][plume] = max(0.1, min(scale_dependence_factor[0, 0][plume], 1.0))
                 if scale_dependence_factor[0, 0][plume] <= 0.1:
                     error_code[0, 0][plume] = 1
                     error_at_point = True
@@ -299,10 +288,7 @@ def get_random_number(
         random_number (FloatFieldIJ)
     """
     with computation(FORWARD), interval(0, 1):
-        if (
-            plume == cumulus_parameterization_constants.DEEP
-            and cumulus_parameterization_constants.USE_RANDOM_NUMBER > 1.0e-6
-        ):
+        if plume == cumulus_parameterization_constants.DEEP and cumulus_parameterization_constants.USE_RANDOM_NUMBER > 1.0e-6:
             # need to figure out how to get system clock data
             random_number = random_number  # keep input data from fortran for now
         else:

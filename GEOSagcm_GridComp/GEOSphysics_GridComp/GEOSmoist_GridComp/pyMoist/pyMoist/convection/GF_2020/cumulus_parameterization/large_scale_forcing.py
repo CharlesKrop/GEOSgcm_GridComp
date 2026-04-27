@@ -7,15 +7,8 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Ensemble,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Ensemble, FloatFieldIJ_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 
 
 def ddim_copy(
@@ -93,9 +86,7 @@ def ensemble_forcing(
         if error_code[0, 0][plume] == 0:
             workfunction_diff_1: FloatFieldIJ = (cloud_workfunction_1 - cloud_workfunction_0) / DT_MOIST
 
-            internal_mass_flux_ensemble[0, 0][0] = max(
-                0.0, (cloud_workfunction_1 - cloud_workfunction_0) / DT_MOIST
-            )
+            internal_mass_flux_ensemble[0, 0][0] = max(0.0, (cloud_workfunction_1 - cloud_workfunction_0) / DT_MOIST)
 
             internal_mass_flux_ensemble[0, 0][1] = internal_mass_flux_ensemble[0, 0][0]
             internal_mass_flux_ensemble[0, 0][2] = internal_mass_flux_ensemble[0, 0][0]
@@ -110,11 +101,7 @@ def ensemble_forcing(
             internal_mass_flux_ensemble[0, 0][3] = 0.0
 
     with computation(FORWARD), interval(...):
-        if (
-            error_code[0, 0][plume] == 0
-            and K >= max(0, updraft_lfc_level[0, 0][plume] - 1)
-            and K <= updraft_lfc_level[0, 0][plume] + 1
-        ):
+        if error_code[0, 0][plume] == 0 and K >= max(0, updraft_lfc_level[0, 0][plume] - 1) and K <= updraft_lfc_level[0, 0][plume] + 1:
             beta = 1.0
             omega_modified = omega_modified - omega / constants.MAPL_GRAV / beta
             level_counter = level_counter + 1
@@ -131,11 +118,7 @@ def ensemble_forcing(
             # more like Krishnamurti et al.;
             # assuming that omega.at(K=cloud_top_level)*vapor_forced.at(K=cloud_top_level)<<
             # omega.at(K=updraft_lfc_level)*vapor_forced.at(K=updraft_lfc_level)
-            moisture_convergence: FloatFieldIJ = (
-                -omega.at(K=updraft_lfc_level[0, 0][plume])
-                * vapor_forced.at(K=updraft_lfc_level[0, 0][plume])
-                / constants.MAPL_GRAV
-            )
+            moisture_convergence: FloatFieldIJ = -omega.at(K=updraft_lfc_level[0, 0][plume]) * vapor_forced.at(K=updraft_lfc_level[0, 0][plume]) / constants.MAPL_GRAV
 
             moisture_convergence = max(0.0, moisture_convergence)
             internal_mass_flux_ensemble[0, 0][6] = moisture_convergence
@@ -160,9 +143,7 @@ def ensemble_forcing(
                 internal_mass_flux_ensemble[0, 0][11] = 0.0
                 internal_mass_flux_ensemble[0, 0][12] = 0.0
 
-            workfunction_diff_2: FloatFieldIJ = (
-                cloud_workfunction_0_modified - (cloud_workfunction_1)
-            ) / arbitrary_numerical_parameter
+            workfunction_diff_2: FloatFieldIJ = (cloud_workfunction_0_modified - (cloud_workfunction_1)) / arbitrary_numerical_parameter
 
             if workfunction_diff_2 <= 0.0 and workfunction_diff_2 > -0.1 * arbitrary_numerical_parameter:
                 workfunction_diff_2 = -0.1 * arbitrary_numerical_parameter
@@ -174,32 +155,22 @@ def ensemble_forcing(
             if ocean_fraction < 0.1 and (error_code_2 > 0.0 or error_code_3 > 0):
                 member = 0
                 while member < 16:
-                    internal_mass_flux_ensemble[0, 0][member] = (
-                        ensemble_adjustment * internal_mass_flux_ensemble[0, 0][member]
-                    )
+                    internal_mass_flux_ensemble[0, 0][member] = ensemble_adjustment * internal_mass_flux_ensemble[0, 0][member]
                     member += 1
 
             # special treatment for stability closures
             if workfunction_diff_2 < 0.0:
                 if internal_mass_flux_ensemble[0, 0][0] > 0.0:
-                    mass_flux_ensemble[0, 0][0] = max(
-                        0.0, -internal_mass_flux_ensemble[0, 0][0] / workfunction_diff_2
-                    )
+                    mass_flux_ensemble[0, 0][0] = max(0.0, -internal_mass_flux_ensemble[0, 0][0] / workfunction_diff_2)
 
                 if internal_mass_flux_ensemble[0, 0][1] > 0.0:
-                    mass_flux_ensemble[0, 0][1] = max(
-                        0.0, -internal_mass_flux_ensemble[0, 0][1] / workfunction_diff_2
-                    )
+                    mass_flux_ensemble[0, 0][1] = max(0.0, -internal_mass_flux_ensemble[0, 0][1] / workfunction_diff_2)
 
                 if internal_mass_flux_ensemble[0, 0][2] > 0.0:
-                    mass_flux_ensemble[0, 0][2] = max(
-                        0.0, -internal_mass_flux_ensemble[0, 0][2] / workfunction_diff_2
-                    )
+                    mass_flux_ensemble[0, 0][2] = max(0.0, -internal_mass_flux_ensemble[0, 0][2] / workfunction_diff_2)
 
                 if internal_mass_flux_ensemble[0, 0][15] > 0.0:
-                    mass_flux_ensemble[0, 0][15] = max(
-                        0.0, -internal_mass_flux_ensemble[0, 0][15] / workfunction_diff_2
-                    )
+                    mass_flux_ensemble[0, 0][15] = max(0.0, -internal_mass_flux_ensemble[0, 0][15] / workfunction_diff_2)
             else:
                 internal_mass_flux_ensemble[0, 0][0] = 0.0
                 internal_mass_flux_ensemble[0, 0][1] = 0.0
@@ -224,18 +195,10 @@ def ensemble_forcing(
             mass_flux_ensemble[0, 0][14] = max(0.0, internal_mass_flux_ensemble[0, 0][14] / adjustment)
 
             if workfunction_diff_2 < 0.0:
-                mass_flux_ensemble[0, 0][9] = max(
-                    0.0, -internal_mass_flux_ensemble[0, 0][9] / workfunction_diff_2
-                )
-                mass_flux_ensemble[0, 0][10] = max(
-                    0.0, -internal_mass_flux_ensemble[0, 0][10] / workfunction_diff_2
-                )
-                mass_flux_ensemble[0, 0][11] = max(
-                    0.0, -internal_mass_flux_ensemble[0, 0][11] / workfunction_diff_2
-                )
-                mass_flux_ensemble[0, 0][12] = max(
-                    0.0, -internal_mass_flux_ensemble[0, 0][12] / workfunction_diff_2
-                )
+                mass_flux_ensemble[0, 0][9] = max(0.0, -internal_mass_flux_ensemble[0, 0][9] / workfunction_diff_2)
+                mass_flux_ensemble[0, 0][10] = max(0.0, -internal_mass_flux_ensemble[0, 0][10] / workfunction_diff_2)
+                mass_flux_ensemble[0, 0][11] = max(0.0, -internal_mass_flux_ensemble[0, 0][11] / workfunction_diff_2)
+                mass_flux_ensemble[0, 0][12] = max(0.0, -internal_mass_flux_ensemble[0, 0][12] / workfunction_diff_2)
             else:
                 mass_flux_ensemble[0, 0][9] = 0.0
                 mass_flux_ensemble[0, 0][10] = 0.0
@@ -252,18 +215,14 @@ def ensemble_forcing(
             if ZERO_DIFF == 0 and CLOSURE_CHOICE == 0:
                 member = 0
                 while member < 16:
-                    mass_flux_ensemble[0, 0][member] = (1.0 - ocean_fraction) * mass_flux_ensemble[0, 0][
-                        9
-                    ] + ocean_fraction * mass_flux_ensemble[0, 0][member]
+                    mass_flux_ensemble[0, 0][member] = (1.0 - ocean_fraction) * mass_flux_ensemble[0, 0][9] + ocean_fraction * mass_flux_ensemble[0, 0][member]
                     member += 1
 
     with computation(FORWARD), interval(0, 1):
         if DIURNAL_CYCLE == 1 or DIURNAL_CYCLE == 6:
             f_dicycle_modified = 0.0
             if error_code[0, 0][plume] == 0:
-                workfunction_diff_3 = (
-                    cloud_workfunction_1 - cloud_workfunction_1_pbl
-                ) / cape_removal_time_scale
+                workfunction_diff_3 = (cloud_workfunction_1 - cloud_workfunction_1_pbl) / cape_removal_time_scale
                 if workfunction_diff_2 < 0:
                     f_dicycle_modified = max(0.0, -workfunction_diff_3 / workfunction_diff_2)
                 f_dicycle_modified = mass_flux_ensemble[0, 0][9] - f_dicycle_modified
@@ -326,9 +285,7 @@ def ensemble_forcing_mid_plume(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            workfunction_diff_1: FloatFieldIJ = (
-                cloud_workfunction_0_modified - cloud_workfunction_1
-            ) / arbitrary_numerical_parameter
+            workfunction_diff_1: FloatFieldIJ = (cloud_workfunction_0_modified - cloud_workfunction_1) / arbitrary_numerical_parameter
 
             if workfunction_diff_1 <= 0.0 and workfunction_diff_1 > -0.1 * arbitrary_numerical_parameter:
                 workfunction_diff_1 = -0.1 * arbitrary_numerical_parameter
@@ -343,9 +300,7 @@ def ensemble_forcing_mid_plume(
 
             # closures 3 and 4 for mid
             if workfunction_diff_1 < 0.0:
-                xff_mid[0, 0][2] = max(
-                    0.0, -(cloud_workfunction_1 / cape_removal_time_scale) / workfunction_diff_1
-                )
+                xff_mid[0, 0][2] = max(0.0, -(cloud_workfunction_1 / cape_removal_time_scale) / workfunction_diff_1)
                 xff_mid[0, 0][3] = f_dicycle_modified
 
     with computation(FORWARD), interval(0, 1):
@@ -355,18 +310,8 @@ def ensemble_forcing_mid_plume(
 
     with computation(FORWARD), interval(0, -1):
         # boundary layer quasi-equilibrium (Raymond 1995)
-        if (
-            error_code[0, 0][plume] == 0
-            and updraft_origin_level[0, 0][plume] < pbl_level + 1
-            and K < updraft_lfc_level[0, 0][plume]
-        ):
-            blqe = (
-                blqe
-                + 100.0
-                * dmoist_static_energydt
-                * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
-                / constants.MAPL_GRAV
-            )
+        if error_code[0, 0][plume] == 0 and updraft_origin_level[0, 0][plume] < pbl_level + 1 and K < updraft_lfc_level[0, 0][plume]:
+            blqe = blqe + 100.0 * dmoist_static_energydt * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]) / constants.MAPL_GRAV
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
@@ -374,9 +319,7 @@ def ensemble_forcing_mid_plume(
                 trash = max(
                     (
                         cloud_moist_static_energy_forced.at(K=updraft_lfc_level[0, 0][plume])
-                        - environment_moist_static_energy_cloud_levels_forced.at(
-                            K=updraft_lfc_level[0, 0][plume]
-                        )
+                        - environment_moist_static_energy_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
                     ),
                     1.0e1,
                 )
@@ -424,10 +367,7 @@ def effective_precipitation(
     """
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            effective_condensate_to_fall_forced = (
-                condensate_to_fall_forced[0, 0, 0][plume]
-                + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
-            )
+            effective_condensate_to_fall_forced = condensate_to_fall_forced[0, 0, 0][plume] + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
 
 
 class LargeScaleForcing(NDSLRuntime):
@@ -451,17 +391,11 @@ class LargeScaleForcing(NDSLRuntime):
 
         # ensure correct data dimensions exist
         quantity_factory.update_data_dimensions(
-            {
-                "ensemble_members": cumulus_parameterization_constants.MAXENS1
-                * cumulus_parameterization_constants.MAXENS2
-                * cumulus_parameterization_constants.MAXENS3
-            }
+            {"ensemble_members": cumulus_parameterization_constants.MAXENS1 * cumulus_parameterization_constants.MAXENS2 * cumulus_parameterization_constants.MAXENS3}
         )
 
         # initialize locals
-        self._internal_mass_flux_ensemble: Local = quantity_factory.zeros(
-            [I_DIM, J_DIM, "ensemble_members"], "n/a"
-        )
+        self._internal_mass_flux_ensemble: Local = quantity_factory.zeros([I_DIM, J_DIM, "ensemble_members"], "n/a")
 
         # construct stencils
         self._copy = stencil_factory.from_dims_halo(
@@ -476,9 +410,7 @@ class LargeScaleForcing(NDSLRuntime):
                 "DIURNAL_CYCLE": cumulus_parameterization_config.DIURNAL_CYCLE,
                 "DT_MOIST": config.DT_MOIST,
                 "ZERO_DIFF": cumulus_parameterization_config.ZERO_DIFF,
-                "ENSEMBLE_MEMBERS": cumulus_parameterization_constants.MAXENS1
-                * cumulus_parameterization_constants.MAXENS2
-                * cumulus_parameterization_constants.MAXENS3,
+                "ENSEMBLE_MEMBERS": cumulus_parameterization_constants.MAXENS1 * cumulus_parameterization_constants.MAXENS2 * cumulus_parameterization_constants.MAXENS3,
             },
         )
 

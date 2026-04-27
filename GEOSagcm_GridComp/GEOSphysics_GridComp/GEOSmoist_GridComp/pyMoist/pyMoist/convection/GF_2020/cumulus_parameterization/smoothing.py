@@ -55,19 +55,11 @@ def smooth_tendencies(
             internal_tendency_5_2d = 0
             inner_loop = max(0, K - USE_SMOOTH_TENDENCIES)
             while inner_loop <= min(cloud_top_level[0, 0][plume], K + USE_SMOOTH_TENDENCIES):
-                dp = p_cloud_levels_forced.at(K=inner_loop, ddim=[plume]) - p_cloud_levels_forced.at(
-                    K=inner_loop + 1, ddim=[plume]
-                )
+                dp = p_cloud_levels_forced.at(K=inner_loop, ddim=[plume]) - p_cloud_levels_forced.at(K=inner_loop + 1, ddim=[plume])
                 rcount = rcount + dp
-                internal_tendency_1_2d = (
-                    internal_tendency_1_2d + dp * del_moist_static_energy_cloud_ensemble.at(K=inner_loop)
-                )
-                internal_tendency_2_2d = internal_tendency_2_2d + dp * del_vapor_cloud_ensemble.at(
-                    K=inner_loop
-                )
-                internal_tendency_3_2d = internal_tendency_3_2d + dp * del_cloud_liquid_cloud_ensemble.at(
-                    K=inner_loop
-                )
+                internal_tendency_1_2d = internal_tendency_1_2d + dp * del_moist_static_energy_cloud_ensemble.at(K=inner_loop)
+                internal_tendency_2_2d = internal_tendency_2_2d + dp * del_vapor_cloud_ensemble.at(K=inner_loop)
+                internal_tendency_3_2d = internal_tendency_3_2d + dp * del_cloud_liquid_cloud_ensemble.at(K=inner_loop)
                 internal_tendency_4_2d = internal_tendency_4_2d + dp * del_u_cloud_ensemble.at(K=inner_loop)
                 internal_tendency_5_2d = internal_tendency_5_2d + dp * del_v_cloud_ensemble.at(K=inner_loop)
                 inner_loop += 1

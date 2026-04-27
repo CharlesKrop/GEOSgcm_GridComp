@@ -7,19 +7,10 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import (
-    find_highest_moist_static_energy_level,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import find_highest_moist_static_energy_level
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -49,9 +40,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -74,13 +63,9 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_origin_level"] - 1
-        )
+        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_moist_static_energy_cloud_levels_forced"
-        ]
+        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs["local_env_moist_static_energy_cloud_levels_forced"]
         locals.maximum_updraft_origin_level.data[:] = inputs["local_maximum_updraft_origin_level"] - 1
 
         code = self.stencil_factory.from_dims_halo(
@@ -98,14 +83,9 @@ class TestCore:
             )
 
         outputs = {
-            "updraft_origin_level": state.output.updraft_origin_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
+            "updraft_origin_level": state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[
-                :
-            ],
+            "local_env_moist_static_energy_cloud_levels_forced": locals.environment_moist_static_energy_cloud_levels_forced.field[:],
             "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[:] + 1,
         }
 

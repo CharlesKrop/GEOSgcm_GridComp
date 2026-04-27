@@ -39,46 +39,24 @@ def melting_profile(
             total_solid_phase_precipitable_water: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(0, -2):
-        if (
-            cumulus_parameterization_constants.MELT_GLAC
-            and plume == cumulus_parameterization_constants.DEEP
-            and error_code[0, 0][plume] == 0
-        ):
+        if cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP and error_code[0, 0][plume] == 0:
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
-            effective_precipitable_water = 0.5 * (
-                condensate_to_fall_forced[0, 0, 0][plume] + condensate_to_fall_forced[0, 0, 1][plume]
-            )
+            effective_precipitable_water = 0.5 * (condensate_to_fall_forced[0, 0, 0][plume] + condensate_to_fall_forced[0, 0, 1][plume])
 
             solid_phase_precipitable_water = (1.0 - partition_liquid_ice) * effective_precipitable_water
 
-            total_solid_phase_precipitable_water = (
-                total_solid_phase_precipitable_water
-                + solid_phase_precipitable_water * dp / constants.MAPL_GRAV
-            )
+            total_solid_phase_precipitable_water = total_solid_phase_precipitable_water + solid_phase_precipitable_water * dp / constants.MAPL_GRAV
 
     with computation(PARALLEL), interval(0, -1):
-        if (
-            cumulus_parameterization_constants.MELT_GLAC
-            and plume == cumulus_parameterization_constants.DEEP
-            and error_code[0, 0][plume] == 0
-        ):
+        if cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP and error_code[0, 0][plume] == 0:
             melting = melting_layer * (
                 total_solid_phase_precipitable_water
-                / (
-                    100
-                    * (
-                        p_cloud_levels_forced.at(K=0, ddim=[plume])
-                        - p_cloud_levels_forced.at(K=k_end - 1, ddim=[plume])
-                    )
-                    / constants.MAPL_GRAV
-                )
+                / (100 * (p_cloud_levels_forced.at(K=0, ddim=[plume]) - p_cloud_levels_forced.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
             )
 
     with computation(PARALLEL), interval(...):
-        if not (
-            cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP
-        ):
+        if not (cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP):
             melting = 0.0
 
 

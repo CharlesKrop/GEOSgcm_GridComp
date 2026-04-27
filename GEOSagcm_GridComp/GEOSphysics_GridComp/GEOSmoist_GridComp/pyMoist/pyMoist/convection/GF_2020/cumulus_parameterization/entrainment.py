@@ -44,10 +44,7 @@ def entrainment_rates(
                 entrainment_rate[0, 0, 0][plume] = (
                     entrainment_rate[0, 0, 0][plume]
                     * (1.3 - frh)
-                    * (
-                        environment_saturation_mixing_ratio_cloud_levels_forced
-                        / environment_saturation_mixing_ratio_cloud_levels_forced.at(K=lcl_level[0, 0][plume])
-                    )
+                    * (environment_saturation_mixing_ratio_cloud_levels_forced / environment_saturation_mixing_ratio_cloud_levels_forced.at(K=lcl_level[0, 0][plume]))
                     ** 3
                 )
             else:
@@ -170,52 +167,32 @@ def compute_lateral_massflux(
         if error_code[0, 0][plume] == 0:
             # below location of maximum value normalized_massflux_updraft -> change entrainment
             if K <= max_index - 1:
-                height_massflux_avg = (
-                    geopotential_height[0, 0, 1] - geopotential_height
-                ) * normalized_massflux_updraft[0, 0, 0][plume]
-                mass_detrainment_updraft_forced[0, 0, 0][plume] = (
-                    detrainment_function_updraft * height_massflux_avg
-                )
+                height_massflux_avg = (geopotential_height[0, 0, 1] - geopotential_height) * normalized_massflux_updraft[0, 0, 0][plume]
+                mass_detrainment_updraft_forced[0, 0, 0][plume] = detrainment_function_updraft * height_massflux_avg
                 mass_entrainment_updraft_forced[0, 0, 0][plume] = (
-                    normalized_massflux_updraft[0, 0, 1][plume]
-                    + -normalized_massflux_updraft[0, 0, 0][plume]
-                    + mass_detrainment_updraft_forced[0, 0, 0][plume]
+                    normalized_massflux_updraft[0, 0, 1][plume] + -normalized_massflux_updraft[0, 0, 0][plume] + mass_detrainment_updraft_forced[0, 0, 0][plume]
                 )
-                mass_entrainment_updraft_forced[0, 0, 0][plume] = max(
-                    mass_entrainment_updraft_forced[0, 0, 0][plume], 0.0
-                )
+                mass_entrainment_updraft_forced[0, 0, 0][plume] = max(mass_entrainment_updraft_forced[0, 0, 0][plume], 0.0)
 
                 # check mass_detrainment_updraft_forced in case it has been changed above
                 mass_detrainment_updraft_forced[0, 0, 0][plume] = (
-                    -normalized_massflux_updraft[0, 0, 1][plume]
-                    + normalized_massflux_updraft[0, 0, 0][plume]
-                    + mass_entrainment_updraft_forced[0, 0, 0][plume]
+                    -normalized_massflux_updraft[0, 0, 1][plume] + normalized_massflux_updraft[0, 0, 0][plume] + mass_entrainment_updraft_forced[0, 0, 0][plume]
                 )
 
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K >= max_index and K <= cloud_top_level[0, 0][plume]:
                 # above location of maximum value normalized_massflux_updraft -> change entrainment
-                height_massflux_avg = (
-                    geopotential_height[0, 0, 1] - geopotential_height
-                ) * normalized_massflux_updraft[0, 0, 0][plume]
-                mass_entrainment_updraft_forced[0, 0, 0][plume] = (
-                    entrainment_rate[0, 0, 0][plume] * height_massflux_avg
-                )
+                height_massflux_avg = (geopotential_height[0, 0, 1] - geopotential_height) * normalized_massflux_updraft[0, 0, 0][plume]
+                mass_entrainment_updraft_forced[0, 0, 0][plume] = entrainment_rate[0, 0, 0][plume] * height_massflux_avg
                 mass_detrainment_updraft_forced[0, 0, 0][plume] = (
-                    normalized_massflux_updraft[0, 0, 0][plume]
-                    + mass_entrainment_updraft_forced[0, 0, 0][plume]
-                    - normalized_massflux_updraft[0, 0, 1][plume]
+                    normalized_massflux_updraft[0, 0, 0][plume] + mass_entrainment_updraft_forced[0, 0, 0][plume] - normalized_massflux_updraft[0, 0, 1][plume]
                 )
-                mass_detrainment_updraft_forced[0, 0, 0][plume] = max(
-                    mass_detrainment_updraft_forced[0, 0, 0][plume], 0.0
-                )
+                mass_detrainment_updraft_forced[0, 0, 0][plume] = max(mass_detrainment_updraft_forced[0, 0, 0][plume], 0.0)
 
                 # check mass_entrainment_updraft_forced in case it has been changed above
                 mass_entrainment_updraft_forced[0, 0, 0][plume] = (
-                    -normalized_massflux_updraft[0, 0, 0][plume]
-                    + mass_detrainment_updraft_forced[0, 0, 0][plume]
-                    + normalized_massflux_updraft[0, 0, 1][plume]
+                    -normalized_massflux_updraft[0, 0, 0][plume] + mass_detrainment_updraft_forced[0, 0, 0][plume] + normalized_massflux_updraft[0, 0, 1][plume]
                 )
 
     with computation(PARALLEL), interval(...):
@@ -226,14 +203,8 @@ def compute_lateral_massflux(
     with computation(FORWARD), interval(1, None):
         if error_code[0, 0][plume] == 0:
             # for weaker mixing
-            mass_entrainment_u_updraft[0, 0, -1] = (
-                mass_entrainment_updraft_forced[0, 0, -1][plume]
-                + LAMBDA_DEEP * mass_detrainment_updraft_forced[0, 0, -1][plume]
-            )
-            mass_detrainment_u_updraft[0, 0, -1] = (
-                mass_detrainment_updraft_forced[0, 0, -1][plume]
-                + LAMBDA_DEEP * mass_detrainment_updraft_forced[0, 0, -1][plume]
-            )
+            mass_entrainment_u_updraft[0, 0, -1] = mass_entrainment_updraft_forced[0, 0, -1][plume] + LAMBDA_DEEP * mass_detrainment_updraft_forced[0, 0, -1][plume]
+            mass_detrainment_u_updraft[0, 0, -1] = mass_detrainment_updraft_forced[0, 0, -1][plume] + LAMBDA_DEEP * mass_detrainment_updraft_forced[0, 0, -1][plume]
 
 
 def compute_uc_vc(

@@ -3,11 +3,7 @@ from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, IntFieldIJ
 
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import liquid_fraction
 
 
@@ -64,12 +60,8 @@ def partition_liquid_ice(
                 if t <= (cumulus_parameterization_constants.T_0 - del_t):
                     melting_layer = 0.0
 
-                elif t < (cumulus_parameterization_constants.T_0 + del_t) and t > (
-                    cumulus_parameterization_constants.T_0 - del_t
-                ):
-                    melting_layer = (
-                        (t - (cumulus_parameterization_constants.T_0 - del_t)) / (2.0 * del_t)
-                    ) ** 2
+                elif t < (cumulus_parameterization_constants.T_0 + del_t) and t > (cumulus_parameterization_constants.T_0 - del_t):
+                    melting_layer = ((t - (cumulus_parameterization_constants.T_0 - del_t)) / (2.0 * del_t)) ** 2
 
                 else:
                     melting_layer = 1.0
@@ -92,15 +84,7 @@ def partition_liquid_ice(
         if cumulus_parameterization_constants.MELT_GLAC and plume == cumulus_parameterization_constants.DEEP:
             if error_code[0, 0][plume] == 0:
                 # normalize vertical integral of melting_layer to 1
-                melting_layer = (
-                    melting_layer
-                    / (norm + 1.0e-6)
-                    * (
-                        100
-                        * (p.at(K=0, ddim=[plume]) - p.at(K=k_end - 1, ddim=[plume]))
-                        / constants.MAPL_GRAV
-                    )
-                )
+                melting_layer = melting_layer / (norm + 1.0e-6) * (100 * (p.at(K=0, ddim=[plume]) - p.at(K=k_end - 1, ddim=[plume])) / constants.MAPL_GRAV)
 
 
 class PrecipFactor:
@@ -149,19 +133,13 @@ def get_precip_fluxes(
     with computation(BACKWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
-                precipitation_flux = precipitation_flux[0, 0, 1] + cloud_base_mass_flux_modified[0, 0][
-                    plume
-                ] * (
-                    condensate_to_fall_forced[0, 0, 0][plume]
-                    + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
+                precipitation_flux = precipitation_flux[0, 0, 1] + cloud_base_mass_flux_modified[0, 0][plume] * (
+                    condensate_to_fall_forced[0, 0, 0][plume] + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
                 precipitation_flux = max(0.0, precipitation_flux)
 
                 evaporation_flux = (
-                    evaporation_flux[0, 0, 1]
-                    - cloud_base_mass_flux_modified[0, 0][plume]
-                    * epsilon_forced[0, 0][plume]
-                    * evaporate_in_downdraft_forced[0, 0, 0][plume]
+                    evaporation_flux[0, 0, 1] - cloud_base_mass_flux_modified[0, 0][plume] * epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
                 evaporation_flux = max(0.0, evaporation_flux)
 
@@ -239,37 +217,24 @@ def rain_evaporation_below_cloud_base(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            critical_rh: FloatFieldIJ = critical_rh_ocean * ocean_fraction + critical_rh_land * (
-                1.0 - ocean_fraction
-            )
+            critical_rh: FloatFieldIJ = critical_rh_ocean * ocean_fraction + critical_rh_land * (1.0 - ocean_fraction)
 
     with computation(BACKWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
-                dp: FloatFieldIJ = 100.0 * (
-                    p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume]
-                )
+                dp: FloatFieldIJ = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
                 if K <= updraft_lfc_level[0, 0][plume]:
                     vapor_deficit: FloatFieldIJ = max(
                         0.0,
-                        (
-                            critical_rh * environment_saturation_mixing_ratio_cloud_levels
-                            - vapor_cloud_levels_forced
-                        ),
+                        (critical_rh * environment_saturation_mixing_ratio_cloud_levels - vapor_cloud_levels_forced),
                     )
 
                     evaporation_below_cloud_base = (
                         eff_c_conv
                         * alpha1
                         * vapor_deficit
-                        * (
-                            sqrt(p_cloud_levels_forced[0, 0, 0][plume] / p_surface)
-                            / alpha2
-                            * precipitation_flux[0, 0, 1]
-                            / eff_c_conv
-                        )
-                        ** alpha3
+                        * (sqrt(p_cloud_levels_forced[0, 0, 0][plume] / p_surface) / alpha2 * precipitation_flux[0, 0, 1] / eff_c_conv) ** alpha3
                     )
 
                     evaporation_below_cloud_base = evaporation_below_cloud_base * dp / constants.MAPL_GRAV
@@ -282,40 +247,26 @@ def rain_evaporation_below_cloud_base(
                     precipitation_flux[0, 0, 1]
                     - evaporation_below_cloud_base
                     + cloud_base_mass_flux_modified[0, 0][plume]
-                    * (
-                        condensate_to_fall_forced[0, 0, 0][plume]
-                        + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
-                    )
+                    * (condensate_to_fall_forced[0, 0, 0][plume] + epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume])
                 )
                 precipitation_flux = max(0.0, precipitation_flux)
 
                 evaporation_flux = (
                     evaporation_flux[0, 0, 1]
                     + evaporation_below_cloud_base
-                    - cloud_base_mass_flux_modified[0, 0][plume]
-                    * epsilon_forced[0, 0][plume]
-                    * evaporate_in_downdraft_forced[0, 0, 0][plume]
+                    - cloud_base_mass_flux_modified[0, 0][plume] * epsilon_forced[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
                 )
                 evaporation_flux = max(0.0, evaporation_flux)
 
-                total_evaporation_below_cloud_base = (
-                    total_evaporation_below_cloud_base + evaporation_below_cloud_base
-                )
+                total_evaporation_below_cloud_base = total_evaporation_below_cloud_base + evaporation_below_cloud_base
 
                 del_vapor = evaporation_below_cloud_base * constants.MAPL_GRAV / dp
-                del_t = (
-                    -evaporation_below_cloud_base
-                    * constants.MAPL_GRAV
-                    / dp
-                    * (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
-                )
+                del_t = -evaporation_below_cloud_base * constants.MAPL_GRAV / dp * (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
 
                 dvapordt[0, 0, 0][plume] = dvapordt[0, 0, 0][plume] + del_vapor
                 dtdt[0, 0, 0][plume] = dtdt[0, 0, 0][plume] + del_t
                 dbuoyancydt[0, 0, 0][plume] = (
-                    dbuoyancydt[0, 0, 0][plume]
-                    + cumulus_parameterization_constants.CP * del_t
-                    + cumulus_parameterization_constants.XLV * del_vapor
+                    dbuoyancydt[0, 0, 0][plume] + cumulus_parameterization_constants.CP * del_t + cumulus_parameterization_constants.XLV * del_vapor
                 )
 
                 precip[0, 0][plume] = precip[0, 0][plume] - evaporation_below_cloud_base
@@ -371,16 +322,9 @@ def cloud_dissipation(
         version_x: IntFieldIJ = 2
 
     with computation(BACKWARD), interval(...):
-        if (
-            error_code[0, 0][plume] == 0
-            and USE_CLOUD_DISSIPATION >= 0.0
-            and K <= cloud_top_level[0, 0][plume]
-            and K >= updraft_lfc_level[0, 0][plume]
-        ):
+        if error_code[0, 0][plume] == 0 and USE_CLOUD_DISSIPATION >= 0.0 and K <= cloud_top_level[0, 0][plume] and K >= updraft_lfc_level[0, 0][plume]:
             # cloud liq/ice remained in the convection plume
-            precip_dissipation = max(
-                0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - dcloudicedt[0, 0, 0][plume] * DT_MOIST
-            )
+            precip_dissipation = max(0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - dcloudicedt[0, 0, 0][plume] * DT_MOIST)
 
             # get relative humidity
             f_rh = 0.0
@@ -397,13 +341,9 @@ def cloud_dissipation(
 
             # NOTE other option (if this is true) is not implemented
             if not (version_x == 1 or not cumulus_parameterization_constants.COUPLE_MICROPHYSICS):
-                dcloudicedt[0, 0, 0][plume] = (
-                    dcloudicedt[0, 0, 0][plume]
-                    + out_precip_dissipation * fractional_area * USE_CLOUD_DISSIPATION
-                )
+                dcloudicedt[0, 0, 0][plume] = dcloudicedt[0, 0, 0][plume] + out_precip_dissipation * fractional_area * USE_CLOUD_DISSIPATION
 
             cloud_liquid_after_rain_forced[0, 0, 0][plume] = max(
                 0.0,
-                cloud_liquid_after_rain_forced[0, 0, 0][plume]
-                - out_precip_dissipation * USE_CLOUD_DISSIPATION * fractional_area * DT_MOIST,
+                cloud_liquid_after_rain_forced[0, 0, 0][plume] - out_precip_dissipation * USE_CLOUD_DISSIPATION * fractional_area * DT_MOIST,
             )

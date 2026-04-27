@@ -2,12 +2,7 @@ from ndsl import ndsl_log
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    AEROEVAP,
-    COUPLE_MICROPHYSICS,
-    MELT_GLAC,
-    WRTGRADS,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import AEROEVAP, COUPLE_MICROPHYSICS, MELT_GLAC, WRTGRADS
 
 
 def check_config(
@@ -22,8 +17,7 @@ def check_config(
 
     if config.GF_ENV_SETTING != 1:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization constructed with unsupported GF_ENV_SETTING option. Please"
-            "implement, then disable this error manually to proceed."
+            " GF2020-->CumulusParameterization constructed with unsupported GF_ENV_SETTING option. Please" "implement, then disable this error manually to proceed."
         )
 
     if cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE != 1:
@@ -40,27 +34,21 @@ def check_config(
 
     if cumulus_parameterization_config.FRAC_MODIS != 1:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->partition_liquid_ice constructed with "
-            "untested FRAC_MODIS option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->partition_liquid_ice constructed with " "untested FRAC_MODIS option. Running untested code... proceed with caution"
         )
 
     if not MELT_GLAC:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->partition_liquid_ice constructed with "
-            "untested MELT_GLAC option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->partition_liquid_ice constructed with " "untested MELT_GLAC option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->find_lcl constructed with "
-            "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->find_lcl constructed with " "untested BOUNDARY_CONDITION_METHOD option. Running untested code... proceed with caution"
         )
 
     if config.ADV_TRIGGER != 1:
-        ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->find_lcl constructed with "
-            "untested ADV_TRIGGER option. Running untested code... proceed with caution"
-        )
+        ndsl_log.warning(" GF2020-->CumulusParameterization-->find_lcl constructed with " "untested ADV_TRIGGER option. Running untested code... proceed with caution")
 
     if cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
         ndsl_log.warning(
@@ -70,8 +58,7 @@ def check_config(
 
     if cumulus_parameterization_config.ZERO_DIFF != 1:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->entrainment_rates constructed with "
-            "untested ZERO_DIFF option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->entrainment_rates constructed with " "untested ZERO_DIFF option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.OVERSHOOT != 0:
@@ -106,8 +93,7 @@ def check_config(
 
     if cumulus_parameterization_config.OVERSHOOT != 0:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->updraft_rates_pdf constructed with "
-            "untested OVERSHOOT option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->updraft_rates_pdf constructed with " "untested OVERSHOOT option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.BOUNDARY_CONDITION_METHOD != 1:
@@ -124,38 +110,32 @@ def check_config(
 
     if cumulus_parameterization_config.FRAC_MODIS != 1:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->updraft_moisture constructed with "
-            "untested FRAC_MODIS option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->updraft_moisture constructed with " "untested FRAC_MODIS option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.ZERO_DIFF != 0:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->updraft_moisture constructed with "
-            "untested ZERO_DIFF option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->updraft_moisture constructed with " "untested ZERO_DIFF option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.ZERO_DIFF != 0:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->updraft_vertical_velocity constructed with "
-            "untested ZERO_DIFF option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->updraft_vertical_velocity constructed with " "untested ZERO_DIFF option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.USE_WETBULB != 0:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->downdraft_moisture constructed with "
-            "untested USE_WETBULB option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->downdraft_moisture constructed with " "untested USE_WETBULB option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.SGS_W_TIMESCALE != 1:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->DiurnalCycle initialized with "
-            "untested SGS_W_TIMESCALE option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->DiurnalCycle initialized with " "untested SGS_W_TIMESCALE option. Running untested code... proceed with caution"
         )
 
     if AEROEVAP != 1:
         ndsl_log.warning(
-            " GF2020-->CumulusParameterization-->DowndraftWindshear initialized with "
-            "untested AEROEVAP option. Running untested code... proceed with caution"
+            " GF2020-->CumulusParameterization-->DowndraftWindshear initialized with " "untested AEROEVAP option. Running untested code... proceed with caution"
         )
 
     if cumulus_parameterization_config.USE_TRACER_EVAPORATION == 0:
@@ -180,10 +160,7 @@ def check_config(
             "manually to proceed."
         )
 
-    if (
-        cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1
-        and cumulus_parameterization_config.ENABLE_SHALLOW == 1
-    ):
+    if cumulus_parameterization_config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and cumulus_parameterization_config.ENABLE_SHALLOW == 1:
         raise NotImplementedError(
             "[NDSL] GF2020-->CumulusParameterization initialized with"
             "USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES == 1 and shallow plume enabled. This combination requires"

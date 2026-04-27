@@ -8,15 +8,8 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Ensemble,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Ensemble, FloatFieldIJ_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import liquid_fraction
 from pyMoist.shared.incloud_processes import (
     G_RATIO,
@@ -123,13 +116,7 @@ def ensemble_output_and_feedback(
         CLOUD_BASE_MASS_FLUX_FACTOR (Float)
         plume (Int)
     """
-    from __externals__ import (
-        APPLY_SUBSIDENCE_MICROPHYSICS,
-        DT_MOIST,
-        MAX_TEMP_VAPOR_TENDENCY,
-        USE_SMOOTH_TENDENCIES,
-        k_end,
-    )
+    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, DT_MOIST, MAX_TEMP_VAPOR_TENDENCY, USE_SMOOTH_TENDENCIES, k_end
 
     # ensure outputs are all zero
     with computation(PARALLEL), interval(...):
@@ -182,14 +169,10 @@ def ensemble_output_and_feedback(
             cloud_base_mass_flux_modified[0, 0][plume] = average_mass_flux
 
             # apply the adjust factor for tunning
-            cloud_base_mass_flux_modified[0, 0][plume] = (
-                CLOUD_BASE_MASS_FLUX_FACTOR * cloud_base_mass_flux_modified[0, 0][plume]
-            )
+            cloud_base_mass_flux_modified[0, 0][plume] = CLOUD_BASE_MASS_FLUX_FACTOR * cloud_base_mass_flux_modified[0, 0][plume]
 
             # diurnal cycle closure
-            cloud_base_mass_flux_modified[0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume] - f_dicycle_modified
-            )
+            cloud_base_mass_flux_modified[0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] - f_dicycle_modified
 
             if cloud_base_mass_flux_modified[0, 0][plume] <= 0.0:
                 error_code[0, 0][plume] = 13
@@ -199,9 +182,7 @@ def ensemble_output_and_feedback(
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             # scale dependence
-            cloud_base_mass_flux_modified[0, 0][plume] = (
-                scale_dependence_factor[0, 0][plume] * cloud_base_mass_flux_modified[0, 0][plume]
-            )
+            cloud_base_mass_flux_modified[0, 0][plume] = scale_dependence_factor[0, 0][plume] * cloud_base_mass_flux_modified[0, 0][plume]
 
             if cloud_base_mass_flux_modified[0, 0][plume] == 0.0:
                 error_code[0, 0][plume] = 14
@@ -219,9 +200,7 @@ def ensemble_output_and_feedback(
                 )
                 / (constants.MAPL_GRAV * DT_MOIST)
             )
-            cloud_base_mass_flux_modified[0, 0][plume] = min(
-                cloud_base_mass_flux_modified[0, 0][plume], max_mass_flux
-            )
+            cloud_base_mass_flux_modified[0, 0][plume] = min(cloud_base_mass_flux_modified[0, 0][plume], max_mass_flux)
 
     with computation(PARALLEL), interval(...):
         # prepare field from which max value is pulled
@@ -239,16 +218,13 @@ def ensemble_output_and_feedback(
                 * 86400.0
                 * max(
                     max_val_t,
-                    (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
-                    * max_val_vapor,
+                    (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP) * max_val_vapor,
                 )
             )
 
             if fixouts > MAX_TEMP_VAPOR_TENDENCY:  # K/day
                 fixouts = MAX_TEMP_VAPOR_TENDENCY / fixouts
-                cloud_base_mass_flux_modified[0, 0][plume] = (
-                    cloud_base_mass_flux_modified[0, 0][plume] * fixouts
-                )
+                cloud_base_mass_flux_modified[0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * fixouts
                 member = 0
                 while member < cumulus_parameterization_constants.MAXENS3:
                     mass_flux_ensemble[0, 0][member] = mass_flux_ensemble[0, 0][member] * fixouts
@@ -258,49 +234,26 @@ def ensemble_output_and_feedback(
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
-                precip[0, 0][plume] = (
-                    precip[0, 0][plume]
-                    + effective_condensate_to_fall_forced * cloud_base_mass_flux_modified[0, 0][plume]
-                )
+                precip[0, 0][plume] = precip[0, 0][plume] + effective_condensate_to_fall_forced * cloud_base_mass_flux_modified[0, 0][plume]
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
                 dtdt[0, 0, 0][plume] = del_t_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                dvapordt[0, 0, 0][plume] = (
-                    del_vapor_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                )
-                dcloudicedt[0, 0, 0][plume] = (
-                    del_cloud_liquid_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                )
+                dvapordt[0, 0, 0][plume] = del_vapor_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
+                dcloudicedt[0, 0, 0][plume] = del_cloud_liquid_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
                 dudt[0, 0, 0][plume] = del_u_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
                 dvdt[0, 0, 0][plume] = del_v_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                dbuoyancydt[0, 0, 0][plume] = (
-                    del_buoyancy_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                )
+                dbuoyancydt[0, 0, 0][plume] = del_buoyancy_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
 
             if APPLY_SUBSIDENCE_MICROPHYSICS == 1:
                 if K <= cloud_top_level[0, 0][plume]:
-                    dconvectiveicedt[0, 0, 0][plume] = (
-                        del_convective_ice_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                    )
-                    dlargescaleicedt[0, 0, 0][plume] = (
-                        del_large_scale_ice_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                    )
-                    dconvectiveliquiddt[0, 0, 0][plume] = (
-                        del_convective_liquid_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                    )
-                    dlargescaleliquiddt[0, 0, 0][plume] = (
-                        del_large_scale_liquid_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
-                    )
-                    dconvectivecloudfractiondt[0, 0, 0][plume] = (
-                        del_convective_cloud_fraction_cloud_ensemble
-                        * cloud_base_mass_flux_modified[0, 0][plume]
-                    )
-                    dlargescalecloudfractiondt[0, 0, 0][plume] = (
-                        del_large_scale_cloud_fraction_cloud_ensemble
-                        * cloud_base_mass_flux_modified[0, 0][plume]
-                    )
+                    dconvectiveicedt[0, 0, 0][plume] = del_convective_ice_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
+                    dlargescaleicedt[0, 0, 0][plume] = del_large_scale_ice_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
+                    dconvectiveliquiddt[0, 0, 0][plume] = del_convective_liquid_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
+                    dlargescaleliquiddt[0, 0, 0][plume] = del_large_scale_liquid_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
+                    dconvectivecloudfractiondt[0, 0, 0][plume] = del_convective_cloud_fraction_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
+                    dlargescalecloudfractiondt[0, 0, 0][plume] = del_large_scale_cloud_fraction_cloud_ensemble * cloud_base_mass_flux_modified[0, 0][plume]
 
                 if K >= cloud_top_level[0, 0][plume] and K < k_end:
                     dconvectiveicedt[0, 0, 0][plume] = 0.0
@@ -313,15 +266,8 @@ def ensemble_output_and_feedback(
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             member = 0
-            while (
-                member
-                < cumulus_parameterization_constants.MAXENS1
-                * cumulus_parameterization_constants.MAXENS2
-                * cumulus_parameterization_constants.MAXENS3
-            ):
-                mass_flux_ensemble[0, 0][member] = (
-                    scale_dependence_factor[0, 0][plume] * mass_flux_ensemble[0, 0][member]
-                )
+            while member < cumulus_parameterization_constants.MAXENS1 * cumulus_parameterization_constants.MAXENS2 * cumulus_parameterization_constants.MAXENS3:
+                mass_flux_ensemble[0, 0][member] = scale_dependence_factor[0, 0][plume] * mass_flux_ensemble[0, 0][member]
                 member += 1
 
     # smooth the tendencies (future work: include outbuoy, outmpc* and tracers)
@@ -352,9 +298,7 @@ def total_evaporation_flux(
         if error_code[0, 0][plume] == 0:
             if K <= cloud_top_level[0, 0][plume]:
                 dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
-                evaporation_sublimation_tendency = (
-                    evaporation_sublimation_tendency + evaporation_flux * constants.MAPL_GRAV / dp
-                )
+                evaporation_sublimation_tendency = evaporation_sublimation_tendency + evaporation_flux * constants.MAPL_GRAV / dp
 
 
 def deep_precipitation_output(
@@ -374,11 +318,7 @@ def deep_precipitation_output(
         plume (Int)
     """
     with computation(PARALLEL), interval(...):
-        if (
-            error_code[0, 0][plume] == 0
-            and plume == cumulus_parameterization_constants.DEEP
-            and K <= cloud_top_level[0, 0][plume] + 1
-        ):
+        if error_code[0, 0][plume] == 0 and plume == cumulus_parameterization_constants.DEEP and K <= cloud_top_level[0, 0][plume] + 1:
             convective_precip_flux = precipitation_flux
 
 
@@ -450,53 +390,27 @@ def prepare_output(
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             total_normalized_integrated_condensate_forced[0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume]
-                * total_normalized_integrated_condensate_forced[0, 0][plume]
+                cloud_base_mass_flux_modified[0, 0][plume] * total_normalized_integrated_condensate_forced[0, 0][plume]
             )
-            total_normalized_integrated_evaporate_forced = (
-                cloud_base_mass_flux_modified[0, 0][plume] * total_normalized_integrated_evaporate_forced
-            )
+            total_normalized_integrated_evaporate_forced = cloud_base_mass_flux_modified[0, 0][plume] * total_normalized_integrated_evaporate_forced
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
-            normalized_massflux_updraft_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume]
-                * normalized_massflux_updraft_forced[0, 0, 0][plume]
-            )
-            normalized_massflux_downdraft_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume]
-                * normalized_massflux_downdraft_forced[0, 0, 0][plume]
-            )
-            condensate_to_fall_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume] * condensate_to_fall_forced[0, 0, 0][plume]
-            )
-            evaporate_in_downdraft_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
-            )
-            mass_entrainment_updraft_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume] * mass_entrainment_updraft_forced[0, 0, 0][plume]
-            )
-            mass_detrainment_updraft_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume] * mass_detrainment_updraft_forced[0, 0, 0][plume]
-            )
-            mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume] * mass_entrainment_downdraft_forced[0, 0, 0][plume]
-            )
-            mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
-                cloud_base_mass_flux_modified[0, 0][plume] * mass_detrainment_downdraft_forced[0, 0, 0][plume]
-            )
+            normalized_massflux_updraft_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * normalized_massflux_updraft_forced[0, 0, 0][plume]
+            normalized_massflux_downdraft_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * normalized_massflux_downdraft_forced[0, 0, 0][plume]
+            condensate_to_fall_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * condensate_to_fall_forced[0, 0, 0][plume]
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * evaporate_in_downdraft_forced[0, 0, 0][plume]
+            mass_entrainment_updraft_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * mass_entrainment_updraft_forced[0, 0, 0][plume]
+            mass_detrainment_updraft_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * mass_detrainment_updraft_forced[0, 0, 0][plume]
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * mass_entrainment_downdraft_forced[0, 0, 0][plume]
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = cloud_base_mass_flux_modified[0, 0][plume] * mass_detrainment_downdraft_forced[0, 0, 0][plume]
             environment_massflux = cloud_base_mass_flux_modified[0, 0][plume] * environment_massflux
 
     with computation(PARALLEL), interval(...):
-        vapor_tendency_from_environmental_subsidence = (
-            cloud_base_mass_flux_modified[0, 0][plume] * vapor_tendency_from_environmental_subsidence
-        )
+        vapor_tendency_from_environmental_subsidence = cloud_base_mass_flux_modified[0, 0][plume] * vapor_tendency_from_environmental_subsidence
         moist_static_energy_tendency_from_environmental_subsidence = (
-            cloud_base_mass_flux_modified[0, 0][plume]
-            * moist_static_energy_tendency_from_environmental_subsidence
+            cloud_base_mass_flux_modified[0, 0][plume] * moist_static_energy_tendency_from_environmental_subsidence
         )
-        t_tendency_from_environmental_subsidence = (
-            cloud_base_mass_flux_modified[0, 0][plume] * t_tendency_from_environmental_subsidence
-        )
+        t_tendency_from_environmental_subsidence = cloud_base_mass_flux_modified[0, 0][plume] * t_tendency_from_environmental_subsidence
 
 
 def output_workfunctions_and_precip_concentrations(
@@ -554,20 +468,15 @@ def output_workfunctions_and_precip_concentrations(
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume] + 1:
-            fraction = liquid_fraction(
-                updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS
-            )
+            fraction = liquid_fraction(updraft_column_temperature_forced, convection_fraction, surface_type, FRAC_MODIS)
             cloud_liquid = DT_MOIST * dcloudicedt[0, 0, 0][plume] * air_density * fraction
             cloud_ice = DT_MOIST * dcloudicedt[0, 0, 0][plume] * air_density * (1.0 - fraction)
 
             dnicedt[0, 0, 0][plume] = max(
                 0.0,
-                make_ice_number(cloud_ice, updraft_column_temperature_forced, RADIATIVE_EFFECTIVE_RADIUS)
-                / air_density,
+                make_ice_number(cloud_ice, updraft_column_temperature_forced, RADIATIVE_EFFECTIVE_RADIUS) / air_density,
             )
-            dnliquiddt[0, 0, 0][plume] = max(
-                0.0, make_droplet_number(cloud_liquid, n_water_friendly_aerosols, G_RATIO) / air_density
-            )
+            dnliquiddt[0, 0, 0][plume] = max(0.0, make_droplet_number(cloud_liquid, n_water_friendly_aerosols, G_RATIO) / air_density)
 
             # convert to tendencies
             dnicedt[0, 0, 0][plume] = dnicedt[0, 0, 0][plume] * (1 / DT_MOIST)  # unit [1/s]
@@ -591,14 +500,10 @@ class OutputWorkfunctionsAndPrecipConcentrations(NDSLRuntime):
 
         # add dimension to quantityfactory and create classes for constants
         quantity_factory.update_data_dimensions({"G_RATIO_Table": len(G_RATIO)})
-        quantity_factory.update_data_dimensions(
-            {"RADIATIVE_EFFECTIVE_RADIUS_Table": len(RADIATIVE_EFFECTIVE_RADIUS)}
-        )
+        quantity_factory.update_data_dimensions({"RADIATIVE_EFFECTIVE_RADIUS_Table": len(RADIATIVE_EFFECTIVE_RADIUS)})
 
         self._G_RATIO: Local = quantity_factory.zeros(["G_RATIO_Table"], "n/a")
-        self._RADIATIVE_EFFECTIVE_RADIUS: Local = quantity_factory.zeros(
-            ["RADIATIVE_EFFECTIVE_RADIUS_Table"], "n/a"
-        )
+        self._RADIATIVE_EFFECTIVE_RADIUS: Local = quantity_factory.zeros(["RADIATIVE_EFFECTIVE_RADIUS_Table"], "n/a")
 
         self._G_RATIO.field[:] = G_RATIO
         self._RADIATIVE_EFFECTIVE_RADIUS.field[:] = RADIATIVE_EFFECTIVE_RADIUS

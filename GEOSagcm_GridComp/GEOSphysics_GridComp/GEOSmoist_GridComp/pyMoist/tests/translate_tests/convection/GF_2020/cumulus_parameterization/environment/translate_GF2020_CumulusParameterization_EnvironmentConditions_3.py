@@ -7,17 +7,10 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment import environment_conditions
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -53,9 +46,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -79,15 +70,9 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         locals.geopotential_height_modified.data[:] = inputs["local_geopotential_height_modified"]
-        locals.environment_saturation_mixing_ratio_modified.data[:] = inputs[
-            "local_env_saturation_mixing_ratio_modified"
-        ]
-        locals.environment_moist_static_energy_modified.data[:] = inputs[
-            "local_env_moist_static_energy_modified"
-        ]
-        locals.environment_saturation_moist_static_energy_modified.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_modified"
-        ]
+        locals.environment_saturation_mixing_ratio_modified.data[:] = inputs["local_env_saturation_mixing_ratio_modified"]
+        locals.environment_moist_static_energy_modified.data[:] = inputs["local_env_moist_static_energy_modified"]
+        locals.environment_saturation_moist_static_energy_modified.data[:] = inputs["local_env_saturation_moist_static_energy_modified"]
         locals.t_modified.data[:] = inputs["local_t_modified"]
         locals.vapor_modified.data[:] = inputs["local_vapor_modified"]
         state.input_output.p_forced.data[:] = inputs["p_forced"]
@@ -98,9 +83,7 @@ class TestCore:
         code = self.stencil_factory.from_dims_halo(
             func=environment_conditions,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={
-                "SATURATION_CALCULATION_CHOICE": cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE
-            },
+            externals={"SATURATION_CALCULATION_CHOICE": cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE},
         )
 
         if plume_dependent_constants.ENABLE_PLUME == 1:
@@ -120,15 +103,9 @@ class TestCore:
 
         outputs = {
             "local_geopotential_height_modified": locals.geopotential_height_modified.field[:],
-            "local_env_saturation_mixing_ratio_modified": locals.environment_saturation_mixing_ratio_modified.field[
-                :
-            ],
-            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.field[
-                :
-            ],
-            "local_env_saturation_moist_static_energy_modified": locals.environment_saturation_moist_static_energy_modified.field[
-                :
-            ],
+            "local_env_saturation_mixing_ratio_modified": locals.environment_saturation_mixing_ratio_modified.field[:],
+            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.field[:],
+            "local_env_saturation_moist_static_energy_modified": locals.environment_saturation_moist_static_energy_modified.field[:],
             "local_t_modified": locals.t_modified.field[:],
             "local_vapor_modified": locals.vapor_modified.field[:],
             "p_forced": state.input_output.p_forced.field[:],

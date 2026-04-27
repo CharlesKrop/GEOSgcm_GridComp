@@ -7,16 +7,9 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -154,21 +147,15 @@ class TestCore:
         state.input.subgrid_scale_forcing_t.data[:] = inputs["subgrid_scale_forcing_t"]
         state.input.subgrid_scale_forcing_vapor.data[:] = inputs["subgrid_scale_forcing_vapor"]
         state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height_forced"]
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "epsilon_forced"
-        ]
+        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
         state.output.precip.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip"]
-        state.output.scale_dependence_factor.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "scale_dependence_factor"
-        ]
+        state.output.scale_dependence_factor.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["scale_dependence_factor"]
         state.output.lightning_density.data[:] = inputs["lightning_density"]
         state.input.seed_convection.data[:] = inputs["seed_convection"]
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
         state.input_output.grid_length.data[:] = inputs["grid_length"]
         state.input.lateral_entrainment_rate.data[:] = inputs["lateral_entrainment_rate"]
-        state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "entrainment_rate"
-        ]
+        state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["entrainment_rate"]
 
         # prefill locals with nans to replicate fortran initalization
         locals.t_excess.field[:] = np.nan
@@ -298,16 +285,12 @@ class TestCore:
             "geopotential_height_forced": state.input_output.geopotential_height_forced.field[:],
             "epsilon_forced": state.output.epsilon_forced.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "precip": state.output.precip.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "scale_dependence_factor": state.output.scale_dependence_factor.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "scale_dependence_factor": state.output.scale_dependence_factor.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "lightning_density": state.output.lightning_density.field[:],
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "grid_length": state.input_output.grid_length.field[:],
             "lateral_entrainment_rate": state.input.lateral_entrainment_rate.field[:],
-            "entrainment_rate": state.output.entrainment_rate.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "entrainment_rate": state.output.entrainment_rate.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
             "kstabm": state.output.kstabm.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "local_t_excess": locals.t_excess.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
@@ -342,13 +325,9 @@ class TestCore:
             "local_cape_removal_time_scale": locals.cape_removal_time_scale.field[:],
             "local_f_dicycle_modified": locals.f_dicycle_modified.field[:],
             "local_add_buoyancy": locals.add_buoyancy.field[:],
-            "local_cloud_moist_static_energy_downdraft_forced": locals.cloud_moist_static_energy_downdraft_forced.field[
-                :
-            ],
+            "local_cloud_moist_static_energy_downdraft_forced": locals.cloud_moist_static_energy_downdraft_forced.field[:],
             "local_downdraft_saturation_vapor_forced": locals.downdraft_saturation_vapor_forced.field[:],
-            "local_cloud_moist_static_energy_forced_transported": locals.cloud_moist_static_energy_forced_transported.field[
-                :
-            ],
+            "local_cloud_moist_static_energy_forced_transported": locals.cloud_moist_static_energy_forced_transported.field[:],
             "local_c1d": locals.c1d.field[:],
             "local_evaporation_below_cloud_base": locals.evaporation_below_cloud_base.field[:],
             "local_mass_flux_ensemble": locals.mass_flux_ensemble.field[:],

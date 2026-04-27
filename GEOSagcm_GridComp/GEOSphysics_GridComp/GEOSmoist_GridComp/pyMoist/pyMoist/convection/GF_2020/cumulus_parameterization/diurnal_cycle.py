@@ -7,9 +7,7 @@ import pyMoist.constants as constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import IntFieldIJ_Plume
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.shared.atmos_recipes import sigma
 
 
@@ -57,35 +55,20 @@ def set_time_scales(
         if error_code[0, 0][plume] == 0:
             if SGS_W_TIMESCALE == 0:
                 # time-scale cape removal from Bechtold et al. 2008
-                dz = geopotential_height_cloud_levels_forced.at(
-                    K=cloud_top_level[0, 0][plume]
-                ) - geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
+                dz = geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume]) - geopotential_height_cloud_levels_forced.at(
+                    K=updraft_lfc_level[0, 0][plume]
+                )
             else:
                 # time-scale cape removal from Bechtold et al. 2008
-                dz = geopotential_height_cloud_levels_forced.at(
-                    K=cloud_top_level[0, 0][plume]
-                ) - geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
-                cape_removal_time_scale = (
-                    3600.0 * (sigma(grid_length))
-                    + 10800.0 * (1.0 - sigma(grid_length))
-                    + (dz / vertical_velocity_2d)
+                dz = geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume]) - geopotential_height_cloud_levels_forced.at(
+                    K=updraft_lfc_level[0, 0][plume]
                 )
+                cape_removal_time_scale = 3600.0 * (sigma(grid_length)) + 10800.0 * (1.0 - sigma(grid_length)) + (dz / vertical_velocity_2d)
                 cape_removal_time_scale = max(DT_MOIST, cape_removal_time_scale)
 
             if ocean_fraction > 0.99:  # over water
-                umean = 2.0 + sqrt(
-                    0.5
-                    * (
-                        u**2
-                        + v**2
-                        + u.at(K=updraft_lfc_level[0, 0][plume]) ** 2
-                        + v.at(K=updraft_lfc_level[0, 0][plume]) ** 2
-                    )
-                )
-                pbl_time_scale = (
-                    geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
-                    - topography_height_no_negative
-                ) / umean
+                umean = 2.0 + sqrt(0.5 * (u**2 + v**2 + u.at(K=updraft_lfc_level[0, 0][plume]) ** 2 + v.at(K=updraft_lfc_level[0, 0][plume]) ** 2))
+                pbl_time_scale = (geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume]) - topography_height_no_negative) / umean
             else:  # over land
                 pbl_time_scale = (
                     geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
@@ -133,9 +116,7 @@ def cloud_workfunction_1_pbl(
 
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 and K <= pbl_level:
-            dz = (
-                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
-            ) * constants.MAPL_GRAV
+            dz = (geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced) * constants.MAPL_GRAV
             da = dz * (t_new * (1.0 + 0.608 * vapor_forced) - t_old * (1.0 + 0.608 * vapor_old)) / DT_MOIST
 
             cloud_work_function_1_pbl = cloud_work_function_1_pbl + da  # Units : J K / (kg seg)
@@ -253,12 +234,8 @@ class DiurnalCycle(NDSLRuntime):
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        if (
-            self.cumulus_parameterization_config.DIURNAL_CYCLE == 1
-            or self.cumulus_parameterization_config.DIURNAL_CYCLE == 6
-        ) or (
-            self.cumulus_parameterization_config.DIURNAL_CYCLE == 0
-            and plume_dependent_constants.PLUME_INDEX == 1  # mid plume
+        if (self.cumulus_parameterization_config.DIURNAL_CYCLE == 1 or self.cumulus_parameterization_config.DIURNAL_CYCLE == 6) or (
+            self.cumulus_parameterization_config.DIURNAL_CYCLE == 0 and plume_dependent_constants.PLUME_INDEX == 1  # mid plume
         ):
             # calculate pcape from BL forcing only
             self._cloud_workfunction_1_pbl(
@@ -297,10 +274,7 @@ class DiurnalCycle(NDSLRuntime):
                 "Choose another option or for DIURNAL_CYCLE implement to continue."
             )
 
-        if (
-            self.cumulus_parameterization_config.DIURNAL_CYCLE == 5
-            or self.cumulus_parameterization_config.DIURNAL_CYCLE == 2
-        ):
+        if self.cumulus_parameterization_config.DIURNAL_CYCLE == 5 or self.cumulus_parameterization_config.DIURNAL_CYCLE == 2:
             raise NotImplementedError(
                 "[NDSL] GF2020-->CumulusParameterization-->DiurnalCycle called with an unimplemented path."
                 "This should have been caught at initialization, but somehow you made it here."

@@ -27,9 +27,4 @@ def hydrostatic_air_density(
 
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            air_density = (
-                100.0
-                * (p[0, 0, 0][plume] - p[0, 0, 1][plume])
-                / (geopotential_height[0, 0, 1] - geopotential_height)
-                / constants.MAPL_GRAV
-            )
+            air_density = 100.0 * (p[0, 0, 0][plume] - p[0, 0, 1][plume]) / (geopotential_height[0, 0, 1] - geopotential_height) / constants.MAPL_GRAV

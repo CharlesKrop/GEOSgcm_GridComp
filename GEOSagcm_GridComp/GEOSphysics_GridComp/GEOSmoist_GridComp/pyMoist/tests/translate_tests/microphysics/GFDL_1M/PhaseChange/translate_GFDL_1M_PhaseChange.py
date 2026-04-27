@@ -144,9 +144,7 @@ class TranslateGFDL_1M_PhaseChange(TranslateFortranData2Py):
             "cloud_liquid_evaporation": copy.copy(state.cloud_liquid_evaporation.field[:]),
             "cloud_ice_sublimation": copy.copy(state.cloud_ice_sublimation.field[:]),
             "relative_humidity_after_pdf": copy.copy(state.relative_humidity_after_pdf.field[:]),
-            "critical_relative_humidity_for_pdf": copy.copy(
-                state.critical_relative_humidity_for_pdf.field[:]
-            ),
+            "critical_relative_humidity_for_pdf": copy.copy(state.critical_relative_humidity_for_pdf.field[:]),
         }
 
         # Micro-bench

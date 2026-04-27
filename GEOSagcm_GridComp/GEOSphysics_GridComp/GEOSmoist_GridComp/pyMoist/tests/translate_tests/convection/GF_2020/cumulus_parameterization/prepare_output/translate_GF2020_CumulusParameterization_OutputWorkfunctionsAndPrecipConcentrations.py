@@ -6,19 +6,10 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import (
-    OutputWorkfunctionsAndPrecipConcentrations,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
+from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import OutputWorkfunctionsAndPrecipConcentrations
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -58,9 +49,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -84,9 +73,7 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level"] - 1
-        )
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
         state.input.convection_fraction.data[:] = inputs["convection_fraction"]
         state.input.surface_type.data[:] = inputs["surface_type"]
         state.output.cloud_workfunction_0.data[:] = inputs["cloud_workfunction_0"]
@@ -126,8 +113,7 @@ class TestCore:
 
         outputs = {
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
-            + 1,
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "convection_fraction": state.input.convection_fraction.field[:],
             "surface_type": state.input.surface_type.field[:],
             "cloud_workfunction_0": state.output.cloud_workfunction_0.field[:],
@@ -144,9 +130,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -169,9 +153,7 @@ class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcen
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -194,9 +176,7 @@ class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcen
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_OutputWorkfunctionsAndPrecipConcentrations_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,

@@ -37,10 +37,7 @@ class MoistWorkarounds:
         # library
         geos_dir = os.getenv("GEOSDIR", "Not found")
         if geos_dir == "Not found":
-            raise RuntimeError(
-                "[pyMoist.fortran.moist_workarounds] Libary loads require a GEOSDIR environment variable"
-                "pointing to the install directory of GEOS."
-            )
+            raise RuntimeError("[pyMoist.fortran.moist_workarounds] Libary loads require a GEOSDIR environment variable" "pointing to the install directory of GEOS.")
         self.ffi = ffi
 
         # FFI & C library setup
@@ -73,19 +70,11 @@ class MoistWorkarounds:
         size_ = self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__size()
 
         return CNVTracers(
-            Q=_fortran_to_numpy(
-                maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__Q(), Float, maplpy.grid_dims + [size_]
-            ),
-            fscav=_fortran_to_numpy(
-                maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__fscav(), Float, [size_]
-            ),
-            Vect_Hcts=_fortran_to_numpy(
-                maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__Vect_Hcts(), Float, [size_, 4]
-            ),
+            Q=_fortran_to_numpy(maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__Q(), Float, maplpy.grid_dims + [size_]),
+            fscav=_fortran_to_numpy(maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__fscav(), Float, [size_]),
+            Vect_Hcts=_fortran_to_numpy(maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__Vect_Hcts(), Float, [size_, 4]),
             # NOTE use_gcc_washout should be a boolean, but the interface currently cannot pull boolean values
-            use_gcc_washout=_fortran_to_numpy(
-                maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__use_gcc_washout(), bool, [size_]
-            ),
+            use_gcc_washout=_fortran_to_numpy(maplpy, self.libGEOSmoist_GridComp.get_CNV_Tracers_SOA__use_gcc_washout(), bool, [size_]),
         )
 
 

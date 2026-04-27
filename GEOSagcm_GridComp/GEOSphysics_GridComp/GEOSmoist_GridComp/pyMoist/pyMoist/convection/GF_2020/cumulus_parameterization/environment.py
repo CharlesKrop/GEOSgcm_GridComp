@@ -6,15 +6,8 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    get_cloud_boundary_conditions,
-    saturation_vapor_pressure,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions, saturation_vapor_pressure
 
 
 @function
@@ -47,10 +40,7 @@ def saturation_specific_humidity(
     rtwat_rticecu_r = 1.0 / (rtwat - rticecu)
 
     foealfcu = min(1.0, ((max(rticecu, min(rtwat, potential_t)) - rticecu) * rtwat_rticecu_r) ** 2)
-    foeewmcu = r2es * (
-        foealfcu * exp(r3les * (potential_t - rtt) / (potential_t - r4les))
-        + (1.0 - foealfcu) * exp(r3ies * (potential_t - rtt) / (potential_t - r4ies))
-    )
+    foeewmcu = r2es * (foealfcu * exp(r3les * (potential_t - rtt) / (potential_t - r4les)) + (1.0 - foealfcu) * exp(r3ies * (potential_t - rtt) / (potential_t - r4ies)))
 
     zew = foeewmcu
     zqs = zew / (100.0 * p)
@@ -125,16 +115,10 @@ def environment_conditions(
 
     with computation(PARALLEL), interval(0, -1):
         if error_code[0, 0][plume] == 0:
-            moist_static_energy = (
-                constants.MAPL_GRAV * geopotential_height
-                + cumulus_parameterization_constants.CP * t
-                + cumulus_parameterization_constants.XLV * vapor
-            )
+            moist_static_energy = constants.MAPL_GRAV * geopotential_height + cumulus_parameterization_constants.CP * t + cumulus_parameterization_constants.XLV * vapor
 
             saturation_moist_static_energy = (
-                constants.MAPL_GRAV * geopotential_height
-                + cumulus_parameterization_constants.CP * t
-                + cumulus_parameterization_constants.XLV * saturation_mixing_ratio
+                constants.MAPL_GRAV * geopotential_height + cumulus_parameterization_constants.CP * t + cumulus_parameterization_constants.XLV * saturation_mixing_ratio
             )
 
             if moist_static_energy >= saturation_moist_static_energy:
@@ -202,18 +186,13 @@ def get_interp(
         ptare = pt
 
         foealfcu = min(1.0, ((max(rticecu, min(rtwat, ptare)) - rticecu) * rtwat_rticecu_r) ** 2)
-        foeewmcu = r2es * (
-            foealfcu * exp(r3les * (ptare - rtt) / (ptare - r4les))
-            + (1.0 - foealfcu) * exp(r3ies * (ptare - rtt) / (ptare - r4ies))
-        )
+        foeewmcu = r2es * (foealfcu * exp(r3les * (ptare - rtt) / (ptare - r4les)) + (1.0 - foealfcu) * exp(r3ies * (ptare - rtt) / (ptare - r4ies)))
         zqsat = foeewmcu * zqp
 
         zcor = 1.0 / (1.0 - retv * zqsat)
         zqsat = zqsat * zcor
 
-        foedemcu = foealfcu * r5alvcp * (1.0 / (ptare - r4les) ** 2) + (1.0 - foealfcu) * r5alscp * (
-            1.0 / (ptare - r4ies) ** 2
-        )
+        foedemcu = foealfcu * r5alvcp * (1.0 / (ptare - r4les) ** 2) + (1.0 - foealfcu) * r5alscp * (1.0 / (ptare - r4ies) ** 2)
 
         zcond1 = (pq - zqsat) / (1.0 + zqsat * zcor * foedemcu)
 
@@ -302,33 +281,20 @@ def environment_cloud_levels(
         if CLOUD_LEVEL_GRID == 2:
             # original formulation
             if error_code[0, 0][plume] == 0:
-                environment_saturation_mixing_ratio_cloud_levels = 0.5 * (
-                    environment_saturation_mixing_ratio[0, 0, -1] + environment_saturation_mixing_ratio
-                )
+                environment_saturation_mixing_ratio_cloud_levels = 0.5 * (environment_saturation_mixing_ratio[0, 0, -1] + environment_saturation_mixing_ratio)
                 vapor_cloud_levels = 0.5 * (vapor[0, 0, -1] + vapor)
                 environment_saturation_moist_static_energy_cloud_levels = 0.5 * (
-                    environment_saturation_moist_static_energy[0, 0, -1]
-                    + environment_saturation_moist_static_energy
+                    environment_saturation_moist_static_energy[0, 0, -1] + environment_saturation_moist_static_energy
                 )
-                environment_moist_static_energy_cloud_levels = 0.5 * (
-                    environment_moist_static_energy[0, 0, -1] + environment_moist_static_energy
-                )
-                if (
-                    environment_moist_static_energy_cloud_levels
-                    > environment_saturation_moist_static_energy_cloud_levels
-                ):
-                    environment_moist_static_energy_cloud_levels = (
-                        environment_saturation_moist_static_energy_cloud_levels
-                    )
+                environment_moist_static_energy_cloud_levels = 0.5 * (environment_moist_static_energy[0, 0, -1] + environment_moist_static_energy)
+                if environment_moist_static_energy_cloud_levels > environment_saturation_moist_static_energy_cloud_levels:
+                    environment_moist_static_energy_cloud_levels = environment_saturation_moist_static_energy_cloud_levels
                 geopotential_height_cloud_levels = 0.5 * (geopotential_height[0, 0, -1] + geopotential_height)
                 p_cloud_levels = 0.5 * (p[0, 0, -1] + p)
                 t_cloud_levels = 0.5 * (t[0, 0, -1] + t)
                 gamma_cloud_levels = (
                     (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
-                    * (
-                        cumulus_parameterization_constants.XLV
-                        / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels)
-                    )
+                    * (cumulus_parameterization_constants.XLV / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels))
                     * environment_saturation_mixing_ratio_cloud_levels
                 )
                 u_cloud_levels = 0.5 * (u[0, 0, -1] + u)
@@ -346,9 +312,7 @@ def environment_cloud_levels(
                     + cumulus_parameterization_constants.XLV * environment_saturation_mixing_ratio
                 )
                 environment_moist_static_energy_cloud_levels = (
-                    constants.MAPL_GRAV * topography_height_no_negative
-                    + cumulus_parameterization_constants.CP * t
-                    + cumulus_parameterization_constants.XLV * vapor
+                    constants.MAPL_GRAV * topography_height_no_negative + cumulus_parameterization_constants.CP * t + cumulus_parameterization_constants.XLV * vapor
                 )
                 geopotential_height_cloud_levels = topography_height_no_negative
                 p_cloud_levels = p_surface
@@ -356,10 +320,7 @@ def environment_cloud_levels(
                 gamma_cloud_levels = (
                     cumulus_parameterization_constants.XLV
                     / cumulus_parameterization_constants.CP
-                    * (
-                        cumulus_parameterization_constants.XLV
-                        / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels)
-                    )
+                    * (cumulus_parameterization_constants.XLV / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels))
                     * environment_saturation_mixing_ratio_cloud_levels
                 )
                 u_cloud_levels = u
@@ -377,9 +338,7 @@ def environment_cloud_levels(
             # weighted mean
             if error_code[0, 0][plume] == 0:
                 p_cloud_levels[0, 0, 1] = 2.0 * p - p_cloud_levels
-                geopotential_height_cloud_levels[0, 0, 1] = (
-                    2.0 * geopotential_height - geopotential_height_cloud_levels
-                )
+                geopotential_height_cloud_levels[0, 0, 1] = 2.0 * geopotential_height - geopotential_height_cloud_levels
 
     with computation(FORWARD), interval(0, -2):
         if CLOUD_LEVEL_GRID == 0:
@@ -391,35 +350,17 @@ def environment_cloud_levels(
                 u_cloud_levels[0, 0, 1] = p1 * u + p2 * u[0, 0, 1]
                 v_cloud_levels[0, 0, 1] = p1 * v + p2 * v[0, 0, 1]
                 vapor_cloud_levels[0, 0, 1] = p1 * vapor + p2 * vapor[0, 0, 1]
-                environment_moist_static_energy_cloud_levels[0, 0, 1] = (
-                    p1 * environment_moist_static_energy + p2 * environment_moist_static_energy[0, 0, 1]
-                )
-                environment_saturation_mixing_ratio_cloud_levels[0, 0, 1] = (
-                    p1 * environment_saturation_mixing_ratio
-                    + p2 * environment_saturation_mixing_ratio[0, 0, 1]
-                )
+                environment_moist_static_energy_cloud_levels[0, 0, 1] = p1 * environment_moist_static_energy + p2 * environment_moist_static_energy[0, 0, 1]
+                environment_saturation_mixing_ratio_cloud_levels[0, 0, 1] = p1 * environment_saturation_mixing_ratio + p2 * environment_saturation_mixing_ratio[0, 0, 1]
                 environment_saturation_moist_static_energy_cloud_levels[0, 0, 1] = (
-                    p1 * environment_saturation_moist_static_energy
-                    + p2 * environment_saturation_moist_static_energy[0, 0, 1]
+                    p1 * environment_saturation_moist_static_energy + p2 * environment_saturation_moist_static_energy[0, 0, 1]
                 )
-                if (
-                    environment_moist_static_energy_cloud_levels[0, 0, 1]
-                    > environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
-                ):
-                    environment_moist_static_energy_cloud_levels[0, 0, 1] = (
-                        environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
-                    )
+                if environment_moist_static_energy_cloud_levels[0, 0, 1] > environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]:
+                    environment_moist_static_energy_cloud_levels[0, 0, 1] = environment_saturation_moist_static_energy_cloud_levels[0, 0, 1]
 
                 gamma_cloud_levels[0, 0, 1] = (
                     (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
-                    * (
-                        cumulus_parameterization_constants.XLV
-                        / (
-                            cumulus_parameterization_constants.RV
-                            * t_cloud_levels[0, 0, 1]
-                            * t_cloud_levels[0, 0, 1]
-                        )
-                    )
+                    * (cumulus_parameterization_constants.XLV / (cumulus_parameterization_constants.RV * t_cloud_levels[0, 0, 1] * t_cloud_levels[0, 0, 1]))
                     * environment_saturation_mixing_ratio_cloud_levels[0, 0, 1]
                 )
 
@@ -440,15 +381,13 @@ def environment_cloud_levels(
                 u_cloud_levels = ct1 * u - ct2 * u_cloud_levels[0, 0, 1]
                 v_cloud_levels = ct1 * v - ct2 * v_cloud_levels[0, 0, 1]
                 environment_saturation_mixing_ratio_cloud_levels = (
-                    ct1 * environment_saturation_mixing_ratio
-                    - ct2 * environment_saturation_mixing_ratio_cloud_levels[0, 0, 1]
+                    ct1 * environment_saturation_mixing_ratio - ct2 * environment_saturation_mixing_ratio_cloud_levels[0, 0, 1]
                 )
 
                 environment_saturation_moist_static_energy_cloud_levels = (
                     constants.MAPL_GRAV * geopotential_height_cloud_levels
                     + cumulus_parameterization_constants.CP * t_cloud_levels
-                    + cumulus_parameterization_constants.XLV
-                    * environment_saturation_mixing_ratio_cloud_levels
+                    + cumulus_parameterization_constants.XLV * environment_saturation_mixing_ratio_cloud_levels
                 )
                 environment_moist_static_energy_cloud_levels = (
                     constants.MAPL_GRAV * geopotential_height_cloud_levels
@@ -456,21 +395,13 @@ def environment_cloud_levels(
                     + cumulus_parameterization_constants.XLV * vapor_cloud_levels
                 )
 
-                if (
-                    environment_moist_static_energy_cloud_levels
-                    > environment_saturation_moist_static_energy_cloud_levels
-                ):
-                    environment_moist_static_energy_cloud_levels = (
-                        environment_saturation_moist_static_energy_cloud_levels
-                    )
+                if environment_moist_static_energy_cloud_levels > environment_saturation_moist_static_energy_cloud_levels:
+                    environment_moist_static_energy_cloud_levels = environment_saturation_moist_static_energy_cloud_levels
 
                 gamma_cloud_levels = (
                     cumulus_parameterization_constants.XLV
                     / cumulus_parameterization_constants.CP
-                    * (
-                        cumulus_parameterization_constants.XLV
-                        / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels)
-                    )
+                    * (cumulus_parameterization_constants.XLV / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels))
                     * environment_saturation_mixing_ratio_cloud_levels
                 )
 
@@ -484,8 +415,7 @@ def environment_cloud_levels(
                 geopotential_height_cloud_levels = 0.5 * (geopotential_height[0, 0, -1] + geopotential_height)
                 t_cloud_levels = (
                     max(
-                        cumulus_parameterization_constants.CP * t[0, 0, -1]
-                        + constants.MAPL_GRAV * geopotential_height[0, 0, -1],
+                        cumulus_parameterization_constants.CP * t[0, 0, -1] + constants.MAPL_GRAV * geopotential_height[0, 0, -1],
                         cumulus_parameterization_constants.CP * t + constants.MAPL_GRAV * geopotential_height,
                     )
                     - constants.MAPL_GRAV * geopotential_height_cloud_levels
@@ -499,9 +429,7 @@ def environment_cloud_levels(
                     )
 
                 vapor_cloud_levels = (
-                    min(vapor, environment_saturation_mixing_ratio)
-                    + environment_saturation_mixing_ratio_cloud_levels
-                    - environment_saturation_mixing_ratio
+                    min(vapor, environment_saturation_mixing_ratio) + environment_saturation_mixing_ratio_cloud_levels - environment_saturation_mixing_ratio
                 )
                 vapor_cloud_levels = max(vapor_cloud_levels, 0.0)
 
@@ -516,16 +444,13 @@ def environment_cloud_levels(
                 p_cloud_levels = p_surface
 
                 t_cloud_levels = (
-                    cumulus_parameterization_constants.CP * t
-                    + constants.MAPL_GRAV * geopotential_height
-                    - constants.MAPL_GRAV * geopotential_height_cloud_levels
+                    cumulus_parameterization_constants.CP * t + constants.MAPL_GRAV * geopotential_height - constants.MAPL_GRAV * geopotential_height_cloud_levels
                 ) / cumulus_parameterization_constants.CP
 
                 environment_saturation_moist_static_energy_cloud_levels = (
                     constants.MAPL_GRAV * geopotential_height_cloud_levels
                     + cumulus_parameterization_constants.CP * t_cloud_levels
-                    + cumulus_parameterization_constants.XLV
-                    * environment_saturation_mixing_ratio_cloud_levels
+                    + cumulus_parameterization_constants.XLV * environment_saturation_mixing_ratio_cloud_levels
                 )
                 environment_moist_static_energy_cloud_levels = (
                     constants.MAPL_GRAV * geopotential_height_cloud_levels
@@ -536,10 +461,7 @@ def environment_cloud_levels(
                 gamma_cloud_levels = (
                     cumulus_parameterization_constants.XLV
                     / cumulus_parameterization_constants.CP
-                    * (
-                        cumulus_parameterization_constants.XLV
-                        / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels)
-                    )
+                    * (cumulus_parameterization_constants.XLV / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels))
                     * environment_saturation_mixing_ratio_cloud_levels
                 )
                 u_cloud_levels = u
@@ -550,19 +472,14 @@ def environment_cloud_levels(
             # based on Tiedke (1989)
             if error_code[0, 0][plume] == 0:
                 p1 = max(
-                    cumulus_parameterization_constants.CP * t_cloud_levels
-                    + constants.MAPL_GRAV * geopotential_height_cloud_levels,
-                    cumulus_parameterization_constants.CP * t_cloud_levels[0, 0, -1]
-                    + constants.MAPL_GRAV * geopotential_height_cloud_levels[0, 0, -1],
+                    cumulus_parameterization_constants.CP * t_cloud_levels + constants.MAPL_GRAV * geopotential_height_cloud_levels,
+                    cumulus_parameterization_constants.CP * t_cloud_levels[0, 0, -1] + constants.MAPL_GRAV * geopotential_height_cloud_levels[0, 0, -1],
                 )
-                t_cloud_levels = (
-                    p1 - constants.MAPL_GRAV * geopotential_height_cloud_levels
-                ) / cumulus_parameterization_constants.CP
+                t_cloud_levels = (p1 - constants.MAPL_GRAV * geopotential_height_cloud_levels) / cumulus_parameterization_constants.CP
 
                 environment_saturation_moist_static_energy_cloud_levels = (
                     cumulus_parameterization_constants.CP * t_cloud_levels
-                    + cumulus_parameterization_constants.XLV
-                    * environment_saturation_mixing_ratio_cloud_levels
+                    + cumulus_parameterization_constants.XLV * environment_saturation_mixing_ratio_cloud_levels
                     + constants.MAPL_GRAV * geopotential_height_cloud_levels
                 )
                 environment_moist_static_energy_cloud_levels = (
@@ -570,20 +487,12 @@ def environment_cloud_levels(
                     + cumulus_parameterization_constants.XLV * vapor_cloud_levels
                     + constants.MAPL_GRAV * geopotential_height_cloud_levels
                 )
-                if (
-                    environment_moist_static_energy_cloud_levels
-                    > environment_saturation_moist_static_energy_cloud_levels
-                ):
-                    environment_moist_static_energy_cloud_levels = (
-                        environment_saturation_moist_static_energy_cloud_levels
-                    )
+                if environment_moist_static_energy_cloud_levels > environment_saturation_moist_static_energy_cloud_levels:
+                    environment_moist_static_energy_cloud_levels = environment_saturation_moist_static_energy_cloud_levels
 
                 gamma_cloud_levels = (
                     (cumulus_parameterization_constants.XLV / cumulus_parameterization_constants.CP)
-                    * (
-                        cumulus_parameterization_constants.XLV
-                        / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels)
-                    )
+                    * (cumulus_parameterization_constants.XLV / (cumulus_parameterization_constants.RV * t_cloud_levels * t_cloud_levels))
                     * environment_saturation_mixing_ratio_cloud_levels
                 )
                 u_cloud_levels = u
@@ -610,10 +519,7 @@ def environment_mass_flux(
     """
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0:
-            environment_massflux = (
-                normalized_massflux_updraft_forced[0, 0, 0][plume]
-                - epsilon_forced[0, 0][plume] * normalized_massflux_downdraft_forced[0, 0, 0][plume]
-            )
+            environment_massflux = normalized_massflux_updraft_forced[0, 0, 0][plume] - epsilon_forced[0, 0][plume] * normalized_massflux_downdraft_forced[0, 0, 0][plume]
         else:
             environment_massflux = 0.0
 
@@ -689,13 +595,8 @@ def modify_environment_profiles(
         del_t_cloud_ensemble = 0.0
 
         if error_code[0, 0][plume] == 0:
-            environment_moist_static_energy_modified = (
-                del_moist_static_energy_cloud_ensemble * arbitrary_numerical_parameter
-                + environment_moist_static_energy_forced
-            )
-            vapor_modified = (
-                del_vapor_cloud_ensemble + del_cloud_liquid_cloud_ensemble
-            ) * arbitrary_numerical_parameter + vapor_forced
+            environment_moist_static_energy_modified = del_moist_static_energy_cloud_ensemble * arbitrary_numerical_parameter + environment_moist_static_energy_forced
+            vapor_modified = (del_vapor_cloud_ensemble + del_cloud_liquid_cloud_ensemble) * arbitrary_numerical_parameter + vapor_forced
             if vapor_modified <= 0.0:
                 vapor_modified = 1.0e-08
 
@@ -703,8 +604,7 @@ def modify_environment_profiles(
             # detrainment of liquid water will be used as a source for cloud microphysics
             if cumulus_parameterization_constants.COUPLE_MICROPHYSICS:
                 del_t_cloud_ensemble = (1.0 / cumulus_parameterization_constants.CP) * (
-                    del_moist_static_energy_cloud_ensemble
-                    - cumulus_parameterization_constants.XLV * del_vapor_cloud_ensemble
+                    del_moist_static_energy_cloud_ensemble - cumulus_parameterization_constants.XLV * del_vapor_cloud_ensemble
                 )
             else:
                 # melt glac
@@ -712,11 +612,7 @@ def modify_environment_profiles(
                     del_moist_static_energy_cloud_ensemble
                     - cumulus_parameterization_constants.XLV
                     * (del_vapor_cloud_ensemble + del_cloud_liquid_cloud_ensemble)
-                    * (
-                        1.0
-                        + (cumulus_parameterization_constants.XLF / cumulus_parameterization_constants.XLV)
-                        * (1.0 - partition_liquid_ice)
-                    )
+                    * (1.0 + (cumulus_parameterization_constants.XLF / cumulus_parameterization_constants.XLV) * (1.0 - partition_liquid_ice))
                 )
 
                 # adding dellaqc to dellaq:
@@ -730,18 +626,13 @@ def modify_environment_profiles(
                 * (
                     del_vapor_cloud_ensemble
                     + del_cloud_liquid_cloud_ensemble
-                    * (
-                        1.0
-                        + (cumulus_parameterization_constants.XLF / cumulus_parameterization_constants.XLV)
-                        * (1.0 - partition_liquid_ice)
-                    )
+                    * (1.0 + (cumulus_parameterization_constants.XLF / cumulus_parameterization_constants.XLV) * (1.0 - partition_liquid_ice))
                 )
             ) * arbitrary_numerical_parameter + t_new
 
             # temp tendency due to the environmental subsidence
             t_tendency_from_environmental_subsidence = (1.0 / cumulus_parameterization_constants.CP) * (
-                moist_static_energy_tendency_from_environmental_subsidence
-                - cumulus_parameterization_constants.XLV * vapor_tendency_from_environmental_subsidence
+                moist_static_energy_tendency_from_environmental_subsidence - cumulus_parameterization_constants.XLV * vapor_tendency_from_environmental_subsidence
             )
 
     with computation(FORWARD), interval(-2, -1):
@@ -769,10 +660,7 @@ def modify_environment_profiles(
                 compute_perturbation=False,
                 perturbation_field=dummy_field_no_read,
             )
-            moist_static_energy_origin_level_modified = (
-                mse_boundary_condition * arbitrary_numerical_parameter
-                + moist_static_energy_origin_level_forced
-            )
+            moist_static_energy_origin_level_modified = mse_boundary_condition * arbitrary_numerical_parameter + moist_static_energy_origin_level_forced
 
 
 class EnvironmentalSubsidence:

@@ -18,12 +18,7 @@ def saturation_vapor_pressure(t):
     if t_celcius < -20.0:
         toot = 273.16 / t
         toto = 1 / toot
-        eilog = (
-            -9.09718 * (toot - 1)
-            - 3.56654 * (log(toot) / log(10.0))
-            + 0.876793 * (1 - toto)
-            + (log(6.1071) / log(10.0))
-        )
+        eilog = -9.09718 * (toot - 1) - 3.56654 * (log(toot) / log(10.0)) + 0.876793 * (1 - toto) + (log(6.1071) / log(10.0))
         saturation_vapor_pressure = 10**eilog
     else:
         tsot = 373.16 / t
@@ -201,11 +196,7 @@ def liquid_fraction(
     else:
         liquid_fraction = min(
             1.0,
-            (
-                max(0.0, (t - cumulus_parameterization_constants.T_ICE))
-                / (cumulus_parameterization_constants.T_0 - cumulus_parameterization_constants.T_ICE)
-            )
-            ** 2,
+            (max(0.0, (t - cumulus_parameterization_constants.T_ICE)) / (cumulus_parameterization_constants.T_0 - cumulus_parameterization_constants.T_ICE)) ** 2,
         )
 
     return liquid_fraction

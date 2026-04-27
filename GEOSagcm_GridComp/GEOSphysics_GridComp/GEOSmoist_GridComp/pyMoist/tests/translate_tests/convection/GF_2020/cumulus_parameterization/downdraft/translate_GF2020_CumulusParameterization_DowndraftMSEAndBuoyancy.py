@@ -7,19 +7,10 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import (
-    downdraft_moist_static_energy_and_buoyancy,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import downdraft_moist_static_energy_and_buoyancy
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -66,9 +57,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -92,9 +81,7 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["downdraft_origin_level"] - 1
-        )
+        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["downdraft_origin_level"] - 1
         state.input_output.u.data[:] = inputs["u"]
         locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
         locals.u_c_downdraft.data[:] = inputs["local_u_c_downdraft"]
@@ -102,28 +89,16 @@ class TestCore:
         locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels"]
         locals.v_c_downdraft.data[:] = inputs["local_v_c_downdraft"]
         locals.environment_moist_static_energy_forced.data[:] = inputs["local_env_moist_static_energy_forced"]
-        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_cloud_levels_forced"
-        ]
+        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels_forced"]
         locals.cloud_moist_static_energy.data[:] = inputs["local_cloud_moist_static_energy"]
-        locals.cloud_moist_static_energy_downdraft_forced.data[:] = inputs[
-            "local_cloud_moist_static_energy_downdraft_forced"
-        ]
+        locals.cloud_moist_static_energy_downdraft_forced.data[:] = inputs["local_cloud_moist_static_energy_downdraft_forced"]
         locals.d_buoyancy_downdraft_forced.data[:] = inputs["local_d_buoyancy_downdraft_forced"]
         locals.t_wetbulb.data[:] = inputs["local_t_wetbulb"]
         locals.vapor_wetbulb.data[:] = inputs["local_vapor_wetbulb"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced"
-        ]
-        state.output.normalized_massflux_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["normalized_massflux_downdraft_forced"]
-        state.output.mass_entrainment_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_entrainment_downdraft_forced"]
-        state.output.mass_detrainment_downdraft_forced.data[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["mass_detrainment_downdraft_forced"]
+        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        state.output.normalized_massflux_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_downdraft_forced"]
+        state.output.mass_entrainment_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_downdraft_forced"]
+        state.output.mass_detrainment_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_downdraft_forced"]
         locals.mass_entrainment_u_downdraft.data[:] = inputs["local_mass_entrainment_u_downdraft"]
         locals.mass_detrainment_u_downdraft.data[:] = inputs["local_mass_detrainment_u_downdraft"]
 
@@ -166,10 +141,7 @@ class TestCore:
         # write output
         outputs = {
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "downdraft_origin_level": state.output.downdraft_origin_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
+            "downdraft_origin_level": state.output.downdraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "u": state.input_output.u.field[:],
             "local_u_cloud_levels": locals.u_cloud_levels.field[:],
             "local_u_c_downdraft": locals.u_c_downdraft.field[:],
@@ -177,28 +149,16 @@ class TestCore:
             "local_v_cloud_levels": locals.v_cloud_levels.field[:],
             "local_v_c_downdraft": locals.v_c_downdraft.field[:],
             "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[:],
-            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
-                :
-            ],
+            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[:],
             "local_cloud_moist_static_energy": locals.cloud_moist_static_energy.field[:],
-            "local_cloud_moist_static_energy_downdraft_forced": locals.cloud_moist_static_energy_downdraft_forced.field[
-                :
-            ],
+            "local_cloud_moist_static_energy_downdraft_forced": locals.cloud_moist_static_energy_downdraft_forced.field[:],
             "local_d_buoyancy_downdraft_forced": locals.d_buoyancy_downdraft_forced.field[:],
             "local_t_wetbulb": locals.t_wetbulb.field[:],
             "local_vapor_wetbulb": locals.vapor_wetbulb.field[:],
-            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
-                :
-            ],
-            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "mass_entrainment_downdraft_forced": state.output.mass_entrainment_downdraft_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "mass_detrainment_downdraft_forced": state.output.mass_detrainment_downdraft_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[:],
+            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "mass_entrainment_downdraft_forced": state.output.mass_entrainment_downdraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "mass_detrainment_downdraft_forced": state.output.mass_detrainment_downdraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
             "local_mass_entrainment_u_downdraft": locals.mass_entrainment_u_downdraft.field[:],
             "local_mass_detrainment_u_downdraft": locals.mass_detrainment_u_downdraft.field[:],
         }

@@ -7,17 +7,10 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment import environment_cloud_levels
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -66,9 +59,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -95,25 +86,17 @@ class TestCore:
         locals.environment_saturation_mixing_ratio.data[:] = inputs["local_env_saturation_mixing_ratio"]
         state.input_output.vapor_old.data[:] = inputs["vapor_old"]
         locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy"]
-        locals.environment_saturation_moist_static_energy.data[:] = inputs[
-            "local_env_saturation_moist_static_energy"
-        ]
+        locals.environment_saturation_moist_static_energy.data[:] = inputs["local_env_saturation_moist_static_energy"]
         locals.geopotential_height.data[:] = inputs["local_geopotential_height"]
         state.input_output.p_forced.data[:] = inputs["p_forced"]
-        locals.environment_saturation_mixing_ratio_cloud_levels.data[:] = inputs[
-            "local_env_saturation_mixing_ratio_cloud_levels"
-        ]
+        locals.environment_saturation_mixing_ratio_cloud_levels.data[:] = inputs["local_env_saturation_mixing_ratio_cloud_levels"]
         locals.vapor_cloud_levels.data[:] = inputs["local_vapor_cloud_levels"]
-        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs[
-            "local_env_moist_static_energy_cloud_levels"
-        ]
+        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs["local_env_moist_static_energy_cloud_levels"]
         state.input_output.u.data[:] = inputs["u"]
         state.input_output.v.data[:] = inputs["v"]
         locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
         locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels"]
-        locals.environment_saturation_moist_static_energy_cloud_levels.data[:] = inputs[
-            "local_env_saturation_moist_static_energy_cloud_levels"
-        ]
+        locals.environment_saturation_moist_static_energy_cloud_levels.data[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels"]
         locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
         locals.p_cloud_levels.data[:] = inputs["local_p_cloud_levels"]
         locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels"]
@@ -162,25 +145,17 @@ class TestCore:
             "local_env_saturation_mixing_ratio": locals.environment_saturation_mixing_ratio.field[:],
             "vapor_old": state.input_output.vapor_old.field[:],
             "local_env_moist_static_energy": locals.environment_moist_static_energy.field[:],
-            "local_env_saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[
-                :
-            ],
+            "local_env_saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[:],
             "local_geopotential_height": locals.geopotential_height.field[:],
             "p_forced": state.input_output.p_forced.field[:],
-            "local_env_saturation_mixing_ratio_cloud_levels": locals.environment_saturation_mixing_ratio_cloud_levels.field[
-                :
-            ],
+            "local_env_saturation_mixing_ratio_cloud_levels": locals.environment_saturation_mixing_ratio_cloud_levels.field[:],
             "local_vapor_cloud_levels": locals.vapor_cloud_levels.field[:],
-            "local_env_moist_static_energy_cloud_levels": locals.environment_moist_static_energy_cloud_levels.field[
-                :
-            ],
+            "local_env_moist_static_energy_cloud_levels": locals.environment_moist_static_energy_cloud_levels.field[:],
             "u": state.input_output.u.field[:],
             "v": state.input_output.v.field[:],
             "local_u_cloud_levels": locals.u_cloud_levels.field[:],
             "local_v_cloud_levels": locals.v_cloud_levels.field[:],
-            "local_env_saturation_moist_static_energy_cloud_levels": locals.environment_saturation_moist_static_energy_cloud_levels.field[
-                :
-            ],
+            "local_env_saturation_moist_static_energy_cloud_levels": locals.environment_saturation_moist_static_energy_cloud_levels.field[:],
             "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.field[:],
             "local_p_cloud_levels": locals.p_cloud_levels.field[:],
             "local_gamma_cloud_levels": locals.gamma_cloud_levels.field[:],

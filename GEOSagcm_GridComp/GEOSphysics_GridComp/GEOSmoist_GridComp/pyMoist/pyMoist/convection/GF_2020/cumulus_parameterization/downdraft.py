@@ -8,15 +8,8 @@ import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
-    FloatField_Plume,
-    FloatFieldIJ_ensemble_2,
-    FloatFieldIJ_Plume,
-    IntFieldIJ_Plume,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_ensemble_2, FloatFieldIJ_Plume, IntFieldIJ_Plume
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import generic_find_level
 
 
@@ -43,10 +36,7 @@ def get_critical_level(
     """
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            cloud_top_height: FloatFieldIJ = (
-                geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
-                - topography_height_no_negative
-            ) * 0.6
+            cloud_top_height: FloatFieldIJ = (geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume]) - topography_height_no_negative) * 0.6
             cloud_top_height = min(
                 cloud_top_height + topography_height_no_negative,
                 MAX_DOWNDRAFT_ORIGIN_HEIGHt + topography_height_no_negative,
@@ -136,10 +126,7 @@ def get_downdraft_origin_level(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
-            if (
-                plume == cumulus_parameterization_constants.DEEP
-                and cumulus_parameterization_constants.MELT_GLAC
-            ):
+            if plume == cumulus_parameterization_constants.DEEP and cumulus_parameterization_constants.MELT_GLAC:
                 _, max_index = column_max(melting_layer, 0, k_end)
                 downdraft_origin_level[0, 0][plume] = max(downdraft_origin_level[0, 0][plume], max_index)
 
@@ -160,19 +147,9 @@ def get_downdraft_origin_level(
                 level = level_initial - 1
                 stop_k_while_loop = False
                 while level >= 0 and not stop_k_while_loop:
-                    moist_static_energy_internal = (
-                        environment_saturation_moist_static_energy_cloud_levels_forced[
-                            0, 0, downdraft_origin_level_internal
-                        ]
-                    )
-                    dz = (
-                        geopotential_height_cloud_levels_forced[0, 0, level + 1]
-                        - geopotential_height_cloud_levels_forced[0, 0, level]
-                    )
-                    dh = dh + dz * (
-                        moist_static_energy_internal
-                        - environment_saturation_moist_static_energy_cloud_levels_forced[0, 0, level]
-                    )
+                    moist_static_energy_internal = environment_saturation_moist_static_energy_cloud_levels_forced[0, 0, downdraft_origin_level_internal]
+                    dz = geopotential_height_cloud_levels_forced[0, 0, level + 1] - geopotential_height_cloud_levels_forced[0, 0, level]
+                    dh = dh + dz * (moist_static_energy_internal - environment_saturation_moist_static_energy_cloud_levels_forced[0, 0, level])
                     if dh > 0:
                         downdraft_origin_level_internal = downdraft_origin_level_internal - 1
                         if downdraft_origin_level_internal > 4:
@@ -192,8 +169,7 @@ def get_downdraft_origin_level(
             if downdraft_origin_level[0, 0][plume] - 1 < detrainment_start_level:
                 detrainment_start_level = downdraft_origin_level[0, 0][plume] - 1
             if (
-                -geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
-                + geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
+                -geopotential_height_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume]) + geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
                 < MINIMUM_DEPTH
             ):
                 error_code[0, 0][plume] = 6
@@ -247,19 +223,14 @@ def downdraft_mass_flux(
             # set internal constants
             beta: FloatFieldIJ = 2.5
 
-            height_down = (
-                1.0 - ocean_fraction
-            ) * DOWNDRAFT_MAX_HEIGHT_LAND + ocean_fraction * DOWNDRAFT_MAX_HEIGHT_OCEAN
+            height_down = (1.0 - ocean_fraction) * DOWNDRAFT_MAX_HEIGHT_LAND + ocean_fraction * DOWNDRAFT_MAX_HEIGHT_OCEAN
 
             # non-zero-diff-APR-08-2020
             if ZERO_DIFF == 1:
                 height_down = 0.5
             # non-zero-diff-APR-08-2020
 
-            p_max: FloatFieldIJ = (
-                height_down * p_cloud_levels_forced.at(K=downdraft_origin_level[0, 0][plume], ddim=[plume])
-                + (1.0 - height_down) * p_surface
-            )
+            p_max: FloatFieldIJ = height_down * p_cloud_levels_forced.at(K=downdraft_origin_level[0, 0][plume], ddim=[plume]) + (1.0 - height_down) * p_surface
 
     with computation(PARALLEL), interval(...):
         if plume != 0 and error_code[0, 0][plume] == 0:
@@ -271,20 +242,14 @@ def downdraft_mass_flux(
             min_loc: IntFieldIJ = _min_loc
 
             # this alpha constrains the location of the maximum ZU to be at "kb_adj" vertical level
-            alpha: FloatFieldIJ = 1.0 + (beta - 1.0) * (
-                (min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2)
-            ) / (1.0 - ((min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2)))
+            alpha: FloatFieldIJ = 1.0 + (beta - 1.0) * ((min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2)) / (
+                1.0 - ((min_loc + 1) / (downdraft_origin_level[0, 0][plume] + 2))
+            )
 
     with computation(PARALLEL), interval(1, None):
-        if (
-            plume != 0
-            and error_code[0, 0][plume] == 0
-            and K <= min(downdraft_origin_level[0, 0][plume] + 1, k_end - 1)
-        ):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K <= min(downdraft_origin_level[0, 0][plume] + 1, k_end - 1):
             ratio = float(K + 1) / (downdraft_origin_level[0, 0][plume] + 2)
-            normalized_massflux_downdraft_forced[0, 0, 0][plume] = ratio ** (alpha - 1.0) * (1.0 - ratio) ** (
-                beta - 1.0
-            )
+            normalized_massflux_downdraft_forced[0, 0, 0][plume] = ratio ** (alpha - 1.0) * (1.0 - ratio) ** (beta - 1.0)
 
     with computation(FORWARD), interval(0, 1):
         if plume != 0 and error_code[0, 0][plume] == 0:
@@ -306,9 +271,7 @@ def downdraft_mass_flux(
                 error_code[0, 0][plume] = 51
             else:
                 if K <= min(k_end, downdraft_origin_level[0, 0][plume] + 1):
-                    normalized_massflux_downdraft_forced[0, 0, 0][plume] = (
-                        normalized_massflux_downdraft_forced[0, 0, 0][plume] / (1.0e-9 + max_val)
-                    )
+                    normalized_massflux_downdraft_forced[0, 0, 0][plume] = normalized_massflux_downdraft_forced[0, 0, 0][plume] / (1.0e-9 + max_val)
 
 
 def downdraft_lateral_massflux(
@@ -377,28 +340,19 @@ def downdraft_lateral_massflux(
             max_loc: IntFieldIJ = _max_loc
 
     with computation(BACKWARD), interval(0, -1):
-        if (
-            plume != 0
-            and error_code[0, 0][plume] == 0
-            and K >= max_loc
-            and K <= downdraft_origin_level[0, 0][plume]
-        ):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K >= max_loc and K <= downdraft_origin_level[0, 0][plume]:
 
             # from downdraft_origin_level to maximum value of
             # normalized_massflux_downdraft, change entrainment
             dzo = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
-            mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
-                detrainment_function_downdraft * dzo * normalized_massflux_downdraft_forced[0, 0, 1][plume]
-            )
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = detrainment_function_downdraft * dzo * normalized_massflux_downdraft_forced[0, 0, 1][plume]
 
             mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
                 normalized_massflux_downdraft_forced[0, 0, 0][plume]
                 - normalized_massflux_downdraft_forced[0, 0, 1][plume]
                 + mass_detrainment_downdraft_forced[0, 0, 0][plume]
             )
-            mass_entrainment_downdraft_forced[0, 0, 0][plume] = max(
-                0.0, mass_entrainment_downdraft_forced[0, 0, 0][plume]
-            )
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = max(0.0, mass_entrainment_downdraft_forced[0, 0, 0][plume])
             # check dd_massdetro in case of dd_massentro has been changed above
             mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
                 mass_entrainment_downdraft_forced[0, 0, 0][plume]
@@ -410,18 +364,14 @@ def downdraft_lateral_massflux(
         if plume != 0 and error_code[0, 0][plume] == 0 and K < max_loc:
             # from maximum value zd to surface -> change detrainment
             dzo = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
-            mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
-                entrainment_rate_downdraft * dzo * normalized_massflux_downdraft_forced[0, 0, 1][plume]
-            )
+            mass_entrainment_downdraft_forced[0, 0, 0][plume] = entrainment_rate_downdraft * dzo * normalized_massflux_downdraft_forced[0, 0, 1][plume]
 
             mass_detrainment_downdraft_forced[0, 0, 0][plume] = (
                 normalized_massflux_downdraft_forced[0, 0, 1][plume]
                 + mass_entrainment_downdraft_forced[0, 0, 0][plume]
                 - normalized_massflux_downdraft_forced[0, 0, 0][plume]
             )
-            mass_detrainment_downdraft_forced[0, 0, 0][plume] = max(
-                0.0, mass_detrainment_downdraft_forced[0, 0, 0][plume]
-            )
+            mass_detrainment_downdraft_forced[0, 0, 0][plume] = max(0.0, mass_detrainment_downdraft_forced[0, 0, 0][plume])
             # check dd_massentro in case of dd_massdetro has been changed above
             mass_entrainment_downdraft_forced[0, 0, 0][plume] = (
                 mass_detrainment_downdraft_forced[0, 0, 0][plume]
@@ -435,14 +385,8 @@ def downdraft_lateral_massflux(
             normalized_massflux_downdraft = normalized_massflux_downdraft_forced[0, 0, 0][plume]
             mass_entrainment_downdraft = mass_entrainment_downdraft_forced[0, 0, 0][plume]
             mass_detrainment_downdraft = mass_detrainment_downdraft_forced[0, 0, 0][plume]
-            mass_entrainment_u_downdraft = (
-                mass_entrainment_downdraft_forced[0, 0, 0][plume]
-                + LAMBDA_DOWN * mass_detrainment_downdraft_forced[0, 0, 0][plume]
-            )
-            mass_detrainment_u_downdraft = (
-                mass_detrainment_downdraft_forced[0, 0, 0][plume]
-                + LAMBDA_DOWN * mass_detrainment_downdraft_forced[0, 0, 0][plume]
-            )
+            mass_entrainment_u_downdraft = mass_entrainment_downdraft_forced[0, 0, 0][plume] + LAMBDA_DOWN * mass_detrainment_downdraft_forced[0, 0, 0][plume]
+            mass_detrainment_u_downdraft = mass_detrainment_downdraft_forced[0, 0, 0][plume] + LAMBDA_DOWN * mass_detrainment_downdraft_forced[0, 0, 0][plume]
 
 
 def downdraft_moist_static_energy_and_buoyancy(
@@ -502,9 +446,7 @@ def downdraft_moist_static_energy_and_buoyancy(
     from __externals__ import USE_WETBULB
 
     with computation(PARALLEL), interval(...):
-        cloud_moist_static_energy_downdraft_forced = (
-            environment_saturation_moist_static_energy_cloud_levels_forced
-        )
+        cloud_moist_static_energy_downdraft_forced = environment_saturation_moist_static_energy_cloud_levels_forced
         u_c_downdraft = u_cloud_levels
         v_c_downdraft = v_cloud_levels
         buoyancy_downdraft_forced = 0.0
@@ -526,75 +468,47 @@ def downdraft_moist_static_energy_and_buoyancy(
                 )
                 wetbulb_adjustment = 1
 
-            buoyancy_downdraft_forced = (
-                cloud_moist_static_energy_downdraft_forced
-                - environment_saturation_moist_static_energy_cloud_levels_forced
-            )
-            buoyancy_downdraft = buoyancy_downdraft_forced * (
-                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
-            )
+            buoyancy_downdraft_forced = cloud_moist_static_energy_downdraft_forced - environment_saturation_moist_static_energy_cloud_levels_forced
+            buoyancy_downdraft = buoyancy_downdraft_forced * (geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced)
 
     with computation(BACKWARD), interval(0, -1):
-        if (
-            error_code[0, 0][plume] == 0
-            and plume != 0
-            and K <= downdraft_origin_level[0, 0][plume] - wetbulb_adjustment
-        ):
+        if error_code[0, 0][plume] == 0 and plume != 0 and K <= downdraft_origin_level[0, 0][plume] - wetbulb_adjustment:
             denom = (
                 normalized_massflux_downdraft_forced[0, 0, 1][plume]
                 - 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume]
                 + mass_entrainment_downdraft_forced[0, 0, 0][plume]
             )
-            denom_u = (
-                normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                - 0.5 * mass_detrainment_u_downdraft
-                + mass_entrainment_u_downdraft
-            )
+            denom_u = normalized_massflux_downdraft_forced[0, 0, 1][plume] - 0.5 * mass_detrainment_u_downdraft + mass_entrainment_u_downdraft
 
             # tmp fix for denominator being zero
             if denom > 0.0 and denom_u > 0.0:
-                dz = (
-                    geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
-                )
+                dz = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
 
                 u_c_downdraft = (
                     u_c_downdraft[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
                     - 0.5 * mass_detrainment_u_downdraft * u_c_downdraft[0, 0, 1]
                     + mass_entrainment_u_downdraft * u
-                    - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT
-                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    * (u[0, 0, 1] - u)
+                    - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT * normalized_massflux_downdraft_forced[0, 0, 1][plume] * (u[0, 0, 1] - u)
                 ) / denom_u
                 v_c_downdraft = (
                     v_c_downdraft[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
                     - 0.5 * mass_detrainment_u_downdraft * v_c_downdraft[0, 0, 1]
                     + mass_entrainment_u_downdraft * v
-                    - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT
-                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    * (v[0, 0, 1] - v)
+                    - cumulus_parameterization_constants.PRESSURE_GRADIENT_CONSTANT * normalized_massflux_downdraft_forced[0, 0, 1][plume] * (v[0, 0, 1] - v)
                 ) / denom_u
 
                 cloud_moist_static_energy_downdraft_forced = (
-                    cloud_moist_static_energy_downdraft_forced[0, 0, 1]
-                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    - 0.5
-                    * mass_detrainment_downdraft_forced[0, 0, 0][plume]
-                    * cloud_moist_static_energy_downdraft_forced[0, 0, 1]
-                    + mass_entrainment_downdraft_forced[0, 0, 0][plume]
-                    * environment_moist_static_energy_forced
+                    cloud_moist_static_energy_downdraft_forced[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    - 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume] * cloud_moist_static_energy_downdraft_forced[0, 0, 1]
+                    + mass_entrainment_downdraft_forced[0, 0, 0][plume] * environment_moist_static_energy_forced
                 ) / denom
 
-                buoyancy_downdraft_forced = (
-                    cloud_moist_static_energy_downdraft_forced
-                    - environment_saturation_moist_static_energy_cloud_levels_forced
-                )
+                buoyancy_downdraft_forced = cloud_moist_static_energy_downdraft_forced - environment_saturation_moist_static_energy_cloud_levels_forced
                 buoyancy_downdraft = buoyancy_downdraft + buoyancy_downdraft_forced * dz
             else:
                 u_c_downdraft = u_c_downdraft[0, 0, 1]
                 v_c_downdraft = v_c_downdraft[0, 0, 1]
-                cloud_moist_static_energy_downdraft_forced = cloud_moist_static_energy_downdraft_forced[
-                    0, 0, 1
-                ]
+                cloud_moist_static_energy_downdraft_forced = cloud_moist_static_energy_downdraft_forced[0, 0, 1]
 
     with computation(FORWARD), interval(0, 1):
         if buoyancy_downdraft > 0:
@@ -679,44 +593,31 @@ def downdraft_moisture(
         # will revisit when dynamic intervals are more stable
         if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0, 0][plume]:
             # boundary condition at downdraft_origin_level ('level of free sinking')
-            dz: FloatFieldIJ = (
-                geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
-            )
+            dz: FloatFieldIJ = geopotential_height_cloud_levels_forced[0, 0, 1] - geopotential_height_cloud_levels_forced
 
             cloud_total_water_after_entrainment_downdraft_forced = vapor_cloud_levels_forced
 
             if USE_WETBULB == 1:
                 # mixture 50% env air + updraft
-                cloud_total_water_after_entrainment_downdraft_forced = 0.5 * (
-                    vapor_wetbulb + cloud_total_water_after_entrainment_forced
-                )
+                cloud_total_water_after_entrainment_downdraft_forced = 0.5 * (vapor_wetbulb + cloud_total_water_after_entrainment_forced)
 
-            d_moist_static_energy: FloatFieldIJ = (
-                cloud_moist_static_energy_downdraft_forced
-                - environment_saturation_moist_static_energy_cloud_levels_forced
-            )
+            d_moist_static_energy: FloatFieldIJ = cloud_moist_static_energy_downdraft_forced - environment_saturation_moist_static_energy_cloud_levels_forced
 
             if d_moist_static_energy < 0:
                 downdraft_saturation_vapor_forced = (
                     environment_saturation_mixing_ratio_cloud_levels_forced
-                    + (1.0 / cumulus_parameterization_constants.XLV)
-                    * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
-                    * d_moist_static_energy
+                    + (1.0 / cumulus_parameterization_constants.XLV) * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced)) * d_moist_static_energy
                 )
             else:
                 downdraft_saturation_vapor_forced = environment_saturation_mixing_ratio_cloud_levels_forced
 
     with computation(FORWARD), interval(0, -1):
         if error_code[0, 0][plume] == 0 and plume != 0 and K == downdraft_origin_level[0, 0][plume]:
-            evaporate_in_downdraft_forced[0, 0, 0][plume] = normalized_massflux_downdraft_forced[0, 0, 0][
-                plume
-            ] * min(
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = normalized_massflux_downdraft_forced[0, 0, 0][plume] * min(
                 0.0, cloud_total_water_after_entrainment_downdraft_forced - downdraft_saturation_vapor_forced
             )
             cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced
-            total_normalized_integrated_evaporate_forced = (
-                total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
-            )
+            total_normalized_integrated_evaporate_forced = total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0:
@@ -736,31 +637,21 @@ def downdraft_moisture(
                 + mass_entrainment_downdraft_forced[0, 0, 0][plume]
             )
             if denom == 0.0:
-                cloud_total_water_after_entrainment_downdraft_forced = (
-                    cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
-                )
+                cloud_total_water_after_entrainment_downdraft_forced = cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
             else:
                 cloud_total_water_after_entrainment_downdraft_forced = (
-                    cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
-                    * normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                    - 0.5
-                    * mass_detrainment_downdraft_forced[0, 0, 0][plume]
-                    * cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
+                    cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1] * normalized_massflux_downdraft_forced[0, 0, 1][plume]
+                    - 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume] * cloud_total_water_after_entrainment_downdraft_forced[0, 0, 1]
                     + mass_entrainment_downdraft_forced[0, 0, 0][plume] * vapor_forced
                 ) / denom
 
             # to be negatively buoyant, hcd should be smaller than hes!
             # ideally, dh should be negative till dd hits ground, but that is not always the case
-            d_moist_static_energy = (
-                cloud_moist_static_energy_downdraft_forced
-                - environment_saturation_moist_static_energy_cloud_levels_forced
-            )
+            d_moist_static_energy = cloud_moist_static_energy_downdraft_forced - environment_saturation_moist_static_energy_cloud_levels_forced
             buoyancy = buoyancy + dz * d_moist_static_energy
             downdraft_saturation_vapor_forced = (
                 environment_saturation_mixing_ratio_cloud_levels_forced
-                + (1.0 / cumulus_parameterization_constants.XLV)
-                * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced))
-                * d_moist_static_energy
+                + (1.0 / cumulus_parameterization_constants.XLV) * (gamma_cloud_levels_forced / (1.0 + gamma_cloud_levels_forced)) * d_moist_static_energy
             )
 
             # rain water evaporation amount at layer k
@@ -770,18 +661,14 @@ def downdraft_moisture(
                 dq_eva = 0.0
                 downdraft_saturation_vapor_forced = cloud_total_water_after_entrainment_downdraft_forced
             # amount of the evaporated rain water
-            evaporate_in_downdraft_forced[0, 0, 0][plume] = (
-                normalized_massflux_downdraft_forced[0, 0, 0][plume] * dq_eva
-            )  # kg[water vapor]/kg[air]
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = normalized_massflux_downdraft_forced[0, 0, 0][plume] * dq_eva  # kg[water vapor]/kg[air]
 
             # source term for in-downdraft water vapor mixing ratio
             # => equiv to qcd = qcd - dq_eva !( -dq_eva >0 => source term for qcd)
             cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced
 
             # total evaporated rain water
-            total_normalized_integrated_evaporate_forced = (
-                total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
-            )
+            total_normalized_integrated_evaporate_forced = total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
 
     with computation(FORWARD), interval(0, 1):
         # check for problems that stop the convective scheme
@@ -802,37 +689,21 @@ def downdraft_moisture(
             if (
                 ZERO_DIFF == 0
                 and EVAP_FIX == 1
-                and abs(total_normalized_integrated_evaporate_forced)
-                > total_normalized_integrated_condensate_forced[0, 0][plume]
+                and abs(total_normalized_integrated_evaporate_forced) > total_normalized_integrated_condensate_forced[0, 0][plume]
                 and error_code[0, 0][plume] == 0
             ):
                 # note whether the absolute value check is true so that the conditional can be replicated
                 # in the next block, even after part of it has been changed
                 abs_check = True
 
-                fix_evap: FloatFieldIJ = total_normalized_integrated_condensate_forced[0, 0][plume] / (
-                    1.0e-16 + abs(total_normalized_integrated_evaporate_forced)
-                )
+                fix_evap: FloatFieldIJ = total_normalized_integrated_condensate_forced[0, 0][plume] / (1.0e-16 + abs(total_normalized_integrated_evaporate_forced))
                 total_normalized_integrated_evaporate_forced = 0.0
 
     with computation(BACKWARD), interval(...):
-        if (
-            error_code[0, 0][plume] == 0
-            and plume != 0
-            and ZERO_DIFF == 0
-            and EVAP_FIX == 1
-            and abs_check
-            and K <= downdraft_origin_level[0, 0][plume]
-        ):
-            evaporate_in_downdraft_forced[0, 0, 0][plume] = (
-                evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
-            )
-            total_normalized_integrated_evaporate_forced = (
-                total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
-            )
-            dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
-                1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume]
-            )
+        if error_code[0, 0][plume] == 0 and plume != 0 and ZERO_DIFF == 0 and EVAP_FIX == 1 and abs_check and K <= downdraft_origin_level[0, 0][plume]:
+            evaporate_in_downdraft_forced[0, 0, 0][plume] = evaporate_in_downdraft_forced[0, 0, 0][plume] * fix_evap
+            total_normalized_integrated_evaporate_forced = total_normalized_integrated_evaporate_forced + evaporate_in_downdraft_forced[0, 0, 0][plume]
+            dq_eva = evaporate_in_downdraft_forced[0, 0, 0][plume] / (1.0e-16 + normalized_massflux_downdraft_forced[0, 0, 0][plume])
             cloud_total_water_after_entrainment_downdraft_forced = downdraft_saturation_vapor_forced + dq_eva
 
     with computation(FORWARD), interval(0, 1):
@@ -866,8 +737,7 @@ def downdraft_temperature(
             downdraft_column_temperature_forced = (1.0 / cumulus_parameterization_constants.CP) * (
                 cloud_moist_static_energy_downdraft_forced
                 - constants.MAPL_GRAV * geopotential_height_cloud_levels_forced
-                - cumulus_parameterization_constants.XLV
-                * cloud_total_water_after_entrainment_downdraft_forced
+                - cumulus_parameterization_constants.XLV * cloud_total_water_after_entrainment_downdraft_forced
             )
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] != 0:
@@ -935,20 +805,13 @@ def downdraft_windshear(
         vws: FloatFieldIJ = 0.0
 
     with computation(FORWARD), interval(0, -1):
-        if (
-            plume != 0
-            and error_code[0, 0][plume] == 0
-            and K >= updraft_lfc_level[0, 0][plume]
-            and K <= cloud_top_level[0, 0][plume]
-        ):
+        if plume != 0 and error_code[0, 0][plume] == 0 and K >= updraft_lfc_level[0, 0][plume] and K <= cloud_top_level[0, 0][plume]:
             dp = p_forced - p_forced[0, 0, 1]
             vws = (
                 vws
                 + (
                     abs((u[0, 0, 1] - u) / (geopotential_height_forced[0, 0, 1] - geopotential_height_forced))
-                    + abs(
-                        (v[0, 0, 1] - v) / (geopotential_height_forced[0, 0, 1] - geopotential_height_forced)
-                    )
+                    + abs((v[0, 0, 1] - v) / (geopotential_height_forced[0, 0, 1] - geopotential_height_forced))
                 )
                 * dp
             )
@@ -968,10 +831,7 @@ def downdraft_windshear(
             zkbc = geopotential_height_forced.at(K=updraft_lfc_level[0, 0][plume]) * 3.281e-3
             prezk = 0.02
             if zkbc > 3.0:
-                prezk = 0.96729352 + zkbc * (
-                    -0.70034167
-                    + zkbc * (0.162179896 + zkbc * (-1.2569798e-2 + zkbc * (4.2772e-4 - zkbc * 5.44e-6)))
-                )
+                prezk = 0.96729352 + zkbc * (-0.70034167 + zkbc * (0.162179896 + zkbc * (-1.2569798e-2 + zkbc * (4.2772e-4 - zkbc * 5.44e-6))))
             if zkbc > 25.0:
                 prezk = 2.4
 
@@ -982,9 +842,7 @@ def downdraft_windshear(
             epsilon = 1.0 - 0.5 * (precip_efficiency_b + precip_efficiency)
 
             if cumulus_parameterization_constants.AEROEVAP > 1:
-                aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * (
-                    (psumh) ** (alpha3 - 1)
-                )  # *1.e6
+                aeroadd = (cumulus_parameterization_constants.CCNCLEAN**beta3) * ((psumh) ** (alpha3 - 1))  # *1.e6
                 prop_c = 0.5 * (precip_efficiency_b + precip_efficiency) / aeroadd
                 aeroadd = (ccn**beta3) * ((psum) ** (alpha3 - 1))  # *1.e6
                 aeroadd = prop_c * aeroadd
@@ -995,9 +853,7 @@ def downdraft_windshear(
                     precip_efficiency_c = 0.1
                 epsilon = 1.0 - precip_efficiency_c
                 if cumulus_parameterization_constants.AEROEVAP == 2:
-                    epsilon = 1.0 - 0.25 * (
-                        precip_efficiency_b + precip_efficiency + 2.0 * precip_efficiency_c
-                    )
+                    epsilon = 1.0 - 0.25 * (precip_efficiency_b + precip_efficiency + 2.0 * precip_efficiency_c)
 
             # epsilon here is 1-precip_efficiency!
             einc = 0.2 * epsilon
@@ -1009,9 +865,7 @@ def downdraft_windshear(
             count = 0
             while count < cumulus_parameterization_constants.MAXENS2:
                 epsilon_computed[0, 0][count] = (
-                    -epsilon_computed[0, 0][count]
-                    * total_normalized_integrated_condensate_forced[0, 0][plume]
-                    / total_normalized_integrated_evaporate_forced
+                    -epsilon_computed[0, 0][count] * total_normalized_integrated_condensate_forced[0, 0][plume] / total_normalized_integrated_evaporate_forced
                 )
                 if epsilon_computed[0, 0][count] > epsilon_max:
                     epsilon_computed[0, 0][count] = epsilon_max
@@ -1042,9 +896,7 @@ def update_epsilon_forced(
         if error_code[0, 0][plume] == 0:
             count = 0
             while count < cumulus_parameterization_constants.MAXENS2:
-                epsilon_forced[0, 0][plume] = (
-                    scale_dependence_factor_downdraft * epsilon_computed[0, 0][count]
-                )
+                epsilon_forced[0, 0][plume] = scale_dependence_factor_downdraft * epsilon_computed[0, 0][count]
                 epsilon = epsilon_forced[0, 0][plume]
                 count += 1
 

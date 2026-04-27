@@ -6,17 +6,10 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import DowndraftWindShear
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -60,9 +53,7 @@ class TestCore:
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -86,23 +77,17 @@ class TestCore:
 
         # fill relevant parts of dataclasses
         state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_lfc_level"] - 1
-        )
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["cloud_top_level"] - 1
-        )
+        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
         state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height_forced"]
         state.input_output.p_forced.data[:] = inputs["p_forced"]
         state.input_output.u.data[:] = inputs["u"]
         state.input_output.v.data[:] = inputs["v"]
         state.input_output.ccn.data[:] = inputs["ccn"]
-        state.output.total_normalized_integrated_condensate_forced.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["total_normalized_integrated_condensate_forced"]
-        locals.total_normalized_integrated_evaporate_forced.data[:,] = inputs[
-            "local_total_normalized_integrated_evaporate_forced"
+        state.output.total_normalized_integrated_condensate_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "total_normalized_integrated_condensate_forced"
         ]
+        locals.total_normalized_integrated_evaporate_forced.data[:,] = inputs["local_total_normalized_integrated_evaporate_forced"]
         locals.psum.data[:] = inputs["local_psum"]
         locals.psumh.data[:] = inputs["local_psumh"]
         locals.scale_dependence_factor_downdraft.data[:] = inputs["local_scale_dependence_factor_downdraft"]
@@ -116,9 +101,7 @@ class TestCore:
             locals.epsilon_computed.data[:] = inputs["local_epsilon_computed"][:, :, np.newaxis]
         else:
             locals.epsilon_computed.data[:] = inputs["local_epsilon_computed"]
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "epsilon_forced"
-        ]
+        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
 
         # initialize test code
         code = DowndraftWindShear(
@@ -154,12 +137,8 @@ class TestCore:
         # write output
         outputs = {
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
-            "updraft_lfc_level": state.output.updraft_lfc_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX]
-            + 1,
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "geopotential_height_forced": state.input_output.geopotential_height_forced.field[:],
             "p_forced": state.input_output.p_forced.field[:],
             "u": state.input_output.u.field[:],
@@ -168,9 +147,7 @@ class TestCore:
             "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "local_total_normalized_integrated_evaporate_forced": locals.total_normalized_integrated_evaporate_forced.field[
-                :,
-            ],
+            "local_total_normalized_integrated_evaporate_forced": locals.total_normalized_integrated_evaporate_forced.field[:,],
             "local_psum": locals.psum.field[:],
             "local_psumh": locals.psumh.field[:],
             "local_scale_dependence_factor_downdraft": locals.scale_dependence_factor_downdraft.field[:],

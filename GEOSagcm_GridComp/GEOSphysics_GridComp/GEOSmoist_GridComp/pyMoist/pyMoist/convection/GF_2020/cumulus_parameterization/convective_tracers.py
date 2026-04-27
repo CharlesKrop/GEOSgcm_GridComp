@@ -15,17 +15,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import tridiag
 from pyMoist.convection_tracers import ConvectionTracers
-from pyMoist.field_types import (
-    ConvectionTracerMetaDataTable_Bool,
-    ConvectionTracerMetaDataTable_Float,
-    ConvectionTracerMetaDataTable_x4,
-)
+from pyMoist.field_types import ConvectionTracerMetaDataTable_Bool, ConvectionTracerMetaDataTable_Float, ConvectionTracerMetaDataTable_x4
 
 
 def environment_cloud_levels_chemistry(
@@ -49,9 +43,7 @@ def environment_cloud_levels_chemistry(
         if error_code[0, 0][plume] == 0 and CLOUD_LEVEL_OPTION == 1:
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
-                chemistry_tracers_cloud_levels[0, 0, 0][tracer] = (
-                    0.5 * chemistry_tracers[0, 0, -1][tracer] + chemistry_tracers[0, 0, 0][tracer]
-                )
+                chemistry_tracers_cloud_levels[0, 0, 0][tracer] = 0.5 * chemistry_tracers[0, 0, -1][tracer] + chemistry_tracers[0, 0, 0][tracer]
                 tracer += 1
 
     with computation(FORWARD), interval(0, 1):
@@ -150,11 +142,7 @@ def updraft_chemistry(
             while tracer < NUMBER_OF_TRACERS:
                 level = 0
                 while level <= k_end:
-                    chemistry_tracers_cloud_levels_3d[0, 0, level] = chemistry_tracers_cloud_levels[  # type: ignore[index]
-                        0, 0, level
-                    ][
-                        tracer
-                    ]
+                    chemistry_tracers_cloud_levels_3d[0, 0, level] = chemistry_tracers_cloud_levels[0, 0, level][tracer]  # type: ignore[index]
                     level += 1
                 tracer_cloud_boundary[0, 0][tracer] = get_cloud_boundary_conditions(
                     field=chemistry_tracers_cloud_levels_3d,
@@ -179,11 +167,7 @@ def updraft_chemistry(
                 tracer += 1
 
     with computation(FORWARD), interval(1, -1):
-        if (
-            error_code[0, 0][plume] == 0
-            and K >= updraft_origin_level[0, 0][plume] + 1
-            and K <= cloud_top_level[0, 0][plume] + 1
-        ):
+        if error_code[0, 0][plume] == 0 and K >= updraft_origin_level[0, 0][plume] + 1 and K <= cloud_top_level[0, 0][plume] + 1:
             # entrainment, detrainment, mass flux
             massflux_internal = normalized_massflux_updraft_forced[0, 0, -1][plume]
             entrainment_internal = mass_entrainment_updraft_forced[0, 0, -1][plume]
@@ -200,9 +184,7 @@ def updraft_chemistry(
                         + chemistry_tracers[0, 0, -1][tracer] * entrainment_internal
                     ) / denom
                 else:
-                    chemistry_tracers_sc_updraft[0, 0, 0][tracer] = chemistry_tracers_sc_updraft[0, 0, -1][
-                        tracer
-                    ]
+                    chemistry_tracers_sc_updraft[0, 0, 0][tracer] = chemistry_tracers_sc_updraft[0, 0, -1][tracer]
                 tracer += 1
 
             # scavenging section - skip if USE_TRACER_SCAVENGE = 0 or on shallow plume
@@ -221,8 +203,7 @@ def updraft_chemistry(
                         if USE_TRACER_SCAVENGE == 1:
                             chemistry_tracers_pw_updraft[0, 0, 0][tracer] = max(
                                 0.0,
-                                chemistry_tracers_sc_updraft[0, 0, 0][tracer]
-                                * (1.0 - exp(-convection_tracers_fscav.A[tracer] * (dz / 1000.0))),
+                                chemistry_tracers_sc_updraft[0, 0, 0][tracer] * (1.0 - exp(-convection_tracers_fscav.A[tracer] * (dz / 1000.0))),
                             )
 
                         # formulation 2 as in GOCART
@@ -234,10 +215,7 @@ def updraft_chemistry(
                             option_not_implemented = True
 
                         # (in cloud) total mixing ratio in gas and aqueous phases
-                        chemistry_tracers_sc_updraft[0, 0, 0][tracer] = (
-                            chemistry_tracers_sc_updraft[0, 0, 0][tracer]
-                            - chemistry_tracers_pw_updraft[0, 0, 0][tracer]
-                        )
+                        chemistry_tracers_sc_updraft[0, 0, 0][tracer] = chemistry_tracers_sc_updraft[0, 0, 0][tracer] - chemistry_tracers_pw_updraft[0, 0, 0][tracer]
 
                     # tracer gas phase scavenging
                     elif convection_tracers_vect_hcts.A[tracer, 1] > 1.0e-6:
@@ -258,8 +236,7 @@ def updraft_chemistry(
                 tracer = 0
                 while tracer < NUMBER_OF_TRACERS:
                     chemistry_tracers_total_pw_updraft[0, 0][tracer] = (
-                        chemistry_tracers_total_pw_updraft[0, 0][tracer]
-                        + chemistry_tracers_pw_updraft[0, 0, 0][tracer] * dp / constants.MAPL_GRAV
+                        chemistry_tracers_total_pw_updraft[0, 0][tracer] + chemistry_tracers_pw_updraft[0, 0, 0][tracer] * dp / constants.MAPL_GRAV
                     )
                     tracer += 1
 
@@ -315,9 +292,7 @@ def downdraft_chemistry(
     with computation(FORWARD), interval(0, 1):
         if plume != cumulus_parameterization_constants.SHALLOW and error_code[0, 0][plume] == 0:
             # fraction of the total rain that was evaporated
-            evaporation_fraction: FloatFieldIJ = -total_normalized_integrated_evaporate_forced / (
-                1.0e-16 + total_normalized_integrated_condensate_forced[0, 0][plume]
-            )
+            evaporation_fraction: FloatFieldIJ = -total_normalized_integrated_evaporate_forced / (1.0e-16 + total_normalized_integrated_condensate_forced[0, 0][plume])
 
             # scalar concentration in-cloud - downdraft
 
@@ -327,45 +302,27 @@ def downdraft_chemistry(
                 internal_precip: FloatFieldIJ = 0.0
             else:
                 internal_precip: FloatFieldIJ = (  # type: ignore[no-redef]
-                    evaporate_in_downdraft_forced.at(K=level, ddim=[plume])
-                    / (1.0e-16 + total_normalized_integrated_evaporate_forced)
-                    * evaporation_fraction
+                    evaporate_in_downdraft_forced.at(K=level, ddim=[plume]) / (1.0e-16 + total_normalized_integrated_evaporate_forced) * evaporation_fraction
                 )
 
-            dp = 100.0 * (
-                p_cloud_levels_forced.at(K=level, ddim=[plume])
-                - p_cloud_levels_forced.at(K=level + 1, ddim=[plume])
-            )
+            dp = 100.0 * (p_cloud_levels_forced.at(K=level, ddim=[plume]) - p_cloud_levels_forced.at(K=level + 1, ddim=[plume]))
 
             # downdrafts will be initiated with a mixture of 50% environmental and in-cloud concentrations
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
-                chemistry_tracers_sc_downdraft[0, 0, level][tracer] = chemistry_tracers_cloud_levels[
-                    0, 0, level
-                ][tracer]
-                chemistry_tracers_pw_downdraft[0, 0, level][tracer] = (
-                    -internal_precip
-                    * chemistry_tracers_total_pw_updraft[0, 0][tracer]
-                    * constants.MAPL_GRAV
-                    / dp
-                )
+                chemistry_tracers_sc_downdraft[0, 0, level][tracer] = chemistry_tracers_cloud_levels[0, 0, level][tracer]
+                chemistry_tracers_pw_downdraft[0, 0, level][tracer] = -internal_precip * chemistry_tracers_total_pw_updraft[0, 0][tracer] * constants.MAPL_GRAV / dp
                 chemistry_tracers_sc_downdraft[0, 0, level][tracer] = (
-                    chemistry_tracers_sc_downdraft[0, 0, level][tracer]
-                    - chemistry_tracers_pw_downdraft[0, 0, level][tracer]
+                    chemistry_tracers_sc_downdraft[0, 0, level][tracer] - chemistry_tracers_pw_downdraft[0, 0, level][tracer]
                 )
                 chemistry_tracers_total_pw_downdraft[0, 0][tracer] = (
-                    chemistry_tracers_total_pw_downdraft[0, 0][tracer]
-                    + chemistry_tracers_pw_downdraft[0, 0, level][tracer] * dp / constants.MAPL_GRAV
+                    chemistry_tracers_total_pw_downdraft[0, 0][tracer] + chemistry_tracers_pw_downdraft[0, 0, level][tracer] * dp / constants.MAPL_GRAV
                 )
                 tracer += 1
 
     # calculate downdraft mass terms
     with computation(BACKWARD), interval(0, -1):
-        if (
-            plume != cumulus_parameterization_constants.SHALLOW
-            and error_code[0, 0][plume] == 0
-            and K <= downdraft_origin_level[0, 0][plume] - 1
-        ):
+        if plume != cumulus_parameterization_constants.SHALLOW and error_code[0, 0][plume] == 0 and K <= downdraft_origin_level[0, 0][plume] - 1:
             massflux_internal = normalized_massflux_downdraft_forced[0, 0, 1][plume]
             entrainment_internal = mass_entrainment_downdraft_forced[0, 0, 0][plume]
             detrainment_internal = 0.5 * mass_detrainment_downdraft_forced[0, 0, 0][plume]
@@ -381,9 +338,7 @@ def downdraft_chemistry(
                         + chemistry_tracers[0, 0, 0][tracer] * entrainment_internal
                     ) / denom
                 else:
-                    chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = chemistry_tracers_sc_downdraft.at(
-                        K=K + 1, ddim=[tracer]
-                    )
+                    chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = chemistry_tracers_sc_downdraft.at(K=K + 1, ddim=[tracer])
                 tracer += 1
 
             # evaporation term
@@ -391,9 +346,7 @@ def downdraft_chemistry(
                 dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
 
                 # fraction of evaporated precip per layer
-                internal_precip = evaporate_in_downdraft_forced[0, 0, 0][plume] / (
-                    1.0e-16 + total_normalized_integrated_evaporate_forced
-                )
+                internal_precip = evaporate_in_downdraft_forced[0, 0, 0][plume] / (1.0e-16 + total_normalized_integrated_evaporate_forced)
 
                 # fraction of the total precip that was actually evaporated at layer k
                 internal_precip = internal_precip * evaporation_fraction
@@ -404,23 +357,14 @@ def downdraft_chemistry(
                 tracer = 0
                 while tracer < NUMBER_OF_TRACERS:
                     # amount evaporated by the downdraft from the precipitation
-                    chemistry_tracers_pw_downdraft[0, 0, 0][tracer] = (
-                        -internal_precip
-                        * chemistry_tracers_total_pw_updraft[0, 0][tracer]
-                        * constants.MAPL_GRAV
-                        / dp
-                    )
+                    chemistry_tracers_pw_downdraft[0, 0, 0][tracer] = -internal_precip * chemistry_tracers_total_pw_updraft[0, 0][tracer] * constants.MAPL_GRAV / dp
 
                     # final tracer in the downdraft
-                    chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = (
-                        chemistry_tracers_sc_downdraft[0, 0, 0][tracer]
-                        - chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
-                    )
+                    chemistry_tracers_sc_downdraft[0, 0, 0][tracer] = chemistry_tracers_sc_downdraft[0, 0, 0][tracer] - chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
 
                     # total evaporated tracer
                     chemistry_tracers_total_pw_downdraft[0, 0][tracer] = (
-                        chemistry_tracers_total_pw_downdraft[0, 0][tracer]
-                        + chemistry_tracers_pw_downdraft[0, 0, 0][tracer] * dp / constants.MAPL_GRAV
+                        chemistry_tracers_total_pw_downdraft[0, 0][tracer] + chemistry_tracers_pw_downdraft[0, 0, 0][tracer] * dp / constants.MAPL_GRAV
                     )
 
                     tracer += 1
@@ -470,14 +414,7 @@ def vertical_transport_part_1(
         cc (FloatField)
         plume (Int)
     """
-    from __externals__ import (
-        ALP1,
-        DT_MOIST,
-        NUMBER_OF_TRACERS,
-        USE_FLUX_FORM,
-        USE_TRACER_EVAPORATION,
-        USE_TRACER_SCAVENGE,
-    )
+    from __externals__ import ALP1, DT_MOIST, NUMBER_OF_TRACERS, USE_FLUX_FORM, USE_TRACER_EVAPORATION, USE_TRACER_SCAVENGE
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
@@ -497,12 +434,7 @@ def vertical_transport_part_1(
                 fm = 0.5 * (environment_massflux - abs(environment_massflux))
 
     with computation(FORWARD), interval(0, -1):
-        if (
-            error_code[0, 0][plume] == 0
-            and USE_FLUX_FORM == 1
-            and ALP1 > 0.0
-            and K <= cloud_top_level[0, 0][plume]
-        ):
+        if error_code[0, 0][plume] == 0 and USE_FLUX_FORM == 1 and ALP1 > 0.0 and K <= cloud_top_level[0, 0][plume]:
             dp = 100.0 * (p_cloud_levels_forced[0, 0, 0][plume] - p_cloud_levels_forced[0, 0, 1][plume])
             beta = DT_MOIST * constants.MAPL_GRAV / dp
             aa = ALP1 * beta * fm
@@ -514,18 +446,14 @@ def vertical_transport_part_1(
                 dd_tracers[0, 0, 0][tracer] = (
                     chemistry_tracers[0, 0, 0][tracer]
                     - (
-                        normalized_massflux_updraft_forced[0, 0, 1][plume]
-                        * chemistry_tracers_sc_updraft[0, 0, 1][tracer]
-                        - normalized_massflux_updraft_forced[0, 0, 0][plume]
-                        * chemistry_tracers_sc_updraft[0, 0, 0][tracer]
+                        normalized_massflux_updraft_forced[0, 0, 1][plume] * chemistry_tracers_sc_updraft[0, 0, 1][tracer]
+                        - normalized_massflux_updraft_forced[0, 0, 0][plume] * chemistry_tracers_sc_updraft[0, 0, 0][tracer]
                     )
                     * beta
                     + (
                         (
-                            normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                            * chemistry_tracers_sc_downdraft[0, 0, 1][tracer]
-                            - normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                            * chemistry_tracers_sc_downdraft[0, 0, 0][tracer]
+                            normalized_massflux_downdraft_forced[0, 0, 1][plume] * chemistry_tracers_sc_downdraft[0, 0, 1][tracer]
+                            - normalized_massflux_downdraft_forced[0, 0, 0][plume] * chemistry_tracers_sc_downdraft[0, 0, 0][tracer]
                         )
                         * beta
                         * epsilon_forced[0, 0][plume]
@@ -543,10 +471,8 @@ def vertical_transport_part_1(
                         - 0.5
                         * epsilon_forced[0, 0][plume]
                         * (
-                            normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                            * chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
-                            + normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                            * chemistry_tracers_pw_downdraft[0, 0, 1][tracer]
+                            normalized_massflux_downdraft_forced[0, 0, 0][plume] * chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
+                            + normalized_massflux_downdraft_forced[0, 0, 1][plume] * chemistry_tracers_pw_downdraft[0, 0, 1][tracer]
                         )
                         * beta
                     )
@@ -561,10 +487,8 @@ def vertical_transport_part_1(
                         chemistry_tracers_output[0, 0, 0][plume, tracer]
                         - 0.5
                         * (
-                            normalized_massflux_updraft_forced[0, 0, 0][plume]
-                            * chemistry_tracers_pw_updraft[0, 0, 0][tracer]
-                            + normalized_massflux_updraft_forced[0, 0, 1][plume]
-                            * chemistry_tracers_pw_updraft[0, 0, 1][tracer]
+                            normalized_massflux_updraft_forced[0, 0, 0][plume] * chemistry_tracers_pw_updraft[0, 0, 0][tracer]
+                            + normalized_massflux_updraft_forced[0, 0, 1][plume] * chemistry_tracers_pw_updraft[0, 0, 1][tracer]
                         )
                         * beta
                     )
@@ -603,9 +527,7 @@ def update_after_tridiag(
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= cloud_top_level[0, 0][plume]:
-            chemistry_tracers_output[0, 0, 0][plume, tracer] = (
-                dd[0, 0, 0][tracer] - chemistry_tracers[0, 0, 0][tracer]
-            ) / DT_MOIST
+            chemistry_tracers_output[0, 0, 0][plume, tracer] = (dd[0, 0, 0][tracer] - chemistry_tracers[0, 0, 0][tracer]) / DT_MOIST
 
 
 def vertical_transport_part_2(
@@ -656,10 +578,8 @@ def vertical_transport_part_2(
                 evap = (
                     -0.5
                     * (
-                        normalized_massflux_downdraft_forced[0, 0, 0][plume]
-                        * chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
-                        + normalized_massflux_downdraft_forced[0, 0, 1][plume]
-                        * chemistry_tracers_pw_downdraft[0, 0, 1][tracer]
+                        normalized_massflux_downdraft_forced[0, 0, 0][plume] * chemistry_tracers_pw_downdraft[0, 0, 0][tracer]
+                        + normalized_massflux_downdraft_forced[0, 0, 1][plume] * chemistry_tracers_pw_downdraft[0, 0, 1][tracer]
                     )
                     * constants.MAPL_GRAV
                     / dp
@@ -668,10 +588,8 @@ def vertical_transport_part_2(
                 wetdep = (
                     0.5
                     * (
-                        normalized_massflux_updraft_forced[0, 0, 0][plume]
-                        * chemistry_tracers_pw_updraft[0, 0, 0][tracer]
-                        + normalized_massflux_updraft_forced[0, 0, 1][plume]
-                        * chemistry_tracers_pw_updraft[0, 0, 1][tracer]
+                        normalized_massflux_updraft_forced[0, 0, 0][plume] * chemistry_tracers_pw_updraft[0, 0, 0][tracer]
+                        + normalized_massflux_updraft_forced[0, 0, 1][plume] * chemistry_tracers_pw_updraft[0, 0, 1][tracer]
                     )
                     * constants.MAPL_GRAV
                     / dp
@@ -687,12 +605,9 @@ def vertical_transport_part_2(
             while tracer < NUMBER_OF_TRACERS:
                 if residual[0, 0][tracer] < 0:
                     beta = constants.MAPL_GRAV / (
-                        p_cloud_levels_forced.at(K=0, ddim=[plume])
-                        - p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume] + 1, ddim=[plume])
+                        p_cloud_levels_forced.at(K=0, ddim=[plume]) - p_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume] + 1, ddim=[plume])
                     )
-                    chemistry_tracers_output[0, 0, 0][plume, tracer] = (
-                        chemistry_tracers_output[0, 0, 0][plume, tracer] + residual[0, 0][tracer] * beta
-                    )
+                    chemistry_tracers_output[0, 0, 0][plume, tracer] = chemistry_tracers_output[0, 0, 0][plume, tracer] + residual[0, 0][tracer] * beta
                 tracer += 1
 
 
@@ -735,9 +650,7 @@ class AtmosphericComposition(NDSLRuntime):
         self._bb: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
         self._cc: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
         self._dd_tracers: Local = quantity_factory.zeros([I_DIM, J_DIM, K_DIM, "convection_tracers"], "n/a")
-        self._tracer_cloud_boundary: Local = quantity_factory.zeros(
-            [I_DIM, J_DIM, "convection_tracers"], "n/a"
-        )
+        self._tracer_cloud_boundary: Local = quantity_factory.zeros([I_DIM, J_DIM, "convection_tracers"], "n/a")
         self._residual: Local = quantity_factory.zeros([I_DIM, J_DIM, "convection_tracers"], "n/a")
 
         # construct stencils and functions
@@ -957,10 +870,7 @@ class AtmosphericComposition(NDSLRuntime):
             plume=plume_dependent_constants.PLUME_INDEX,
         )
 
-        if (
-            self.cumulus_parameterization_config.USE_FLUX_FORM == 1
-            and self.cumulus_parameterization_config.ALP1 > 0.0
-        ):
+        if self.cumulus_parameterization_config.USE_FLUX_FORM == 1 and self.cumulus_parameterization_config.ALP1 > 0.0:
             for tracer in range(self.config.NUMBER_OF_TRACERS):
                 # NOTE, this code is an extension of the vertical transport section for option
                 # which executes when (USE_FLUX_FORM == 1 and ALP1 > 0.0)

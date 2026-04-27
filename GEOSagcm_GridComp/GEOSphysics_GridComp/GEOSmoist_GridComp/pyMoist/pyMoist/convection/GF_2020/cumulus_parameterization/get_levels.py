@@ -10,13 +10,8 @@ from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import (
-    compute_dewpoint,
-    get_cloud_boundary_conditions,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import compute_dewpoint, get_cloud_boundary_conditions
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
@@ -107,9 +102,7 @@ def find_highest_moist_static_energy_level(
         if error_code[0, 0][plume] == 0:
             level = start_level
             while level <= maximum_updraft_origin_level + 1:
-                if moist_static_energy.at(K=level) > moist_static_energy.at(
-                    K=max(start_level, updraft_origin_level[0, 0][plume])
-                ):
+                if moist_static_energy.at(K=level) > moist_static_energy.at(K=max(start_level, updraft_origin_level[0, 0][plume])):
                     updraft_origin_level[0, 0][plume] = level
                 level += 1
 
@@ -315,11 +308,7 @@ def find_lcl(
                         wkflcl = wkflcl - ckf
 
     with computation(FORWARD), interval(0, 1):
-        if (
-            error_code[0, 0][plume] == 0
-            and ADV_TRIGGER == 1
-            and plume == cumulus_parameterization_constants.SHALLOW
-        ):
+        if error_code[0, 0][plume] == 0 and ADV_TRIGGER == 1 and plume == cumulus_parameterization_constants.SHALLOW:
             # Kain (2004) Eq. 1
             t_perturbation = 4.64 * wkflcl ** (1.0 / 3.0)
 
@@ -418,14 +407,7 @@ def get_convective_cloud_base_level(
         AVERAGE_LAYER_DEPTH (Float): _description_
         plume (Int): _description_
     """
-    from __externals__ import (
-        BOUNDARY_CONDITION_METHOD,
-        MOIST_TRIGGER,
-        OVERSHOOT,
-        USE_MEMORY,
-        ZERO_DIFF,
-        k_end,
-    )
+    from __externals__ import BOUNDARY_CONDITION_METHOD, MOIST_TRIGGER, OVERSHOOT, USE_MEMORY, ZERO_DIFF, k_end
 
     with computation(PARALLEL), interval(...):
         # prefill some fields
@@ -448,9 +430,7 @@ def get_convective_cloud_base_level(
 
     with computation(PARALLEL), interval(...):
         if error_code[0, 0][plume] == 0 and K <= start_level_internal:
-            cloud_moist_static_energy_forced_transported = (
-                moist_static_energy_origin_level_forced  # assumed no entrainment between these layers
-            )
+            cloud_moist_static_energy_forced_transported = moist_static_energy_origin_level_forced  # assumed no entrainment between these layers
 
     # determine the level of convective cloud base (updraft_lfc_level)
 
@@ -466,33 +446,20 @@ def get_convective_cloud_base_level(
                 updraft_lfc_level[0, 0][plume] = start_level_internal
                 level = start_level_internal + 1
                 while level <= maximum_updraft_origin_level + 3:
-                    dz = (
-                        geopotential_height_cloud_levels_forced[0, 0, level]
-                        - geopotential_height_cloud_levels_forced[0, 0, level - 1]
-                    )
+                    dz = geopotential_height_cloud_levels_forced[0, 0, level] - geopotential_height_cloud_levels_forced[0, 0, level - 1]
                     cloud_moist_static_energy_forced_transported[0, 0, level] = (
-                        (1.0 - 0.5 * entrainment_rate[0, 0, level - 1][plume] * dz)
-                        * cloud_moist_static_energy_forced_transported[0, 0, level - 1]
-                        + entrainment_rate[0, 0, level - 1][plume]
-                        * dz
-                        * environment_moist_static_energy_forced[0, 0, level - 1]
+                        (1.0 - 0.5 * entrainment_rate[0, 0, level - 1][plume] * dz) * cloud_moist_static_energy_forced_transported[0, 0, level - 1]
+                        + entrainment_rate[0, 0, level - 1][plume] * dz * environment_moist_static_energy_forced[0, 0, level - 1]
                     ) / (1.0 + 0.5 * entrainment_rate[0, 0, level - 1][plume] * dz)
                     if level == start_level_internal + 1:
-                        modification = (
-                            cumulus_parameterization_constants.XLV * vapor_excess
-                            + cumulus_parameterization_constants.CP * t_excess
-                        ) + add_buoyancy
-                        cloud_moist_static_energy_forced_transported[0, 0, level] = (
-                            cloud_moist_static_energy_forced_transported[0, 0, level] + modification
-                        )
+                        modification = (cumulus_parameterization_constants.XLV * vapor_excess + cumulus_parameterization_constants.CP * t_excess) + add_buoyancy
+                        cloud_moist_static_energy_forced_transported[0, 0, level] = cloud_moist_static_energy_forced_transported[0, 0, level] + modification
                     level += 1
 
                 continue_inner_while_loop = True
                 while (
                     cloud_moist_static_energy_forced_transported.at(K=updraft_lfc_level[0, 0][plume])
-                    < environment_saturation_moist_static_energy_cloud_levels_forced.at(
-                        K=updraft_lfc_level[0, 0][plume]
-                    )
+                    < environment_saturation_moist_static_energy_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume])
                 ) and continue_inner_while_loop:
                     updraft_lfc_level[0, 0][plume] = updraft_lfc_level[0, 0][plume] + 1
                     if updraft_lfc_level[0, 0][plume] > maximum_updraft_origin_level + 2:
@@ -507,8 +474,7 @@ def get_convective_cloud_base_level(
                     # cloud base pressure and max moist static energy pressure
                     # i.e., the depth (in mb) of the layer of negative buoyancy
                     negative_buoyancy_depth = -(
-                        p_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume], ddim=[plume])
-                        - p_cloud_levels_forced.at(K=start_level_internal, ddim=[plume])
+                        p_cloud_levels_forced.at(K=updraft_lfc_level[0, 0][plume], ddim=[plume]) - p_cloud_levels_forced.at(K=start_level_internal, ddim=[plume])
                     )
 
                     if MOIST_TRIGGER == 1:
@@ -516,22 +482,14 @@ def get_convective_cloud_base_level(
                         dzh = 0.0
                         level = updraft_origin_level[0, 0][plume]
                         while level <= updraft_lfc_level[0, 0][plume]:
-                            dz = (
-                                geopotential_height_cloud_levels_forced[0, 0, level]
-                                - geopotential_height_cloud_levels_forced[0, 0, max(level - 1, 0)]
-                            )
-                            frh_lfc = frh_lfc + dz * (
-                                vapor_forced[0, 0, level]
-                                / environment_moist_static_energy_forced[0, 0, level]
-                            )
+                            dz = geopotential_height_cloud_levels_forced[0, 0, level] - geopotential_height_cloud_levels_forced[0, 0, max(level - 1, 0)]
+                            frh_lfc = frh_lfc + dz * (vapor_forced[0, 0, level] / environment_moist_static_energy_forced[0, 0, level])
                             dzh = dzh + dz
 
                         frh_lfc = frh_lfc / (dzh + 1.0e-16)
                         frh_crit = frh_crit_O * ocean_fraction + frh_crit_L * (1.0 - ocean_fraction)
 
-                        fx = (
-                            (2.0 / 0.78) * exp(-((frh_lfc - frh_crit) ** 2)) * (frh_lfc - frh_crit)
-                        )  # exponential
+                        fx = (2.0 / 0.78) * exp(-((frh_lfc - frh_crit) ** 2)) * (frh_lfc - frh_crit)  # exponential
                         fx = max(-1.0, min(1.0, fx))
 
                         del_cap_max = fx * cap_max_increment
@@ -551,10 +509,7 @@ def get_convective_cloud_base_level(
                         cap_max_internal = cap_max_internal + cap_max_increment
 
                     # get new moist_static_energy_origin_level_forced
-                    modification = (
-                        cumulus_parameterization_constants.XLV * vapor_excess
-                        + cumulus_parameterization_constants.CP * t_excess
-                    ) + add_buoyancy
+                    modification = (cumulus_parameterization_constants.XLV * vapor_excess + cumulus_parameterization_constants.CP * t_excess) + add_buoyancy
                     moist_static_energy_origin_level_forced = get_cloud_boundary_conditions(
                         field=environment_moist_static_energy_cloud_levels_forced,
                         scalar_perturbation=modification,
@@ -569,9 +524,7 @@ def get_convective_cloud_base_level(
                     )
 
                     start_level_internal = start_level_internal + 1
-                    cloud_moist_static_energy_forced_transported[0, 0, start_level_internal] = (
-                        moist_static_energy_origin_level_forced
-                    )
+                    cloud_moist_static_energy_forced_transported[0, 0, start_level_internal] = moist_static_energy_origin_level_forced
 
             if skip_last_check:
                 # last check for updraft_lfc_level
@@ -591,51 +544,33 @@ def get_convective_cloud_base_level(
             dz = geopotential_height_cloud_levels_forced - geopotential_height_cloud_levels_forced[0, 0, -1]
             denom = 1.0 + 0.5 * entrainment_rate[0, 0, -1][plume] * dz
             if denom == 0.0:
-                cloud_moist_static_energy_forced_transported = cloud_moist_static_energy_forced_transported[
-                    0, 0, -1
-                ]
+                cloud_moist_static_energy_forced_transported = cloud_moist_static_energy_forced_transported[0, 0, -1]
             else:
                 cloud_moist_static_energy_forced_transported = (
-                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz)
-                    * cloud_moist_static_energy_forced_transported[0, 0, -1]
-                    + entrainment_rate[0, 0, -1][plume]
-                    * dz
-                    * environment_moist_static_energy_forced[0, 0, -1]
+                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz) * cloud_moist_static_energy_forced_transported[0, 0, -1]
+                    + entrainment_rate[0, 0, -1][plume] * dz * environment_moist_static_energy_forced[0, 0, -1]
                 ) / denom
 
     with computation(FORWARD), interval(0, -2):
         if error_code[0, 0][plume] == 0 and K > start_level_internal and not found_level:
-            if (
-                cloud_moist_static_energy_forced_transported
-                < environment_saturation_moist_static_energy_cloud_levels_forced
-            ):
+            if cloud_moist_static_energy_forced_transported < environment_saturation_moist_static_energy_cloud_levels_forced:
                 cloud_top_level[0, 0][plume] = K - 1
                 found_level = True
 
     with computation(FORWARD), interval(0, 1):
-        if (
-            error_code[0, 0][plume] == 0
-            and cloud_top_level[0, 0][plume] <= updraft_lfc_level[0, 0][plume] + 1
-        ):
+        if error_code[0, 0][plume] == 0 and cloud_top_level[0, 0][plume] <= updraft_lfc_level[0, 0][plume] + 1:
             error_code[0, 0][plume] = 41
 
     with computation(FORWARD), interval(...):
         if error_code[0, 0][plume] == 0 and OVERSHOOT >= 1.0e-6:
-            z_overshoot: FloatFieldIJ = (1.0 + OVERSHOOT) * geopotential_height_cloud_levels_forced.at(
-                K=cloud_top_level[0, 0][plume]
-            )
+            z_overshoot: FloatFieldIJ = (1.0 + OVERSHOOT) * geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
 
     with computation(FORWARD), interval(0, 1):
         # reset mask
         found_level = False
 
     with computation(FORWARD), interval(0, -3):
-        if (
-            error_code[0, 0][plume] == 0
-            and OVERSHOOT >= 1.0e-6
-            and K >= cloud_top_level[0, 0][plume]
-            and not found_level
-        ):
+        if error_code[0, 0][plume] == 0 and OVERSHOOT >= 1.0e-6 and K >= cloud_top_level[0, 0][plume] and not found_level:
             if z_overshoot < geopotential_height_cloud_levels_forced:
                 cloud_top_level[0, 0][plume] = min(K - 1, k_end - 2)
                 found_level = True
@@ -690,17 +625,11 @@ def get_cloud_top(
     with computation(FORWARD), interval(1, None):
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K > start_level and K < k_end - 2:
-                dz = (
-                    geopotential_height_cloud_levels_forced
-                    - geopotential_height_cloud_levels_forced[0, 0, -1]
-                )
+                dz = geopotential_height_cloud_levels_forced - geopotential_height_cloud_levels_forced[0, 0, -1]
 
                 cloud_moist_static_energy_forced_transported = (
-                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz)
-                    * cloud_moist_static_energy_forced_transported[0, 0, -1]
-                    + entrainment_rate[0, 0, -1][plume]
-                    * dz
-                    * environment_moist_static_energy_forced[0, 0, -1]
+                    (1.0 - 0.5 * entrainment_rate[0, 0, -1][plume] * dz) * cloud_moist_static_energy_forced_transported[0, 0, -1]
+                    + entrainment_rate[0, 0, -1][plume] * dz * environment_moist_static_energy_forced[0, 0, -1]
                 ) / (1.0 + 0.5 * entrainment_rate[0, 0, -1][plume] * dz)
 
     with computation(FORWARD), interval(0, 1):
@@ -712,10 +641,7 @@ def get_cloud_top(
         if plume != 0 and error_code[0, 0][plume] == 0:
             if K > start_level and K < k_end - 2 and not stop_computation:
                 # find the height where the parcel is no longer saturated
-                if (
-                    cloud_moist_static_energy_forced_transported
-                    < environment_saturation_moist_static_energy_cloud_levels_forced
-                ):
+                if cloud_moist_static_energy_forced_transported < environment_saturation_moist_static_energy_cloud_levels_forced:
                     cloud_top_level[0, 0][plume] = K - 1
                     stop_computation = True
 
@@ -726,9 +652,7 @@ def get_cloud_top(
 
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0 and plume != 0 and OVERSHOOT > 0:
-            z_overshoot = (1.0 + OVERSHOOT) * geopotential_height_cloud_levels_forced.at(
-                K=cloud_top_level[0, 0][plume]
-            )
+            z_overshoot = (1.0 + OVERSHOOT) * geopotential_height_cloud_levels_forced.at(K=cloud_top_level[0, 0][plume])
 
     with computation(FORWARD), interval(0, 1):
         # set up mask for next computation
@@ -792,8 +716,7 @@ def cloud_top_checks(
     with computation(FORWARD), interval(0, 1):
         if error_code[0, 0][plume] == 0:
             if (
-                geopotential_height_cloud_levels.at(K=cloud_top_level[0, 0][plume])
-                - geopotential_height_cloud_levels.at(K=updraft_lfc_level[0, 0][plume])
+                geopotential_height_cloud_levels.at(K=cloud_top_level[0, 0][plume]) - geopotential_height_cloud_levels.at(K=updraft_lfc_level[0, 0][plume])
                 < MINIMUM_DEPTH
             ):
                 error_code[0, 0][plume] = 5
@@ -934,10 +857,7 @@ class CloudTop:
     ):
 
         if self.cumulus_parameterization_config.OVERSHOOT != 0:
-            ndsl_log.warning(
-                " GF2020 cumulus parameterization called CloudTop with "
-                "untested OVERSHOOT option. Running untested code... proceed with caution"
-            )
+            ndsl_log.warning(" GF2020 cumulus parameterization called CloudTop with " "untested OVERSHOOT option. Running untested code... proceed with caution")
 
         self._updraft_rates_pdf(
             entrainment_rate=state.output.entrainment_rate,
