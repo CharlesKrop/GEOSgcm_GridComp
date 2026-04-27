@@ -6,6 +6,7 @@ __pycache__/
 test_data/
 .gt_cache_*
 .translate-*/
+.vscode
 test_data/
 sandbox/
 *.mod
