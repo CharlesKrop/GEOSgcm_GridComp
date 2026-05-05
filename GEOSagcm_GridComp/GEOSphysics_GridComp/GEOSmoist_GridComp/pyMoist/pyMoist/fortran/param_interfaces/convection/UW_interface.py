@@ -13,6 +13,9 @@ from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.fortran.profiler import TimedCUDAProfiler
 
+import sys
+import traceback
+
 
 class UWGEOSInterface(UserCode):
     def __init__(self, name: str) -> None:
@@ -91,115 +94,123 @@ class UWGEOSInterface(UserCode):
         export_state: CVoidPointer,
         internal_state: CVoidPointer,
     ) -> None:
-        ndsl_stack = get_NDSL_physics(mapl_state)
-        import_repository = MAPLMemoryRepository(import_state, ndsl_stack.quantity_factory)
-        export_repository = MAPLMemoryRepository(export_state, ndsl_stack.quantity_factory)
-        internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
 
-        self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
-        self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
-        self._managed_state.register_2D("input.AREA", "AREA", import_repository)
-        self._managed_state.register("input.QLLS", "QLLS", internal_repository)
-        self._managed_state.register("input.QILS", "QILS", internal_repository)
-        self._managed_state.register("input.QLCN", "QLCN", internal_repository)
-        self._managed_state.register("input.QICN", "QICN", internal_repository)
-        self._managed_state.register_2D("input.kpbl_inv", "KPBL_SC", import_repository)
-        self._managed_state.register_2D("input.frland", "FRLAND", import_repository)
-        self._managed_state.register_K_interface("input.tke_inv", "TKE", import_repository)
-        self._managed_state.register_2D("input.shfx", "SH", import_repository)
-        self._managed_state.register_2D("input.evap", "EVAP", import_repository)
+        try:
 
-        self._managed_state.register("input_output.u0_inv", "U", import_repository)
-        self._managed_state.register("input_output.v0_inv", "V", import_repository)
-        self._managed_state.register("input_output.qv0_inv", "Q", internal_repository)
-        self._managed_state.register("input_output.t0_inv", "T", import_repository)
-        self._managed_state.register_2D("input_output.cush", "CUSH", internal_repository)
-        self._managed_state.register_2D("input_output.cnvtr", "CNPCPRATE", export_repository, alloc=True)
+            ndsl_stack = get_NDSL_physics(mapl_state)
+            import_repository = MAPLMemoryRepository(import_state, ndsl_stack.quantity_factory)
+            export_repository = MAPLMemoryRepository(export_state, ndsl_stack.quantity_factory)
+            internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
 
-        self._managed_state.register_2D("output.RKFRE", "RKFRE", export_repository, alloc=True)
-        self._managed_state.register("output.MFD_SC", "MFD_SC", export_repository, alloc=True)
-        self._managed_state.register("output.QLENT_SC", "QLENT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.QIENT_SC", "QIENT_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface("output.umf_inv", "UMF_SC", export_repository, alloc=True)
-        self._managed_state.register("output.dcm_inv", "DCM_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface("output.qtflx_inv", "QTFLX_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface("output.slflx_inv", "SLFLX_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface("output.uflx_inv", "UFLX_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface("output.vflx_inv", "VFLX_SC", export_repository, alloc=True)
-        self._managed_state.register("output.DQADT_SC", "DQADT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qvten_inv", "DQVDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qlten_inv", "DQLDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qiten_inv", "DQIDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.tten_inv", "DTDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.uten_inv", "DUDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.vten_inv", "DVDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qrten_inv", "DQRDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qsten_inv", "DQSDT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.cufrc_inv", "CUFRC_SC", export_repository, alloc=True)
-        self._managed_state.register("output.fer_inv", "ENTR_SC", export_repository, alloc=True)
-        self._managed_state.register("output.fdr_inv", "DETR_SC", export_repository, alloc=True)
-        self._managed_state.register("output.ndrop_inv", "SC_NDROP", export_repository, alloc=True)
-        self._managed_state.register("output.nice_inv", "SC_NICE", export_repository, alloc=True)
-        self._managed_state.register("output.qlsub_inv", "QLSUB_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qisub_inv", "QISUB_SC", export_repository, alloc=True)
-        self._managed_state.register("output.ql0_inv", "QLTOT", export_repository, alloc=True)
-        self._managed_state.register("output.qi0_inv", "QITOT", export_repository, alloc=True)
-        self._managed_state.register_2D("output.tpert_out", "TPERT_SC", export_repository, alloc=True)
-        self._managed_state.register_2D("output.qpert_out", "QPERT_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qidet_inv", "QIDET_SC", export_repository, alloc=True)
-        self._managed_state.register("output.qldet_inv", "QLDET_SC", export_repository, alloc=True)
-        self._managed_state.register_K_interface("output.CNV_MFC", "CNV_MFC", export_repository, alloc=True)
-        self._managed_state.register("output.CNV_MFD", "CNV_MFD", export_repository, alloc=True)
-        self._managed_state.register("output.SHLW_PRC3", "SHLW_PRC3", export_repository, alloc=True)
-        self._managed_state.register("output.SHLW_SNO3", "SHLW_SNO3", export_repository, alloc=True)
-        self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository)
-        self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository)
-        self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository)
-        self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
+            self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
+            self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
+            self._managed_state.register_2D("input.AREA", "AREA", import_repository)
+            self._managed_state.register("input.QLLS", "QLLS", internal_repository)
+            self._managed_state.register("input.QILS", "QILS", internal_repository)
+            self._managed_state.register("input.QLCN", "QLCN", internal_repository)
+            self._managed_state.register("input.QICN", "QICN", internal_repository)
+            self._managed_state.register_2D("input.kpbl_inv", "KPBL_SC", import_repository)
+            self._managed_state.register_2D("input.frland", "FRLAND", import_repository)
+            self._managed_state.register_K_interface("input.tke_inv", "TKE", import_repository)
+            self._managed_state.register_2D("input.shfx", "SH", import_repository)
+            self._managed_state.register_2D("input.evap", "EVAP", import_repository)
 
-        # Unused from GEOS ?!
-        # CLLS = MAPLPy.get_pointer("CLLS", internal_state, dtype=np.float32)
-        # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
-        # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
+            self._managed_state.register("input_output.u0_inv", "U", import_repository)
+            self._managed_state.register("input_output.v0_inv", "V", import_repository)
+            self._managed_state.register("input_output.qv0_inv", "Q", internal_repository)
+            self._managed_state.register("input_output.t0_inv", "T", import_repository)
+            self._managed_state.register_2D("input_output.cush", "CUSH", internal_repository)
+            self._managed_state.register_2D("input_output.cnvtr", "CNPCPRATE", export_repository, alloc=True)
 
-        debug = False
+            self._managed_state.register_2D("output.RKFRE", "RKFRE", export_repository, alloc=True)
+            self._managed_state.register("output.MFD_SC", "MFD_SC", export_repository, alloc=True)
+            self._managed_state.register("output.QLENT_SC", "QLENT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.QIENT_SC", "QIENT_SC", export_repository, alloc=True)
+            self._managed_state.register_K_interface("output.umf_inv", "UMF_SC", export_repository, alloc=True)
+            self._managed_state.register("output.dcm_inv", "DCM_SC", export_repository, alloc=True)
+            self._managed_state.register_K_interface("output.qtflx_inv", "QTFLX_SC", export_repository, alloc=True)
+            self._managed_state.register_K_interface("output.slflx_inv", "SLFLX_SC", export_repository, alloc=True)
+            self._managed_state.register_K_interface("output.uflx_inv", "UFLX_SC", export_repository, alloc=True)
+            self._managed_state.register_K_interface("output.vflx_inv", "VFLX_SC", export_repository, alloc=True)
+            self._managed_state.register("output.DQADT_SC", "DQADT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qvten_inv", "DQVDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qlten_inv", "DQLDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qiten_inv", "DQIDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.tten_inv", "DTDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.uten_inv", "DUDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.vten_inv", "DVDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qrten_inv", "DQRDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qsten_inv", "DQSDT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.cufrc_inv", "CUFRC_SC", export_repository, alloc=True)
+            self._managed_state.register("output.fer_inv", "ENTR_SC", export_repository, alloc=True)
+            self._managed_state.register("output.fdr_inv", "DETR_SC", export_repository, alloc=True)
+            self._managed_state.register("output.ndrop_inv", "SC_NDROP", export_repository, alloc=True)
+            self._managed_state.register("output.nice_inv", "SC_NICE", export_repository, alloc=True)
+            self._managed_state.register("output.qlsub_inv", "QLSUB_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qisub_inv", "QISUB_SC", export_repository, alloc=True)
+            self._managed_state.register("output.ql0_inv", "QLTOT", export_repository, alloc=True)
+            self._managed_state.register("output.qi0_inv", "QITOT", export_repository, alloc=True)
+            self._managed_state.register_2D("output.tpert_out", "TPERT_SC", export_repository, alloc=True)
+            self._managed_state.register_2D("output.qpert_out", "QPERT_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qidet_inv", "QIDET_SC", export_repository, alloc=True)
+            self._managed_state.register("output.qldet_inv", "QLDET_SC", export_repository, alloc=True)
+            self._managed_state.register_K_interface("output.CNV_MFC", "CNV_MFC", export_repository, alloc=True)
+            self._managed_state.register("output.CNV_MFD", "CNV_MFD", export_repository, alloc=True)
+            self._managed_state.register("output.SHLW_PRC3", "SHLW_PRC3", export_repository, alloc=True)
+            self._managed_state.register("output.SHLW_SNO3", "SHLW_SNO3", export_repository, alloc=True)
+            self._managed_state.register_2D("output.SC_QT", "SC_QT", export_repository)
+            self._managed_state.register_2D("output.SC_MSE", "SC_MSE", export_repository)
+            self._managed_state.register_2D("output.CUSH_SC", "CUSH_SC", export_repository)
+            self._managed_state.register("input_output.CLCN", "CLCN", internal_repository)
 
-        if not debug:
-            with TimedCUDAProfiler("UW", {}):
-                with TimedCUDAProfiler("UW - State copy", {}):
-                    self._managed_state.fortran_to_ndsl()
-                    safe_assign_array(
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                    )
+            # Unused from GEOS ?!
+            # CLLS = MAPLPy.get_pointer("CLLS", internal_state, dtype=np.float32)
+            # CNV_FRC = MAPLPy.get_pointer("CNV_FRC", export_state, dtype=np.float32, alloc=True)
+            # SRF_TYPE = MAPLPy.get_pointer("SRF_TYPE", export_state, dtype=np.float32, alloc=True)
 
-                with TimedCUDAProfiler("UW Numerics", {}):
-                    self._uw(self._managed_state.ndsl_state)
+            debug = False
 
-                with TimedCUDAProfiler("UW - State copy-back", {}):
-                    safe_assign_array(
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                    )
-                    self._managed_state.ndsl_to_fortran()
-        else:
-            with TimedCUDAProfiler("UW", {}):
-                with TimedCUDAProfiler("UW - State copy", {}):
-                    self._managed_state.fortran_to_ndsl()
-                    safe_assign_array(
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                    )
+            if not debug:
+                with TimedCUDAProfiler("UW", {}):
+                    with TimedCUDAProfiler("UW - State copy", {}):
+                        self._managed_state.fortran_to_ndsl()
+                        safe_assign_array(
+                            self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                            MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                        )
 
-                with TimedCUDAProfiler("UW Numerics", {}):
-                    self._uw(self._managed_state.ndsl_state)
+                    with TimedCUDAProfiler("UW Numerics", {}):
+                        self._uw(self._managed_state.ndsl_state)
 
-                with TimedCUDAProfiler("UW - State copy-back", {}):
-                    safe_assign_array(
-                        MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
-                        self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
-                    )
-                    self._managed_state.ndsl_to_fortran()
+                    with TimedCUDAProfiler("UW - State copy-back", {}):
+                        safe_assign_array(
+                            MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                            self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                        )
+                        self._managed_state.ndsl_to_fortran()
+            else:
+                with TimedCUDAProfiler("UW", {}):
+                    with TimedCUDAProfiler("UW - State copy", {}):
+                        self._managed_state.fortran_to_ndsl()
+                        safe_assign_array(
+                            self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                            MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                        )
+
+                    with TimedCUDAProfiler("UW Numerics", {}):
+                        self._uw(self._managed_state.ndsl_state)
+
+                    with TimedCUDAProfiler("UW - State copy-back", {}):
+                        safe_assign_array(
+                            MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
+                            self._managed_state.ndsl_state.input_output.CNV_Tracers.data[:],
+                        )
+                        self._managed_state.ndsl_to_fortran()
+
+        except Exception as e:
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.flush()
+            raise
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         self._managed_state.save_recorded()
