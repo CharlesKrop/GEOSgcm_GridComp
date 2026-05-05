@@ -105,7 +105,7 @@ class MoistInterface(UserCode):
         self._managed_state.register("surface_conditions.land_ice_fraction", "FRLANDICE", import_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("surface_conditions.ice_covered_fraction_of_tile", "FRACI", import_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("surface_conditions.snow_mass", "SNOMAS", import_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("surface_conditions.surface_type", "SRF_TYPE", import_repository, dims=[I_DIM, J_DIM])
+        self._managed_state.register("surface_conditions.surface_type", "SRF_TYPE", import_repository, dims=[I_DIM, J_DIM], alloc=True)
 
         # Levels
         self._managed_state.register("levels.pbl_level", "KPBL", import_repository, dims=[I_DIM, J_DIM])
@@ -127,7 +127,7 @@ class MoistInterface(UserCode):
         self._managed_state.register("cloud_condensates.liquid_concentration", "NACTL", internal_repository)
         self._managed_state.register("cloud_condensates.ice_concentration", "NACTI", internal_repository)
         self._managed_state.register("cloud_condensates.relative_humidity_wrt_ice", "RHICE", internal_repository)
-        self._managed_state.register("cloud_condensates.relative_humidity_wrt_liquid", "RHICE", internal_repository)
+        self._managed_state.register("cloud_condensates.relative_humidity_wrt_liquid", "RHLIQ", internal_repository)
         self._managed_state.register("cloud_condensates.number_concentration_water_friendly_aerosols", "NWFA", internal_repository)
         self._managed_state.register("cloud_condensates.ice_ccn_concentration", "NCCN_ICE", internal_repository)
         self._managed_state.register("cloud_condensates.liquid_ccn_concentration", "NCCN_LIQ", internal_repository)
@@ -267,8 +267,8 @@ class MoistInterface(UserCode):
         self._managed_state.register("state_at_output.large_scale_liquid", "QLLSX1", export_repository)
         
         # Diagnostics
-        self._managed_state.register("diagnostics.state_at_input.negative_vapor_adjustment_start", "FILLNQV_IN", export_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("diagnostics.state_at_input.negative_vapor_adjustment_end", "FILLNQV", export_repository, dims=[I_DIM, J_DIM])
+        self._managed_state.register("diagnostics.negative_vapor_adjustment_start", "FILLNQV_IN", export_repository, dims=[I_DIM, J_DIM])
+        self._managed_state.register("diagnostics.negative_vapor_adjustment_end", "FILLNQV", export_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("diagnostics.highest_level_of_scalar_diffusivity_gt_2", "KHu_moist", export_repository, dims = [I_DIM, J_DIM])
         self._managed_state.register("diagnostics.lowest_level_of_scalar_diffusivity_gt_2", "KHl_moist", export_repository, dims = [I_DIM, J_DIM])
         self._managed_state.register("diagnostics.condensed_water_path", "CWP", export_repository, dims = [I_DIM, J_DIM])

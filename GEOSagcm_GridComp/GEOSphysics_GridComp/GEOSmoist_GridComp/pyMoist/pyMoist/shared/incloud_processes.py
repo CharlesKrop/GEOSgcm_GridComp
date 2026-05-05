@@ -2,8 +2,8 @@
 These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
-from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, exp, float32, float64, floor, function, interval, log10, round_away_from_zero, sin
-from ndsl.dsl.typing import Float, FloatField
+from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, exp, float32, float64, floor, function, interval, log10, round_away_from_zero, sin, FORWARD
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
 import pyMoist.constants as constants
 from pyMoist.shared.atmos_recipes import air_density
@@ -488,3 +488,33 @@ def make_droplet_number(
         droplet_number = float32(qnc)
 
     return droplet_number
+
+
+def fix_mixing_ratio(
+    mixing_ratio: FloatField,
+    mass: FloatField,
+    adjustment: FloatFieldIJ,
+):
+    # predefine two FloatFieldIJ internal fields
+    with computation(FORWARD), interval(0, 1):
+        k_sum_1: FloatFieldIJ = 0.0
+        k_sum_2: FloatFieldIJ = 0.0
+
+    with computation(FORWARD), interval(...):
+        k_sum_1 = k_sum_1 + (mixing_ratio * mass)
+
+    with computation(PARALLEL), interval(...):
+        if mixing_ratio < 0.0:
+            mixing_ratio = 0.0
+
+    with computation(FORWARD), interval(...):
+        k_sum_2 = k_sum_2 + (mixing_ratio * mass)
+
+    with computation(PARALLEL), interval(...):
+        if k_sum_2 > 0.0:
+            factor = (k_sum_2 - k_sum_1) / k_sum_2
+            # reduce Q proportionally to the increase in TPW
+            mixing_ratio = mixing_ratio * (1.0 - factor)
+
+    with computation(FORWARD), interval(0, 1):
+        adjustment = k_sum_2 - k_sum_1

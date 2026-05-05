@@ -1110,7 +1110,7 @@ class MoistState(State):
 
     atmospheric_state: AtmosphericState
     surface_conditions: SurfaceConditions
-    levele: Levels
+    levels: Levels
     cloud_condensates: CloudCondensates
     convective_diagnostics: ConvectiveDiagnostics
     tendencies: Tendencies
@@ -1118,4 +1118,4 @@ class MoistState(State):
     precipitation_flux: PrecipitationFlux
     state_at_input: StateAtInput
     state_at_output: StateAtOutput
-    diagnosics: Diagnostics
+    diagnostics: Diagnostics
