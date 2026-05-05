@@ -7,7 +7,7 @@ from ndsl.stencils.basic_operations import copy
 from pyMoist.constants import MAPL_CP, MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.radiation_coupling import GFDL1MRadiationCoupling
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, compute_saturation_specific_humidity
 from pyMoist.shared.redistribute_clouds import redistribute_clouds
 
 
@@ -106,7 +106,7 @@ def fix_humidity(
     esx: GlobalTable_saturation_tables,
 ):
     with computation(PARALLEL), interval(...):
-        qsat, _ = saturation_specific_humidity(t, p_mb * 100, ese, esx)
+        qsat, _ = compute_saturation_specific_humidity(t, p_mb * 100, ese, esx)
         relative_humidity = vapor / qsat
 
 

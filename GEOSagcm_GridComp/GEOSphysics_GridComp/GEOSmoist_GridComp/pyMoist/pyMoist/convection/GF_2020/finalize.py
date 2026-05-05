@@ -19,7 +19,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020Cumu
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity, saturation_specific_humidity_liquid_surface
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, compute_saturation_specific_humidity, saturation_specific_humidity_liquid_surface
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared.incloud_processes import ice_fraction
 
@@ -875,7 +875,7 @@ def update_state_with_tendencies(
 
         # fix convective cloud fraction
         if FIX_CONVECTIVE_CLOUD:
-            saturation_humidity, _ = saturation_specific_humidity(t, p, ese, esx)
+            saturation_humidity, _ = compute_saturation_specific_humidity(t, p, ese, esx)
 
             if convective_cloud_fraction < 1.0:
                 modification = (vapor - saturation_humidity * convective_cloud_fraction) / (1.0 - convective_cloud_fraction)

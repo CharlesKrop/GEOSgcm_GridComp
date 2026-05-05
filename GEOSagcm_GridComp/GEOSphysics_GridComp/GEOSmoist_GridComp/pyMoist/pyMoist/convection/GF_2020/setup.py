@@ -17,7 +17,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020Cumu
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
-from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity
+from pyMoist.saturation_tables.saturation_specific_humidity_functions import compute_saturation_specific_humidity
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.saturation_tables.types import GlobalTable_saturation_tables
 
@@ -96,12 +96,12 @@ def compute_extra_inputs_from_state(
 
     with computation(FORWARD), interval(0, 1):
         tpwi = vapor * mass
-        qsat, _ = saturation_specific_humidity(t, p, ese, esx)
+        qsat, _ = compute_saturation_specific_humidity(t, p, ese, esx)
         tpwi_star = qsat * mass
 
     with computation(FORWARD), interval(1, -1):
         tpwi = tpwi + vapor * mass
-        qsat, _ = saturation_specific_humidity(t, p, ese, esx)
+        qsat, _ = compute_saturation_specific_humidity(t, p, ese, esx)
         tpwi_star = tpwi_star + qsat * mass
 
     with computation(FORWARD), interval(0, 1):

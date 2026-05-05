@@ -4,7 +4,7 @@ from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, compute_saturation_specific_humidity
 from pyMoist.shared.incloud_processes import fix_up_clouds
 from pyMoist.shared.radiation_coupling import radiation_coupling
 
@@ -28,7 +28,7 @@ def update_humidity(
         esx (GlobalTable_saturation_tables)
     """
     with computation(PARALLEL), interval(...):
-        qsat, _ = saturation_specific_humidity(temperature, pressure * 100, ese, esx)
+        qsat, _ = compute_saturation_specific_humidity(temperature, pressure * 100, ese, esx)
         humidity = vapor * qsat
 
 

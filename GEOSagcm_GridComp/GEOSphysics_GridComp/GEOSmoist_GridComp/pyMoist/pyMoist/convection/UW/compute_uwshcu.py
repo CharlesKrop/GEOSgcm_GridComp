@@ -25,7 +25,7 @@ from pyMoist.convection.UW.uwshcu_functions import (
     zvir,
 )
 from pyMoist.field_types import FloatField_NTracers, FloatFieldIJ_NTracers
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation, get_saturation_vapor_pressure_table, saturation_specific_humidity
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationFormulation, get_saturation_vapor_pressure_table, compute_saturation_specific_humidity
 from pyMoist.shared.atmos_recipes import sigma
 
 
@@ -3317,7 +3317,7 @@ def buoyancy_sorting(
                     rhomid0j = pe / (constants.MAPL_RDRY * thv0j * exne)
                     qsat_arg = thle * exne
                     qsatpe_tmp = qsat_pe / 100.0
-                    qs, _ = saturation_specific_humidity(qsat_arg, qsatpe_tmp * 100.0, ese, esx)
+                    qs, _ = compute_saturation_specific_humidity(qsat_arg, qsatpe_tmp * 100.0, ese, esx)
                     excess0 = qte - qs
 
                     thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, ese, esx)
@@ -3407,7 +3407,7 @@ def buoyancy_sorting(
                             tj = thj * exne  # This 'tj' is used for computing thermo. coeffs. below
                             qsat_arg = thlue * exne
                             pe_tmp = qsat_pe / 100.0
-                            qs, _ = saturation_specific_humidity(qsat_arg, pe_tmp * 100.0, ese, esx)
+                            qs, _ = compute_saturation_specific_humidity(qsat_arg, pe_tmp * 100.0, ese, esx)
                             excessu = qtue - qs
 
                             # Calculate critical mixing fraction, 'xc'. Mixture with

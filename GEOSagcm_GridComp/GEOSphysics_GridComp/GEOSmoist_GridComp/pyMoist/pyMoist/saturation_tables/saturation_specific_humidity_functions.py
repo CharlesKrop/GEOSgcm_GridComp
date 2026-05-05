@@ -105,7 +105,7 @@ def saturation_specific_humidity_liquid_surface(
 
 
 @function
-def saturation_specific_humidity(
+def compute_saturation_specific_humidity(
     t,
     p,
     ese,
