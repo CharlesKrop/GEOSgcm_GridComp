@@ -2,11 +2,15 @@
 These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
-from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, exp, float32, float64, floor, function, interval, log10, round_away_from_zero, sin, FORWARD
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, exp, float32, float64, floor, function, interval, log10, round_away_from_zero, sin, FORWARD, BACKWARD, K
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, IntFieldIJ, BoolFieldIJ
 
 import pyMoist.constants as constants
 from pyMoist.shared.atmos_recipes import air_density
+from ndsl import StencilFactory, QuantityFactory, Quantity, NDSLRuntime
+from ndsl.constants import I_DIM, J_DIM, K_DIM
+from pyMoist.shared.find_levels import find_t_lcl
+from pyMoist.saturation_tables import compute_saturation_specific_humidity
 
 
 @function
@@ -518,3 +522,463 @@ def fix_mixing_ratio(
 
     with computation(FORWARD), interval(0, 1):
         adjustment = k_sum_2 - k_sum_1
+
+
+def buoyancy_1(
+    t: FloatField,
+    layer_height_above_surface: FloatField,
+    layer_thickness: FloatField,
+    specific_humidity: FloatField,
+    saturation_specific_humidity: FloatField,
+    dsaturation_specific_humidity: FloatField,
+    buoyancy: FloatField,
+    cape: FloatFieldIJ,
+    cin: FloatFieldIJ,
+):
+    from __externals__ import k_end
+
+    with computation(FORWARD), interval(-1, None):
+        buoyancy = t + (constants.MAPL_GRAV / constants.MAPL_CP) * layer_height_above_surface + (constants.MAPL_ALHL / constants.MAPL_CP) * specific_humidity
+
+    with computation(BACKWARD), interval(...):
+        buoyancy = buoyancy.at(K=k_end) - (
+            t + (constants.MAPL_GRAV / constants.CP) * layer_height_above_surface + (constants.MAPL_ALHL / constants.MAPL_CP) * saturation_specific_humidity
+        )
+        buoyancy = constants.MAPL_GRAV * buoyancy / ((1.0 + constants.MAPL_ALHL * dsaturation_specific_humidity) * t)
+
+    with computation(FORWARD), interval(-1, None):
+        buoyancy = 0.0
+
+        cape = 0.0
+        cin = 0.0
+
+    with computation(FORWARD), interval(0, -1):
+        if buoyancy > 0.0:
+            cape = cape + buoyancy * layer_thickness
+        if buoyancy < 0.0:
+            cin = cin + buoyancy * layer_thickness
+
+    with computation(FORWARD), interval(0, 1):
+        if cape <= 0.0:
+            cape = constants.MAPL_UNDEF
+            cin = constants.MAPL_UNDEF
+
+
+class Buoyancy2(NDSLRuntime):
+    def __init__(self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory):
+        super().__init__(stencil_factory)
+
+        self._stencil_factory = stencil_factory
+
+        # functions and stencils to be used only in this class
+        def setup(
+            t: FloatField,
+            specific_humidity: FloatField,
+            environment_virtual_t: FloatField,
+            parcel_moist_static_energy: FloatFieldIJ,
+            parcel_specific_humidity: FloatFieldIJ,
+        ):
+
+            with computation(PARALLEL), interval(...):
+                environment_virtual_t = t * (1 + constants.MAPL_VIREPS * specific_humidity)
+
+            with computation(FORWARD), interval(0, 1):
+                parcel_moist_static_energy = 0.0
+                parcel_specific_humidity = 0.0
+
+        def get_cape_cin(
+            critical_level: IntFieldIJ,
+            t: FloatField,
+            p_mb: FloatField,
+            layer_height_above_surface: FloatField,
+            layer_thickness: FloatField,
+            saturation_specific_humidity: FloatField,
+            dsaturation_specific_humidity: FloatField,
+            environment_virtual_t: FloatField,
+            parcel_moist_static_energy: FloatFieldIJ,
+            parcel_specific_humidity: FloatFieldIJ,
+            buoyancy: FloatField,
+            cape: FloatFieldIJ,
+            cin: FloatFieldIJ,
+            lfc: FloatFieldIJ,
+            lnb: FloatFieldIJ,
+        ):
+            from __externals__ import k_end
+
+            with computation(PARALLEL), interval(...):
+                if K <= critical_level:
+                    buoyancy = 0.0
+
+            with computation(FORWARD), interval(0, 1):
+                parcel_specific_humidity_new = parcel_specific_humidity
+                cape = 0.0
+                cin = 0.0
+                lfc = constants.MAPL_UNDEF
+                lnb = constants.MAPL_UNDEF
+
+                # initial parcel temperature at source level (k_end)
+                parcel_t: FloatFieldIJ = (
+                    parcel_specific_humidity
+                    - (constants.MAPL_GRAV / constants.MAPL_CP) * layer_height_above_surface.at(K=k_end)
+                    - (constants.MAPL_ALHL / constants.MAPL_CP) * parcel_specific_humidity
+                )
+
+            with computation(FORWARD), interval(0, 1):
+                above_lcl: BoolFieldIJ = False
+                t_lcl = find_t_lcl(t=t, rh=100.0 * parcel_specific_humidity / saturation_specific_humidity.at(K=k_end))
+                if parcel_t < t_lcl:
+                    above_lcl = True
+
+            with computation(BACKWARD), interval(0, -1):
+                if K <= critical_level:
+                    # start at level above source air
+
+                    # determine parcel specific_humidity and temperature
+                    if above_lcl == False:
+                        # new parcel temperature w/o condensation
+                        parcel_t = parcel_t - (constants.MAPL_GRAV / constants.MAPL_CP) * (layer_height_above_surface - layer_height_above_surface[0, 0, 1]) / (
+                            1.0 + (constants.MAPL_ALHL / constants.MAPL_CP) * dsaturation_specific_humidity
+                        )
+                        if parcel_t < t_lcl:
+                            parcel_t = parcel_t + (constants.MAPL_GRAV / constants.MAPL_CP) * (layer_height_above_surface - layer_height_above_surface[0, 0, 1])
+                            above_lcl = True
+
+                    if above_lcl == True and parcel_specific_humidity_new * (constants.MAPL_ALHL / constants.MAPL_CP) > 0.01:
+                        # initial guess including condenssation
+                        parcel_t = parcel_t - (constants.MAPL_GRAV / constants.MAPL_CP) * (layer_height_above_surface - layer_height_above_surface[0, 0, 1]) / (
+                            1.0 + (constants.MAPL_ALHL / constants.MAPL_CP) * dsaturation_specific_humidity
+                        )
+                        # iterate until parcel is saturated
+                        iteration = 1
+                        while iteration <= 10:
+                            dspecific_humidity = parcel_specific_humidity_new - compute_saturation_specific_humidity(t=parcel_t, p=p_mb)
+                            if abs(dsaturation_specific_humidity - (constants.MAPL_ALHL / constants.MAPL_CP)) < 0.01:
+                                iteration = 11  # exit loop
+                            parcel_t = parcel_t + dspecific_humidity * (constants.MAPL_ALHL / constants.MAPL_CP) / (
+                                1.0 + (constants.MAPL_ALHL / constants.MAPL_CP) * dsaturation_specific_humidity
+                            )
+                            parcel_specific_humidity_new = parcel_specific_humidity_new - dspecific_humidity / (
+                                1.0 + (constants.MAPL_ALHL / constants.MAPL_CP) * dsaturation_specific_humidity
+                            )
+                            iteration += 1
+
+                    parcel_t = (
+                        parcel_moist_static_energy
+                        - (constants.MAPL_GRAV / constants.CP) * layer_height_above_surface
+                        - (constants.MAPL_ALHL / constants.MAPL_CP) * parcel_specific_humidity_new
+                    )
+
+                    parcel_virtual_t = parcel_t * (1.0 * constants.MAPL_VIREPS * parcel_specific_humidity_new)
+
+                    # parcel buoyancy
+                    buoyancy = constants.MAPL_GRAV * (parcel_virtual_t - environment_virtual_t) / environment_virtual_t
+
+            with computation(FORWARD), interval(0, 1):
+                lfc_level: IntFieldIJ = k_end
+                lnb_level: IntFieldIJ = k_end
+                above_lfc: BoolFieldIJ = False
+                stop_computation: BoolFieldIJ = False
+
+            # if surface parcel is immediately buoyant, scan upward to find the first elevated buoyancy > 0
+            # level above a buoyancy < 0 level. label it LFC
+            with computation(BACKWARD), interval(0, -2):
+                if K <= critical_level:
+                    if buoyancy.at(K=k_end - 1) > 0.0:
+                        if buoyancy > 0.0 and buoyancy[0, 0, 1] <= 0.0 and stop_computation == False:
+                            lfc_level = K
+                            above_lfc = True
+                        if above_lfc == True and buoyancy < 0.0 and stop_computation == False:
+                            lnb_level = K
+                            stop_computation = True
+
+            # if no such level is found in the previous block, set lfc as surface
+            with computation(BACKWARD), interval(0, -1):
+                if K <= critical_level:
+                    if buoyancy.at(K=k_end - 1) <= 0.0:
+                        if buoyancy > 0.0 and above_lfc == False and stop_computation == False:
+                            lfc_level = K
+                            above_lfc = True
+                        if above_lfc == True and buoyancy < 0.0 and stop_computation == False:
+                            lnb_level = K
+                            stop_computation = True
+
+            with computation(FORWARD), interval(0, 1):
+                lfc = layer_height_above_surface.at(K=lfc_level)
+                lnb = layer_height_above_surface.at(K=lnb_level)
+
+            with computation(FORWARD), interval(...):
+                if K <= critical_level:
+                    cape = cape + max(0.0, buoyancy * layer_thickness)
+                    if K >= lfc_level:
+                        cin = cin + min(0.0, buoyancy * layer_thickness)
+
+        def reset_to_undef_2d(field: FloatFieldIJ):
+            with computation(FORWARD), interval(0, 1):
+                if field <= 0.0:
+                    field = constants.MAPL_UNDEF
+
+        def max_along_k_dim(in_field: FloatField, out_field: FloatFieldIJ):
+            with computation(FORWARD), interval(0, 1):
+                out_field = constants.MAPL_UNDEF
+
+            with computation(FORWARD), interval(...):
+                if in_field > out_field:
+                    out_field = in_field
+
+        def mixed_layer_parcel(
+            t: FloatField,
+            specific_humidity: FloatField,
+            p_interface_mb: FloatField,
+            p_mb: FloatField,
+            layer_height_above_surface: FloatField,
+            layer_thickness: FloatField,
+            lfc: IntFieldIJ,
+            lnb: IntFieldIJ,
+            parcel_moist_static_energy: FloatFieldIJ,
+            parcel_specific_humidity: FloatFieldIJ,
+            critical_level: IntFieldIJ,
+        ):
+            from __externals__ import k_end
+
+            with computation(PARALLEL), interval(...):
+                buoyancy = constants.MAPL_UNDEF
+                aggregated_height = 0.0
+
+            with computation(FORWARD), interval(0, 1):
+                critical_level = 0
+                lfc = 0
+                lnb = 0
+
+            with computation(BACKWARD), interval(...):
+                if p_interface_mb - p_mb < 90.0:
+                    parcel_moist_static_energy = (
+                        parcel_moist_static_energy
+                        + (t + (constants.MAPL_GRAV / constants.MAPL_CP) * layer_height_above_surface + (constants.MAPL_ALHL / constants.MAPL_CP) * specific_humidity)
+                        * layer_thickness
+                    )
+                    parcel_specific_humidity = parcel_specific_humidity + specific_humidity * layer_thickness
+                    aggregated_height = aggregated_height + layer_thickness
+                    critical_level = K
+
+            with computation(FORWARD), interval(0, 1):
+                if aggregated_height > 0:
+                    # average
+                    parcel_moist_static_energy = parcel_moist_static_energy / aggregated_height
+                    parcel_specific_humidity = parcel_specific_humidity / aggregated_height
+
+        def most_unstable_parcel(
+            t: FloatField,
+            specific_humidity: FloatField,
+            p_interface_mb: FloatField,
+            p_mb: FloatField,
+            layer_height_above_surface: FloatField,
+            layer_thickness: FloatField,
+            lfc: IntFieldIJ,
+            lnb: IntFieldIJ,
+            mucape: FloatFieldIJ,
+            mucin: FloatFieldIJ,
+            parcel_moist_static_energy: FloatFieldIJ,
+            parcel_specific_humidity: FloatFieldIJ,
+            critical_level: IntFieldIJ,
+        ):
+            from __externals__ import k_end
+
+            with computation(PARALLEL), interval(...):
+                buoyancy = constants.MAPL_UNDEF
+
+            with computation(FORWARD), interval(0, 1):
+                mucape = 0.0
+                mucin = 0.0
+                lfc = constants.MAPL_UNDEF
+                lnb = constants.MAPL_UNDEF
+                stop_computation: BoolFieldIJ = False
+                critical_level = k_end
+
+            with computation(BACKWARD), interval(...):
+                if p_interface_mb - p_mb > 255.0:
+                    stop_computation = True
+                parcel_moist_static_energy = (
+                    t + (constants.MAPL_GRAV / constants.MAPL_CP) * layer_height_above_surface + (constants.MAPL_ALHL / constants.MAPL_CP) * specific_humidity
+                )
+                parcel_specific_humidity = specific_humidity
+
+        def surface_based_parcel(
+            t: FloatField,
+            specific_humidity: FloatField,
+            layer_height_above_surface: FloatField,
+            parcel_moist_static_energy: FloatFieldIJ,
+            parcel_specific_humidity: FloatFieldIJ,
+            critical_level: IntFieldIJ,
+        ):
+            from __externals__ import k_end
+
+            with computation(FORWARD), interval(0, 1):
+                critical_level = k_end
+
+            with computation(FORWARD), interval(-1, None):
+                parcel_moist_static_energy = (
+                    t + (constants.MAPL_GRAV / constants.MAPL_CP) * layer_height_above_surface + (constants.MAPL_ALHL / constants.MAPL_CP) * specific_humidity
+                )
+                parcel_specific_humidity = specific_humidity
+
+        self._setup = stencil_factory.from_dims_halo(func=setup, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._get_cape_cin = stencil_factory.from_dims_halo(func=get_cape_cin, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._reset_to_undef_2d = stencil_factory.from_dims_halo(func=reset_to_undef_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._max_along_k_dim = stencil_factory.from_dims_halo(func=max_along_k_dim, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._mixed_layer_parcel = stencil_factory.from_dims_halo(func=mixed_layer_parcel, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._most_unstable_parcel = stencil_factory.from_dims_halo(func=most_unstable_parcel, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._surface_based_parcel = stencil_factory.from_dims_halo(func=surface_based_parcel, compute_dims=[I_DIM, J_DIM, K_DIM])
+
+        # initialize locals
+        self._environment_virtual_t = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
+        self._parcel_moist_static_energy = self.make_local(quantity_factory, [I_DIM, J_DIM], Float)
+        self._parcel_specific_humidity = self.make_local(quantity_factory, [I_DIM, J_DIM], Float)
+        self._critical_level = self.make_local(quantity_factory, [I_DIM, J_DIM], Float)
+        self._mucape_3d = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
+        self._mucin_3d = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
+
+    def __call__(
+        self,
+        t: Quantity,
+        specific_humidity: Quantity,
+        p_interface_mb: Quantity,
+        p_mb: Quantity,
+        layer_height_above_surface: Quantity,
+        layer_thickness: Quantity,
+        saturation_specific_humidity: Quantity,
+        dsaturation_specific_humidity: Quantity,
+        buoyancy_surface_parcel: Quantity,
+        sbcape: Quantity,
+        mlcape: Quantity,
+        mucape: Quantity,
+        sbcin: Quantity,
+        mlcin: Quantity,
+        mucin: Quantity,
+        lfc: Quantity,
+        lnb: Quantity,
+    ):
+        self._setup(
+            t=t,
+            specific_humidity=specific_humidity,
+            environment_virtual_t=self._environment_virtual_t,
+            parcel_moist_static_energy=self._parcel_moist_static_energy,
+            parcel_specific_humidity=self._parcel_specific_humidity,
+        )
+
+        # Mixed-layer calculation. Parcel properties averaged over lowest 90 hPa
+        if mlcape is not None and mlcin is not None:
+            self._mixed_layer_parcel(
+                t=t,
+                specific_humidity=specific_humidity,
+                p_interface_mb=p_interface_mb,
+                p_mb=p_mb,
+                layer_height_above_surface=layer_height_above_surface,
+                layer_thickness=layer_thickness,
+                lfc=lfc,
+                lnb=lnb,
+                parcel_moist_static_energy=self._parcel_moist_static_energy,
+                parcel_specific_humidity=self._parcel_specific_humidity,
+                critica_level=self._critical_level,
+            )
+
+            self._get_cape_cin(
+                critica_level=self._critical_level,
+                t=t,
+                p_mb=p_mb,
+                layer_height_above_surface=layer_height_above_surface,
+                layer_thickness=layer_thickness,
+                saturation_specific_humidity=saturation_specific_humidity,
+                dsaturation_specific_humidity=dsaturation_specific_humidity,
+                environment_virtual_t=self._environment_virtual_t,
+                parcel_moist_static_energy=self._parcel_moist_static_energy,
+                parcel_specific_humidity=self._parcel_specific_humidity,
+                buoyancy=buoyancy_surface_parcel,
+                cape=mlcape,
+                cin=mlcin,
+                lfc=lfc,
+                lnb=lnb,
+            )
+
+            self._reset_to_undef_2d(field=mlcape)
+            self._reset_to_undef_2d(field=mlcin)
+
+        # Most unstable calculation. Parcel in lowest 255 hPa with largest CAPE
+        if mucape is not None and mucin is not None:
+            self._most_unstable_parcel(
+                t=t,
+                specific_humidity=specific_humidity,
+                p_interface_mb=p_interface_mb,
+                p_mb=p_mb,
+                layer_height_above_surface=layer_height_above_surface,
+                layer_thickness=layer_thickness,
+                lfc=lfc,
+                lnb=lnb,
+                mucape=mucape,
+                mucin=mucin,
+                parcel_moist_static_energy=self._parcel_moist_static_energy,
+                parcel_specific_humidity=self._parcel_specific_humidity,
+                critica_level=self._critical_level,
+            )
+
+            for k in range(self._stencil_factory.grid_indexing.domain_compute()[2]):
+                self._critical_level = k
+                self._get_cape_cin(
+                    critica_level=self._critical_level,
+                    t=t,
+                    p_mb=p_mb,
+                    layer_height_above_surface=layer_height_above_surface,
+                    layer_thickness=layer_thickness,
+                    saturation_specific_humidity=saturation_specific_humidity,
+                    dsaturation_specific_humidity=dsaturation_specific_humidity,
+                    environment_virtual_t=self._environment_virtual_t,
+                    parcel_moist_static_energy=self._parcel_moist_static_energy,
+                    parcel_specific_humidity=self._parcel_specific_humidity,
+                    buoyancy=buoyancy_surface_parcel,
+                    cape=mucape,
+                    cin=mucin,
+                    lfc=lfc,
+                    lnb=lnb,
+                )
+
+                # TODO need a better solution for this, but the design and use of get_cape_cin
+                # forces a compromise so that it can work with 2d and 3d situations.
+                # may need new feature(s) to implement this properly
+                self._mucape_3d[:, :, k] = mucape[:]
+                self._mucin_3d[:, :, k] = mucin[:]
+
+            self._max_along_k_dim(in_field=self._mucape_3d, out_field=mucape)
+            self._max_along_k_dim(in_field=self._mucin_3d, out_field=mucin)
+
+            self._reset_to_undef_2d(field=mucape)
+            self._reset_to_undef_2d(field=mucin)
+
+        # Surface-based calculation
+        self._surface_based_parcel(
+            t=t,
+            specific_humidity=specific_humidity,
+            layer_height_above_surface=layer_height_above_surface,
+            parcel_moist_static_energy=self._parcel_moist_static_energy,
+            parcel_specific_humidity=self._parcel_specific_humidity,
+            critical_level=self._critical_level,
+        )
+
+        self._get_cape_cin(
+            critica_level=self._critical_level,
+            t=t,
+            p_mb=p_mb,
+            layer_height_above_surface=layer_height_above_surface,
+            layer_thickness=layer_thickness,
+            saturation_specific_humidity=saturation_specific_humidity,
+            dsaturation_specific_humidity=dsaturation_specific_humidity,
+            environment_virtual_t=self._environment_virtual_t,
+            parcel_moist_static_energy=self._parcel_moist_static_energy,
+            parcel_specific_humidity=self._parcel_specific_humidity,
+            buoyancy=buoyancy_surface_parcel,
+            cape=sbcape,
+            cin=sbcin,
+            lfc=lfc,
+            lnb=lnb,
+        )
+
+        self._reset_to_undef_2d(field=sbcape)
+        self._reset_to_undef_2d(field=sbcin)

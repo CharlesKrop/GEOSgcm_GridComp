@@ -2,13 +2,14 @@ from pyMoist.state import MoistState
 from pyMoist.convection_tracers import ConvectionTracers
 from ndsl.stencils import set_value, copy, add, divide
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table, compute_saturation_specific_humidity, GlobalTable_saturation_tables
-from ndsl import StencilFactory, QuantityFactory
-from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD
-from ndsl.dsl.typing import FloatField, FloatFieldIJ, Float, IntFieldIJ
+from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
+from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, BACKWARD
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK, Float, IntFieldIJ
 import pyMoist.constants as constants
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from pyMoist.shared.incloud_processes import fix_mixing_ratio
+from pyMoist.shared.incloud_processes import fix_mixing_ratio, buoyancy_1, Buoyancy2
 from pyMoist.locals import MoistLocals
+from pyMoist.config import MoistConfig
 
 
 def get_alarm():
@@ -69,10 +70,11 @@ def compute_derived_state(
 
     saturation_specific_humidity, dsaturation_specific_humidity = compute_saturation_specific_humidity(t=t, p=p_mb, ese=ese, esx=esx)
 
+
 def find_highest_level_interface(
-        scalar_diffusivity: FloatField,
-        value: Float,
-        highest_level: IntFieldIJ,
+    scalar_diffusivity: FloatField,
+    value: Float,
+    highest_level: IntFieldIJ,
 ):
     """Find the highest level where a field is greater than a specified value.
 
@@ -88,20 +90,65 @@ def find_highest_level_interface(
 
     with computation(FORWARD), interval(...):
         if highest_level == -1 and scalar_diffusivity > value:
-
-    
-
-
-def find_lowest_level():
-    pass
+            highest_level = K
 
 
-def save_clb_level():
-    pass
+def find_lowest_level_interface(
+    scalar_diffusivity: FloatField,
+    value: Float,
+    lowest_level: IntFieldIJ,
+):
+    """Find the lowest level where a field is greater than a specified value.
+
+    This stencil must be build with K_INTERFACE_DIM to function properly.
+
+    Args:
+        field (FloatField): field to be analyzed
+        value (Float): threshold for comparison
+        lowest_level (IntFieldIJ): lowest level where field is greater than value
+    """
+    with computation(FORWARD), interval(0, 1):
+        lowest_level = -1
+
+    with computation(BACKWARD), interval(...):
+        if lowest_level == -1 and scalar_diffusivity > value:
+            lowest_level = K
 
 
-def set_convection_fraction():
-    pass
+def export_cbl_level(
+    cbl_level_before_moist: IntFieldIJ,
+    pbl_level: IntFieldIJ,
+    reference_pressure: FloatFieldK,
+    p_min_cbl: Float,
+):
+    from __externals__ import k_end
+
+    with computation(FORWARD), interval(0, 1):
+        min_cbl_level: IntFieldIJ = 0
+
+    with computation(FORWARD), interval(...):
+        if reference_pressure < p_min_cbl:
+            min_cbl_level += 1
+
+    with computation(FORWARD), interval(0, 1):
+        if pbl_level != 0:
+            cbl_level_before_moist = max(min(pbl_level + 1, k_end - 1), 1)
+        else:
+            cbl_level_before_moist = k_end - 1
+        cbl_level_before_moist = max(cbl_level_before_moist, min_cbl_level)
+
+
+def compute_convection_fraction(convection_fraction: FloatFieldIJ, cape: FloatFieldIJ):
+    from __externals__ import CONVECTION_FRACTION_MAX, CONVECTION_FRACTION_MIN, CONVECTION_FRACTION_EXP
+
+    with computation(FORWARD), interval(0, 1):
+        convection_fraction = 0.0
+        if CONVECTION_FRACTION_MAX > CONVECTION_FRACTION_MIN:
+            if cape != constants.MAPL_UNDEF:
+                convection_fraction = max(1.0e-6, min(1.0, (cape - convection_fraction) / (CONVECTION_FRACTION_MAX - CONVECTION_FRACTION_MIN)))
+
+        if CONVECTION_FRACTION_EXP != 1.0:
+            convection_fraction = convection_fraction**CONVECTION_FRACTION_EXP
 
 
 def initialize_convection_tracers():
@@ -140,8 +187,12 @@ def cloud_cleanup():
     pass
 
 
-class Moist:
-    def __init__(self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory):
+class Moist(NDSLRuntime):
+    def __init__(self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, config: MoistConfig):
+        super().__init__(stencil_factory)
+
+        self._config = config
+
         # initialize saturation vapor pressure tables
         self._saturation_tables = get_saturation_vapor_pressure_table(stencil_factory.backend)
 
@@ -149,39 +200,38 @@ class Moist:
         self._locals = MoistLocals.make_locals(quantity_factory)
 
         # construct stencils
-        self._set_value = stencil_factory.from_dims_halo(
-            func=set_value,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
+        self._set_value = stencil_factory.from_dims_halo(func=set_value, compute_dims=[I_DIM, J_DIM, K_DIM])
 
-        self._set_surface_type = stencil_factory.from_dims_halo(
-            func=set_surface_type,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
+        self._set_surface_type = stencil_factory.from_dims_halo(func=set_surface_type, compute_dims=[I_DIM, J_DIM, K_DIM])
 
-        self._compute_derived_state = stencil_factory.from_dims_halo(
-            func=compute_derived_state,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
+        self._compute_derived_state = stencil_factory.from_dims_halo(func=compute_derived_state, compute_dims=[I_DIM, J_DIM, K_DIM])
 
-        self._fix_mixing_ratio = stencil_factory.from_dims_halo(
-            func=fix_mixing_ratio,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
+        self._fix_mixing_ratio = stencil_factory.from_dims_halo(func=fix_mixing_ratio, compute_dims=[I_DIM, J_DIM, K_DIM])
 
-        self._copy = stencil_factory.from_dims_halo(
-            func=copy,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
+        self._copy = stencil_factory.from_dims_halo(func=copy, compute_dims=[I_DIM, J_DIM, K_DIM])
 
-        self._add = stencil_factory.from_dims_halo(
-            func=add,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
+        self._add = stencil_factory.from_dims_halo(func=add, compute_dims=[I_DIM, J_DIM, K_DIM])
 
-        self._divide = stencil_factory.from_dims_halo(
-            func=divide,
+        self._divide = stencil_factory.from_dims_halo(func=divide, compute_dims=[I_DIM, J_DIM, K_DIM])
+
+        self._find_highest_level_interface = stencil_factory.from_dims_halo(func=find_highest_level_interface, compute_dims=[I_DIM, J_DIM, K_DIM])
+
+        self._find_lowest_level_interface = stencil_factory.from_dims_halo(func=find_lowest_level_interface, compute_dims=[I_DIM, J_DIM, K_DIM])
+
+        self._export_cbl_level = stencil_factory.from_dims_halo(func=export_cbl_level, compute_dims=[I_DIM, J_DIM, K_DIM])
+
+        self._buoyancy_2 = Buoyancy2(stencil_factory=stencil_factory, quantity_factory=quantity_factory)
+
+        self._buoyancy_1 = stencil_factory.from_dims_halo(func=buoyancy_1, compute_dims=[I_DIM, J_DIM, K_DIM])
+
+        self._compute_convection_fraction = stencil_factory.from_dims_halo(
+            func=compute_convection_fraction,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "CONVECTION_FRACTION_MAX": config.CONVECTION_FRACTION_MAX,
+                "CONVECTION_FRACTION_MIN": config.CONVECTION_FRACTION_MIN,
+                "CONVECTION_FRACTION_EXP": config.CONVECTION_FRACTION_EXP,
+            },
         )
 
     def __call__(self, state: MoistState, convection_tracers: ConvectionTracers):
@@ -263,22 +313,68 @@ class Moist:
 
             # save scalar diffusivity levels
             if state.diagnostics.highest_level_of_scalar_diffusivity_gt_2 is not None:
-                find_highest_level_interface()
+                self._find_highest_level_interface(
+                    scalar_diffusivity=state.atmospheric_state.scalar_diffusivity_interface,
+                    value=Float(2.0),
+                    highest_level=state.diagnostics.highest_level_of_scalar_diffusivity_gt_2,
+                )
 
             if state.diagnostics.lowest_level_of_scalar_diffusivity_gt_2 is not None:
-                find_lowest_level()
+                self._find_lowest_level_interface(
+                    scalar_diffusivity=state.atmospheric_state.scalar_diffusivity_interface,
+                    value=Float(2.0),
+                    lowest_level=state.diagnostics.lowest_level_of_scalar_diffusivity_gt_2,
+                )
 
             if state.levels.cbl_level_before_moist is not None:
-                save_clb_level()
+                self._export_cbl_level(
+                    cbl_level_before_moist=state.levels.cbl_level_before_moist,
+                    pbl_level=state.levels.pbl_level,
+                    reference_pressure=state.atmospheric_state.reference_pressure,
+                    p_min_cbl=P_MIN_CBL,
+                )
+
+            # compute buoyancy and related parameters
+            self._buoyancy_2(
+                t=state.atmospheric_state.t,
+                specific_humidity=state.cloud_condensates.specific_humidity,
+                p_interface_mb=self._locals.p_interface_mb,
+                p_mb=self._locals.p_mb,
+                layer_height_above_surface=self._locals.layer_height_above_surface,
+                layer_thickness=self._locals.layer_thickness,
+                saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
+                buoyancy_surface_parcel=state.convective_diagnostics.buoyancy_surface_parcel,
+                sbcape=state.convective_diagnostics.sbcape,
+                mlcape=state.convective_diagnostics.mlcape,
+                mucape=state.convective_diagnostics.mucape,
+                sbcin=state.convective_diagnostics.sbcin,
+                mlcin=state.convective_diagnostics.mlcin,
+                mucin=state.convective_diagnostics.mucin,
+                lfc=state.convective_diagnostics.lfc,
+                lnb=state.convective_diagnostics.lnb,
+            )
+
+            self._buoyancy_1(
+                t=state.atmospheric_state.t,
+                layer_height_above_surface=self._locals.layer_height_above_surface,
+                layer_thickness=self._locals.layer_thickness,
+                specific_humidity=state.cloud_condensates.specific_humidity,
+                saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
+                buoyancy=state.convective_diagnostics.buoyancy_surface_parcel,
+                cape=state.convective_diagnostics.cape_surface_parcel,
+                cin=state.convective_diagnostics.cin_surface_parcel,
+            )
 
             # initialize diagnosed convective fraction
-            set_convection_fraction()
+            self._compute_convection_fraction(convection_fraction=state.convective_diagnostics.convection_fraction, cape=state.convective_diagnostics.cape_surface_parcel)
 
             # extract convective tracers from the TR bundle
             initialize_convection_tracers()
 
             # get aerosol activation properties
-            if USE_AEROSOL_NN:
+            if self._config.USE_AEROSOL_NN:
                 do_aerosol_activateion = True
             else:
                 do_aerosol_activateion = False

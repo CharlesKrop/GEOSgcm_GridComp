@@ -290,49 +290,49 @@ class ConvectiveDiagnostics:
     )
     sbcape: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
     sbcin: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
     mlcape: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
     mlcin: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
     mucape: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
     mucin: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    lfc_level: Quantity = dataclasses.field(
+    lfc: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    lnb_level: Quantity = dataclasses.field(
+    lnb: Quantity = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
