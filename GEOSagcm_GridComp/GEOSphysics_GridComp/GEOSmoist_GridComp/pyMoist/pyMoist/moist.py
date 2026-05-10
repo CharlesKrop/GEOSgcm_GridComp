@@ -1,6 +1,6 @@
 from pyMoist.state import MoistState
 from pyMoist.convection_tracers import ConvectionTracers
-from ndsl.stencils import set_value, copy, add, divide
+from ndsl.stencils import set_value, copy, add, divide, add_to_self, add_to_self_2d, multiply_2d, subtract_2d, copy_2d, set_value_2d
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table, compute_saturation_specific_humidity, GlobalTable_saturation_tables
 from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
 from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, BACKWARD
@@ -159,32 +159,186 @@ def export_concentrations():
     pass
 
 
-def update_cloud_fraction():
-    pass
+def update_cloud_fraction(
+    total_cloud_fraction: FloatField,
+    convective_cloud_fraction: FloatField,
+    convective_desired_phase: FloatField,
+    convective_other_phase: FloatField,
+    large_scale_cloud_fraction: FloatField,
+    large_scale_desired_phase: FloatField,
+    large_scale_other_phase: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        total_cloud_fraction = 0.0
+
+    with computation(PARALLEL), interval(...):
+        if convective_desired_phase + large_scale_desired_phase > 1.0e-12:
+            total_cloud_fraction = (
+                (convective_cloud_fraction + large_scale_cloud_fraction)
+                * (convective_desired_phase + large_scale_desired_phase)
+                / (convective_desired_phase + convective_other_phase + large_scale_desired_phase + large_scale_other_phase)
+            )
+        total_cloud_fraction
 
 
-def get_saturation_specific_humidity():
-    pass
+def get_saturation_specific_humidity(
+    t: FloatField,
+    p_mb: FloatField,
+    saturation_specific_humidity: FloatField,
+    dsaturation_specific_humidity: FloatField,
+    ese: GlobalTable_saturation_tables,
+    esx: GlobalTable_saturation_tables,
+):
+    with computation(PARALLEL), interval(...):
+        saturation_specific_humidity, dsaturation_specific_humidity = compute_saturation_specific_humidity(t=t, p=p_mb, ese=ese, esx=esx)
 
 
-def export_relative_humidity_wrt_ice():
-    pass
+def export_relative_humidity_wrt_ice(relative_humidity_wrt_ice: FloatField, t: FloatField, specific_humidity: FloatField, saturation_specific_humidity: FloatField):
+    with computation(PARALLEL), interval(...):
+        relative_humidity_wrt_ice = specific_humidity / saturation_specific_humidity
+
+        if t > constants.MAPL_TICE:
+            relative_humidity_wrt_ice = 0.0
 
 
-def export_output_saturation_ratio():
-    pass
+def export_output_saturation_ratio(
+    saturation_ratio: FloatField,
+    large_scale_ice_cloud_fraction: FloatField,
+    specific_humidity: FloatField,
+    saturation_specific_humidity: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        if large_scale_ice_cloud_fraction < 0.99 and saturation_specific_humidity > 1.0e-20:
+            numerator = max((specific_humidity - saturation_specific_humidity * large_scale_ice_cloud_fraction), 0.0) / (1.0 - large_scale_ice_cloud_fraction)
+            saturation_ratio = min(numerator / saturation_ratio, 2.0)
+        else:
+            saturation_ratio = 1.0
 
 
 def export_relative_humidity_wrt_liquid():
     pass
 
 
-def rain_out_excessive_rh():
-    pass
+def rain_out_excessive_rh(
+    t: FloatField,
+    specific_humidity: FloatField,
+    saturation_specific_humidity: FloatField,
+    dsaturation_specific_humidity: FloatField,
+    mass: FloatField,
+    rain_from_large_scale_nonanvil: FloatFieldIJ,
+    spurious_rain_from_relative_humidity_cleanup: FloatFieldIJ,
+    dt_dt_from_rh_cleanup: FloatField,
+    dspecific_humidity_dt_from_rh_cleanup: FloatField,
+):
+    from __externals__ import DT_MOIST
+
+    with computation(PARALLEL), interval(...):
+        if specific_humidity > 1.1 * saturation_specific_humidity:
+            excess_water = (specific_humidity - 1.1 * saturation_specific_humidity) / (
+                1.0 + 1.1 * dsaturation_specific_humidity * constants.MAPL_ALHL / constants.MAPL_CP
+            )
+        else:
+            excess_water = 0.0
+
+    with computation(FORWARD), interval(...):
+        spurious_rain_from_relative_humidity_cleanup = (excess_water * mass) / DT_MOIST
+
+    with computation(FORWARD), interval(0, 1):
+        rain_from_large_scale_nonanvil = rain_from_large_scale_nonanvil + spurious_rain_from_relative_humidity_cleanup
+
+    with computation(PARALLEL), interval(...):
+        t = t + (constants.MAPL_ALHL / constants.MAPL_CP) * excess_water
+        specific_humidity = specific_humidity - spurious_rain_from_relative_humidity_cleanup
+        dt_dt_from_rh_cleanup = (t - dt_dt_from_rh_cleanup) / DT_MOIST
+        dspecific_humidity_dt_from_rh_cleanup = (specific_humidity - dspecific_humidity_dt_from_rh_cleanup) / DT_MOIST
 
 
-def cloud_cleanup():
-    pass
+def divide_by_dt_moist_2d(input: FloatFieldIJ, output: FloatFieldIJ):
+    from __external__ import DT_MOIST
+
+    with computation(FORWARD), interval(0, 1):
+        output = input / DT_MOIST
+
+
+def multiply_by_dt_moist_2d(input: FloatFieldIJ, output: FloatFieldIJ):
+    from __external__ import DT_MOIST
+
+    with computation(FORWARD), interval(0, 1):
+        output = input * DT_MOIST
+
+
+def update_dlayer_pressure_thickness_dt(dlayer_pressure_thickness_dt: FloatField, field: FloatField):
+    with computation(PARALLEL), interval(...):
+        dlayer_pressure_thickness_dt = field - field[0, 0, 1]
+
+
+def ensure_non_negative_2d(field: FloatFieldIJ):
+    with computation(FORWARD), interval(0, 1):
+        field = max(field, 0.0)
+
+
+def get_Kuchera_ratios(p_mb: FloatField, t: FloatField, kuchera_ratio: FloatFieldIJ):
+    with computation(FORWARD), interval(0, 1):
+        t_max: FloatFieldIJ = 0.0
+
+    with computation(BACKWARD), interval(...):
+        if p_mb > 500.0:
+            t_max = max(t_max, t)
+
+    with computation(FORWARD), interval(0, 1):
+        if t_max <= 271.16:
+            kuchera_ratio = 12.0 + (271.16 - t_max)
+        else:
+            kuchera_ratio = 12.0 + 2 * (271.16 - t_max)
+
+
+def compute_snowfall_total(snowfall_total: FloatFieldIJ, snowfall: FloatFieldIJ, icefall: FloatFieldIJ, kuchera_ratio: FloatFieldIJ):
+    from __externals__ import DT_MOSIT
+
+    with computation(FORWARD), interval(0, 1):
+        snowfall_total = kuchera_ratio * DT_MOSIT * (snowfall + icefall)
+
+
+def compute_dry_static_energy(t: FloatField, layer_height_above_surface: FloatField, edge_height_above_surface: FloatField, dry_static_energy: FloatField):
+    from __externals__ import k_end
+
+    with computation(PARALLEL), interval(...):
+        dry_static_energy = constants.MAPL_CP * t + constants.MAPL_GRAV * (layer_height_above_surface - edge_height_above_surface.at(K=k_end))
+
+
+def compute_relative_humidty(
+    t: FloatField, p_mb: FloatField, specific_humidity: FloatField, relative_humidity: FloatField, ese: GlobalTable_saturation_tables, esx: GlobalTable_saturation_tables
+):
+    with computation(PARALLEL), interval(...):
+        saturation_specific_humidity, dsaturation_specific_humidity = get_saturation_specific_humidity(t=t, p_mb=p_mb, ese=ese, esx=esx)
+        relative_humidity = max(min(specific_humidity / saturation_specific_humidity, 1.02), 0.0)
+
+
+def compute_condensed_water_path(
+    convective_ice: FloatField,
+    convective_liquid: FloatField,
+    large_scale_ice: FloatField,
+    large_scale_liquid: FloatField,
+    mass: FloatField,
+    condensed_water_path: FloatFieldIJ,
+):
+    with computation(FORWARD), interval(...):
+        condensed_water_path += (convective_ice + convective_liquid + large_scale_ice + large_scale_liquid) * mass
+
+
+def compute_liquid_water_path(convective_liquid: FloatField, large_scale_liquid: FloatField, mass: FloatField, liquid_water_path: FloatFieldIJ):
+    with computation(FORWARD), interval(...):
+        liquid_water_path += (convective_liquid + large_scale_liquid) * mass
+
+
+def compute_ice_water_path(convective_ice: FloatField, large_scale_ice: FloatField, mass: FloatField, ice_water_path: FloatFieldIJ):
+    with computation(FORWARD), interval(...):
+        ice_water_path += (convective_ice + large_scale_ice) * mass
+
+
+def compute_total_precipitable_water(specific_humidity: FloatField, mass: FloatField, total_precipitable_water: FloatFieldIJ):
+    with computation(FORWARD), interval(...):
+        ice_water_path += specific_humidity * mass
 
 
 class Moist(NDSLRuntime):
@@ -198,32 +352,31 @@ class Moist(NDSLRuntime):
 
         # initialize locals
         self._locals = MoistLocals.make_locals(quantity_factory)
+        self._locals.my_value_is_1_2d.data[:] = Float(1.0)
+
+        # create convection tracers, to be initilalized at runtime
+        self.convection_tracers = ConvectionTracers.ones(
+            quantity_factory,
+            data_dimensions={
+                "convection_tracers": config.NUMBER_OF_TRACERS,
+                "size_three_dimension": 3,
+                "size_four_dimension": 4,
+            },
+        )
 
         # construct stencils
         self._set_value = stencil_factory.from_dims_halo(func=set_value, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._set_surface_type = stencil_factory.from_dims_halo(func=set_surface_type, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._compute_derived_state = stencil_factory.from_dims_halo(func=compute_derived_state, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._fix_mixing_ratio = stencil_factory.from_dims_halo(func=fix_mixing_ratio, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._copy = stencil_factory.from_dims_halo(func=copy, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._add = stencil_factory.from_dims_halo(func=add, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._divide = stencil_factory.from_dims_halo(func=divide, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._find_highest_level_interface = stencil_factory.from_dims_halo(func=find_highest_level_interface, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._find_lowest_level_interface = stencil_factory.from_dims_halo(func=find_lowest_level_interface, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._export_cbl_level = stencil_factory.from_dims_halo(func=export_cbl_level, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._buoyancy_2 = Buoyancy2(stencil_factory=stencil_factory, quantity_factory=quantity_factory)
-
         self._buoyancy_1 = stencil_factory.from_dims_halo(func=buoyancy_1, compute_dims=[I_DIM, J_DIM, K_DIM])
-
         self._compute_convection_fraction = stencil_factory.from_dims_halo(
             func=compute_convection_fraction,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -233,6 +386,33 @@ class Moist(NDSLRuntime):
                 "CONVECTION_FRACTION_EXP": config.CONVECTION_FRACTION_EXP,
             },
         )
+        self._update_cloud_fraction = stencil_factory.from_dims_halo(func=update_cloud_fraction, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._get_saturation_specific_humidity = stencil_factory.from_dims_halo(func=get_saturation_specific_humidity, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._export_relative_humidity_wrt_ice = stencil_factory.from_dims_halo(func=export_relative_humidity_wrt_ice, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._export_output_saturation_ratio = stencil_factory.from_dims_halo(func=export_output_saturation_ratio, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._rain_out_excessive_rh = stencil_factory.from_dims_halo(func=rain_out_excessive_rh, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._divide_by_dt_moist_2d = stencil_factory.from_dims_halo(
+            func=divide_by_dt_moist_2d, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"DT_MOIST": config.DT_MOIST}
+        )
+        self._add_to_self = stencil_factory.from_dims_halo(func=add_to_self, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._update_dlayer_pressure_thickness_dt = stencil_factory.from_dims_halo(func=update_dlayer_pressure_thickness_dt, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._add_to_self_2d = stencil_factory.from_dims_halo(func=add_to_self_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._ensure_non_negative_2d = stencil_factory.from_dims_halo(func=ensure_non_negative_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._subtract_2d = stencil_factory.from_dims_halo(func=subtract_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._multiply_2d = stencil_factory.from_dims_halo(func=multiply_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._get_Kuchera_ratios = stencil_factory.from_dims_halo(func=get_Kuchera_ratios, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._copy_2d = stencil_factory.from_dims_halo(func=copy_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._compute_snowfall_total = stencil_factory.from_dims_halo(func=compute_snowfall_total, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._multiply_by_dt_moist_2d = stencil_factory.from_dims_halo(
+            func=multiply_by_dt_moist_2d, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"DT_MOIST": config.DT_MOIST}
+        )
+        self._compute_dry_static_energy = stencil_factory.from_dims_halo(func=compute_dry_static_energy, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._compute_relative_humidty = stencil_factory.from_dims_halo(func=compute_relative_humidty, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._compute_condensed_water_path = stencil_factory.from_dims_halo(func=compute_condensed_water_path, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._compute_liquid_water_path = stencil_factory.from_dims_halo(func=compute_liquid_water_path, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._compute_ice_water_path = stencil_factory.from_dims_halo(func=compute_ice_water_path, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._compute_total_precipitable_water = stencil_factory.from_dims_halo(func=compute_total_precipitable_water, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._set_value_2d = stencil_factory.from_dims_halo(func=set_value_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
 
     def __call__(self, state: MoistState, convection_tracers: ConvectionTracers):
         # Get alarm - is on (ringing) when pulled
@@ -383,7 +563,7 @@ class Moist(NDSLRuntime):
             export_concentrations()
 
             # run convection and microphysics
-            if SH_MD_DEEP:
+            if SH_MD_DP:
                 if SHALLOW_OPTION == "UW":
                     run_UW = True
                 if CONVPAR_OPTION == "RAS":
@@ -409,36 +589,575 @@ class Moist(NDSLRuntime):
 
             # export cloud fractions
             if state.cloud_condensates.large_scale_ice_cloud_fraction is not None:
-                update_cloud_fraction()
+                self._update_cloud_fraction(
+                    total_cloud_fraction=state.cloud_condensates.large_scale_ice_cloud_fraction,
+                    convective_cloud_fraction=state.cloud_condensates.convective_cloud_fraction,
+                    convective_desired_phase=state.cloud_condensates.convective_ice,
+                    convective_other_phase=state.cloud_condensates.convective_liquid,
+                    large_scale_cloud_fraction=state.cloud_condensates.large_scale_cloud_fraction,
+                    large_scale_desired_phase=state.cloud_condensates.large_scale_ice,
+                    large_scale_other_phase=state.cloud_condensates.large_scale_liquid,
+                )
 
             if state.cloud_condensates.large_scale_liquid_cloud_fraction is not None:
-                update_cloud_fraction()
+                self._update_cloud_fraction(
+                    total_cloud_fraction=state.cloud_condensates.large_scale_ice_cloud_fraction,
+                    convective_cloud_fraction=state.cloud_condensates.convective_cloud_fraction,
+                    convective_desired_phase=state.cloud_condensates.convective_liquid,
+                    convective_other_phase=state.cloud_condensates.convective_ice,
+                    large_scale_cloud_fraction=state.cloud_condensates.large_scale_cloud_fraction,
+                    large_scale_desired_phase=state.cloud_condensates.large_scale_liquid,
+                    large_scale_other_phase=state.cloud_condensates.large_scale_ice,
+                )
 
             # rain-out and relative humidity where RH > 110%
             copy(state.atmospheric_state.t, state.tendencies.dt_dt_from_rh_cleanup)
             copy(state.cloud_condensates.specific_humidity, state.tendencies.dspecific_humidity_dt_from_rh_cleanup)
 
             # compute saturation specific humidity values for current P and T
-            get_saturation_specific_humidity()
+            self._get_saturation_specific_humidity(
+                t=state.atmospheric_state.t,
+                p_mb=self._locals.p_mb,
+                saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
+                ese=self._saturation_tables.ese,
+                esx=self._saturation_tables.esx,
+            )
 
             if state.cloud_condensates.relative_humidity_wrt_ice is not None:
-                export_relative_humidity_wrt_ice()
+                self._export_relative_humidity_wrt_ice(
+                    t=state.atmospheric_state.t,
+                    p_mb=self._locals.p_mb,
+                    saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                    dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
+                    ese=self._saturation_tables.ese,
+                    esx=self._saturation_tables.esx,
+                )
 
             if state.state_at_output.saturation_ratio is not None:
-                export_output_saturation_ratio()
+                self._export_output_saturation_ratio(
+                    saturation_ratio=state.state_at_output.saturation_ratio,
+                    large_scale_ice_cloud_fraction=state.cloud_condensates.large_scale_ice_cloud_fraction,
+                    specific_humidity=state.cloud_condensates.specific_humidity,
+                    saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                )
 
             if CLDMICR_OPTION == "MGB2_2M":
                 raise ValueError(f"{CLDMICR_OPTION} microphysics not implemented. Please choose a different option.")
             else:
-                get_saturation_specific_humidity()
+                self._get_saturation_specific_humidity(
+                    t=state.atmospheric_state.t,
+                    p_mb=self._locals.p_mb,
+                    saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                    dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
+                    ese=self._saturation_tables.ese,
+                    esx=self._saturation_tables.esx,
+                )
 
             if state.cloud_condensates.relative_humidity_wrt_liquid is not None:
-                export_relative_humidity_wrt_liquid()
+                self._divide(
+                    input_1=state.cloud_condensates.specific_humidity,
+                    input_2=self._locals.saturation_specific_humidity,
+                    output=state.cloud_condensates.relative_humidity_wrt_liquid,
+                )
 
             # rain out excessive RH
-            rain_out_excessive_rh()
+            self._rain_out_excessive_rh(
+                t=state.atmospheric_state.t,
+                specific_humidity=state.cloud_condensates.specific_humidity,
+                saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
+                mass=self._locals.mass,
+                rain_from_large_scale_nonanvil=state.precipitation_at_surface.rain_from_large_scale_nonanvil,
+                spurious_rain_from_relative_humidity_cleanup=state.precipitation_at_surface.spurious_rain_from_relative_humidity_cleanup,
+                dt_dt_from_rh_cleanup=state.tendencies.dt_dt_from_rh_cleanup,
+                dspecific_humidity_dt_from_rh_cleanup=state.tendencies.dspecific_humidity_dt_from_rh_cleanup,
+            )
 
             # cleanup any negative specific_humidity/QC/CF
-            cloud_cleanup()
+            self._fix_mixing_ratio(
+                mixing_ratio=state.cloud_condensates.specific_humidity,
+                mass=self._locals.mass,
+                adjustment=self._locals.temporary_2d,
+            )
+
             if state.diagnostics.negative_vapor_adjustment_end is not None:
-                export_negative_vapor_adjustment_end()
+                self._divide_by_dt_moist_2d(input=self._locals.temporary_2d, output=state.diagnostics.negative_vapor_adjustment_end)
+
+            # export total moist tendencies and fluxes
+            # zonal wind
+            if state.tendencies.du_dt is not None:
+                self._set_value(field=state.tendencies.du_dt, value=Float(0.0))
+                if state.tendencies.du_dt_deep_convection is not None:
+                    self._add_to_self(field=state.tendencies.du_dt, summand=state.tendencies.du_dt_deep_convection)
+                if state.tendencies.du_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.du_dt, summand=state.tendencies.du_dt_shallow_convection)
+                if state.tendencies.du_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.du_dt, summand=state.tendencies.du_dt_macrophysics)
+                if state.tendencies.du_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.du_dt, summand=state.tendencies.du_dt_microphysics)
+
+            # meridional wind
+            if state.tendencies.dv_dt is not None:
+                self._set_value(field=state.tendencies.dv_dt, value=Float(0.0))
+                if state.tendencies.dv_dt_deep_convection is not None:
+                    self._add_to_self(field=state.tendencies.dv_dt, summand=state.tendencies.dv_dt_deep_convection)
+                if state.tendencies.dv_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.dv_dt, summand=state.tendencies.dv_dt_shallow_convection)
+                if state.tendencies.dv_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dv_dt, summand=state.tendencies.dv_dt_macrophysics)
+                if state.tendencies.dv_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dv_dt, summand=state.tendencies.dv_dt_microphysics)
+
+            # temperature
+            if state.tendencies.dt_dt is not None:
+                self._set_value(field=state.tendencies.dt_dt, value=Float(0.0))
+                if state.tendencies.dt_dt_deep_convection is not None:
+                    self._add_to_self(field=state.tendencies.dt_dt, summand=state.tendencies.dt_dt_deep_convection)
+                if state.tendencies.dt_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.dt_dt, summand=state.tendencies.dt_dt_shallow_convection)
+                if state.tendencies.dt_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dt_dt, summand=state.tendencies.dt_dt_macrophysics)
+                if state.tendencies.dt_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dt_dt, summand=state.tendencies.dt_dt_microphysics)
+                if state.tendencies.dt_dt_from_rh_cleanup is not None:
+                    self._add_to_self(field=state.tendencies.dt_dt, summand=state.tendencies.dt_dt_from_rh_cleanup)
+
+            # specific humidity
+            if state.tendencies.dspecific_humidity_dt is not None:
+                self._set_value(field=state.tendencies.dspecific_humidity_dt, value=Float(0.0))
+                if state.tendencies.dspecific_humidity_dt_deep_convection is not None:
+                    self._add_to_self(field=state.tendencies.dspecific_humidity_dt, summand=state.tendencies.dspecific_humidity_dt_deep_convection)
+                if state.tendencies.dspecific_humidity_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.dspecific_humidity_dt, summand=state.tendencies.dspecific_humidity_dt_shallow_convection)
+                if state.tendencies.dspecific_humidity_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dspecific_humidity_dt, summand=state.tendencies.dspecific_humidity_dt_macrophysics)
+                if state.tendencies.dspecific_humidity_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dspecific_humidity_dt, summand=state.tendencies.dspecific_humidity_dt_microphysics)
+                if state.tendencies.dspecific_humidity_dt_from_rh_cleanup is not None:
+                    self._add_to_self(field=state.tendencies.dspecific_humidity_dt, summand=state.tendencies.dspecific_humidity_dt_from_rh_cleanup)
+
+            # liquid mixing ratio
+            if state.tendencies.dliquid_dt is not None:
+                self._set_value(field=state.tendencies.dliquid_dt, value=Float(0.0))
+                if state.tendencies.dliquid_dt_deep_convection is not None:
+                    self._add_to_self(field=state.tendencies.dliquid_dt, summand=state.tendencies.dliquid_dt_deep_convection)
+                if state.tendencies.dliquid_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.dliquid_dt, summand=state.tendencies.dliquid_dt_shallow_convection)
+                if state.tendencies.dliquid_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dliquid_dt, summand=state.tendencies.dliquid_dt_macrophysics)
+                if state.tendencies.dliquid_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dliquid_dt, summand=state.tendencies.dliquid_dt_microphysics)
+
+            # ice mixing ratio
+            if state.tendencies.dice_dt is not None:
+                self._set_value(field=state.tendencies.dice_dt, value=Float(0.0))
+                if state.tendencies.dice_dt_deep_convection is not None:
+                    self._add_to_self(field=state.tendencies.dice_dt, summand=state.tendencies.dice_dt_deep_convection)
+                if state.tendencies.dice_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.dice_dt, summand=state.tendencies.dice_dt_shallow_convection)
+                if state.tendencies.dice_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dice_dt, summand=state.tendencies.dice_dt_macrophysics)
+                if state.tendencies.dice_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dice_dt, summand=state.tendencies.dice_dt_microphysics)
+
+            # rain mixing ratio
+            if state.tendencies.drain_dt is not None:
+                self._set_value(field=state.tendencies.drain_dt, value=Float(0.0))
+                if state.tendencies.drain_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.drain_dt, summand=state.tendencies.drain_dt_shallow_convection)
+                if state.tendencies.drain_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.drain_dt, summand=state.tendencies.drain_dt_macrophysics)
+                if state.tendencies.drain_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.drain_dt, summand=state.tendencies.drain_dt_microphysics)
+
+            # snow specific humidity
+            if state.tendencies.dsnow_dt is not None:
+                self._set_value(field=state.tendencies.dsnow_dt, value=Float(0.0))
+                if state.tendencies.dsnow_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.dsnow_dt, summand=state.tendencies.dsnow_dt_shallow_convection)
+                if state.tendencies.dsnow_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dsnow_dt, summand=state.tendencies.dsnow_dt_macrophysics)
+                if state.tendencies.dsnow_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dsnow_dt, summand=state.tendencies.dsnow_dt_microphysics)
+
+            # graupel mixing ratio
+            if state.tendencies.dgraupel_dt is not None:
+                self._set_value(field=state.tendencies.dgraupel_dt, value=Float(0.0))
+                if state.tendencies.dgraupel_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dgraupel_dt, summand=state.tendencies.dgraupel_dt_macrophysics)
+                if state.tendencies.dgraupel_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dgraupel_dt, summand=state.tendencies.dgraupel_dt_microphysics)
+
+            # cloud fraction
+            if state.tendencies.dtotal_cloud_fraciton_dt is not None:
+                self._set_value(field=state.tendencies.dtotal_cloud_fraciton_dt, value=Float(0.0))
+                if state.tendencies.dtotal_cloud_fraciton_dt_deep_convection is not None:
+                    self._add_to_self(field=state.tendencies.dtotal_cloud_fraciton_dt, summand=state.tendencies.dtotal_cloud_fraciton_dt_deep_convection)
+                if state.tendencies.dtotal_cloud_fraciton_dt_shallow_convection is not None:
+                    self._add_to_self(field=state.tendencies.dtotal_cloud_fraciton_dt, summand=state.tendencies.dtotal_cloud_fraciton_dt_shallow_convection)
+                if state.tendencies.dtotal_cloud_fraciton_dt_macrophysics is not None:
+                    self._add_to_self(field=state.tendencies.dtotal_cloud_fraciton_dt, summand=state.tendencies.dtotal_cloud_fraciton_dt_macrophysics)
+                if state.tendencies.dtotal_cloud_fraciton_dt_microphysics is not None:
+                    self._add_to_self(field=state.tendencies.dtotal_cloud_fraciton_dt, summand=state.tendencies.dtotal_cloud_fraciton_dt_microphysics)
+
+            # layer pressure thickness
+            if state.tendencies.dlayer_pressure_thickness_dt is not None:
+                self._set_value(field=state.tendencies.dlayer_pressure_thickness_dt, value=Float(0.0))
+                if state.precipitation_flux.ice_convection is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.ice_convection
+                    )
+                if state.precipitation_flux.ice_shallow_convection is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.ice_shallow_convection
+                    )
+                if state.precipitation_flux.ice_anvil is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.ice_anvil
+                    )
+                if state.precipitation_flux.ice_nonanvil_large_scale is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.ice_nonanvil_large_scale
+                    )
+                if state.precipitation_flux.liquid_convection is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.liquid_convection
+                    )
+                if state.precipitation_flux.liquid_shallow_convection is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.liquid_shallow_convection
+                    )
+                if state.precipitation_flux.liquid_anvil is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.liquid_anvil
+                    )
+                if state.precipitation_flux.liquid_nonanvil_large_scale is not None:
+                    self._update_dlayer_pressure_thickness_dt(
+                        dlayer_pressure_thickness_dt=state.tendencies.dlayer_pressure_thickness_dt, field=state.precipitation_flux.liquid_nonanvil_large_scale
+                    )
+
+            # non-convective liquid flux
+            if state.precipitation_flux.liquid_nonconvective is not None:
+                self._set_value(field=state.precipitation_flux.liquid_nonconvective, value=Float(0.0))
+                if state.precipitation_flux.liquid_anvil is not None:
+                    self._add_to_self(field=state.precipitation_flux.liquid_anvil, summand=state.precipitation_flux.liquid_anvil)
+                if state.precipitation_flux.liquid_nonanvil_large_scale is not None:
+                    self._add_to_self(field=state.precipitation_flux.liquid_anvil, summand=state.precipitation_flux.liquid_nonanvil_large_scale)
+
+            # non-convective ice flux
+            if state.precipitation_flux.ice_nonconvective is not None:
+                self._set_value(field=state.precipitation_flux.ice_nonconvective, value=Float(0.0))
+                if state.precipitation_flux.ice_anvil is not None:
+                    self._add_to_self(field=state.precipitation_flux.ice_anvil, summand=state.precipitation_flux.ice_anvil)
+                if state.precipitation_flux.ice_nonanvil_large_scale is not None:
+                    self._add_to_self(field=state.precipitation_flux.ice_anvil, summand=state.precipitation_flux.ice_nonanvil_large_scale)
+
+            # convective rain
+            if state.precipitation_at_surface.rain_from_all_convection is not None:
+                self._set_value(field=state.precipitation_at_surface.rain_from_all_convection, value=Float(0.0))
+                if state.precipitation_at_surface.rain_from_deep_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_all_convection, summand=state.precipitation_at_surface.rain_from_deep_convection)
+                if state.precipitation_at_surface.rain_from_deep_convection is not None:
+                    self._add_to_self_2d(
+                        field=state.precipitation_at_surface.rain_from_all_convection, summand=state.precipitation_at_surface.rain_from_shallow_convection
+                    )
+                if state.precipitation_at_surface.rain_from_deep_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_all_convection, summand=state.precipitation_at_surface.rain_from_GF_convection)
+
+            # large scale rain
+            if state.precipitation_at_surface.rain_from_all_large_scale is not None:
+                self._set_value(field=state.precipitation_at_surface.rain_from_all_large_scale, value=Float(0.0))
+                if state.precipitation_at_surface.rain_from_large_scale_nonanvil is not None:
+                    self._add_to_self_2d(
+                        field=state.precipitation_at_surface.rain_from_all_large_scale, summand=state.precipitation_at_surface.rain_from_large_scale_nonanvil
+                    )
+                if state.precipitation_at_surface.rain_from_large_scale_anvil is not None:
+                    self._add_to_self_2d(
+                        field=state.precipitation_at_surface.rain_from_all_large_scale, summand=state.precipitation_at_surface.rain_from_large_scale_anvil
+                    )
+
+            # total rain
+            if state.precipitation_at_surface.rainfall is not None:
+                self._set_value(field=state.precipitation_at_surface.rainfall, value=Float(0.0))
+                if state.precipitation_at_surface.rain_from_large_scale_nonanvil is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.rain_from_large_scale_nonanvil)
+                if state.precipitation_at_surface.rain_from_large_scale_anvil is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.rain_from_large_scale_nonanvil)
+                if state.precipitation_at_surface.rain_from_deep_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.rain_from_deep_convection)
+                if state.precipitation_at_surface.rain_from_shallow_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.rain_from_shallow_convection)
+                if state.precipitation_at_surface.rain_from_GF_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.rain_from_GF_convection)
+
+            # total snow
+            if state.precipitation_at_surface.snowfall is not None:
+                self._set_value(field=state.precipitation_at_surface.snowfall, value=Float(0.0))
+                if state.precipitation_at_surface.large_scale_snow is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.large_scale_snow)
+                if state.precipitation_at_surface.anvil_snow is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.anvil_snow)
+                if state.precipitation_at_surface.deep_convection_snow is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.deep_convection_snow)
+                if state.precipitation_at_surface.shallow_convection_snow is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rainfall, summand=state.precipitation_at_surface.shallow_convection_snow)
+
+            # all deep convective precip (rain + snow + ice + freezing rain)
+            if state.precipitation_at_surface.rain_from_deep_convection is not None:
+                if state.precipitation_at_surface.rain_from_GF_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_deep_convection, summand=state.precipitation_at_surface.rain_from_GF_convection)
+                if state.precipitation_at_surface.deep_convection_snow is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_deep_convection, summand=state.precipitation_at_surface.deep_convection_snow)
+
+            # all large-scale precip (rain + snow)
+            if state.precipitation_at_surface.rain_from_large_scale_nonanvil is not None:
+                if state.precipitation_at_surface.large_scale_snow is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_large_scale_nonanvil, summand=state.precipitation_at_surface.large_scale_snow)
+                if state.precipitation_at_surface.icefall is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_large_scale_nonanvil, summand=state.precipitation_at_surface.icefall)
+                if state.precipitation_at_surface.freezing_rainfall is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_large_scale_nonanvil, summand=state.precipitation_at_surface.freezing_rainfall)
+
+            # all anvil precip (rain + snow)
+            if state.precipitation_at_surface.rain_from_large_scale_anvil is not None:
+                if state.precipitation_at_surface.anvil_snow is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.rain_from_large_scale_anvil, summand=state.precipitation_at_surface.anvil_snow)
+
+            if state.precipitation_at_surface.rain_from_shallow_convection is not None:
+                if state.precipitation_at_surface.shallow_convection_snow is not None:
+                    self._add_to_self_2d(
+                        field=state.precipitation_at_surface.rain_from_shallow_convection, summand=state.precipitation_at_surface.shallow_convection_snow
+                    )
+
+            # total - all precip
+            if state.precipitation_at_surface.total_precipitation is not None:
+                self._set_value(field=state.precipitation_at_surface.total_precipitation, value=Float(0.0))
+                if state.precipitation_at_surface.rain_from_large_scale_nonanvil is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.total_precipitation, summand=state.precipitation_at_surface.rain_from_large_scale_nonanvil)
+                if state.precipitation_at_surface.rain_from_large_scale_anvil is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.total_precipitation, summand=state.precipitation_at_surface.rain_from_large_scale_anvil)
+                if state.precipitation_at_surface.rain_from_deep_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.total_precipitation, summand=state.precipitation_at_surface.rain_from_deep_convection)
+                if state.precipitation_at_surface.rain_from_shallow_convection is not None:
+                    self._add_to_self_2d(field=state.precipitation_at_surface.total_precipitation, summand=state.precipitation_at_surface.rain_from_shallow_convection)
+                self._ensure_non_negative_2d(field=state.precipitation_at_surface.total_precipitation)
+
+            # diagnosed stratiform precip
+            if state.precipitation_at_surface.total_stratiform_precipitation is not None:
+                if self._config.CONVECTION_FRACTION_MAX > self._config.CONVECTION_FRACTION_MIN:
+                    self._subtract_2d(
+                        minuend=self._locals.my_value_is_1_2d, subtrahend=state.convective_diagnostics.convection_fraction, difference=self._locals.temporary_2d
+                    )
+                    self._multiply_2d(
+                        factor_1=self._locals.temporary_2d,
+                        factor_2=state.precipitation_at_surface.total_precipitation,
+                        product=state.precipitation_at_surface.total_stratiform_precipitation,
+                    )
+                else:
+                    self._set_value(field=state.precipitation_at_surface.total_stratiform_precipitation, value=Float(0.0))
+                    if state.precipitation_at_surface.rain_from_large_scale_nonanvil is not None:
+                        self._add_to_self_2d(
+                            field=state.precipitation_at_surface.total_stratiform_precipitation, summand=state.precipitation_at_surface.rain_from_large_scale_nonanvil
+                        )
+                    if state.precipitation_at_surface.rain_from_large_scale_anvil is not None:
+                        self._add_to_self_2d(
+                            field=state.precipitation_at_surface.total_stratiform_precipitation, summand=state.precipitation_at_surface.rain_from_large_scale_anvil
+                        )
+                        self._ensure_non_negative_2d(field=state.precipitation_at_surface.total_stratiform_precipitation)
+
+            if state.precipitation_at_surface.total_convective_precipitation is not None:
+                if self._config.CONVECTION_FRACTION_MAX > self._config.CONVECTION_FRACTION_MIN:
+                    self._multiply_2d(
+                        factor_1=state.convective_diagnostics.convection_fraction,
+                        factor_2=state.precipitation_at_surface.total_precipitation,
+                        product=state.precipitation_at_surface.total_convective_precipitation,
+                    )
+                else:
+                    self._set_value(field=state.precipitation_at_surface.total_convective_precipitation, value=Float(0.0))
+                    if state.precipitation_at_surface.rain_from_deep_convection is not None:
+                        self._add_to_self_2d(
+                            field=state.precipitation_at_surface.total_convective_precipitation, summand=state.precipitation_at_surface.rain_from_deep_convection
+                        )
+                    if state.precipitation_at_surface.rain_from_shallow_convection is not None:
+                        self._add_to_self_2d(
+                            field=state.precipitation_at_surface.total_convective_precipitation, summand=state.precipitation_at_surface.rain_from_shallow_convection
+                        )
+                        self._ensure_non_negative_2d(field=state.precipitation_at_surface.total_convective_precipitation)
+
+            # diagnostic precip types
+            # TODO need to make sure that icefall and freezing_rainfall remain unallocated at the previous read (in the "all large-scale precip (rain + snow)" section),
+            # if they are not already allocated; BUT will be alloced at this line, if not already allocated. AFAIK we do not currently have a way to do this
+            if self._config.DIAGNOSE_PRECIP_TYPE or self._config.UPDATE_PRECIP_TYPE:
+                raise ValueError(f"Precip type diagnostic has not been implemented. Will implement when needed - it should be easy.")
+
+            # get Kuchera snow:rain ratios
+            self._get_Kuchera_ratios(
+                p_mb=self._locals.p_mb,
+                t=state.atmospheric_state.t,
+                kuchera_ratio=state.diagnostics.kuchera_snow_to_liquid_ratio,
+            )
+
+            # accumulated precip totals (mm), apply Kuchera ratio for snow
+            if state.precipitation_at_surface.snowfall_total is not None:
+                self._compute_snowfall_total(
+                    snowfall_total=state.precipitation_at_surface.snowfall_total,
+                    snowfall=state.precipitation_at_surface.snowfall,
+                    icefall=state.precipitation_at_surface.icefall,
+                    kuchera_ratio=state.diagnostics.kuchera_snow_to_liquid_ratio,
+                )
+
+            if state.precipitation_at_surface.precipitation_total is not None:
+                self._multiply_by_dt_moist_2d(input=state.precipitation_at_surface.total_precipitation, output=state.precipitation_at_surface.precipitation_total)
+
+            if state.cloud_condensates.total_liquid is not None:
+                self._add(
+                    summand_1=state.cloud_condensates.large_scale_liquid, summand_2=state.cloud_condensates.convective_liquid, sum=state.cloud_condensates.total_liquid
+                )
+
+            if state.cloud_condensates.total_ice is not None:
+                self._add(summand_1=state.cloud_condensates.large_scale_ice, summand_2=state.cloud_condensates.convective_ice, sum=state.cloud_condensates.total_ice)
+
+            if state.cloud_condensates.total_water is not None:
+                self._add_to_self(field=state.cloud_condensates.total_liquid, summand=state.cloud_condensates.convective_ice)
+                self._add_to_self(field=state.cloud_condensates.total_liquid, summand=state.cloud_condensates.convective_liquid)
+                self._add_to_self(field=state.cloud_condensates.total_liquid, summand=state.cloud_condensates.large_scale_ice)
+                self._add_to_self(field=state.cloud_condensates.total_liquid, summand=state.cloud_condensates.large_scale_liquid)
+
+            # cloud condensate exports
+            if state.state_at_output.large_scale_ice is not None:
+                self._copy(input=state.cloud_condensates.large_scale_ice, output=state.state_at_output.large_scale_ice)
+
+            if state.state_at_output.large_scale_liquid is not None:
+                self._copy(input=state.cloud_condensates.large_scale_liquid, output=state.state_at_output.large_scale_liquid)
+
+            if state.state_at_output.convective_ice is not None:
+                self._copy(input=state.cloud_condensates.convective_ice, output=state.state_at_output.convective_ice)
+
+            if state.state_at_output.convective_liquid is not None:
+                self._copy(input=state.cloud_condensates.convective_liquid, output=state.state_at_output.convective_liquid)
+
+            # fill wind, temperature, dry static energy, and relative humidity exports needed for SYNCTQ
+            if state.state_at_output.u is not None:
+                self._copy(input=state.atmospheric_state.u, output=state.state_at_output.u)
+
+            if state.state_at_output.v is not None:
+                self._copy(input=state.atmospheric_state.v, output=state.state_at_output.v)
+
+            if state.state_at_output.t is not None:
+                self._copy(input=state.atmospheric_state.t, output=state.state_at_output.t)
+
+            if state.state_at_output.specific_humidity is not None:
+                self._copy(input=state.cloud_condensates.specific_humidity, output=state.state_at_output.specific_humidity)
+
+            if state.state_at_output.pt is not None:
+                self._divide(dividend=state.atmospheric_state.t, divisor=self._locals.p_kappa, quotient=state.state_at_output.specific_humidity)
+
+            if state.state_at_output.dry_static_energy is not None:
+                self._compute_dry_static_energy(
+                    t=state.atmospheric_state.t,
+                    layer_height_above_surface=self._locals.layer_height_above_surface,
+                    edge_height_above_surface=self._locals.edge_height_above_surface,
+                    dry_static_energy=state.state_at_output.dry_static_energy,
+                )
+
+            if state.state_at_output.relative_humidity is not None:
+                self._compute_relative_humidty(
+                    t=state.atmospheric_state.t,
+                    p_mb=self._locals.p_mb,
+                    specific_humidity=state.cloud_condensates.specific_humidity,
+                    relative_humidity=state.state_at_output.relative_humidity,
+                    ese=self._saturation_tables.ese,
+                    esx=self._saturation_tables.esx,
+                )
+
+            # other diagnostic outputs
+            if state.diagnostics.condensed_water_path is not None:
+                self._compute_condensed_water_path(
+                    convective_ice=state.cloud_condensates.convective_ice,
+                    convective_liquid=state.cloud_condensates.convective_liquid,
+                    large_scale_liquid=state.cloud_condensates.large_scale_liquid,
+                    large_scale_ice=state.cloud_condensates.large_scale_ice,
+                    mass=self._locals.mass,
+                    condensed_water_path=state.diagnostics.condensed_water_path,
+                )
+
+            if state.diagnostics.liquid_water_path is not None:
+                self._compute_liquid_water_path(
+                    convective_liquid=state.cloud_condensates.convective_liquid,
+                    large_scale_liquid=state.cloud_condensates.large_scale_liquid,
+                    liquid_water_path=state.diagnostics.liquid_water_path,
+                )
+
+            if state.diagnostics.ice_water_path is not None:
+                self._compute_ice_water_path(
+                    convective_ice=state.cloud_condensates.convective_ice,
+                    large_scale_ice=state.cloud_condensates.large_scale_ice,
+                    ice_water_path=state.diagnostics.ice_water_path,
+                )
+
+            if state.diagnostics.total_precipitable_water is not None:
+                self._compute_total_precipitable_water(
+                    specific_humidity=state.cloud_condensates.specific_humidity,
+                    mass=self._locals.mass,
+                    total_precipitable_water=state.diagnostics.total_precipitable_water,
+                )
+
+            # lightning
+            if state.diagnostics.lightning_flash_rate is not None:
+                self._set_value_2d(field=state.diagnostics.lightning_flash_rate, value=Float(0.0))
+
+        else:  # alarm is NOT ringing
+            # compute derived states
+            self._compute_derived_state(
+                mass=self._locals.mass,
+                p_interface=state.atmospheric_state.p_interface,
+                p_interface_mb=self._locals.p_interface_mb,
+                p_mb=self._locals.p_mb,
+                p_kappa_interface=self._locals.p_kappa_interface,
+                p_kappa=self._locals.p_kappa,
+                z_interface=state.atmospheric_state.z_interface,
+                edge_height_above_surface=self._locals.edge_height_above_surface,
+                layer_height_above_surface=self._locals.layer_height_above_surface,
+                layer_thickness=self._locals.layer_thickness,
+                t=state.atmospheric_state.t,
+                ese=self._saturation_tables.ese,
+                esx=self._saturation_tables.esx,
+                saturation_specific_humidity=self._locals.saturation_specific_humidity,
+                dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
+            )
+
+            # fill wind, temperature, dry static energy, and relative humidity exports needed for SYNCTQ
+            if state.state_at_output.u is not None:
+                self._copy(input=state.atmospheric_state.u, output=state.state_at_output.u)
+
+            if state.state_at_output.v is not None:
+                self._copy(input=state.atmospheric_state.v, output=state.state_at_output.v)
+
+            if state.state_at_output.t is not None:
+                self._copy(input=state.atmospheric_state.t, output=state.state_at_output.t)
+
+            if state.state_at_output.specific_humidity is not None:
+                self._copy(input=state.cloud_condensates.specific_humidity, output=state.state_at_output.specific_humidity)
+
+            if state.state_at_output.pt is not None:
+                self._divide(dividend=state.atmospheric_state.t, divisor=self._locals.p_kappa, quotient=state.state_at_output.specific_humidity)
+
+            if state.state_at_output.dry_static_energy is not None:
+                self._compute_dry_static_energy(
+                    t=state.atmospheric_state.t,
+                    layer_height_above_surface=self._locals.layer_height_above_surface,
+                    edge_height_above_surface=self._locals.edge_height_above_surface,
+                    dry_static_energy=state.state_at_output.dry_static_energy,
+                )
+
+            if state.state_at_output.relative_humidity is not None:
+                self._compute_relative_humidty(
+                    t=state.atmospheric_state.t,
+                    p_mb=self._locals.p_mb,
+                    specific_humidity=state.cloud_condensates.specific_humidity,
+                    relative_humidity=state.state_at_output.relative_humidity,
+                    ese=self._saturation_tables.ese,
+                    esx=self._saturation_tables.esx,
+                )
+

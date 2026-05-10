@@ -775,12 +775,6 @@ class PrecipitationAtSurface:
             "dtype": Float,
         }
     )
-    kuchera_snow_to_liquid_ratio: Quantity = dataclasses.field(
-        metadata={
-            "dims": [I_DIM, J_DIM],
-            "dtype": Float,
-        }
-    )
     icefall: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
@@ -803,61 +797,61 @@ class PrecipitationAtSurface:
 
 @dataclasses.dataclass
 class PrecipitationFlux:
-    flux_ice_convection: Quantity = dataclasses.field(
+    ice_convection: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_ice_shallow_convection: Quantity = dataclasses.field(
+    ice_shallow_convection: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_ice_anvil: Quantity = dataclasses.field(
+    ice_anvil: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_ice_nonanvil_large_scale: Quantity = dataclasses.field(
+    ice_nonanvil_large_scale: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_ice_nonconvective: Quantity = dataclasses.field(
+    ice_nonconvective: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_liquid_convection: Quantity = dataclasses.field(
+    liquid_convection: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_liquid_shallow_convection: Quantity = dataclasses.field(
+    liquid_shallow_convection: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_liquid_anvil: Quantity = dataclasses.field(
+    liquid_anvil: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_liquid_nonanvil_large_scale: Quantity = dataclasses.field(
+    liquid_nonanvil_large_scale: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
-    flux_liquid_nonconvective: Quantity = dataclasses.field(
+    liquid_nonconvective: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
@@ -1093,6 +1087,12 @@ class Diagnostics:
             "dtype": Float,
         }
     )
+    kuchera_snow_to_liquid_ratio: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
 
 
 @dataclasses.dataclass
@@ -1114,7 +1114,7 @@ class MoistState(State):
     cloud_condensates: CloudCondensates
     convective_diagnostics: ConvectiveDiagnostics
     tendencies: Tendencies
-    precipitation: PrecipitationAtSurface
+    precipitation_at_surface: PrecipitationAtSurface
     precipitation_flux: PrecipitationFlux
     state_at_input: StateAtInput
     state_at_output: StateAtOutput

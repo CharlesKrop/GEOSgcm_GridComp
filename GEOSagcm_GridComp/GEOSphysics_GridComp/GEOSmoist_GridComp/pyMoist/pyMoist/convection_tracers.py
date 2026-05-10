@@ -134,3 +134,6 @@ class ConvectionTracers(State):
             "dtype": Bool,
         }
     )
+
+    def initialize():
+        pass

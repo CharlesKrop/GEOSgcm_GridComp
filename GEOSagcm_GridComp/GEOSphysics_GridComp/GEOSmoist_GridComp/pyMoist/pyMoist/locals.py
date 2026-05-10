@@ -75,7 +75,13 @@ class MoistLocals(LocalState):
     )
     temporary_2d: Local = dataclasses.field(
         metadata={
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    my_value_is_1_2d: Local = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
