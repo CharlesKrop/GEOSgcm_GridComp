@@ -94,12 +94,12 @@ def compute_extra_inputs_from_state(
 
     with computation(FORWARD), interval(0, 1):
         tpwi = vapor * mass
-        qsat, _ = saturation_specific_humidity(t, p, esx)
+        qsat, _ = compute_saturation_specific_humidity(t, p, esx)
         tpwi_star = qsat * mass
 
     with computation(FORWARD), interval(1, -1):
         tpwi = tpwi + vapor * mass
-        qsat, _ = saturation_specific_humidity(t, p, esx)
+        qsat, _ = compute_saturation_specific_humidity(t, p, esx)
         tpwi_star = tpwi_star + qsat * mass
 
     with computation(FORWARD), interval(0, 1):

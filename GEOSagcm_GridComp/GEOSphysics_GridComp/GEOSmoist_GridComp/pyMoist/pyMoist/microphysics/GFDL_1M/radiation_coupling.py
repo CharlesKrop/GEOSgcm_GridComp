@@ -26,7 +26,7 @@ def update_humidity(
         esx (GlobalTable_saturation_tables)
     """
     with computation(PARALLEL), interval(...):
-        qsat, _ = saturation_specific_humidity(temperature, pressure * 100.0, esx)
+        qsat, _ = compute_saturation_specific_humidity(temperature, pressure * 100.0, esx)
         humidity = vapor * qsat
 
 

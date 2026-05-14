@@ -105,7 +105,7 @@ def saturation_specific_humidity_liquid_surface(
 
 
 @function
-def saturation_specific_humidity(t, p, esx):
+def compute_saturation_specific_humidity(t, p, esx):
     """Compute saturation specific humidity and derivative saturation specific humidity
     with respect to temperature from saturation pressure tables.
 

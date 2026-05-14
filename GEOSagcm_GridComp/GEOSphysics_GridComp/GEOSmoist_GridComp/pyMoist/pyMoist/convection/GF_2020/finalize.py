@@ -874,7 +874,7 @@ def update_state_with_tendencies(
 
         # fix convective cloud fraction
         if FIX_CONVECTIVE_CLOUD:
-            saturation_humidity, _ = saturation_specific_humidity(t, p, esx)
+            saturation_humidity, _ = compute_saturation_specific_humidity(t, p, esx)
 
             if convective_cloud_fraction < 1.0:
                 modification = (vapor - saturation_humidity * convective_cloud_fraction) / (1.0 - convective_cloud_fraction)

@@ -3291,7 +3291,7 @@ def buoyancy_sorting(
                     rhomid0j = pe / (constants.MAPL_RDRY * thv0j * exne)
                     qsat_arg = thle * exne
                     qsatpe_tmp = qsat_pe / 100.0
-                    qs, _ = saturation_specific_humidity(qsat_arg, qsatpe_tmp * 100.0, esx)
+                    qs, _ = compute_saturation_specific_humidity(qsat_arg, qsatpe_tmp * 100.0, esx)
                     excess0 = qte - qs
 
                     thj, qvj, qlj, qij, qse, id_check = conden(pe, thlue, qtue, esx)
@@ -3381,7 +3381,7 @@ def buoyancy_sorting(
                             tj = thj * exne  # This 'tj' is used for computing thermo. coeffs. below
                             qsat_arg = thlue * exne
                             pe_tmp = qsat_pe / 100.0
-                            qs, _ = saturation_specific_humidity(qsat_arg, pe_tmp * 100.0, esx)
+                            qs, _ = compute_saturation_specific_humidity(qsat_arg, pe_tmp * 100.0, esx)
                             excessu = qtue - qs
 
                             # Calculate critical mixing fraction, 'xc'. Mixture with

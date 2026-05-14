@@ -10,7 +10,7 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import
 
 
 @function
-def saturation_specific_humidity(
+def saturation_specific_humidity_from_pt(
     potential_t: Float,
     p: Float,
 ):
@@ -104,7 +104,7 @@ def environment_conditions(
                 TV = t + 0.608 * vapor * t
         else:
             if error_code[0, 0][plume] == 0:
-                saturation_mixing_ratio = saturation_specific_humidity(t, p)
+                saturation_mixing_ratio = saturation_specific_humidity_from_pt(t, p)
                 saturation_mixing_ratio = min(
                     cumulus_parameterization_constants.MAX_QSAT,
                     max(1.0e-08, saturation_mixing_ratio),
