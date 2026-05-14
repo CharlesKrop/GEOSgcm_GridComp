@@ -1,6 +1,6 @@
 from pyMoist.state import MoistState
 from pyMoist.convection_tracers import ConvectionTracers
-from ndsl.stencils import set_value, copy, add, divide, add_to_self, add_to_self_2d, multiply_2d, subtract_2d, copy_2d, set_value_2d
+from ndsl.stencils import set_value, copy, add, divide, add_to_self, add_to_self_2d, multiply_2d, subtract_2d, copy_2d, set_value_2D
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table, compute_saturation_specific_humidity, GlobalTable_saturation_tables
 from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
 from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, BACKWARD
@@ -10,6 +10,8 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from pyMoist.shared.incloud_processes import fix_mixing_ratio, buoyancy_1, Buoyancy2
 from pyMoist.locals import MoistLocals
 from pyMoist.config import MoistConfig
+from pyMoist.convection import UWConfiguration, UWState, ComputeUwshcuInv, GF2020, GF2020Config, GF2020State, GF2020CumulusParameterizationConfig
+from pyMoist.microphysics import GFDL1M, GFDL1MConfig, GFDL1MState
 
 
 def get_alarm():
@@ -396,28 +398,423 @@ class Moist(NDSLRuntime):
         # initialize convection and microphysics schemes
         if self._config.SHALLOW_MID_DEEP:
             if self._config.SHALLOW_CONVECTION_OPTION == "UW":
-                init_UW = True
+                self._uw_config = UWConfiguration(
+                    JASON=True if quantity_factory.sizer.nz == 72 else False,
+                    NCNST=config.NUMBER_OF_TRACERS,
+                    k0=quantity_factory.sizer.nz,
+                    windsrcavg=config.WIND_SOURCE_AVERAGE,
+                    dotransport=config.USE_TRACER_TRANSPORT_UW,
+                    qtsrchgt=config.TOTAL_WATER_INTERPOLATION_HEIGHT,
+                    qtsrc_fac=config.TOTAL_WATER_INTERPOLATION_HEIGHT,
+                    thlsrc_fac=config.LIQUID_POTENTIAL_TEMPERATURE_SCALING,
+                    frc_rasn=config.PRECIP_FRACTION_OF_EXPELLED_CONDENSATE,
+                    rbuoy=config.NONHYDRO_PRESSURE_EFFECT_ON_UPDRAFT,
+                    epsvarw=config.PBL_TOP_W_VARIANCE_BY_MESO_COMPONENT,
+                    use_CINcin=config.USE_IMPLICIT_CIN,
+                    mumin1=config.MIN_PBL_TOP_MASSFLUX,
+                    rmaxfrac=config.MAX_CORE_UPDRAFT_FRACTION,
+                    PGFc=config.PGF_COEFFICIENT,
+                    dt=config.DT_MOIST,
+                    niter_xc=config.NUMBER_XC_ITERATIONS,
+                    criqc=config.MIN_UPDRAFT_CONDENSATE,
+                    rle=config.LATERAL_ENTRAINMENT_COEFFICIENT,
+                    cridist_opt=config.LATERAL_ENTRAINMENT_MODE,
+                    mixscale=config.VERTICAL_MIXING_RATE_STRUCTURE,
+                    rdrag=config.DRAG_COEFFICIENT,
+                    rkm=config.BUOYANCY_SORTING_PARAMETER,
+                    use_self_detrain=config.USE_SELF_DETRAINMENT,
+                    detrhgt=config.CRITICAL_MIXING_HEIGHT,
+                    use_cumpenent=config.USE_CUMULUS_PENETRATIVE_ENTRAINMENT,
+                    rpen=config.PENETRATIVE_ENTRAINMENT_FACTOR,
+                    use_momenflx=config.USE_MOMENTUM_FLUX,
+                    rdrop=config.LIQUID_DROP_RADIUS,
+                    iter_cin=config.NUMBER_IMPLICIT_CIN_ITERATIONS,
+                    SCLM_SHALLOW=config.SCLM_SHALLOW,
+                )
+                self._uw_state = UWState.zeros(quantity_factory, data_dimensions={"ntracers": config.NUMBER_OF_TRACERS})
+                self._uw = ComputeUwshcuInv(stencil_factory=stencil_factory, quantity_factory=quantity_factory, config=self._uw_config)
             if self._config.CONVECTION_OPTION == "RAS":
-                init_RAS = True
+                raise ValueError(f"{self._config.CONVECTION_OPTION} convection not implemented. Please choose a different option.")
             if self._config.CONVECTION_OPTION == "GF":
-                init_GF = True
+                self._gf2020_config = GF2020Config(
+                    DT_MOIST=config.DT_MOIST,
+                    LHYDROSTATIC=config.HYDROSTATIC,
+                    STOCHASTIC_CNV=config.STOCHASTIC_CONVECTION,
+                    STOCH_TOP=config.STOCH_TOP,
+                    STOCH_BOT=config.STOCH_BOT,
+                    GF_MIN_AREA=config.GF_MIN_AREA,
+                    GF_ENV_SETTING=config.GF_ENV_SETTING,
+                    ENTRVERSION=config.ENTRAINMENT_VERSION,
+                    CONVECTION_TRACER=config.CONVECTION_TRACER,
+                    C1=config.C1,
+                    ADV_TRIGGER=config.ADV_TRIGGER,
+                    AUTOCONV=config.AUTOCONV,
+                    USE_TRACER_TRANSPORT=config.USE_TRACER_TRANSPORT,
+                    SCLM_DEEP=config.SCLM_DEEP,
+                    FIX_CONVECTIVE_CLOUD=config.FIX_CONVECTIVE_CLOUD,
+                    APPLY_SUBSIDENCE_MICROPHYSICS=config.APPLY_SUBSIDENCE_MICROPHYSICS,
+                    NUMBER_OF_TRACERS=config.NUMBER_OF_TRACERS,
+                    USE_MOMENTUM_TRANSPORT=config.USE_MOMENTUM_TRANSPORT,
+                )
+                self._gf2020_cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
+                    # plume dependent
+                    DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW=config.DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW,
+                    DOWNDRAFT_MAX_HEIGHT_LAND_MID=config.DOWNDRAFT_MAX_HEIGHT_LAND_MID,
+                    DOWNDRAFT_MAX_HEIGHT_LAND_DEEP=config.DOWNDRAFT_MAX_HEIGHT_LAND_DEEP,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN_SHALLOW=config.DOWNDRAFT_MAX_HEIGHT_OCEAN_SHALLOW,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN_MID=config.DOWNDRAFT_MAX_HEIGHT_OCEAN_MID,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN_DEEP=config.DOWNDRAFT_MAX_HEIGHT_OCEAN_DEEP,
+                    UPDRAFT_MAX_HEIGHT_LAND_SHALLOW=config.UPDRAFT_MAX_HEIGHT_LAND_SHALLOW,
+                    UPDRAFT_MAX_HEIGHT_LAND_MID=config.UPDRAFT_MAX_HEIGHT_LAND_MID,
+                    UPDRAFT_MAX_HEIGHT_LAND_DEEP=config.UPDRAFT_MAX_HEIGHT_LAND_DEEP,
+                    UPDRAFT_MAX_HEIGHT_OCEAN_SHALLOW=config.UPDRAFT_MAX_HEIGHT_OCEAN_SHALLOW,
+                    UPDRAFT_MAX_HEIGHT_OCEAN_MID=config.UPDRAFT_MAX_HEIGHT_OCEAN_MID,
+                    UPDRAFT_MAX_HEIGHT_OCEAN_DEEP=config.UPDRAFT_MAX_HEIGHT_OCEAN_DEEP,
+                    MINIMUM_EVAP_FRACTION_LAND_SHALLOW=config.MINIMUM_EVAP_FRACTION_LAND_SHALLOW,
+                    MINIMUM_EVAP_FRACTION_LAND_MID=config.MINIMUM_EVAP_FRACTION_LAND_MID,
+                    MINIMUM_EVAP_FRACTION_LAND_DEEP=config.MINIMUM_EVAP_FRACTION_LAND_DEEP,
+                    MINIMUM_EVAP_FRACTION_OCEAN_SHALLOW=config.MINIMUM_EVAP_FRACTION_OCEAN_SHALLOW,
+                    MINIMUM_EVAP_FRACTION_OCEAN_MID=config.MINIMUM_EVAP_FRACTION_OCEAN_MID,
+                    MINIMUM_EVAP_FRACTION_OCEAN_DEEP=config.MINIMUM_EVAP_FRACTION_OCEAN_DEEP,
+                    MAXIMUM_EVAP_FRACTION_LAND_SHALLOW=config.MAXIMUM_EVAP_FRACTION_LAND_SHALLOW,
+                    MAXIMUM_EVAP_FRACTION_LAND_MID=config.MAXIMUM_EVAP_FRACTION_LAND_MID,
+                    MAXIMUM_EVAP_FRACTION_LAND_DEEP=config.MAXIMUM_EVAP_FRACTION_LAND_DEEP,
+                    MAXIMUM_EVAP_FRACTION_OCEAN_SHALLOW=config.MAXIMUM_EVAP_FRACTION_OCEAN_SHALLOW,
+                    MAXIMUM_EVAP_FRACTION_OCEAN_MID=config.MAXIMUM_EVAP_FRACTION_OCEAN_MID,
+                    MAXIMUM_EVAP_FRACTION_OCEAN_DEEP=config.MAXIMUM_EVAP_FRACTION_OCEAN_DEEP,
+                    CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW=config.CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW,
+                    CLOUD_BASE_MASS_FLUX_FACTOR_MID=config.CLOUD_BASE_MASS_FLUX_FACTOR_MID,
+                    CLOUD_BASE_MASS_FLUX_FACTOR_DEEP=config.CLOUD_BASE_MASS_FLUX_FACTOR_DEEP,
+                    USE_EXCESS_SHALLOW=config.USE_EXCESS_SHALLOW,
+                    USE_EXCESS_MID=config.USE_EXCESS_MID,
+                    USE_EXCESS_DEEP=config.USE_EXCESS_DEEP,
+                    AVERAGE_LAYER_DEPTH_SHALLOW=config.AVERAGE_LAYER_DEPTH_SHALLOW,
+                    AVERAGE_LAYER_DEPTH_MID=config.AVERAGE_LAYER_DEPTH_MID,
+                    AVERAGE_LAYER_DEPTH_DEEP=config.AVERAGE_LAYER_DEPTH_DEEP,
+                    ENABLE_SHALLOW=config.ENABLE_SHALLOW,
+                    ENABLE_MID=config.ENABLE_MID,
+                    ENABLE_DEEP=config.ENABLE_DEEP,
+                    ENTRAINMENT_RATE_SHALLOW=config.ENTRAINMENT_RATE_SHALLOW,
+                    ENTRAINMENT_RATE_MID=config.ENTRAINMENT_RATE_MID,
+                    ENTRAINMENT_RATE_DEEP=config.ENTRAINMENT_RATE_DEEP,
+                    C0_SHAL=config.C0_SHAL,
+                    C0_MID=config.C0_MID,
+                    C0_DEEP=config.C0_DEEP,
+                    TAU_MID=config.TAU_MID,
+                    TAU_DEEP=config.TAU_DEEP,
+                    CLOSURE_CHOICE_SHALLOW=config.CLOSURE_CHOICE_SHALLOW,
+                    CLOSURE_CHOICE_MID=config.CLOSURE_CHOICE_MID,
+                    CLOSURE_CHOICE_DEEP=config.CLOSURE_CHOICE_DEEP,
+                    # plume independent
+                    SHALLOW_MID_DEEP=config.SHALLOW_MID_DEEP,
+                    ZERO_DIFF=config.ZERO_DIFF,
+                    MOIST_TRIGGER=config.MOIST_TRIGGER,
+                    LAMBDA_DEEP=config.LAMBDA_DEEP,
+                    LAMBDA_SHALLOW_DOWN=config.LAMBDA_SHALLOW_DOWN,
+                    CAP_MAXS=config.CAP_MAXS,
+                    OUTPUT_SOUNDING=config.OUTPUT_SOUNDING,
+                    USE_SCALE_DEP=config.USE_SCALE_DEP,
+                    SATURATION_CALCULATION_CHOICE=config.SATURATION_CALCULATION_CHOICE,
+                    CLOUD_LEVEL_GRID=config.CLOUD_LEVEL_GRID,
+                    FRAC_MODIS=config.FRAC_MODIS,
+                    BOUNDARY_CONDITION_METHOD=config.BOUNDARY_CONDITION_METHOD,
+                    OVERSHOOT=config.OVERSHOOT,
+                    USE_MEMORY=config.USE_MEMORY,
+                    DOWNDRAFT=config.DOWNDRAFT,
+                    USE_WETBULB=config.USE_WETBULB,
+                    DIURNAL_CYCLE=config.DIURNAL_CYCLE,
+                    USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES=config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
+                    CRITICAL_MIXING_RATIO_OVER_OCEAN=config.CRITICAL_MIXING_RATIO_OVER_OCEAN,
+                    CRITICAL_MIXING_RATIO_OVER_LAND=config.CRITICAL_MIXING_RATIO_OVER_LAND,
+                    BETA_SHALLOW=config.BETA_SHALLOW,
+                    EVAP_FIX=config.EVAP_FIX,
+                    SGS_W_TIMESCALE=config.SGS_W_TIMESCALE,
+                    VERTICAL_DISCRETIZATION_OPTION=config.VERTICAL_DISCRETIZATION_OPTION,
+                    ALP1=config.ALP1,
+                    USE_FCT=config.USE_FCT,
+                    MIN_ENTRAINMENT_RATE=config.MIN_ENTRAINMENT_RATE,
+                    USE_SMOOTH_TENDENCIES=config.USE_SMOOTH_TENDENCIES,
+                    USE_RAIN_EVAP_BELOW_CLOUD_BASE=config.USE_RAIN_EVAP_BELOW_CLOUD_BASE,
+                    USE_CLOUD_DISSIPATION=config.USE_CLOUD_DISSIPATION,
+                    LIGHTNING_DIAGNOSTICS=config.LIGHTNING_DIAGNOSTICS,
+                    USE_TRACER_SCAVENGE=config.USE_TRACER_SCAVENGE,
+                    USE_TRACER_EVAPORATION=config.USE_TRACER_EVAPORATION,
+                    USE_FLUX_FORM=config.USE_FLUX_FORM,
+                    MAX_TEMP_VAPOR_TENDENCY=config.MAX_TEMP_VAPOR_TENDENCY,
+                )
+                self._gf2020_state = GF2020State.zeros(quantity_factory)
+                self._gf2020 = GF2020(
+                    stencil_factory=stencil_factory,
+                    quantity_factory=quantity_factory,
+                    config=self._gf2020_config,
+                    cumulus_parameterization_config=self._gf2020_cumulus_parameterization_config,
+                    saturation_tables=self._saturation_tables,
+                )
         else:
             if self._config.CONVECTION_OPTION == "RAS":
-                init_RAS = True
+                raise ValueError(f"{self._config.CONVECTION_OPTION} convection not implemented. Please choose a different option.")
             if self._config.CONVECTION_OPTION == "GF":
-                init_GF = True
+                self._gf2020_config = GF2020Config(
+                    DT_MOIST=config.DT_MOIST,
+                    LHYDROSTATIC=config.HYDROSTATIC,
+                    STOCHASTIC_CNV=config.STOCHASTIC_CONVECTION,
+                    STOCH_TOP=config.STOCH_TOP,
+                    STOCH_BOT=config.STOCH_BOT,
+                    GF_MIN_AREA=config.GF_MIN_AREA,
+                    GF_ENV_SETTING=config.GF_ENV_SETTING,
+                    ENTRVERSION=config.ENTRAINMENT_VERSION,
+                    CONVECTION_TRACER=config.CONVECTION_TRACER,
+                    C1=config.C1,
+                    ADV_TRIGGER=config.ADV_TRIGGER,
+                    AUTOCONV=config.AUTOCONV,
+                    USE_TRACER_TRANSPORT=config.USE_TRACER_TRANSPORT,
+                    SCLM_DEEP=config.SCLM_DEEP,
+                    FIX_CONVECTIVE_CLOUD=config.FIX_CONVECTIVE_CLOUD,
+                    APPLY_SUBSIDENCE_MICROPHYSICS=config.APPLY_SUBSIDENCE_MICROPHYSICS,
+                    NUMBER_OF_TRACERS=config.NUMBER_OF_TRACERS,
+                    USE_MOMENTUM_TRANSPORT=config.USE_MOMENTUM_TRANSPORT,
+                )
+                self._gf2020_cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
+                    # plume dependent
+                    DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW=config.DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW,
+                    DOWNDRAFT_MAX_HEIGHT_LAND_MID=config.DOWNDRAFT_MAX_HEIGHT_LAND_MID,
+                    DOWNDRAFT_MAX_HEIGHT_LAND_DEEP=config.DOWNDRAFT_MAX_HEIGHT_LAND_DEEP,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN_SHALLOW=config.DOWNDRAFT_MAX_HEIGHT_OCEAN_SHALLOW,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN_MID=config.DOWNDRAFT_MAX_HEIGHT_OCEAN_MID,
+                    DOWNDRAFT_MAX_HEIGHT_OCEAN_DEEP=config.DOWNDRAFT_MAX_HEIGHT_OCEAN_DEEP,
+                    UPDRAFT_MAX_HEIGHT_LAND_SHALLOW=config.UPDRAFT_MAX_HEIGHT_LAND_SHALLOW,
+                    UPDRAFT_MAX_HEIGHT_LAND_MID=config.UPDRAFT_MAX_HEIGHT_LAND_MID,
+                    UPDRAFT_MAX_HEIGHT_LAND_DEEP=config.UPDRAFT_MAX_HEIGHT_LAND_DEEP,
+                    UPDRAFT_MAX_HEIGHT_OCEAN_SHALLOW=config.UPDRAFT_MAX_HEIGHT_OCEAN_SHALLOW,
+                    UPDRAFT_MAX_HEIGHT_OCEAN_MID=config.UPDRAFT_MAX_HEIGHT_OCEAN_MID,
+                    UPDRAFT_MAX_HEIGHT_OCEAN_DEEP=config.UPDRAFT_MAX_HEIGHT_OCEAN_DEEP,
+                    MINIMUM_EVAP_FRACTION_LAND_SHALLOW=config.MINIMUM_EVAP_FRACTION_LAND_SHALLOW,
+                    MINIMUM_EVAP_FRACTION_LAND_MID=config.MINIMUM_EVAP_FRACTION_LAND_MID,
+                    MINIMUM_EVAP_FRACTION_LAND_DEEP=config.MINIMUM_EVAP_FRACTION_LAND_DEEP,
+                    MINIMUM_EVAP_FRACTION_OCEAN_SHALLOW=config.MINIMUM_EVAP_FRACTION_OCEAN_SHALLOW,
+                    MINIMUM_EVAP_FRACTION_OCEAN_MID=config.MINIMUM_EVAP_FRACTION_OCEAN_MID,
+                    MINIMUM_EVAP_FRACTION_OCEAN_DEEP=config.MINIMUM_EVAP_FRACTION_OCEAN_DEEP,
+                    MAXIMUM_EVAP_FRACTION_LAND_SHALLOW=config.MAXIMUM_EVAP_FRACTION_LAND_SHALLOW,
+                    MAXIMUM_EVAP_FRACTION_LAND_MID=config.MAXIMUM_EVAP_FRACTION_LAND_MID,
+                    MAXIMUM_EVAP_FRACTION_LAND_DEEP=config.MAXIMUM_EVAP_FRACTION_LAND_DEEP,
+                    MAXIMUM_EVAP_FRACTION_OCEAN_SHALLOW=config.MAXIMUM_EVAP_FRACTION_OCEAN_SHALLOW,
+                    MAXIMUM_EVAP_FRACTION_OCEAN_MID=config.MAXIMUM_EVAP_FRACTION_OCEAN_MID,
+                    MAXIMUM_EVAP_FRACTION_OCEAN_DEEP=config.MAXIMUM_EVAP_FRACTION_OCEAN_DEEP,
+                    CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW=config.CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW,
+                    CLOUD_BASE_MASS_FLUX_FACTOR_MID=config.CLOUD_BASE_MASS_FLUX_FACTOR_MID,
+                    CLOUD_BASE_MASS_FLUX_FACTOR_DEEP=config.CLOUD_BASE_MASS_FLUX_FACTOR_DEEP,
+                    USE_EXCESS_SHALLOW=config.USE_EXCESS_SHALLOW,
+                    USE_EXCESS_MID=config.USE_EXCESS_MID,
+                    USE_EXCESS_DEEP=config.USE_EXCESS_DEEP,
+                    AVERAGE_LAYER_DEPTH_SHALLOW=config.AVERAGE_LAYER_DEPTH_SHALLOW,
+                    AVERAGE_LAYER_DEPTH_MID=config.AVERAGE_LAYER_DEPTH_MID,
+                    AVERAGE_LAYER_DEPTH_DEEP=config.AVERAGE_LAYER_DEPTH_DEEP,
+                    ENABLE_SHALLOW=config.ENABLE_SHALLOW,
+                    ENABLE_MID=config.ENABLE_MID,
+                    ENABLE_DEEP=config.ENABLE_DEEP,
+                    ENTRAINMENT_RATE_SHALLOW=config.ENTRAINMENT_RATE_SHALLOW,
+                    ENTRAINMENT_RATE_MID=config.ENTRAINMENT_RATE_MID,
+                    ENTRAINMENT_RATE_DEEP=config.ENTRAINMENT_RATE_DEEP,
+                    C0_SHAL=config.C0_SHAL,
+                    C0_MID=config.C0_MID,
+                    C0_DEEP=config.C0_DEEP,
+                    TAU_MID=config.TAU_MID,
+                    TAU_DEEP=config.TAU_DEEP,
+                    CLOSURE_CHOICE_SHALLOW=config.CLOSURE_CHOICE_SHALLOW,
+                    CLOSURE_CHOICE_MID=config.CLOSURE_CHOICE_MID,
+                    CLOSURE_CHOICE_DEEP=config.CLOSURE_CHOICE_DEEP,
+                    # plume independent
+                    SHALLOW_MID_DEEP=config.SHALLOW_MID_DEEP,
+                    ZERO_DIFF=config.ZERO_DIFF,
+                    MOIST_TRIGGER=config.MOIST_TRIGGER,
+                    LAMBDA_DEEP=config.LAMBDA_DEEP,
+                    LAMBDA_SHALLOW_DOWN=config.LAMBDA_SHALLOW_DOWN,
+                    CAP_MAXS=config.CAP_MAXS,
+                    OUTPUT_SOUNDING=config.OUTPUT_SOUNDING,
+                    USE_SCALE_DEP=config.USE_SCALE_DEP,
+                    SATURATION_CALCULATION_CHOICE=config.SATURATION_CALCULATION_CHOICE,
+                    CLOUD_LEVEL_GRID=config.CLOUD_LEVEL_GRID,
+                    FRAC_MODIS=config.FRAC_MODIS,
+                    BOUNDARY_CONDITION_METHOD=config.BOUNDARY_CONDITION_METHOD,
+                    OVERSHOOT=config.OVERSHOOT,
+                    USE_MEMORY=config.USE_MEMORY,
+                    DOWNDRAFT=config.DOWNDRAFT,
+                    USE_WETBULB=config.USE_WETBULB,
+                    DIURNAL_CYCLE=config.DIURNAL_CYCLE,
+                    USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES=config.USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES,
+                    CRITICAL_MIXING_RATIO_OVER_OCEAN=config.CRITICAL_MIXING_RATIO_OVER_OCEAN,
+                    CRITICAL_MIXING_RATIO_OVER_LAND=config.CRITICAL_MIXING_RATIO_OVER_LAND,
+                    BETA_SHALLOW=config.BETA_SHALLOW,
+                    EVAP_FIX=config.EVAP_FIX,
+                    SGS_W_TIMESCALE=config.SGS_W_TIMESCALE,
+                    VERTICAL_DISCRETIZATION_OPTION=config.VERTICAL_DISCRETIZATION_OPTION,
+                    ALP1=config.ALP1,
+                    USE_FCT=config.USE_FCT,
+                    MIN_ENTRAINMENT_RATE=config.MIN_ENTRAINMENT_RATE,
+                    USE_SMOOTH_TENDENCIES=config.USE_SMOOTH_TENDENCIES,
+                    USE_RAIN_EVAP_BELOW_CLOUD_BASE=config.USE_RAIN_EVAP_BELOW_CLOUD_BASE,
+                    USE_CLOUD_DISSIPATION=config.USE_CLOUD_DISSIPATION,
+                    LIGHTNING_DIAGNOSTICS=config.LIGHTNING_DIAGNOSTICS,
+                    USE_TRACER_SCAVENGE=config.USE_TRACER_SCAVENGE,
+                    USE_TRACER_EVAPORATION=config.USE_TRACER_EVAPORATION,
+                    USE_FLUX_FORM=config.USE_FLUX_FORM,
+                    MAX_TEMP_VAPOR_TENDENCY=config.MAX_TEMP_VAPOR_TENDENCY,
+                )
+                self._gf2020_state = GF2020State.zeros(quantity_factory)
+                self._gf2020 = GF2020(
+                    stencil_factory=stencil_factory,
+                    quantity_factory=quantity_factory,
+                    config=self._gf2020_config,
+                    cumulus_parameterization_config=self._gf2020_cumulus_parameterization_config,
+                    saturation_tables=self._saturation_tables,
+                )
             if self._config.SHALLOW_CONVECTION_OPTION == "UW":
-                init_UW = True
+                self._uw_config = UWConfiguration(
+                    JASON=True if quantity_factory.sizer.nz == 72 else False,
+                    NCNST=config.NUMBER_OF_TRACERS,
+                    k0=quantity_factory.sizer.nz,
+                    windsrcavg=config.WIND_SOURCE_AVERAGE,
+                    dotransport=config.USE_TRACER_TRANSPORT_UW,
+                    qtsrchgt=config.TOTAL_WATER_INTERPOLATION_HEIGHT,
+                    qtsrc_fac=config.TOTAL_WATER_INTERPOLATION_HEIGHT,
+                    thlsrc_fac=config.LIQUID_POTENTIAL_TEMPERATURE_SCALING,
+                    frc_rasn=config.PRECIP_FRACTION_OF_EXPELLED_CONDENSATE,
+                    rbuoy=config.NONHYDRO_PRESSURE_EFFECT_ON_UPDRAFT,
+                    epsvarw=config.PBL_TOP_W_VARIANCE_BY_MESO_COMPONENT,
+                    use_CINcin=config.USE_IMPLICIT_CIN,
+                    mumin1=config.MIN_PBL_TOP_MASSFLUX,
+                    rmaxfrac=config.MAX_CORE_UPDRAFT_FRACTION,
+                    PGFc=config.PGF_COEFFICIENT,
+                    dt=config.DT_MOIST,
+                    niter_xc=config.NUMBER_XC_ITERATIONS,
+                    criqc=config.MIN_UPDRAFT_CONDENSATE,
+                    rle=config.LATERAL_ENTRAINMENT_COEFFICIENT,
+                    cridist_opt=config.LATERAL_ENTRAINMENT_MODE,
+                    mixscale=config.VERTICAL_MIXING_RATE_STRUCTURE,
+                    rdrag=config.DRAG_COEFFICIENT,
+                    rkm=config.BUOYANCY_SORTING_PARAMETER,
+                    use_self_detrain=config.USE_SELF_DETRAINMENT,
+                    detrhgt=config.CRITICAL_MIXING_HEIGHT,
+                    use_cumpenent=config.USE_CUMULUS_PENETRATIVE_ENTRAINMENT,
+                    rpen=config.PENETRATIVE_ENTRAINMENT_FACTOR,
+                    use_momenflx=config.USE_MOMENTUM_FLUX,
+                    rdrop=config.LIQUID_DROP_RADIUS,
+                    iter_cin=config.NUMBER_IMPLICIT_CIN_ITERATIONS,
+                    SCLM_SHALLOW=config.SCLM_SHALLOW,
+                )
+                self._uw_state = UWState.zeros(quantity_factory, data_dimensions={"ntracers": config.NUMBER_OF_TRACERS})
+                self._uw = ComputeUwshcuInv(stencil_factory=stencil_factory, quantity_factory=quantity_factory, config=self._uw_config)
 
         if self._config.CLOUD_MICROPHYSICS_OPTION == "BACM_1M":
             raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
         if self._config.CLOUD_MICROPHYSICS_OPTION == "GFDL_1M":
-            run_GFDL1M = True
+            pass
+            # self._gfdl1m_config = GFDL1MConfig(
+            #     LPHYS_HYDROSTATIC=config.HYDROSTATIC,
+            #     LHYDROSTATIC=config.PHYS_HYDROSTATIC,
+            #     DT_MOIST=config.DT_MOIST,
+            #     MP_TIME=
+            #     T_MIN=
+            #     T_SUB=
+            #     TAU_R2G=
+            #     TAU_SMLT=
+            #     TAU_G2R=
+            #     DW_LAND=
+            #     DW_OCEAN=
+            #     VI_FAC=
+            #     VR_FAC=
+            #     VS_FAC=
+            #     VG_FAC=
+            #     QL_MLT=
+            #     DO_QA=
+            #     FIX_NEGATIVE=
+            #     VI_MAX=
+            #     VS_MAX=
+            #     VG_MAX=
+            #     VR_MAX=
+            #     QS_MLT=
+            #     QS0_CRT=
+            #     QI_GEN=
+            #     QL0_MAX=
+            #     QI0_MAX=
+            #     QI0_CRT=
+            #     QR0_CRT=
+            #     FAST_SAT_ADJ=
+            #     RH_INC=
+            #     RH_INS=
+            #     RH_INR=
+            #     CONST_VI=
+            #     CONST_VS=
+            #     CONST_VG=
+            #     CONST_VR=
+            #     USE_CCN=
+            #     RTHRESHU=
+            #     RTHRESHS=
+            #     CCN_L=
+            #     CCN_O=
+            #     QC_CRT=
+            #     TAU_G2V=
+            #     TAU_V2G=
+            #     TAU_S2V=
+            #     TAU_V2S=
+            #     TAU_REVP=
+            #     TAU_FRZ=
+            #     DO_BIGG=
+            #     DO_EVAP=
+            #     DO_SUBL=
+            #     SAT_ADJ0=
+            #     C_PIACR=
+            #     TAU_IMLT=
+            #     TAU_V2L=
+            #     TAU_L2V=
+            #     TAU_I2V=
+            #     TAU_I2S=
+            #     TAU_L2R=
+            #     QI_LIM=
+            #     QL_GEN=
+            #     C_PAUT=
+            #     C_PSACI=
+            #     C_PGACS=
+            #     C_PGACI=
+            #     Z_SLOPE_LIQ=
+            #     Z_SLOPE_ICE=
+            #     PROG_CCN=
+            #     C_CRACW=
+            #     ALIN=
+            #     CLIN=
+            #     PRECIPRAD=
+            #     CLD_MIN=
+            #     USE_PPM=
+            #     MONO_PROF=
+            #     DO_SEDI_HEAT=
+            #     SEDI_TRANSPORT=
+            #     DO_SEDI_W=
+            #     DE_ICE=
+            #     ICLOUD_F=
+            #     IRAIN_F=
+            #     MP_PRINT=
+            #     LMELTFRZ=
+            #     USE_BERGERON=
+            #     TURNRHCRIT_PARAM=
+            #     PDFSHAPE=
+            #     ANV_ICEFALL=
+            #     LS_ICEFALL=
+            #     LIQ_RADII_PARAM=
+            #     ICE_RADII_PARAM=
+            #     FAC_RI=
+            #     MIN_RI=
+            #     MAX_RI=
+            #     FAC_RL=
+            #     MIN_RL=
+            #     MAX_RL=
+            #     CCW_EVAP_EFF=
+            #     CCI_EVAP_EFF=
+            # )
         if self._config.CLOUD_MICROPHYSICS_OPTION == "THOM_1M":
             raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
         if self._config.CLOUD_MICROPHYSICS_OPTION == "MGB2_2M":
             raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
-        
+
         self._update_cloud_fraction = stencil_factory.from_dims_halo(func=update_cloud_fraction, compute_dims=[I_DIM, J_DIM, K_DIM])
         self._get_saturation_specific_humidity = stencil_factory.from_dims_halo(func=get_saturation_specific_humidity, compute_dims=[I_DIM, J_DIM, K_DIM])
         self._export_relative_humidity_wrt_ice = stencil_factory.from_dims_halo(func=export_relative_humidity_wrt_ice, compute_dims=[I_DIM, J_DIM, K_DIM])
@@ -444,7 +841,7 @@ class Moist(NDSLRuntime):
         self._compute_liquid_water_path = stencil_factory.from_dims_halo(func=compute_liquid_water_path, compute_dims=[I_DIM, J_DIM, K_DIM])
         self._compute_ice_water_path = stencil_factory.from_dims_halo(func=compute_ice_water_path, compute_dims=[I_DIM, J_DIM, K_DIM])
         self._compute_total_precipitable_water = stencil_factory.from_dims_halo(func=compute_total_precipitable_water, compute_dims=[I_DIM, J_DIM, K_DIM])
-        self._set_value_2d = stencil_factory.from_dims_halo(func=set_value_2d, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._set_value_2d = stencil_factory.from_dims_halo(func=set_value_2D, compute_dims=[I_DIM, J_DIM, K_DIM])
 
     def __call__(self, state: MoistState, convection_tracers: ConvectionTracers):
         # Get alarm - is on (ringing) when pulled

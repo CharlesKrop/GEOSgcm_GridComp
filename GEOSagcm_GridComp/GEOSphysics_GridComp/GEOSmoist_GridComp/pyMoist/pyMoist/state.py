@@ -1027,61 +1027,61 @@ class StateAtOutput:
 
 @dataclasses.dataclass
 class Diagnostics:
-    negative_vapor_adjustment_start = dataclasses.field(
+    negative_vapor_adjustment_start: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    negative_vapor_adjustment_end = dataclasses.field(
+    negative_vapor_adjustment_end: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    highest_level_of_scalar_diffusivity_gt_2 = dataclasses.field(
+    highest_level_of_scalar_diffusivity_gt_2: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    lowest_level_of_scalar_diffusivity_gt_2 = dataclasses.field(
+    lowest_level_of_scalar_diffusivity_gt_2: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    condensed_water_path = dataclasses.field(
+    condensed_water_path: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    cloud_liquid_water_path = dataclasses.field(
+    cloud_liquid_water_path: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    liquid_water_path = dataclasses.field(
+    liquid_water_path: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    ice_water_path = dataclasses.field(
+    ice_water_path: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    total_precipitable_water = dataclasses.field(
+    total_precipitable_water: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
-    lightning_flash_rate = dataclasses.field(
+    lightning_flash_rate: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
