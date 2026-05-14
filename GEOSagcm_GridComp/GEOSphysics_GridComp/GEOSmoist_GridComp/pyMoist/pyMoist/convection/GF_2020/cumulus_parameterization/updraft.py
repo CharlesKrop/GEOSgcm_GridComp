@@ -12,7 +12,6 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import Floa
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
 
-
 # initialize constants and field type for UpdraftMassFlux stencil
 _X_ALPHA = [
     3.699999,
