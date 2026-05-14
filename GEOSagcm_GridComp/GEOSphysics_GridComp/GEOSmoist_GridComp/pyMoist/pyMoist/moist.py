@@ -148,15 +148,20 @@ def compute_convection_fraction(convection_fraction: FloatFieldIJ, cape: FloatFi
                 convection_fraction = max(1.0e-6, min(1.0, (cape - convection_fraction) / (CONVECTION_FRACTION_MAX - CONVECTION_FRACTION_MIN)))
 
         if CONVECTION_FRACTION_EXP != 1.0:
-            convection_fraction = convection_fraction**CONVECTION_FRACTION_EXP
+            convection_fraction = convection_fraction**CONVECTION_FRACTION_
 
 
 def initialize_convection_tracers():
     pass
 
 
-def export_concentrations():
-    pass
+def export_concentration(
+    input: FloatField,
+    factor: Float,
+    output: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        field = field * factor
 
 
 def update_cloud_fraction(
@@ -386,6 +391,33 @@ class Moist(NDSLRuntime):
                 "CONVECTION_FRACTION_EXP": config.CONVECTION_FRACTION_EXP,
             },
         )
+        self._export_concentration = stencil_factory.from_dims_halo(func=export_concentration, compute_dims=[I_DIM, J_DIM, K_DIM])
+
+        # initialize convection and microphysics schemes
+        if self._config.SHALLOW_MID_DEEP:
+            if self._config.SHALLOW_CONVECTION_OPTION == "UW":
+                init_UW = True
+            if self._config.CONVECTION_OPTION == "RAS":
+                init_RAS = True
+            if self._config.CONVECTION_OPTION == "GF":
+                init_GF = True
+        else:
+            if self._config.CONVECTION_OPTION == "RAS":
+                init_RAS = True
+            if self._config.CONVECTION_OPTION == "GF":
+                init_GF = True
+            if self._config.SHALLOW_CONVECTION_OPTION == "UW":
+                init_UW = True
+
+        if self._config.CLOUD_MICROPHYSICS_OPTION == "BACM_1M":
+            raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
+        if self._config.CLOUD_MICROPHYSICS_OPTION == "GFDL_1M":
+            run_GFDL1M = True
+        if self._config.CLOUD_MICROPHYSICS_OPTION == "THOM_1M":
+            raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
+        if self._config.CLOUD_MICROPHYSICS_OPTION == "MGB2_2M":
+            raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
+        
         self._update_cloud_fraction = stencil_factory.from_dims_halo(func=update_cloud_fraction, compute_dims=[I_DIM, J_DIM, K_DIM])
         self._get_saturation_specific_humidity = stencil_factory.from_dims_halo(func=get_saturation_specific_humidity, compute_dims=[I_DIM, J_DIM, K_DIM])
         self._export_relative_humidity_wrt_ice = stencil_factory.from_dims_halo(func=export_relative_humidity_wrt_ice, compute_dims=[I_DIM, J_DIM, K_DIM])
@@ -560,32 +592,35 @@ class Moist(NDSLRuntime):
                 do_aerosol_activateion = False
 
             # export concentrations
-            export_concentrations()
+            self._export_concentration(
+                field=state.cloud_condensates.liquid_ccn_concentration, factor=Float(1.0e-1), output=state.cloud_condensates.liquid_ccn_concentration
+            )
+            self._export_concentration(field=state.cloud_condensates.ice_ccn_concentration, factor=Float(1.0e-1), output=state.cloud_condensates.ice_ccn_concentration)
 
             # run convection and microphysics
-            if SH_MD_DP:
-                if SHALLOW_OPTION == "UW":
+            if self._config.SHALLOW_MID_DEEP:
+                if self._config.SHALLOW_CONVECTION_OPTION == "UW":
                     run_UW = True
-                if CONVPAR_OPTION == "RAS":
+                if self._config.CONVECTION_OPTION == "RAS":
                     run_RAS = True
-                if CONVPAR_OPTION == "GF":
+                if self._config.CONVECTION_OPTION == "GF":
                     run_GF = True
             else:
-                if CONVPAR_OPTION == "RAS":
+                if self._config.CONVECTION_OPTION == "RAS":
                     run_RAS = True
-                if CONVPAR_OPTION == "GF":
+                if self._config.CONVECTION_OPTION == "GF":
                     run_GF = True
-                if SHALLOW_OPTION == "UW":
+                if self._config.SHALLOW_CONVECTION_OPTION == "UW":
                     run_UW = True
 
-            if CLDMICR_OPTION == "BACM_1M":
-                raise ValueError(f"{CLDMICR_OPTION} microphysics not implemented. Please choose a different option.")
-            if CLDMICR_OPTION == "GFDL_1M":
+            if self._config.CLOUD_MICROPHYSICS_OPTION == "BACM_1M":
+                raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
+            if self._config.CLOUD_MICROPHYSICS_OPTION == "GFDL_1M":
                 run_GFDL1M = True
-            if CLDMICR_OPTION == "THOM_1M":
-                raise ValueError(f"{CLDMICR_OPTION} microphysics not implemented. Please choose a different option.")
-            if CLDMICR_OPTION == "MGB2_2M":
-                raise ValueError(f"{CLDMICR_OPTION} microphysics not implemented. Please choose a different option.")
+            if self._config.CLOUD_MICROPHYSICS_OPTION == "THOM_1M":
+                raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
+            if self._config.CLOUD_MICROPHYSICS_OPTION == "MGB2_2M":
+                raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
 
             # export cloud fractions
             if state.cloud_condensates.large_scale_ice_cloud_fraction is not None:
@@ -642,8 +677,8 @@ class Moist(NDSLRuntime):
                     saturation_specific_humidity=self._locals.saturation_specific_humidity,
                 )
 
-            if CLDMICR_OPTION == "MGB2_2M":
-                raise ValueError(f"{CLDMICR_OPTION} microphysics not implemented. Please choose a different option.")
+            if self._config.CLOUD_MICROPHYSICS_OPTION == "MGB2_2M":
+                raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
             else:
                 self._get_saturation_specific_humidity(
                     t=state.atmospheric_state.t,
@@ -1160,4 +1195,3 @@ class Moist(NDSLRuntime):
                     ese=self._saturation_tables.ese,
                     esx=self._saturation_tables.esx,
                 )
-
