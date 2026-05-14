@@ -12,9 +12,7 @@ from pyMoist.shared.redistribute_clouds import redistribute_clouds
 
 
 @function
-def fix_negative_precip(
-    precip: Float,
-):
+def fix_negative_precip(precip: Float):
     if precip < 1.0e-8:
         precip = 0.0
 
@@ -102,11 +100,10 @@ def fix_humidity(
     vapor: FloatField,
     t: FloatField,
     p_mb: FloatField,
-    ese: GlobalTable_saturation_tables,
     esx: GlobalTable_saturation_tables,
 ):
     with computation(PARALLEL), interval(...):
-        qsat, _ = compute_saturation_specific_humidity(t, p_mb * 100, ese, esx)
+        qsat, _ = saturation_specific_humidity(t, p_mb * 100.0, esx)
         relative_humidity = vapor / qsat
 
 
@@ -289,7 +286,6 @@ class GFDL1MFinalize(NDSLRuntime):
         # Dev NOTE: this is an orchestration workaround. Direct call to
         #           `self.saturation_tables.X` fails closure capture for
         #           argument reconstruction at call time
-        self._ese = self.saturation_tables.ese
         self._esx = self.saturation_tables.esx
 
     def __call__(
@@ -433,7 +429,6 @@ class GFDL1MFinalize(NDSLRuntime):
                 vapor=mixing_ratio_vapor,
                 t=t,
                 p_mb=local_p_mb,
-                ese=self._ese,
                 esx=self._esx,
             )
 
