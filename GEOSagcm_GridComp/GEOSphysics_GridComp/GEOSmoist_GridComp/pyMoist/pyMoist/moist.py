@@ -6,7 +6,7 @@ from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
 from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, BACKWARD
 from ndsl.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK, Float, IntFieldIJ
 import pyMoist.constants as constants
-from ndsl.constants import I_DIM, J_DIM, K_DIM
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from pyMoist.shared.incloud_processes import fix_mixing_ratio, buoyancy_1, Buoyancy2
 from pyMoist.locals import MoistLocals
 from pyMoist.config import MoistConfig
@@ -709,107 +709,109 @@ class Moist(NDSLRuntime):
             raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
         if self._config.CLOUD_MICROPHYSICS_OPTION == "GFDL_1M":
             pass
-            # self._gfdl1m_config = GFDL1MConfig(
-            #     LPHYS_HYDROSTATIC=config.HYDROSTATIC,
-            #     LHYDROSTATIC=config.PHYS_HYDROSTATIC,
-            #     DT_MOIST=config.DT_MOIST,
-            #     MP_TIME=
-            #     T_MIN=
-            #     T_SUB=
-            #     TAU_R2G=
-            #     TAU_SMLT=
-            #     TAU_G2R=
-            #     DW_LAND=
-            #     DW_OCEAN=
-            #     VI_FAC=
-            #     VR_FAC=
-            #     VS_FAC=
-            #     VG_FAC=
-            #     QL_MLT=
-            #     DO_QA=
-            #     FIX_NEGATIVE=
-            #     VI_MAX=
-            #     VS_MAX=
-            #     VG_MAX=
-            #     VR_MAX=
-            #     QS_MLT=
-            #     QS0_CRT=
-            #     QI_GEN=
-            #     QL0_MAX=
-            #     QI0_MAX=
-            #     QI0_CRT=
-            #     QR0_CRT=
-            #     FAST_SAT_ADJ=
-            #     RH_INC=
-            #     RH_INS=
-            #     RH_INR=
-            #     CONST_VI=
-            #     CONST_VS=
-            #     CONST_VG=
-            #     CONST_VR=
-            #     USE_CCN=
-            #     RTHRESHU=
-            #     RTHRESHS=
-            #     CCN_L=
-            #     CCN_O=
-            #     QC_CRT=
-            #     TAU_G2V=
-            #     TAU_V2G=
-            #     TAU_S2V=
-            #     TAU_V2S=
-            #     TAU_REVP=
-            #     TAU_FRZ=
-            #     DO_BIGG=
-            #     DO_EVAP=
-            #     DO_SUBL=
-            #     SAT_ADJ0=
-            #     C_PIACR=
-            #     TAU_IMLT=
-            #     TAU_V2L=
-            #     TAU_L2V=
-            #     TAU_I2V=
-            #     TAU_I2S=
-            #     TAU_L2R=
-            #     QI_LIM=
-            #     QL_GEN=
-            #     C_PAUT=
-            #     C_PSACI=
-            #     C_PGACS=
-            #     C_PGACI=
-            #     Z_SLOPE_LIQ=
-            #     Z_SLOPE_ICE=
-            #     PROG_CCN=
-            #     C_CRACW=
-            #     ALIN=
-            #     CLIN=
-            #     PRECIPRAD=
-            #     CLD_MIN=
-            #     USE_PPM=
-            #     MONO_PROF=
-            #     DO_SEDI_HEAT=
-            #     SEDI_TRANSPORT=
-            #     DO_SEDI_W=
-            #     DE_ICE=
-            #     ICLOUD_F=
-            #     IRAIN_F=
-            #     MP_PRINT=
-            #     LMELTFRZ=
-            #     USE_BERGERON=
-            #     TURNRHCRIT_PARAM=
-            #     PDFSHAPE=
-            #     ANV_ICEFALL=
-            #     LS_ICEFALL=
-            #     LIQ_RADII_PARAM=
-            #     ICE_RADII_PARAM=
-            #     FAC_RI=
-            #     MIN_RI=
-            #     MAX_RI=
-            #     FAC_RL=
-            #     MIN_RL=
-            #     MAX_RL=
-            #     CCW_EVAP_EFF=
-            #     CCI_EVAP_EFF=
-            # )
+            self._gfdl1m_config = GFDL1MConfig(
+                LPHYS_HYDROSTATIC=config.HYDROSTATIC,
+                LHYDROSTATIC=config.PHYS_HYDROSTATIC,
+                DT_MOIST=config.DT_MOIST,
+                MP_TIME=config.MAX_MICROPHYSICS_TIMESTEP,
+                T_MIN=config.MIN_MELTING_T,
+                T_SUB=config.MIN_SUBLIMATION_T,
+                TAU_R2G=config.TAU_RAIN_TO_GRAUPEL,
+                TAU_SMLT=config.TAU_SNOWMELT,
+                TAU_G2R=config.TAU_GRAUPEL_TO_RAIN,
+                DW_LAND=config.SUBGRID_VARIABILITY_LAND,
+                DW_OCEAN=config.SUBGRID_VARIABILITY_OCEAN,
+                VI_FAC=config.fall_velocity_ice_factor,
+                VR_FAC=config.fall_velocity_rain_factor,
+                VS_FAC=config.fall_velocity_snow_factor,
+                VG_FAC=config.fall_velocity_graupel_factor,
+                QL_MLT=config.MAX_WATER_FROM_ICE,
+                DO_QA=config.DO_INLINE_CLOUD_FRACTION,
+                FIX_NEGATIVE=config.FIX_NEGATIVE_WATER_SPECIES,
+                VI_MAX=config.MAX_FALL_SPEED_ICE,
+                VS_MAX=config.MAX_FALL_SPEED_SNOW,
+                VG_MAX=config.MAX_FALL_SPEED_GRAUPEL,
+                VR_MAX=config.MAX_FALL_SPEED_RAIN,
+                QS_MLT=config.MAX_WATER_FROM_SNOW,
+                QS0_CRT=config.SNOW_TO_GRAUPEL_THRESHOLD,
+                QI_GEN=config.MAX_CLOUD_ICE_GEN,
+                QL0_MAX=config.MAX_CLOUD_WATER,
+                QI0_MAX=config.MAX_CLOUD_ICE,
+                QI0_CRT=config.ICE_TO_SNOW_THRESHOLD,
+                QR0_CRT=config.RAIN_TO_OTHER_THRESHOLD,
+                FAST_SAT_ADJ=config.FAST_SAT_ADJ,
+                RH_INC=config.RH_INCREMENT_INCLOUD,
+                RH_INS=config.RH_INCREMENT_RAIN,
+                RH_INR=config.RH_INCREMENT_SNOW,
+                CONST_VI=config.USE_CONSTANT_ICE_FALL_SPEED,
+                CONST_VS=config.USE_CONSTANT_SNOW_FALL_SPEED,
+                CONST_VG=config.USE_CONSTANT_GRAUPEL_FALL_SPEED,
+                CONST_VR=config.USE_CONSTANT_RAIN_FALL_SPEED,
+                USE_CCN=config.USE_CCN,
+                RTHRESHU=config.CRITICAL_CLOUD_DROP_RADIUS_1,
+                RTHRESHS=config.CRITICAL_CLOUD_DROP_RADIUS_2,
+                CCN_L=config.CCN_LAND,
+                CCN_O=config.CCN_OCEAN,
+                QC_CRT=config.CRITICAL_PARTIAL_CLOUDY_MIXING_RATIO,
+                TAU_G2V=config.TAU_GRAUPEL_TO_VAPOR,
+                TAU_V2G=config.TAU_VAPOR_TO_GRAUPEL,
+                TAU_S2V=config.TAU_SNOW_TO_VAPOR,
+                TAU_V2S=config.TAU_VAPOR_TO_SNOW,
+                TAU_REVP=config.TAU_RAIN_EVAPORATION,
+                TAU_FRZ=config.TAU_RAIN_FREEZING,
+                DO_BIGG=config.DO_BIGG,
+                DO_EVAP=config.DO_EVAPORATION,
+                DO_SUBL=config.DO_SUBLIMATION,
+                SAT_ADJ0=config.SATURATION_ADJUSTMENT_FACTOR,
+                C_PIACR=config.ACCRETION_EFF_RAIN_TO_ICE,
+                TAU_IMLT=config.TAU_ICE_MELTING,
+                TAU_V2L=config.TAU_VAPOR_TO_LIQUID,
+                TAU_L2V=config.TAU_LIQUID_TO_VAPOR,
+                TAU_I2V=config.TAU_ICE_TO_VAPOR,
+                TAU_I2S=config.TAU_ICE_TO_SNOW,
+                TAU_L2R=config.TAU_LIQUID_TO_RAIN,
+                QI_LIM=config.CLOUD_ICE_LIMITER,
+                QL_GEN=config.MAX_CLOUD_LIQUID_GEN,
+                C_PAUT=config.LIQUID_TO_RAIN_AUTOCONVERSION,
+                C_PSACI=config.ACCRETION_EFF_ICE_TO_SNOW,
+                C_PGACS=config.ACCRETION_EFF_SNOW_TO_GRAUPEL,
+                C_PGACI=config.ACCRETION_EFF_ICE_TO_GRAUPEL,
+                Z_SLOPE_LIQ=config.USE_LINEAR_MONO_SLOPE_LIQUID,
+                Z_SLOPE_ICE=config.USE_LINEAR_MONO_SLOPE_ICE,
+                PROG_CCN=config.DO_PROGNOSTIC_CCN,
+                C_CRACW=config.ACCRETION_EFF_RAIN,
+                ALIN=config.ALIN,
+                CLIN=config.CLIN,
+                PRECIPRAD=config.INCLUDE_PRECIP_IN_CLOUD_FRACTION,
+                CLD_MIN=config.MIN_CLOUD_FRACTION,
+                USE_PPM=config.USE_PPM,
+                MONO_PROF=config.USE_MONO_PROF_PPM,
+                DO_SEDI_HEAT=config.DO_SEDI_HEAT_TRANSPORT,
+                SEDI_TRANSPORT=config.DO_SEDI_MOMENTUM_TRANSPORT,
+                DO_SEDI_W=config.DO_SEDI_W_TRANSPORT,
+                DE_ICE=config.DE_ICE,
+                ICLOUD_F=config.CLOUD_SCHEME,
+                IRAIN_F=config.LIQUID_TO_RAIN_AUTOCONVERSION_SCHEME,
+                MP_PRINT=config.DEBUG_PRINT,
+                LMELTFRZ=config.MELT_FREEZE,
+                USE_BERGERON=config.USE_BERGERON,
+                TURNRHCRIT_PARAM=config.TURNRHCRIT_PARAM,
+                PDFSHAPE=config.PDFSHAPE,
+                ANV_ICEFALL=config.ANVIL_ICEFALL,
+                LS_ICEFALL=config.LARGE_SCALE_ICEFALL,
+                LIQ_RADII_PARAM=config.LIQUID_RADII_PARAM,
+                ICE_RADII_PARAM=config.ICE_RADII_PARAM,
+                FAC_RI=config.ICE_RADIUS_FACTOR,
+                MIN_RI=config.MIN_ICE_RADIUS,
+                MAX_RI=config.MAX_ICE_RADIUS,
+                FAC_RL=config.LIQUID_RADIUS_FACTOR,
+                MIN_RL=config.MIN_LIQUID_RADIUS,
+                MAX_RL=config.MAX_LIQUID_RADIUS,
+                CCW_EVAP_EFF=config.CCW_EVAP_EFF,
+                CCI_EVAP_EFF=config.CCI_EVAP_EFF,
+            )
+            self._gfdl1m_state = GFDL1MState.zeros(quantity_factory)
+            self._gfdl1m = GFDL1M(stencil_factory=stencil_factory, quantity_factory=quantity_factory, config=self._gfdl1m_config)
         if self._config.CLOUD_MICROPHYSICS_OPTION == "THOM_1M":
             raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
         if self._config.CLOUD_MICROPHYSICS_OPTION == "MGB2_2M":
@@ -997,6 +999,7 @@ class Moist(NDSLRuntime):
             # run convection and microphysics
             if self._config.SHALLOW_MID_DEEP:
                 if self._config.SHALLOW_CONVECTION_OPTION == "UW":
+                    moist_to_uw_map = {}
                     run_UW = True
                 if self._config.CONVECTION_OPTION == "RAS":
                     run_RAS = True
@@ -1013,7 +1016,146 @@ class Moist(NDSLRuntime):
             if self._config.CLOUD_MICROPHYSICS_OPTION == "BACM_1M":
                 raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
             if self._config.CLOUD_MICROPHYSICS_OPTION == "GFDL_1M":
-                run_GFDL1M = True
+                moist_to_gfdl1m_map: list[tuple] = [
+                    (lambda m: m.surface_conditions.area, lambda g: g.area, [I_DIM, J_DIM]),
+                    (lambda m: m.atmospheric_state.z_interface, lambda g: g.z_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                    (lambda m: m.atmospheric_state.p_interface, lambda g: g.p_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                    (lambda m: m.atmospheric_state.t, lambda g: g.t, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.atmospheric_state.u, lambda g: g.u, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.atmospheric_state.v, lambda g: g.v, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.surface_conditions.land_fraction, lambda g: g.land_fraction, [I_DIM, J_DIM]),
+                    (lambda m: m.atmospheric_state.scalar_diffusivity_interface, lambda g: g.scalar_diffusivity_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                    (lambda m: m.micrphysics_diagnostics.pdf_first_plume_fractional_area, lambda g: g.pdf_first_plume_fractional_area, [I_DIM, J_DIM, K_DIM]),
+                    (
+                        lambda m: m.micrphysics_diagnostics.covariance_liquid_water_static_energy_and_total_water_specific_humidity,
+                        lambda g: g.covariance_liquid_water_static_energy_and_total_water_specific_humidity,
+                        [I_DIM, J_DIM, K_DIM],
+                    ),
+                    (lambda m: m.surface_conditions.t_surface, lambda g: g.surface_temperature, [I_DIM, J_DIM]),
+                    (lambda m: m.surface_conditions.sensible_heat_flux, lambda g: g.sensible_heat_flux, [I_DIM, J_DIM]),
+                    (lambda m: m.atmospheric_state.omega, lambda g: g.omega, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.convection_diagnostics.convection_fraction, lambda g: g.convection_fraction, [I_DIM, J_DIM]),
+                    (lambda m: m.surface_conditions.surface_type, lambda g: g.surface_type, [I_DIM, J_DIM]),
+                    (lambda m: m.microphysics_diagnostics.cloud_liquid_evaporation, lambda g: g.cloud_liquid_evaporation, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.microphysics_diagnostics.cloud_ice_evaporation, lambda g: g.cloud_ice_evaporation, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.precipitation_at_surface.icefall, lambda g: g.icefall, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.freezing_rainfall, lambda g: g.freezing_rainfall, [I_DIM, J_DIM]),
+                    (lambda m: m.microphysics_diagnostics.relative_humidity_after_pdf, lambda g: g.relative_humidity_after_pdf, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.microphysics_diagnostics.buoyancy_flux, lambda g: g.buoyancy_flux, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.microphysics_diagnostics.liquid_water_flux, lambda g: g.liquid_water_flux, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.microphysics_diagnostics.hydrostatic_pdf_iterations, lambda g: g.hydrostatic_pdf_iterations, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.diagnostics.lower_tropospheric_stability, lambda g: g.lower_tropospheric_stability, [I_DIM, J_DIM]),
+                    (lambda m: m.diagnostics.estimated_inversion_strength, lambda g: g.estimated_inversion_strength, [I_DIM, J_DIM]),
+                    (lambda m: m.diagnostics.lcl_height, lambda g: g.lcl_height, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_flux.shallow_convective_rain, lambda g: g.shallow_convective_rain, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.precipitation_flux.shallow_convective_snow, lambda g: g.shallow_convective_snow, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.microphysics_diagnostics.critical_relative_humidity_for_pdf, lambda g: g.critical_relative_humidity_for_pdf, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.microphysics_diagnostics.large_scale_rainwater_source, lambda g: g.large_scale_rainwater_source, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.atmospheric_state.vertical_motion.velocity, lambda g: g.vertical_motion.velocity, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.atmospheric_state.vertical_motion.variance, lambda g: g.vertical_motion.variance, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.atmospheric_state.vertical_motion.third_moment, lambda g: g.vertical_motion.third_moment, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.liquid_water_static_energy.flux, lambda g: g.liquid_water_static_energy.flux, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.liquid_water_static_energy.variance, lambda g: g.liquid_water_static_energy.variance, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.liquid_water_static_energy.third_moment, lambda g: g.liquid_water_static_energy.third_moment, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.total_water.flux, lambda g: g.total_water.flux, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.total_water.variance, lambda g: g.total_water.variance, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.total_water.third_moment, lambda g: g.total_water.third_moment, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.specific_humidity, lambda g: g.mixing_ratio.vapor, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.rain, lambda g: g.mixing_ratio.rain, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.snow, lambda g: g.mixing_ratio.snow, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.graupel, lambda g: g.mixing_ratio.graupel, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.large_scale_liquid, lambda g: g.mixing_ratio.large_scale_liquid, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.large_scale_ice, lambda g: g.mixing_ratio.large_scale_ice, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.convective_liquid, lambda g: g.mixing_ratio.convective_liquid, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.convective_ice, lambda g: g.mixing_ratio.convective_ice, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.convective_cloud_fraction, lambda g: g.cloud_fraction.convective, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.large_scale_cloud_fraction, lambda g: g.cloud_fraction.large_scale, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.liquid_concentration, lambda g: g.concentration.liquid, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.ice_concentration, lambda g: g.concentration.ice, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.specific_humidity, lambda g: g.radiation_field.vapor, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.liquid, lambda g: g.radiation_field.liquid, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.ice, lambda g: g.radiation_field.ice, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.rain, lambda g: g.radiation_field.rain, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.graupel, lambda g: g.radiation_field.graupel, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.snow, lambda g: g.radiation_field.snow, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.cloud_fraction, lambda g: g.radiation_field.cloud_fraction, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.ice_particle_effective_radius, lambda g: g.cloud_particle_effective_radius.ice, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.radiation_state.liquid_particle_effective_radius, lambda g: g.cloud_particle_effective_radius.liquid, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.precipitation_at_surface.falling_ice, lambda g: g.precipitation_at_surface.ice, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.falling_graupel, lambda g: g.precipitation_at_surface.graupel, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.falling_rain, lambda g: g.precipitation_at_surface.rain, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.falling_snow, lambda g: g.precipitation_at_surface.snow, [I_DIM, J_DIM]),
+                    (
+                        lambda m: m.precipitation_at_surface.rain_from_shallow_convection,
+                        lambda g: g.precipitation_at_surface.shallow_convective_precipitation,
+                        [I_DIM, J_DIM],
+                    ),
+                    (lambda m: m.precipitation_at_surface.rain_from_deep_convection, lambda g: g.precipitation_at_surface.deep_convective_precipitation, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.rain_from_large_scale_anvil, lambda g: g.precipitation_at_surface.anvil_precipitation, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.shallow_convection_snow, lambda g: g.precipitation_at_surface.shallow_convective_snow, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.deep_convection_snow, lambda g: g.precipitation_at_surface.deep_convective_snow, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.anvil_snow, lambda g: g.precipitation_at_surface.anvil_snow, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.rain_from_large_scale_nonanvil, lambda g: g.non_anvil_large_scale.precip, [I_DIM, J_DIM]),
+                    (lambda m: m.precipitation_at_surface.large_scale_snow, lambda g: g.non_anvil_large_scale.snow, [I_DIM, J_DIM]),
+                    (
+                        lambda m: m.microphysics_diagnostics.nonanvil_large_scale_precipitation_evaporation,
+                        lambda g: g.non_anvil_large_scale.evaporation,
+                        [I_DIM, J_DIM, K_DIM],
+                    ),
+                    (
+                        lambda m: m.microphysics_diagnostics.nonanvil_large_scale_precipitation_sublimation,
+                        lambda g: g.non_anvil_large_scale.precip,
+                        [I_DIM, J_DIM, K_DIM],
+                    ),
+                    (lambda m: m.precipitation_flux.liquid_nonanvil_large_scale, lambda g: g.non_anvil_large_scale.precip, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                    (lambda m: m.precipitation_flux.ice_nonanvil_large_scale, lambda g: g.non_anvil_large_scale.ice_precip_flux, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                    (lambda m: m.precipitation_flux.liquid_anvil, lambda g: g.anvil.liquid_precip_flux, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                    (lambda m: m.precipitation_flux.ice_anvil, lambda g: g.anvil.ice_precip_flux, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                    (lambda m: m.tendencies.dtotal_cloud_fraciton_dt_macrophysics, lambda g: g.tendencies.dcloud_fractiondt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dspecific_humidity_dt_macrophysics, lambda g: g.tendencies.dvapordt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dice_dt_macrophysics, lambda g: g.tendencies.dicedt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dliquid_dt_macrophysics, lambda g: g.tendencies.dliquiddt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.drain_dt_macrophysics, lambda g: g.tendencies.draindt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dgraupel_dt_macrophysics, lambda g: g.tendencies.dgraupeldt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dsnow_dt_macrophysics, lambda g: g.tendencies.dsnowdt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.du_dt_macrophysics, lambda g: g.tendencies.dudt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dv_dt_macrophysics, lambda g: g.tendencies.dvdt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dt_dt_macrophysics, lambda g: g.tendencies.dtdt_macro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dtotal_cloud_fraciton_dt_microphysics, lambda g: g.tendencies.dcloud_fractiondt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dspecific_humidity_dt_microphysics, lambda g: g.tendencies.dvapordt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dice_dt_microphysics, lambda g: g.tendencies.dicedt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dliquid_dt_microphysics, lambda g: g.tendencies.dliquiddt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.drain_dt_microphysics, lambda g: g.tendencies.draindt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dgraupel_dt_microphysics, lambda g: g.tendencies.dgraupeldt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dsnow_dt_microphysics, lambda g: g.tendencies.dsnowdt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.du_dt_microphysics, lambda g: g.tendencies.dudt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dv_dt_microphysics, lambda g: g.tendencies.dvdt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dt_dt_microphysics, lambda g: g.tendencies.dtdt_micro, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.tendencies.dt_dt_friction_pressure_weighted, lambda g: g.tendencies.dtdt_friction_pressure_weighted, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.mass_fraction_suspended_rain, lambda g: g.mass_fraction.suspended_rain, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.mass_fraction_suspended_graupel, lambda g: g.mass_fraction.suspended_graupel, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.cloud_condensates.mass_fraction_suspended_snow, lambda g: g.mass_fraction.suspended_snow, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.diagnostics.radar.simulated_reflectivity, lambda g: g.radar.simulated_reflectivity, [I_DIM, J_DIM, K_DIM]),
+                    (lambda m: m.diagnostics.radar.maximum_composite_reflectivity, lambda g: g.radar.maximum_composite_reflectivity, [I_DIM, J_DIM]),
+                    (lambda m: m.diagnostics.radar.base_1km_agl_reflectivity, lambda g: g.radar.base_1km_agl_reflectivity, [I_DIM, J_DIM]),
+                    (lambda m: m.diagnostics.radar.echo_top_reflectivity, lambda g: g.radar.echo_top_reflectivity, [I_DIM, J_DIM]),
+                    (lambda m: m.diagnostics.radar.minus_10c_reflectivity, lambda g: g.radar.minus_10c_reflectivity, [I_DIM, J_DIM]),
+                ]
+
+                for source_getter, destination_getter, dims in moist_to_gfdl1m_map:
+                    source = source_getter(state)
+                    destination = destination_getter(self._gfdl1m_state)
+
+                    if source is None:
+                        destination = None
+                    else:
+                        if K_DIM in dims or K_INTERFACE_DIM in dims:
+                            self._copy(input=source, output=destination)
+                        else:
+                            self._copy_2d(input=source, output=destination)
+
+
+                self._gfdl1m(self._gfdl1m_state)
             if self._config.CLOUD_MICROPHYSICS_OPTION == "THOM_1M":
                 raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
             if self._config.CLOUD_MICROPHYSICS_OPTION == "MGB2_2M":
