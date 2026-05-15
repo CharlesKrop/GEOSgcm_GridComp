@@ -17,10 +17,15 @@ from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
 from pyMoist.fortran.profiler import TimedCUDAProfiler
 from pyMoist.saturation_tables import SaturationVaporPressureTable
+import f90nml
+import os
 
 
-def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any]) -> Any:
-    return default if name_in_namelist not in namelist else namelist[name_in_namelist]
+def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict[str, Any], index: int | None = None) -> Any:
+    if name_in_namelist not in namelist:
+        return default
+    value = namelist[name_in_namelist]
+    return value[index] if index is not None else value
 
 
 class GF2020Interface(UserCode):
@@ -30,10 +35,19 @@ class GF2020Interface(UserCode):
     def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
         maplpy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
+        try:
+            with open("input.nml", "r") as f:
+                namelist = f90nml.read(f)
+                if "GF_ConvPar_nml" in namelist:
+                    gf_namelist = namelist["GF_ConvPar_nml"]
+                else:
+                    gf_namelist = {}
+        except FileNotFoundError:
+            raise FileNotFoundError(f"[DSL GF2020] Could not find input.nml in curent directory ({os.getcwd()})")
 
         gf_2020_env_setting = maplpy.get_resource("DSL__GF_ENV_SETTING", mapl_state, default=Int(1))
 
-        zero_diff = maplpy.get_resource("ZERO_DIFF:", mapl_state, default=Int(0))
+        zero_diff = _default_or_get_from_namelist(Int(0), "zero_diff", gf_namelist)
         hydrostatic = maplpy.get_resource("HYDROSTATIC:", mapl_state, default=True)
 
         sh_md_dp = maplpy.get_resource("SH_MD_DP:", mapl_state, default=True)
@@ -42,80 +56,81 @@ class GF2020Interface(UserCode):
         # correct 32 bit precision and calling the correct portion of the F to Py bridge
         # to be safe, all config constants have an extra cast
         if zero_diff == 0:
-            entrversion = maplpy.get_resource("ENTRVERSION:", mapl_state, default=Int(0))
+            entrversion = _default_or_get_from_namelist(Int(0), "entrversion", gf_namelist)
 
             # for cumulus parameterizaiton
             gf_min_area = Float(maplpy.get_resource("GF_MIN_AREA:", mapl_state, default=Float(0.0)))
             tau_mid = Int(maplpy.get_resource("TAU_MID:", mapl_state, default=Int(5400)))
             tau_deep = Int(maplpy.get_resource("TAU_DEEP:", mapl_state, default=Int(10800)))
-            downdraft_max_height_land_shallow = Float(maplpy.get_resource("HEI_DOWN_LAND_SH:", mapl_state, default=Float(0.0)))
-            downdraft_max_height_land_mid = Float(maplpy.get_resource("HEI_DOWN_LAND_MD:", mapl_state, default=Float(0.3)))
-            downdraft_max_height_land_deep = Float(maplpy.get_resource("HEI_DOWN_LAND_DP:", mapl_state, default=Float(0.3)))
-            downdraft_max_height_ocean_shallow = Float(maplpy.get_resource("HEI_DOWN_OCEAN_SH:", mapl_state, default=Float(0.0)))
-            downdraft_max_height_ocean_mid = Float(maplpy.get_resource("HEI_DOWN_OCEAN_MD:", mapl_state, default=Float(0.6)))
-            downdraft_max_height_ocean_deep = Float(maplpy.get_resource("HEI_DOWN_OCEAN_DP:", mapl_state, default=Float(0.6)))
-            updraft_max_height_land_shallow = Float(maplpy.get_resource("HEI_UPDF_LAND_SH:", mapl_state, default=Float(0.2)))
-            updraft_max_height_land_mid = Float(maplpy.get_resource("HEI_UPDF_LAND_MD:", mapl_state, default=Float(0.4)))
-            updraft_max_height_land_deep = Float(maplpy.get_resource("HEI_UPDF_LAND_DP:", mapl_state, default=Float(0.4)))
-            updraft_max_height_ocean_shallow = Float(maplpy.get_resource("HEI_UPDF_OCEAN_SJ:", mapl_state, default=Float(0.2)))
-            updraft_max_height_ocean_mid = Float(maplpy.get_resource("HEI_UPDF_OCEAN_MD:", mapl_state, default=Float(0.4)))
-            updraft_max_height_ocean_deep = Float(maplpy.get_resource("HEI_UPDF_OCEAN_DP:", mapl_state, default=Float(0.4)))
-            minimum_evap_fraction_land_shallow = Float(maplpy.get_resource("MIN_EDT_LAND_SH:", mapl_state, default=Float(0.0)))
-            minimum_evap_fraction_land_mid = Float(maplpy.get_resource("MIN_EDT_LAND_MD:", mapl_state, default=Float(0.1)))
-            minimum_evap_fraction_land_deep = Float(maplpy.get_resource("MIN_EDT_LAND_DP:", mapl_state, default=Float(0.1)))
-            minimum_evap_fraction_ocean_shallow = Float(maplpy.get_resource("MIN_EDT_OCEAN_SH:", mapl_state, default=Float(0.0)))
-            minimum_evap_fraction_ocean_mid = Float(maplpy.get_resource("MIN_EDT_OCEAN_MD:", mapl_state, default=Float(0.1)))
-            minimum_evap_fraction_ocean_deep = Float(maplpy.get_resource("MIN_EDT_OCEAN_DP:", mapl_state, default=Float(0.1)))
-            maximum_evap_fraction_land_shallow = Float(maplpy.get_resource("MAX_EDT_LAND_SH:", mapl_state, default=Float(0.0)))
-            maximum_evap_fraction_land_mid = Float(maplpy.get_resource("MAX_EDT_LAND_MD:", mapl_state, default=Float(0.4)))
-            maximum_evap_fraction_land_deep = Float(maplpy.get_resource("MAX_EDT_LAND_DP:", mapl_state, default=Float(0.4)))
-            maximum_evap_fraction_ocean_shallow = Float(maplpy.get_resource("MAX_EDT_OCEAN_SH:", mapl_state, default=Float(0.0)))
-            maximum_evap_fraction_ocean_mid = Float(maplpy.get_resource("MAX_EDT_OCEAN_MD:", mapl_state, default=Float(0.3)))
-            maximum_evap_fraction_ocean_deep = Float(maplpy.get_resource("MAX_EDT_OCEAN_DP:", mapl_state, default=Float(0.3)))
+            print(f"README {_default_or_get_from_namelist(Float(0.0), "cum_hei_down_land", gf_namelist)}")
+            downdraft_max_height_land_shallow = _default_or_get_from_namelist(Float(0.0), "cum_hei_down_land", gf_namelist, 1)
+            downdraft_max_height_land_mid = _default_or_get_from_namelist(Float(0.3), "cum_hei_down_land", gf_namelist, 2)
+            downdraft_max_height_land_deep = _default_or_get_from_namelist(Float(0.3), "cum_hei_down_land", gf_namelist, 0)
+            downdraft_max_height_ocean_shallow = _default_or_get_from_namelist(Float(0.0), "cum_hei_down_ocean", gf_namelist, 1)
+            downdraft_max_height_ocean_mid = _default_or_get_from_namelist(Float(0.6), "cum_hei_down_ocean", gf_namelist, 2)
+            downdraft_max_height_ocean_deep = _default_or_get_from_namelist(Float(0.6), "cum_hei_down_ocean", gf_namelist, 0)
+            updraft_max_height_land_shallow = _default_or_get_from_namelist(Float(0.2), "cum_hei_updf_land", gf_namelist, 1)
+            updraft_max_height_land_mid = _default_or_get_from_namelist(Float(0.4), "cum_hei_updf_land", gf_namelist, 2)
+            updraft_max_height_land_deep = _default_or_get_from_namelist(Float(0.4), "cum_hei_updf_land", gf_namelist, 0)
+            updraft_max_height_ocean_shallow = _default_or_get_from_namelist(Float(0.2), "cum_hei_updf_ocean", gf_namelist, 1)
+            updraft_max_height_ocean_mid = _default_or_get_from_namelist(Float(0.4), "cum_hei_updf_ocean", gf_namelist, 2)
+            updraft_max_height_ocean_deep = _default_or_get_from_namelist(Float(0.4), "cum_hei_updf_ocean", gf_namelist, 0)
+            minimum_evap_fraction_land_shallow = _default_or_get_from_namelist(Float(0.0), "cum_min_edt_land", gf_namelist, 1)
+            minimum_evap_fraction_land_mid = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_land", gf_namelist, 2)
+            minimum_evap_fraction_land_deep = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_land", gf_namelist, 0)
+            minimum_evap_fraction_ocean_shallow = _default_or_get_from_namelist(Float(0.0), "cum_min_edt_ocean", gf_namelist, 1)
+            minimum_evap_fraction_ocean_mid = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_ocean", gf_namelist, 2)
+            minimum_evap_fraction_ocean_deep = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_ocean", gf_namelist, 0)
+            maximum_evap_fraction_land_shallow = _default_or_get_from_namelist(Float(0.0), "cum_max_edt_land", gf_namelist, 1)
+            maximum_evap_fraction_land_mid = _default_or_get_from_namelist(Float(0.4), "cum_max_edt_land", gf_namelist, 2)
+            maximum_evap_fraction_land_deep = _default_or_get_from_namelist(Float(0.4), "cum_max_edt_land", gf_namelist, 0)
+            maximum_evap_fraction_ocean_shallow = _default_or_get_from_namelist(Float(0.0), "cum_max_edt_ocean", gf_namelist, 1)
+            maximum_evap_fraction_ocean_mid = _default_or_get_from_namelist(Float(0.3), "cum_max_edt_ocean", gf_namelist, 2)
+            maximum_evap_fraction_ocean_deep = _default_or_get_from_namelist(Float(0.3), "cum_max_edt_ocean", gf_namelist, 0)
             if hydrostatic:
-                sgs_w_timescale = Int(maplpy.get_resource("SGS_W_TIMESCALE:", mapl_state, default=Int(0)))
+                sgs_w_timescale = _default_or_get_from_namelist(Int(0), "sgs_w_timescale", gf_namelist)
             else:
-                sgs_w_timescale = Int(maplpy.get_resource("SGS_W_TIMESCALE:", mapl_state, default=Int(1)))
-            min_entrainment_rate = Float(maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.3e-4)))
-            entrainment_rate_shallow = Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
-            entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(1.0e-4)))
-            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-4)))
+                sgs_w_timescale = _default_or_get_from_namelist(Int(1), "sgs_w_timescale", gf_namelist)
+            min_entrainment_rate = _default_or_get_from_namelist(Float(0.3e-4), "min_entr_rate", gf_namelist)
+            entrainment_rate_shallow = _default_or_get_from_namelist(Float(1.0e-4), "cum_entr_rate", gf_namelist)
+            entrainment_rate_mid = _default_or_get_from_namelist(Float(1.0e-4), "cum_entr_rate", gf_namelist)
+            entrainment_rate_deep = _default_or_get_from_namelist(Float(1.0e-4), "cum_entr_rate", gf_namelist)
         else:
-            entrversion = Int(maplpy.get_resource("ENTRVERSION:", mapl_state, default=Int(1)))
+            entrversion = _default_or_get_from_namelist(Int(1), "entrversion", gf_namelist)
 
             # for cumulus parameterization
             gf_min_area = Float(maplpy.get_resource("GF_MIN_AREA:", mapl_state, default=Float(1.0e6)))
             tau_mid = Int(maplpy.get_resource("TAU_MID:", mapl_state, default=Int(3600)))
             tau_deep = Int(maplpy.get_resource("TAU_DEEP:", mapl_state, default=Int(5400)))
-            downdraft_max_height_land_shallow = Float(maplpy.get_resource("HEI_DOWN_LAND_SH:", mapl_state, default=Float(0.0)))
-            downdraft_max_height_land_mid = Float(maplpy.get_resource("HEI_DOWN_LAND_MD:", mapl_state, default=Float(0.5)))
-            downdraft_max_height_land_deep = Float(maplpy.get_resource("HEI_DOWN_LAND_DP:", mapl_state, default=Float(0.5)))
-            downdraft_max_height_ocean_shallow = Float(maplpy.get_resource("HEI_DOWN_OCEAN_SH:", mapl_state, default=Float(0.0)))
-            downdraft_max_height_ocean_mid = Float(maplpy.get_resource("HEI_DOWN_OCEAN_MD:", mapl_state, default=Float(0.5)))
-            downdraft_max_height_ocean_deep = Float(maplpy.get_resource("HEI_DOWN_OCEAN_DP:", mapl_state, default=Float(0.5)))
-            updraft_max_height_land_shallow = Float(maplpy.get_resource("HEI_UPDF_LAND_SH:", mapl_state, default=Float(0.2)))
-            updraft_max_height_land_mid = Float(maplpy.get_resource("HEI_UPDF_LAND_MD:", mapl_state, default=Float(0.65)))
-            updraft_max_height_land_deep = Float(maplpy.get_resource("HEI_UPDF_LAND_DP:", mapl_state, default=Float(0.65)))
-            updraft_max_height_ocean_shallow = Float(maplpy.get_resource("HEI_UPDF_OCEAN_SJ:", mapl_state, default=Float(0.2)))
-            updraft_max_height_ocean_mid = Float(maplpy.get_resource("HEI_UPDF_OCEAN_MD:", mapl_state, default=Float(0.65)))
-            updraft_max_height_ocean_deep = Float(maplpy.get_resource("HEI_UPDF_OCEAN_DP:", mapl_state, default=Float(0.65)))
-            minimum_evap_fraction_land_shallow = Float(maplpy.get_resource("MIN_EDT_LAND_SH:", mapl_state, default=Float(0.0)))
-            minimum_evap_fraction_land_mid = Float(maplpy.get_resource("MIN_EDT_LAND_MD:", mapl_state, default=Float(0.1)))
-            minimum_evap_fraction_land_deep = Float(maplpy.get_resource("MIN_EDT_LAND_DP:", mapl_state, default=Float(0.1)))
-            minimum_evap_fraction_ocean_shallow = Float(maplpy.get_resource("MIN_EDT_OCEAN_SH:", mapl_state, default=Float(0.0)))
-            minimum_evap_fraction_ocean_mid = Float(maplpy.get_resource("MIN_EDT_OCEAN_MD:", mapl_state, default=Float(0.1)))
-            minimum_evap_fraction_ocean_deep = Float(maplpy.get_resource("MIN_EDT_OCEAN_DP:", mapl_state, default=Float(0.1)))
-            maximum_evap_fraction_land_shallow = Float(maplpy.get_resource("MAX_EDT_LAND_SH:", mapl_state, default=Float(0.0)))
-            maximum_evap_fraction_land_mid = Float(maplpy.get_resource("MAX_EDT_LAND_MD:", mapl_state, default=Float(0.9)))
-            maximum_evap_fraction_land_deep = Float(maplpy.get_resource("MAX_EDT_LAND_DP:", mapl_state, default=Float(0.9)))
-            maximum_evap_fraction_ocean_shallow = Float(maplpy.get_resource("MAX_EDT_OCEAN_SH:", mapl_state, default=Float(0.0)))
-            maximum_evap_fraction_ocean_mid = Float(maplpy.get_resource("MAX_EDT_OCEAN_MD:", mapl_state, default=Float(0.9)))
-            maximum_evap_fraction_ocean_deep = Float(maplpy.get_resource("MAX_EDT_OCEAN_DP:", mapl_state, default=Float(0.9)))
-            sgs_w_timescale = Int(maplpy.get_resource("SGS_W_TIMESCALE:", mapl_state, default=Int(0)))
-            min_entrainment_rate = Float(maplpy.get_resource("MIN_ENTR_RATE:", mapl_state, default=Float(0.1e-4)))
-            entrainment_rate_shallow = Float(maplpy.get_resource("ENTR_SH:", mapl_state, default=Float(1.0e-4)))
-            entrainment_rate_mid = Float(maplpy.get_resource("ENTR_MD:", mapl_state, default=Float(9.0e-4)))
-            entrainment_rate_deep = Float(maplpy.get_resource("ENTR_DP:", mapl_state, default=Float(1.0e-3)))
+            downdraft_max_height_land_shallow = _default_or_get_from_namelist(Float(0.0), "cum_hei_down_land", gf_namelist, 1)
+            downdraft_max_height_land_mid = _default_or_get_from_namelist(Float(0.5), "cum_hei_down_land", gf_namelist, 2)
+            downdraft_max_height_land_deep = _default_or_get_from_namelist(Float(0.5), "cum_hei_down_land", gf_namelist, 0)
+            downdraft_max_height_ocean_shallow = _default_or_get_from_namelist(Float(0.0), "cum_hei_down_ocean", gf_namelist, 1)
+            downdraft_max_height_ocean_mid = _default_or_get_from_namelist(Float(0.5), "cum_hei_down_ocean", gf_namelist, 2)
+            downdraft_max_height_ocean_deep = _default_or_get_from_namelist(Float(0.5), "cum_hei_down_ocean", gf_namelist, 0)
+            updraft_max_height_land_shallow = _default_or_get_from_namelist(Float(0.2), "cum_hei_updf_land", gf_namelist, 1)
+            updraft_max_height_land_mid = _default_or_get_from_namelist(Float(0.65), "cum_hei_updf_land", gf_namelist, 2)
+            updraft_max_height_land_deep = _default_or_get_from_namelist(Float(0.65), "cum_hei_updf_land", gf_namelist, 0)
+            updraft_max_height_ocean_shallow = _default_or_get_from_namelist(Float(0.2), "cum_hei_updf_ocean", gf_namelist, 1)
+            updraft_max_height_ocean_mid = _default_or_get_from_namelist(Float(0.65), "cum_hei_updf_ocean", gf_namelist, 2)
+            updraft_max_height_ocean_deep = _default_or_get_from_namelist(Float(0.65), "cum_hei_updf_ocean", gf_namelist, 0)
+            minimum_evap_fraction_land_shallow = _default_or_get_from_namelist(Float(0.0), "cum_min_edt_land", gf_namelist, 1)
+            minimum_evap_fraction_land_mid = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_land", gf_namelist, 2)
+            minimum_evap_fraction_land_deep = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_land", gf_namelist, 0)
+            minimum_evap_fraction_ocean_shallow = _default_or_get_from_namelist(Float(0.0), "cum_min_edt_ocean", gf_namelist, 1)
+            minimum_evap_fraction_ocean_mid = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_ocean", gf_namelist, 2)
+            minimum_evap_fraction_ocean_deep = _default_or_get_from_namelist(Float(0.1), "cum_min_edt_ocean", gf_namelist, 0)
+            maximum_evap_fraction_land_shallow = _default_or_get_from_namelist(Float(0.0), "cum_max_edt_land", gf_namelist, 1)
+            maximum_evap_fraction_land_mid = _default_or_get_from_namelist(Float(0.9), "cum_max_edt_land", gf_namelist, 2)
+            maximum_evap_fraction_land_deep = _default_or_get_from_namelist(Float(0.9), "cum_max_edt_land", gf_namelist, 0)
+            maximum_evap_fraction_ocean_shallow = _default_or_get_from_namelist(Float(0.0), "cum_max_edt_ocean", gf_namelist, 1)
+            maximum_evap_fraction_ocean_mid = _default_or_get_from_namelist(Float(0.9), "cum_max_edt_ocean", gf_namelist, 2)
+            maximum_evap_fraction_ocean_deep = _default_or_get_from_namelist(Float(0.9), "cum_max_edt_ocean", gf_namelist, 0)
+            sgs_w_timescale = _default_or_get_from_namelist(Int(0), "sgs_w_timescale", gf_namelist)
+            min_entrainment_rate = _default_or_get_from_namelist(Float(0.1e-4), "min_entr_rate", gf_namelist)
+            entrainment_rate_shallow = _default_or_get_from_namelist(Float(1.0e-3), "cum_entr_rate", gf_namelist)
+            entrainment_rate_mid = _default_or_get_from_namelist(Float(9.0e-4), "cum_entr_rate", gf_namelist)
+            entrainment_rate_deep = _default_or_get_from_namelist(Float(1.0e-4), "cum_entr_rate", gf_namelist)
 
         config = GF2020Config(
             DT_MOIST=Float(maplpy.get_resource("DSL__GF2020_DT", mapl_state, default=Float(0.0))),
@@ -127,15 +142,15 @@ class GF2020Interface(UserCode):
             GF_ENV_SETTING=gf_2020_env_setting,
             ENTRVERSION=entrversion,
             CONVECTION_TRACER=Int(maplpy.get_resource("CONVECTION_TRACER:", mapl_state, default=Int(0))),
-            C1=Float(maplpy.get_resource("C1:", mapl_state, default=Float(0.0))),
-            ADV_TRIGGER=Int(maplpy.get_resource("ADV_TRIGGER:", mapl_state, default=Int(0))),
-            AUTOCONV=Int(maplpy.get_resource("AUTOCONV:", mapl_state, default=Int(1))),
-            USE_TRACER_TRANSPORT=Int(maplpy.get_resource("USE_TRACER_TRANSP:", mapl_state, default=Int(1))),
+            C1=_default_or_get_from_namelist(Float(0.0), "c1", gf_namelist),
+            ADV_TRIGGER=_default_or_get_from_namelist(Int(0), "adv_trigger", gf_namelist),
+            AUTOCONV=_default_or_get_from_namelist(Int(1), "autoconv", gf_namelist),
+            USE_TRACER_TRANSPORT=_default_or_get_from_namelist(Int(1), "use_tracer_transp", gf_namelist),
             SCLM_DEEP=Float(maplpy.get_resource("SCLM_DEEP:", mapl_state, default=Float(1.0))),
             FIX_CONVECTIVE_CLOUD=maplpy.get_resource("FIX_CNV_CLOUD:", mapl_state, default=False),
-            APPLY_SUBSIDENCE_MICROPHYSICS=Int(maplpy.get_resource("APPLY_SUB_MP:", mapl_state, default=Int(0))),
+            APPLY_SUBSIDENCE_MICROPHYSICS=_default_or_get_from_namelist(Int(0), "apply_sub_mp", gf_namelist),
             NUMBER_OF_TRACERS=NUMBER_OF_TRACERS,
-            USE_MOMENTUM_TRANSPORT=Int(maplpy.get_resource("USE_MOMENTUM_TRANSP:", mapl_state, default=Int(1))),
+            USE_MOMENTUM_TRANSPORT=_default_or_get_from_namelist(Int(1), "use_momentum_transp", gf_namelist),
         )
 
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
@@ -164,65 +179,65 @@ class GF2020Interface(UserCode):
             MAXIMUM_EVAP_FRACTION_OCEAN_SHALLOW=maximum_evap_fraction_ocean_shallow,
             MAXIMUM_EVAP_FRACTION_OCEAN_MID=maximum_evap_fraction_ocean_mid,
             MAXIMUM_EVAP_FRACTION_OCEAN_DEEP=maximum_evap_fraction_ocean_deep,
-            CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW=Float(maplpy.get_resource("FADJ_MASSFLX_SH:", mapl_state, default=Float(1.0))),
-            CLOUD_BASE_MASS_FLUX_FACTOR_MID=Float(maplpy.get_resource("FADJ_MASSFLX_MD:", mapl_state, default=Float(1.0))),
-            CLOUD_BASE_MASS_FLUX_FACTOR_DEEP=Float(maplpy.get_resource("FADJ_MASSFLX_DP:", mapl_state, default=Float(1.0))),
-            USE_EXCESS_SHALLOW=Int(maplpy.get_resource("USE_EXCESS_SH:", mapl_state, default=Int(3))),
-            USE_EXCESS_MID=Int(maplpy.get_resource("USE_EXCESS_MD:", mapl_state, default=Int(2))),
-            USE_EXCESS_DEEP=Int(maplpy.get_resource("USE_EXCESS_DP:", mapl_state, default=Int(2))),
+            CLOUD_BASE_MASS_FLUX_FACTOR_SHALLOW=_default_or_get_from_namelist(Float(1.0), "cum_fadj_massflx", gf_namelist, 1),
+            CLOUD_BASE_MASS_FLUX_FACTOR_MID=_default_or_get_from_namelist(Float(1.0), "cum_fadj_massflx", gf_namelist, 2),
+            CLOUD_BASE_MASS_FLUX_FACTOR_DEEP=_default_or_get_from_namelist(Float(1.0), "cum_fadj_massflx", gf_namelist, 0),
+            USE_EXCESS_SHALLOW=_default_or_get_from_namelist(Int(3), "cum_use_excess", gf_namelist, 1),
+            USE_EXCESS_MID=_default_or_get_from_namelist(Int(2), "cum_use_excess", gf_namelist, 2),
+            USE_EXCESS_DEEP=_default_or_get_from_namelist(Int(2), "cum_use_excess", gf_namelist, 0),
             AVERAGE_LAYER_DEPTH_SHALLOW=Float(maplpy.get_resource("AVE_LAYER_SH:", mapl_state, default=Float(30.0))),
             AVERAGE_LAYER_DEPTH_MID=Float(maplpy.get_resource("AVE_LAYER_MD:", mapl_state, default=Float(40.0))),
             AVERAGE_LAYER_DEPTH_DEEP=Float(maplpy.get_resource("AVE_LAYER_DP:", mapl_state, default=Float(40.0))),
-            ENABLE_SHALLOW=Int(maplpy.get_resource("SHALLOW:", mapl_state, default=Int(0))),
-            ENABLE_MID=Int(maplpy.get_resource("CONGESTUS:", mapl_state, default=Int(1))),
-            ENABLE_DEEP=Int(maplpy.get_resource("DEEP:", mapl_state, default=Int(1))),
+            ENABLE_SHALLOW=_default_or_get_from_namelist(Int(0), "icumulus_gf", gf_namelist, 1),
+            ENABLE_MID=_default_or_get_from_namelist(Int(0), "icumulus_gf", gf_namelist, 2),
+            ENABLE_DEEP=_default_or_get_from_namelist(Int(0), "icumulus_gf", gf_namelist, 0),
             ENTRAINMENT_RATE_SHALLOW=entrainment_rate_shallow,
             ENTRAINMENT_RATE_MID=entrainment_rate_mid,
             ENTRAINMENT_RATE_DEEP=entrainment_rate_deep,
-            C0_SHAL=Float(maplpy.get_resource("C0_SHAL:", mapl_state, default=Float(0.0))),
-            C0_MID=Float(maplpy.get_resource("C0_MID:", mapl_state, default=Float(2.0e-3))),
-            C0_DEEP=Float(maplpy.get_resource("C0_DEEP:", mapl_state, default=Float(2.0e-3))),
+            C0_SHAL=_default_or_get_from_namelist(Float(0.0), "c0_shal", gf_namelist),
+            C0_MID=_default_or_get_from_namelist(Float(2.0e-3), "c0_mid", gf_namelist),
+            C0_DEEP=_default_or_get_from_namelist(Float(2.0e-3), "c0_deep", gf_namelist),
             TAU_MID=tau_mid,
             TAU_DEEP=tau_deep,
-            CLOSURE_CHOICE_SHALLOW=Int(maplpy.get_resource("CLOSURE_SHALLOW:", mapl_state, default=Int(7))),
-            CLOSURE_CHOICE_MID=Int(maplpy.get_resource("CLOSURE_CONGESTUS:", mapl_state, default=Int(3))),
-            CLOSURE_CHOICE_DEEP=Int(maplpy.get_resource("CLOSURE_DEEP:", mapl_state, default=Int(0))),
+            CLOSURE_CHOICE_SHALLOW=_default_or_get_from_namelist(Int(7), "closure_choice", gf_namelist, 1),
+            CLOSURE_CHOICE_MID=_default_or_get_from_namelist(Int(3), "closure_choice", gf_namelist, 2),
+            CLOSURE_CHOICE_DEEP=_default_or_get_from_namelist(Int(0), "closure_choice", gf_namelist, 0),
             # plume independent
             SHALLOW_MID_DEEP=maplpy.get_resource("SH_MD_DP:", mapl_state, default=True),
             ZERO_DIFF=zero_diff,
-            MOIST_TRIGGER=Int(maplpy.get_resource("MOIST_TRIGGER:", mapl_state, default=Int(0))),
-            LAMBDA_DEEP=Float(maplpy.get_resource("LAMBDAU_DEEP:", mapl_state, default=Float(0.0))),
-            LAMBDA_SHALLOW_DOWN=Float(maplpy.get_resource("LAMBAU_SHDN:", mapl_state, default=Float(2.0))),
-            CAP_MAXS=Float(maplpy.get_resource("CAP_MAXS:", mapl_state, default=Float(50.0))),
-            OUTPUT_SOUNDING=Int(maplpy.get_resource("OUTPUT_SOUND:", mapl_state, default=Int(0))),
-            USE_SCALE_DEP=Int(maplpy.get_resource("USE_SCALE_DEP:", mapl_state, default=Int(1))),
-            SATURATION_CALCULATION_CHOICE=Int(maplpy.get_resource("SATUR_CALC:", mapl_state, default=Int(1))),
-            CLOUD_LEVEL_GRID=Int(maplpy.get_resource("CLEV_GRID:", mapl_state, default=Int(1))),
-            FRAC_MODIS=Int(maplpy.get_resource("FRAC_MODIS:", mapl_state, default=Int(1))),
-            BOUNDARY_CONDITION_METHOD=Int(maplpy.get_resource("BC_METH:", mapl_state, default=Int(1))),
-            OVERSHOOT=Float(maplpy.get_resource("OVERSHOOT:", mapl_state, default=Float(0.0))),
+            MOIST_TRIGGER=_default_or_get_from_namelist(Int(0), "moist_trigger", gf_namelist),
+            LAMBDA_DEEP=_default_or_get_from_namelist(Float(0.0), "lambau_deep", gf_namelist),
+            LAMBDA_SHALLOW_DOWN=_default_or_get_from_namelist(Float(2.0), "lambau_shdn", gf_namelist),
+            CAP_MAXS=_default_or_get_from_namelist(Float(50.0), "cap_maxs", gf_namelist),
+            OUTPUT_SOUNDING=_default_or_get_from_namelist(Int(0), "output_sound", gf_namelist),
+            USE_SCALE_DEP=_default_or_get_from_namelist(Int(1), "use_scale_dep", gf_namelist),
+            SATURATION_CALCULATION_CHOICE=_default_or_get_from_namelist(Int(1), "satur_calc", gf_namelist),
+            CLOUD_LEVEL_GRID=_default_or_get_from_namelist(Int(1), "clev_grid", gf_namelist),
+            FRAC_MODIS=_default_or_get_from_namelist(Int(1), "frac_modis", gf_namelist),
+            BOUNDARY_CONDITION_METHOD=_default_or_get_from_namelist(Int(1), "bc_meth", gf_namelist),
+            OVERSHOOT=_default_or_get_from_namelist(Float(0.0), "overshoot", gf_namelist),
             USE_MEMORY=Int(maplpy.get_resource("USE_MEMORY:", mapl_state, default=Int(-1))),
-            DOWNDRAFT=Int(maplpy.get_resource("DOWNDRAFT:", mapl_state, default=Int(1))),
-            USE_WETBULB=Int(maplpy.get_resource("USE_WETBULB:", mapl_state, default=Int(0))),
-            DIURNAL_CYCLE=Int(maplpy.get_resource("DICYCL:", mapl_state, default=Int(1))),
-            USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES=Int(maplpy.get_resource("USE_LINEAR_SUBCL_MF:", mapl_state, default=Int(0))),
+            DOWNDRAFT=_default_or_get_from_namelist(Int(1), "downdraft", gf_namelist),
+            USE_WETBULB=_default_or_get_from_namelist(Int(0), "use_wetbulb", gf_namelist),
+            DIURNAL_CYCLE=_default_or_get_from_namelist(Int(1), "dicycle", gf_namelist),
+            USE_LINEAR_SUBCLOUD_MOISTURE_FLUXES=_default_or_get_from_namelist(Int(0), "use_linear_subcl_mf", gf_namelist),
             CRITICAL_MIXING_RATIO_OVER_OCEAN=Float(maplpy.get_resource("QRC_CRIT_OCN:", mapl_state, default=Float(2.0e-4))),
             CRITICAL_MIXING_RATIO_OVER_LAND=Float(maplpy.get_resource("QRC_CRIT_LND:", mapl_state, default=Float(2.0e-4))),
-            BETA_SHALLOW=Float(maplpy.get_resource("BETA_SH:", mapl_state, default=Float(2.2))),
-            EVAP_FIX=Int(maplpy.get_resource("EVAP_FIX:", mapl_state, default=Int(1))),
+            BETA_SHALLOW=_default_or_get_from_namelist(Float(2.2), "beta_sh", gf_namelist),
+            EVAP_FIX=_default_or_get_from_namelist(Int(1), "evap_fix", gf_namelist),
             SGS_W_TIMESCALE=sgs_w_timescale,
-            VERTICAL_DISCRETIZATION_OPTION=Int(maplpy.get_resource("VERT_DISCR:", mapl_state, default=Int(1))),
-            ALP1=Float(maplpy.get_resource("ALP1:", mapl_state, default=Float(1.0))),
-            USE_FCT=Int(maplpy.get_resource("USE_FCT:", mapl_state, default=Int(0))),
+            VERTICAL_DISCRETIZATION_OPTION=_default_or_get_from_namelist(Int(1), "vert_discr", gf_namelist),
+            ALP1=_default_or_get_from_namelist(Float(1.0), "alp1", gf_namelist),
+            USE_FCT=_default_or_get_from_namelist(Int(1), "use_fct", gf_namelist),
             MIN_ENTRAINMENT_RATE=min_entrainment_rate,
-            USE_SMOOTH_TENDENCIES=Int(maplpy.get_resource("USE_SMOOTH_TEND:", mapl_state, default=Int(1))),
-            USE_RAIN_EVAP_BELOW_CLOUD_BASE=Int(maplpy.get_resource("USE_REBCB:", mapl_state, default=Int(1))),
-            USE_CLOUD_DISSIPATION=Float(maplpy.get_resource("USE_CLOUD_DISSIPATION:", mapl_state, default=Float(1.0))),
-            LIGHTNING_DIAGNOSTICS=Int(maplpy.get_resource("LIGHTNING_DIAG:", mapl_state, default=Int(0))),
-            USE_TRACER_SCAVENGE=Int(maplpy.get_resource("USE_TRACER_SCAVEN:", mapl_state, default=Int(1))),
-            USE_TRACER_EVAPORATION=Int(maplpy.get_resource("USE_TRACER_EVAP:", mapl_state, default=Int(1))),
-            USE_FLUX_FORM=Int(maplpy.get_resource("USE_FLUX_FORM:", mapl_state, default=Int(1))),
-            MAX_TEMP_VAPOR_TENDENCY=Float(maplpy.get_resource("MAX_TQ_TEND:", mapl_state, default=Float(100.0))),
+            USE_SMOOTH_TENDENCIES=_default_or_get_from_namelist(Int(1), "use_smooth_tend", gf_namelist),
+            USE_RAIN_EVAP_BELOW_CLOUD_BASE=_default_or_get_from_namelist(Int(1), "use_rebcb", gf_namelist),
+            USE_CLOUD_DISSIPATION=_default_or_get_from_namelist(Float(1.0), "use_cloud_dissipation", gf_namelist),
+            LIGHTNING_DIAGNOSTICS=_default_or_get_from_namelist(Int(0), "use_rebcb", gf_namelist),
+            USE_TRACER_SCAVENGE=_default_or_get_from_namelist(Int(1), "use_tracer_scaven", gf_namelist),
+            USE_TRACER_EVAPORATION=_default_or_get_from_namelist(Int(1), "use_tracer_evap", gf_namelist),
+            USE_FLUX_FORM=_default_or_get_from_namelist(Int(1), "use_flux_form", gf_namelist),
+            MAX_TEMP_VAPOR_TENDENCY=_default_or_get_from_namelist(Float(100.0), "max_tq_tend", gf_namelist),
         )
 
         saturation_tables = SaturationVaporPressureTable(ndsl_stack.stencil_factory.backend)
