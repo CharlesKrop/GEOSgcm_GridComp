@@ -1004,7 +1004,143 @@ class Moist(NDSLRuntime):
                 if self._config.CONVECTION_OPTION == "RAS":
                     run_RAS = True
                 if self._config.CONVECTION_OPTION == "GF":
-                    run_GF = True
+                    moist_to_gf2020_map: list[tuple] = [
+                        (lambda m: m.grid_data.area, lambda g: g.area, [I_DIM, J_DIM]),
+                        (lambda m: m.grid_data.latitude, lambda g: g.latitude, [I_DIM, J_DIM]),
+                        (lambda m: m.grid_data.longitude, lambda g: g.longitude, [I_DIM, J_DIM]),
+                        (lambda m: m.atmospheric_state.p_interface, lambda g: g.p_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                        (lambda m: m.atmospheric_state.u, lambda g: g.u, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.atmospheric_state.t, lambda g: g.t, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.atmospheric_state.v, lambda g: g.v, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.atmospheric_state.vertical_motion.velocity, lambda g: g.w, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.atmospheric_state.omega, lambda g: g.omega, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.surface_conditions.t_2m, lambda g: g.t_2m, [I_DIM, J_DIM]),
+                        (lambda m: m.surface_conditions.specific_humidity_2m, lambda g: g.specific_humidity_2m, [I_DIM, J_DIM]),
+                        (lambda m: m.surface_conditions.t_surface_air, lambda g: g.t_surface, [I_DIM, J_DIM]),
+                        (lambda m: m.surface_conditions.specific_humidity_surface, lambda g: g.specific_humidity_surface, [I_DIM, J_DIM]),
+                        (lambda m: m.cloud_condensates.specific_humidity, lambda g: g.vapor, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.convective_liquid, lambda g: g.convective_liquid, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.convective_ice, lambda g: g.convective_ice, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.convective_cloud_fraction, lambda g: g.convective_cloud_fraction, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.large_scale_liquid, lambda g: g.large_scale_liquid, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.large_scale_ice, lambda g: g.large_scale_ice, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.large_scale_cloud_fraction, lambda g: g.large_scale_cloud_fraction, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.ice_fraction_in_convective_tower, lambda g: g.ice_fraction_in_convective_tower, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.state_before_dynamics.p_interface, lambda g: g.p_interface_timestep_start, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                        (lambda m: m.state_before_dynamics.t, lambda g: g.t_timestep_start, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.state_before_dynamics.u, lambda g: g.u_timestep_start, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.state_before_dynamics.v, lambda g: g.v_timestep_start, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.state_before_dynamics.specific_humidity, lambda g: g.vapor_timestep_start, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.atmospheric_state.z_interface, lambda g: g.geopotential_height_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                        (lambda m: m.surface_conditions.geopotential_height, lambda g: g.geopotential_height_surface, [I_DIM, J_DIM]),
+                        (lambda m: m.levels.pbl_level, lambda g: g.pbl_level, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.convection_fraction, lambda g: g.convection_fraction, [I_DIM, J_DIM]),
+                        (lambda m: m.surface_conditions.surface_type, lambda g: g.surface_type, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.stochastic_factor, lambda g: g.seed_convection, [I_DIM, J_DIM]),
+                        (lambda m: m.surface_conditions.land_fraction, lambda g: g.land_fraction, [I_DIM, J_DIM]),
+                        (lambda m: m.atmospheric_state.scalar_diffusivity_interface, lambda g: g.scalar_diffusivity, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                        (lambda m: m.convective_diagnostics.buoyancy_surface_parcel, lambda g: g.buoyancy, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.precipitation_at_surface.rain_from_GF_convection, lambda g: g.convective_precipitation_GF, [I_DIM, J_DIM]),
+                        (lambda m: m.precipitation_flux.convective_precipitation_from_RAS, lambda g: g.convective_precipitation_RAS, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensates.convective_rainwater_source, lambda g: g.convective_rainwater_source, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.surface_conditions.sensible_heat_flux, lambda g: g.sensible_heat_flux, [I_DIM, J_DIM]),
+                        (
+                            lambda m: m.precipitation_flux.total_water_flux_deep_convection_interface,
+                            lambda g: g.total_water_flux_deep_convection_interface,
+                            [I_DIM, J_DIM, K_INTERFACE_DIM],
+                        ),
+                        (
+                            lambda m: m.convective_diagnostics.convective_precipitation_evaporation,
+                            lambda g: g.sublimation_of_convective_precipitation,
+                            [I_DIM, J_DIM, K_DIM],
+                        ),
+                        (
+                            lambda m: m.convective_diacnostics.convective_precipitation_sublimation,
+                            lambda g: g.evaporation_of_convective_precipitation,
+                            [I_DIM, J_DIM, K_DIM],
+                        ),
+                        (lambda m: m.precipitation_flux.ice_convection, lambda g: g.ice_precip_flux_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                        (lambda m: m.precipitation_flux.liquid_convection, lambda g: g.liquid_precip_flux_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
+                        (lambda m: m.surface_conditions.surface_evaporation, lambda g: g.evaporation, [I_DIM, J_DIM]),
+                        (lambda m: m.cloud_condensated.convective_condensate_source, lambda g: g.convective_condensate_source, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.cloud_condensated.convective_condensate_grid_mean, lambda g: g.convective_condensate_grid_mean, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.entrainment_parameter, lambda g: g.entrainment_parameter, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.lateral_entrainment_rate, lambda g: g.lateral_entrainment_rate, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.lateral_entrainment_rate_shallow, lambda g: g.lateral_entrainment_rate_shallow, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.lateral_entrainment_rate_mid, lambda g: g.lateral_entrainment_rate_mid, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.lateral_entrainment_rate_deep, lambda g: g.lateral_entrainment_rate_deep, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.updraft_areal_fraction, lambda g: g.updraft_areal_fraction, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.updraft_vertical_velocity, lambda g: g.updraft_vertical_velocity, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dt_dt_shortwave, lambda g: g.dtdt_shortwave, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dt_dt_longwave, lambda g: g.dtdt_longwave, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dspecific_humidity_dt_pbl, lambda g: g.dspecific_humiditydt_pbl, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dt_dt_pbl, lambda g: g.dtdt_pbl, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dt_dt_from_dynamics, lambda g: g.dtdt_from_dynamics, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dspecific_humidity_dt_from_dynamics, lambda g: g.dvapordt_from_dynamics, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.sigma_mid, lambda g: g.sigma_mid, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.sigma_deep, lambda g: g.sigma_deep, [I_DIM, J_DIM]),
+                        (lambda m: m.cloud_condensated.initial_total_precipitable_water, lambda g: g.total_precipitable_water_initial, [I_DIM, J_DIM]),
+                        (
+                            lambda m: m.cloud_condensated.initial_total_precipitable_water_saturation,
+                            lambda g: g.saturation_total_precipitable_water_initial,
+                            [I_DIM, J_DIM],
+                        ),
+                        (lambda m: m.tendencies.dspecific_humidity_dt_deep_convection, lambda g: g.dvapordt_deep_convection, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dt_dt_deep_convection, lambda g: g.dtdt_deep_convection, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.du_dt_deep_convection, lambda g: g.dudt_deep_convection, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dv_dt_deep_convection, lambda g: g.dvdt_deep_convection, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dliquid_dt_deep_convection, lambda g: g.dliquiddt_deep_convection, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dice_dt_deep_convection, lambda g: g.dicedt_deep_convection, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.tendencies.dtotal_cloud_fraciton_dt_deep_convection, lambda g: g.dcloudfractiondt_deep_convection, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.pressure_shallow_convective_cloud_top, lambda g: g.pressure_shallow_convective_cloud_top, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.pressure_mid_convective_cloud_top, lambda g: g.pressure_mid_convective_cloud_top, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.pressure_deep_convective_cloud_top, lambda g: g.pressure_deep_convective_cloud_top, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_shallow, lambda g: g.mass_flux_shallow, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_mid, lambda g: g.mass_flux_mid, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_deep_updraft, lambda g: g.mass_flux_deep_updraft, [I_DIM, J_DIM, K_DIM]),
+                        (
+                            lambda m: m.convective_diagnostics.mass_flux_deep_updraft_interface,
+                            lambda g: g.mass_flux_deep_updraft_interface,
+                            [I_DIM, J_DIM, K_INTERFACE_DIM],
+                        ),
+                        (lambda m: m.convective_diagnostics.mass_flux_deep_updraft_detrained, lambda g: g.mass_flux_deep_updraft_detrained, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_deep_downdraft, lambda g: g.mass_flux_deep_downdraft, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_cloud_base, lambda g: g.mass_flux_cloud_base, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_cloud_base_shallow, lambda g: g.mass_flux_cloud_base_shallow, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_cloud_base_mid, lambda g: g.mass_flux_cloud_base_mid, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.mass_flux_cloud_base_deep, lambda g: g.mass_flux_cloud_base_deep, [I_DIM, J_DIM]),
+                        (
+                            lambda m: m.convective_diagnostics.total_cumulative_mass_flux,
+                            lambda g: g.total_cumulative_mass_flux_interface,
+                            [I_DIM, J_DIM, K_INTERFACE_DIM],
+                        ),
+                        (lambda m: m.convective_diagnostics.total_detraining_mass_flux, lambda g: g.total_detraining_mass_flux, [I_DIM, J_DIM, K_DIM]),
+                        (lambda m: m.convective_diagnostics.convection_code_shallow, lambda g: g.convection_code_shallow, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.convection_code_mid, lambda g: g.convection_code_mid, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.convection_code_deep, lambda g: g.convection_code_deep, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.cloud_workfunction_0, lambda g: g.cloud_workfunction_0, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.cloud_workfunction_1, lambda g: g.cloud_workfunction_1, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.cloud_workfunction_2, lambda g: g.cloud_workfunction_2, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.cloud_workfunction_3, lambda g: g.cloud_workfunction_3, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.cloud_workfunction_1_pbl, lambda g: g.cloud_workfunction_1_pbl, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.cloud_workfunction_1_cin, lambda g: g.cloud_workfunction_1_cin, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.pbl_time_scale, lambda g: g.pbl_time_scale, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.cape_removal_time_scale, lambda g: g.cape_removal_time_scale, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.lightning_density, lambda g: g.lightning_density, [I_DIM, J_DIM]),
+                        (lambda m: m.convective_diagnostics.convection_tracer, lambda g: g.convection_tracer, [I_DIM, J_DIM, K_DIM]),
+                    ]
+
+                    for source_getter, destination_getter, dims in moist_to_gf2020_map:
+                        source = source_getter(state)
+                        destination = destination_getter(self._gfdl1m_state)
+
+                        if source is None:
+                            destination = None
+                        else:
+                            if K_DIM in dims or K_INTERFACE_DIM in dims:
+                                self._copy(input=source, output=destination)
+                            else:
+                                self._copy_2d(input=source, output=destination)
             else:
                 if self._config.CONVECTION_OPTION == "RAS":
                     run_RAS = True
@@ -1017,7 +1153,7 @@ class Moist(NDSLRuntime):
                 raise ValueError(f"{self._config.CLOUD_MICROPHYSICS_OPTION} microphysics not implemented. Please choose a different option.")
             if self._config.CLOUD_MICROPHYSICS_OPTION == "GFDL_1M":
                 moist_to_gfdl1m_map: list[tuple] = [
-                    (lambda m: m.surface_conditions.area, lambda g: g.area, [I_DIM, J_DIM]),
+                    (lambda m: m.grid_data.area, lambda g: g.area, [I_DIM, J_DIM]),
                     (lambda m: m.atmospheric_state.z_interface, lambda g: g.z_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
                     (lambda m: m.atmospheric_state.p_interface, lambda g: g.p_interface, [I_DIM, J_DIM, K_INTERFACE_DIM]),
                     (lambda m: m.atmospheric_state.t, lambda g: g.t, [I_DIM, J_DIM, K_DIM]),
@@ -1153,7 +1289,6 @@ class Moist(NDSLRuntime):
                             self._copy(input=source, output=destination)
                         else:
                             self._copy_2d(input=source, output=destination)
-
 
                 self._gfdl1m(self._gfdl1m_state)
             if self._config.CLOUD_MICROPHYSICS_OPTION == "THOM_1M":
