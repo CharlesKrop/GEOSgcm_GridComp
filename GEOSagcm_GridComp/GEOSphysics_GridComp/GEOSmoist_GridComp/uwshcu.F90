@@ -78,7 +78,7 @@ contains
          umf_inv, dcm_inv, qvten_inv, qlten_inv, qiten_inv, tten_inv, & ! OUTPUT
          uten_inv, vten_inv, qrten_inv, qsten_inv, cufrc_inv,       &
          fer_inv, fdr_inv, qldet_inv, qidet_inv, qlsub_inv,         &
-         qisub_inv, ndrop_inv, nice_inv, tpert_out, qpert_out,      & 
+         qisub_inv, ndrop_inv, nice_inv, tpert_out, `,      & 
          qtflx_inv, slflx_inv, uflx_inv, vflx_inv,                  &
 #ifdef UWDIAG
          qcu_inv, qlu_inv, qiu_inv, cbmf, qc_inv,                   & ! DIAGNOSTIC ONLY

@@ -126,6 +126,7 @@ class MoistInterface(UserCode):
 
         # Levels
         self._managed_state.register("levels.pbl_level", "KPBL", import_repository, dims=[I_DIM, J_DIM])
+        self._managed_state.register("levels.pbl_level_shallow_convection", "KPBL_SC", import_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("levels.cbl_level_before_moist", "KCBL_moist", import_repository, dims=[I_DIM, J_DIM])
 
         # CloudCondensates
@@ -141,8 +142,8 @@ class MoistInterface(UserCode):
         self._managed_state.register("cloud_condensates.large_scale_liquid", "QLLS", internal_repository)
         self._managed_state.register("cloud_condensates.large_scale_ice_cloud_fraction", "CFICE", export_repository, alloc=True)
         self._managed_state.register("cloud_condensates.large_scale_liquid_cloud_fraction", "CFLIQ", export_repository)
-        self._managed_state.register("cloud_condensates.total_liquid", "QLTOT", export_repository)
-        self._managed_state.register("cloud_condensates.total_ice", "QITOT", export_repository)
+        self._managed_state.register("cloud_condensates.total_liquid", "QLTOT", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("cloud_condensates.total_ice", "QITOT", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("cloud_condensates.total_water", "QCTOT", export_repository)
         self._managed_state.register("cloud_condensates.liquid_concentration", "NACTL", internal_repository)
         self._managed_state.register("cloud_condensates.ice_concentration", "NACTI", internal_repository)
@@ -151,12 +152,6 @@ class MoistInterface(UserCode):
         self._managed_state.register("cloud_condensates.number_concentration_water_friendly_aerosols", "NWFA", internal_repository, alloc=True)
         self._managed_state.register("cloud_condensates.ice_ccn_concentration", "NCCN_ICE", internal_repository)
         self._managed_state.register("cloud_condensates.liquid_ccn_concentration", "NCCN_LIQ", internal_repository)
-        self._managed_state.register("cloud_condensates.liquid_water_static_energy.flux", "WSL", import_repository)
-        self._managed_state.register("cloud_condensates.liquid_water_static_energy.variance", "SL2", import_repository)
-        self._managed_state.register("cloud_condensates.liquid_water_static_energy.third_moment", "SL3", import_repository)
-        self._managed_state.register("cloud_condensates.total_water.flux", "WQT", import_repository)
-        self._managed_state.register("cloud_condensates.total_water.variance", "QT2", import_repository)
-        self._managed_state.register("cloud_condensates.total_water.third_moment", "QT3", import_repository)
         self._managed_state.register("cloud_condensates.ice_particle_effective_radius", "RI", internal_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("cloud_condensates.liquid_particle_effective_radius", "RL", internal_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("cloud_condensates.mass_fraction_suspended_rain", "QRTOT", internal_repository)
@@ -168,21 +163,32 @@ class MoistInterface(UserCode):
         self._managed_state.register("cloud_condensated.convective_condensate_grid_mean", "CNV_QC", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("cloud_condensated.initial_total_precipitable_water", "TPWI", export_repository, dims=[I_DIM, J_DIM], alloc=True)
         self._managed_state.register("cloud_condensated.initial_total_precipitable_water_saturation", "TPWI_star", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register("cloud_condensated.entrained_ice_sink_shallow_convection", "QIENT_SC", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register("cloud_condensated.entrained_sink_shallow_convection", "QLENT_SC", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register("cloud_condensated.cloud_fraction_shallow_convection", "CUFRC_SC", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("cloud_condensated.number_liquid_droplet_shallow_convection", "SC_NDROP", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("cloud_condensated.number_ice_crystal_shallow_convection", "SC_NICE", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("cloud_condensates.liquid_water_static_energy.flux", "WSL", import_repository)
+        self._managed_state.register("cloud_condensates.liquid_water_static_energy.variance", "SL2", import_repository)
+        self._managed_state.register("cloud_condensates.liquid_water_static_energy.third_moment", "SL3", import_repository)
+        self._managed_state.register("cloud_condensates.total_water.flux", "WQT", import_repository)
+        self._managed_state.register("cloud_condensates.total_water.variance", "QT2", import_repository)
+        self._managed_state.register("cloud_condensates.total_water.third_moment", "QT3", import_repository)
 
         # Tendencies
         self._managed_state.register("tendencies.du_dt", "DUDT", export_repository)
         self._managed_state.register("tendencies.du_dt_deep_convection", "DUDT_DC", export_repository)
-        self._managed_state.register("tendencies.du_dt_shallow_convection", "DUDT_SC", export_repository)
+        self._managed_state.register("tendencies.du_dt_shallow_convection", "DUDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.du_dt_macrophysics", "DUDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.du_dt_microphysics", "DUDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dv_dt", "DVDT", export_repository)
         self._managed_state.register("tendencies.dv_dt_deep_convection", "DVDT_DC", export_repository)
-        self._managed_state.register("tendencies.dv_dt_shallow_convection", "DVDT_SC", export_repository)
+        self._managed_state.register("tendencies.dv_dt_shallow_convection", "DVDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.dv_dt_macrophysics", "DVDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dv_dt_microphysics", "DVDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dt_dt", "DTDT", export_repository)
         self._managed_state.register("tendencies.dt_dt_deep_convection", "DTDT_DC", export_repository)
-        self._managed_state.register("tendencies.dt_dt_shallow_convection", "DTDT_SC", export_repository)
+        self._managed_state.register("tendencies.dt_dt_shallow_convection", "DTDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.dt_dt_macrophysics", "DTDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dt_dt_microphysics", "DTDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dt_dt_from_rh_cleanup", "DTDT_ER", export_repository, alloc=True)
@@ -193,7 +199,7 @@ class MoistInterface(UserCode):
         self._managed_state.register("tendencies.dt_dt_from_dynamics", "DTDTDYN", import_repository)
         self._managed_state.register("tendencies.dspecific_humidity_dt", "DQDT", export_repository)
         self._managed_state.register("tendencies.dspecific_humidity_dt_deep_convection", "DQVDT_DC", export_repository)
-        self._managed_state.register("tendencies.dspecific_humidity_dt_shallow_convection", "DQVDT_SC", export_repository)
+        self._managed_state.register("tendencies.dspecific_humidity_dt_shallow_convection", "DQVDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.dspecific_humidity_dt_macrophysics", "DQVDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dspecific_humidity_dt_microphysics", "DQVDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dspecific_humidity_dt_from_rh_cleanup", "DQVDT_ER", export_repository, alloc=True)
@@ -201,20 +207,20 @@ class MoistInterface(UserCode):
         self._managed_state.register("tendencies.dspecific_humidity_dt_from_dynamics", "DQVDTDYN", import_repository)
         self._managed_state.register("tendencies.dliquid_dt", "DQLDT", export_repository)
         self._managed_state.register("tendencies.dliquid_dt_deep_convection", "DQLDT_DC", export_repository)
-        self._managed_state.register("tendencies.dliquid_dt_shallow_convection", "DQLDT_SC", export_repository)
+        self._managed_state.register("tendencies.dliquid_dt_shallow_convection", "DQLDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.dliquid_dt_macrophysics", "DQLDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dliquid_dt_microphysics", "DQLDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dice_dt", "DQIDT", export_repository)
         self._managed_state.register("tendencies.dice_dt_deep_convection", "DQIDT_DC", export_repository)
-        self._managed_state.register("tendencies.dice_dt_shallow_convection", "DQIDT_SC", export_repository)
+        self._managed_state.register("tendencies.dice_dt_shallow_convection", "DQIDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.dice_dt_macrophysics", "DQIDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dice_dt_microphysics", "DQIDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.drain_dt", "DQRDT", export_repository)
-        self._managed_state.register("tendencies.drain_dt_shallow_convection", "DQRDT_SC", export_repository)
+        self._managed_state.register("tendencies.drain_dt_shallow_convection", "DQRDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.drain_dt_macrophysics", "DQRDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.drain_dt_microphysics", "DQRDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dsnow_dt", "DQSDT", export_repository)
-        self._managed_state.register("tendencies.dsnow_dt_shallow_convection", "DQSDT_SC", export_repository)
+        self._managed_state.register("tendencies.dsnow_dt_shallow_convection", "DQSDT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.dsnow_dt_macrophysics", "DQSDT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dsnow_dt_microphysics", "DQSDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dgraupel_dt", "DQGDT", export_repository)
@@ -222,10 +228,14 @@ class MoistInterface(UserCode):
         self._managed_state.register("tendencies.dgraupel_dt_microphysics", "DQGDT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dtotal_cloud_fraciton_dt", "DQADT", export_repository)
         self._managed_state.register("tendencies.dtotal_cloud_fraciton_dt_deep_convection", "DQADT_DC", export_repository)
-        self._managed_state.register("tendencies.dtotal_cloud_fraciton_dt_shallow_convection", "DQADT_SC", export_repository)
+        self._managed_state.register("tendencies.dtotal_cloud_fraciton_dt_shallow_convection", "DQADT_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("tendencies.dtotal_cloud_fraciton_dt_macrophysics", "DQADT_macro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dtotal_cloud_fraciton_dt_microphysics", "DQADT_micro", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("tendencies.dlayer_pressure_thickness_dt", "DPDTMST", export_repository)
+        self._managed_state.register("tendencies.subsidence_liquid_shallow_convection_interface", "QLSUB_SC", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("tendencies.subsidence_ice_shallow_convection_interface", "QISUB_SC", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("tendencies.total_column_water_shallow_convection", "SC_QT", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("tendencies.total_column_moist_static_energy_shallow_convection", "SC_MSE", export_repository, alloc=run_uw_shallow_convection)
 
         # PrecipitationAtSurface
         self._managed_state.register("precipitation_at_surface.total_precipitation", "TPREC", export_repository, dims=[I_DIM, J_DIM], alloc=True)
@@ -236,13 +246,19 @@ class MoistInterface(UserCode):
         )
         self._managed_state.register("precipitation_at_surface.total_convective_precipitation", "PREC_CONV", export_repository, dims=[I_DIM, J_DIM], alloc=True)
         self._managed_state.register("precipitation_at_surface.rain_from_all_convection", "PCU", export_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("precipitation_at_surface.rain_from_deep_convection", "CN_PRCP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics)
-        self._managed_state.register("precipitation_at_surface.rain_from_shallow_convection", "SC_PRCP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics)
+        self._managed_state.register(
+            "precipitation_at_surface.rain_from_deep_convection", "CN_PRCP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics
+        )
+        self._managed_state.register(
+            "precipitation_at_surface.rain_from_shallow_convection", "SC_PRCP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics
+        )
         self._managed_state.register("precipitation_at_surface.rain_from_GF_convection", "CNPCPRATE", export_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("precipitation_at_surface.total_stratiform_precipitation", "PREC_STRAT", export_repository, dims=[I_DIM, J_DIM], alloc=True)
         self._managed_state.register("precipitation_at_surface.rain_from_all_large_scale", "PLS", export_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("precipitation_at_surface.rain_from_large_scale_nonanvil", "LS_PRCP", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("precipitation_at_surface.rain_from_large_scale_anvil", "AN_PRCP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics)
+        self._managed_state.register(
+            "precipitation_at_surface.rain_from_large_scale_anvil", "AN_PRCP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics
+        )
         self._managed_state.register("precipitation_at_surface.snowfall", "SNO", export_repository, dims=[I_DIM, J_DIM], alloc=True)
         self._managed_state.register("precipitation_at_surface.snowfall_total", "SNOWTOTAL", export_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("precipitation_at_surface.large_scale_snow", "LS_SNR", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics)
@@ -261,17 +277,26 @@ class MoistInterface(UserCode):
         self._managed_state.register("precipitation_flux.ice_convection", "PFI_CN", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
         self._managed_state.register("precipitation_flux.ice_shallow_convection", "PFI_SC", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
         self._managed_state.register("precipitation_flux.ice_anvil", "PFI_AN", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gfdl1m_microphysics)
-        self._managed_state.register("precipitation_flux.ice_nonanvil_large_scale", "PFI_LS", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gfdl1m_microphysics)
+        self._managed_state.register(
+            "precipitation_flux.ice_nonanvil_large_scale", "PFI_LS", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gfdl1m_microphysics
+        )
         self._managed_state.register("precipitation_flux.ice_nonconvective", "PFI_LSAN", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
         self._managed_state.register("precipitation_flux.liquid_convection", "PFL_CN", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
         self._managed_state.register("precipitation_flux.liquid_shallow_convection", "PFL_SC", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
         self._managed_state.register("precipitation_flux.liquid_anvil", "PFL_AN", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gfdl1m_microphysics)
-        self._managed_state.register("precipitation_flux.liquid_nonanvil_large_scale", "PFL_LS", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gfdl1m_microphysics)
+        self._managed_state.register(
+            "precipitation_flux.liquid_nonanvil_large_scale", "PFL_LS", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gfdl1m_microphysics
+        )
         self._managed_state.register("precipitation_flux.liquid_nonconvective", "PFL_LSAN", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
-        self._managed_state.register("precipitation_flux.shallow_convective_rain", "SHLW_PRC3", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics or run_uw_shallow_convection)
-        self._managed_state.register("precipitation_flux.shallow_convective_snow", "SHLW_SNO3", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics or run_uw_shallow_convection)
-        self._managed_state.register("precipitation_flux.convective_precipitation_from_RAS", "CNV_PRC3", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
-        self._managed_state.register("precipitation_flux.total_water_flux_deep_convection_interface", "WQT_DC", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gf2020_convection)
+        self._managed_state.register(
+            "precipitation_flux.shallow_convective_rain", "SHLW_PRC3", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics or run_uw_shallow_convection
+        )
+        self._managed_state.register(
+            "precipitation_flux.shallow_convective_snow", "SHLW_SNO3", export_repository, dims=[I_DIM, J_DIM], alloc=run_gfdl1m_microphysics or run_uw_shallow_convection
+        )
+        self._managed_state.register(
+            "precipitation_flux.convective_precipitation_from_RAS", "CNV_PRC3", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection
+        )
 
         # RadiationState
         self._managed_state.register("radiation_state.specific_humidity" "FCLD", export_repository, alloc=run_gfdl1m_microphysics)
@@ -342,17 +367,35 @@ class MoistInterface(UserCode):
         self._managed_state.register("convective_diagnostics.lateral_entrainment_rate_shallow", "ENTR_SH", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.lateral_entrainment_rate_mid", "ENTR_MD", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.lateral_entrainment_rate_deep", "ENTR_DP", export_repository, alloc=run_gf2020_convection)
+        self._managed_state.register("convective_diagnostics.lateral_entrainment_rate_shallow_convection", "ENTR_SC", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register("convective_diagnostics.lateral_detrainment_rate_shallow_convection", "DETR_SC", export_repository, alloc=run_uw_shallow_convection)
         self._managed_state.register("convective_diagnostics.updraft_areal_fraction", "CNV_UPDF", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.updraft_vertical_velocity", "CNV_CVW", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.sigma_mid", "SIGMA_MID", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.sigma_deep", "SIGMA_DEEP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
-        self._managed_state.register("convective_diagnostics.pressure_shallow_convective_cloud_top", "CNV_TOPP_SH", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
-        self._managed_state.register("convective_diagnostics.pressure_mid_convective_cloud_top", "CNV_TOPP_MD", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
-        self._managed_state.register("convective_diagnostics.pressure_deep_convective_cloud_top", "CNV_TOPP_DP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
+        self._managed_state.register(
+            "convective_diagnostics.pressure_shallow_convective_cloud_top", "CNV_TOPP_SH", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection
+        )
+        self._managed_state.register(
+            "convective_diagnostics.pressure_mid_convective_cloud_top", "CNV_TOPP_MD", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection
+        )
+        self._managed_state.register(
+            "convective_diagnostics.pressure_deep_convective_cloud_top", "CNV_TOPP_DP", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection
+        )
         self._managed_state.register("convective_diagnostics.mass_flux_shallow", "MUPSH", export_repository, alloc=run_gf2020_convection)
+        self._managed_state.register("convective_diagnostics.mass_flux_shallow_updraft_detrained", "MFD_SC", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register(
+            "convective_diagnostics.mass_flux_shallow_updraft_interface",
+            "UMF_SC",
+            export_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+            alloc=run_uw_shallow_convection,
+        )
         self._managed_state.register("convective_diagnostics.mass_flux_mid", "MUPMD", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.mass_flux_deep_updraft", "MUPDP", export_repository, alloc=run_gf2020_convection)
-        self._managed_state.register("convective_diagnostics.mass_flux_deep_updraft_interface", "UMF_DC", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gf2020_convection)
+        self._managed_state.register(
+            "convective_diagnostics.mass_flux_deep_updraft_interface", "UMF_DC", export_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], alloc=run_gf2020_convection
+        )
         self._managed_state.register("convective_diagnostics.mass_flux_deep_updraft_detrained", "MFD_DC", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.mass_flux_deep_downdraft", "MDNDP", export_repository, alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.mass_flux_cloud_base", "CNV_MF0", export_repository, alloc=run_gf2020_convection)
@@ -372,6 +415,64 @@ class MoistInterface(UserCode):
         self._managed_state.register("convective_diagnostics.cape_removal_time_scale", "TAU_EC", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.lightning_density", "LFR_GF", export_repository, dims=[I_DIM, J_DIM], alloc=run_gf2020_convection)
         self._managed_state.register("convective_diagnostics.convection_tracer", "CNV_TR", internal_repository)
+        self._managed_state.register("convective_diagnostics.cumulus_scale_height_from_shallow_convection", "CUSH", internal_repository)
+        self._managed_state.register("convective_diagnostics.cloud_mass_detrained_shallow_convection", "DCM_SC", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register(
+            "convective_diagnostics.total_water_flux_deep_convection_interface",
+            "WQT_DC",
+            export_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+            alloc=run_gf2020_convection,
+        )
+        self._managed_state.register(
+            "convective_diagnostics.total_water_flux_shallow_convection_interface",
+            "QTFLX_SC",
+            export_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+            alloc=run_uw_shallow_convection,
+        )
+        self._managed_state.register(
+            "convective_diagnostics.liquid_static_energy_flux_shallow_convection_interface",
+            "SLFLX_SC",
+            export_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+            alloc=run_uw_shallow_convection,
+        )
+        self._managed_state.register(
+            "convective_diagnostics.u_flux_shallow_convection_interface",
+            "UFLX_SC",
+            export_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+            alloc=run_uw_shallow_convection,
+        )
+        self._managed_state.register(
+            "convective_diagnostics.v_flux_shallow_convection_interface",
+            "VFLX_SC",
+            export_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+            alloc=run_uw_shallow_convection,
+        )
+        self._managed_state.register(
+            "convective_diagnostics.source_air_t_perturbation_shallow_convection_interface",
+            "TPERT_SC",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=run_uw_shallow_convection,
+        )
+        self._managed_state.register(
+            "convective_diagnostics.source_air_humidity_perturbation_shallow_convection_interface",
+            "QPERT_SC",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=run_uw_shallow_convection,
+        )
+        self._managed_state.register("convective_diagnostics.detrained_ice_shallow_convection_interface", "QLDET_SC", export_repository, alloc=run_uw_shallow_convection)
+        self._managed_state.register(
+            "convective_diagnostics.detrained_liquid_shallow_convection_interface", "QIDET_SC", export_repository, alloc=run_uw_shallow_convection
+        )
+        self._managed_state.register(
+            "convective_diagnostics.scale_height_shallow_convection", "CUSH_SC", export_repository, dims=[I_DIM, J_DIM], alloc=run_uw_shallow_convection
+        )
 
         # MicrophysicsDiagnostics
         self._managed_state.register("microphysics_diagnostics.pdf_first_plume_fractional_area", "PDF_A", import_repository)
@@ -384,8 +485,12 @@ class MoistInterface(UserCode):
         self._managed_state.register("microphysics_diagnostics.hydrostatic_pdf_iterations", "PDFITERS", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("microphysics_diagnostics.critical_relative_humidity_for_pdf", "RHCRIT", export_repository, alloc=run_gfdl1m_microphysics)
         self._managed_state.register("microphysics_diagnostics.large_scale_rainwater_source", "DQRL", export_repository)
-        self._managed_state.register("microphysics_diagnostics.nonanvil_large_scale_precipitation_evaporation", "REV_LS", export_repository, alloc=run_gfdl1m_microphysics)
-        self._managed_state.register("microphysics_diagnostics.nonanvil_large_scale_precipitation_sublimation", "RSU_LS", export_repository, alloc=run_gfdl1m_microphysics)
+        self._managed_state.register(
+            "microphysics_diagnostics.nonanvil_large_scale_precipitation_evaporation", "REV_LS", export_repository, alloc=run_gfdl1m_microphysics
+        )
+        self._managed_state.register(
+            "microphysics_diagnostics.nonanvil_large_scale_precipitation_sublimation", "RSU_LS", export_repository, alloc=run_gfdl1m_microphysics
+        )
 
         # Diagnostics
         self._managed_state.register("diagnostics.negative_vapor_adjustment_start", "FILLNQV_IN", export_repository, dims=[I_DIM, J_DIM])
@@ -407,6 +512,9 @@ class MoistInterface(UserCode):
         self._managed_state.register("diagnostics.radar.base_1km_agl_reflectivity", "DBZ_1KM", export_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("diagnostics.radar.echo_top_reflectivity", "DBZ_TOP", export_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("diagnostics.radar.minus_10c_reflectivity", "DBZ_M10C", export_repository, dims=[I_DIM, J_DIM])
+        self._managed_state.register(
+            "diagnostics.turbulent_kinetic_energy_fraction_from_vertical_velocity", "RKFRE", export_repository, dims=[I_DIM, J_DIM], alloc=run_uw_shallow_convection
+        )
 
         if self._moist is None:
             raise RuntimeError("Moist Runtime called before initialization was done. Abort.")

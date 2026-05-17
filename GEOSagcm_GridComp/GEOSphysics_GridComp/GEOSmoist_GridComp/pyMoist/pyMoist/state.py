@@ -214,6 +214,12 @@ class Levels:
             "dtype": Int,
         }
     )
+    pbl_level_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Int,
+        }
+    )
     cbl_level_before_moist: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
@@ -403,6 +409,36 @@ class CloudCondensates:
     initial_total_precipitable_water_saturation: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    entrained_ice_sink_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    entrained_liquid_sink_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    cloud_fraction_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    number_liquid_droplet_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    number_ice_crystal_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
             "dtype": Float,
         }
     )
@@ -829,12 +865,14 @@ class Tendencies:
             "dtype": Float,
         }
     )
+    # pressure related
     dlayer_pressure_thickness_dt: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_DIM],
             "dtype": Float,
         }
     )
+    # mass fraction
     mass_fraction_suspended_rain: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_DIM],
@@ -850,6 +888,31 @@ class Tendencies:
     mass_fraction_suspended_snow: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    # shallow convection
+    subsidence_liquid_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    subsidence_ice_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    total_column_water_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    total_column_moist_static_energy_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
             "dtype": Float,
         }
     )
@@ -1092,12 +1155,6 @@ class PrecipitationFlux:
     convective_precipitation_from_RAS: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    total_water_flux_deep_convection_interface: Quantity = dataclasses.field(
-        metadata={
-            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "dtype": Float,
         }
     )
@@ -1481,6 +1538,18 @@ class ConvectiveDiagnostics:
             "dtype": Float,
         }
     )
+    lateral_entrainment_rate_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    lateral_detrainment_rate_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
     updraft_areal_fraction: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_DIM],
@@ -1530,6 +1599,18 @@ class ConvectiveDiagnostics:
         }
     )
     mass_flux_shallow: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    mass_flux_shallow_updraft_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    mass_flux_shallow_updraft_detrained: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_DIM],
             "dtype": Float,
@@ -1662,6 +1743,78 @@ class ConvectiveDiagnostics:
         }
     )
     convection_tracer: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    cumulus_scale_height_from_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    cloud_mass_detrained_shallow_convection: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    total_water_flux_deep_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "dtype": Float,
+        }
+    )
+    total_water_flux_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "dtype": Float,
+        }
+    )
+    liquid_static_energy_flux_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "dtype": Float,
+        }
+    )
+    u_flux_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "dtype": Float,
+        }
+    )
+    v_flux_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "dtype": Float,
+        }
+    )
+    source_air_t_perturbation_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    source_air_humidity_perturbation_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    detrained_ice_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    detrained_liquid_shallow_convection_interface: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    scale_height_shallow_convection: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
@@ -1826,6 +1979,12 @@ class Diagnostics:
         }
     )
     lcl_height: Quantity = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM],
+            "dtype": Float,
+        }
+    )
+    turbulent_kinetic_energy_fraction_from_vertical_velocity: Quantity = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM],
             "dtype": Float,
