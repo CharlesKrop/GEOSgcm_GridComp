@@ -19,6 +19,12 @@ class MoistLocals(LocalState):
             "dtype": Float,
         }
     )
+    p_pascals: Local = dataclasses.field(
+        metadata={
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
     p_kappa_interface: Local = dataclasses.field(
         metadata={
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],

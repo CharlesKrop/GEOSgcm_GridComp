@@ -250,7 +250,7 @@ def aer_activation_stencil(
             nacti = NN_MAX
 
 
-class AerActivation(NDSLRuntime):
+class AerosolActivation(NDSLRuntime):
     """
     Class for aerosol activation computation.
 
@@ -266,6 +266,8 @@ class AerActivation(NDSLRuntime):
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         n_modes: Int,
+        nn_ocean: Float,
+        nn_land: Float,
     ) -> None:
         """
         Initialize the AerActivation class.
@@ -274,11 +276,16 @@ class AerActivation(NDSLRuntime):
         stencil_factory (StencilFactory): Factory for creating stencil computations.
         quantity_factory (QuantityFactory): Factory for creating quantities.
         n_modes (Int): Number of aerosol modes.
+        nn_ocean (Float): Ocean-based aerosol activation number.
+        nn_land (Float): Land-based aerosol activation number.
 
         Raises:
         NotImplementedError: If the number of modes is not equal to the expected number.
         """
         super().__init__(stencil_factory)
+
+        self._ccn_land = nn_land * 1.0e6
+        self._ccn_ocean = nn_ocean * 1.0e6
 
         if constants.N_MODES != n_modes:
             raise NotImplementedError(f"Coding limitation: {constants.N_MODES} modes are expected, getting {n_modes}")
@@ -309,8 +316,6 @@ class AerActivation(NDSLRuntime):
         aero_hygroscopicity: FloatField_NModes,
         aero_sigma: FloatField_NModes,
         frland: FloatFieldIJ,
-        nn_ocean: Float,
-        nn_land: Float,
         t: FloatField,
         plo: FloatField,
         qicn: FloatField,
@@ -332,8 +337,6 @@ class AerActivation(NDSLRuntime):
         aero_hygroscopicity (4D in): Aerosol hygroscopicity parameter.
         aero_sigma (4D in): AeroProps aerosol geometric standard deviation.
         frland (2D in): Fraction of land.
-        nn_ocean (1D in): Ocean-based aerosol activation number.
-        nn_land (1D in): Land-based aerosol activation number.
         t (3D in): Temperature field.
         plo (3D in): Pressure field.
         qicn (3D in): Ice cloud number concentration.
@@ -355,8 +358,8 @@ class AerActivation(NDSLRuntime):
             aero_sigma,
             aero_hygroscopicity,
             frland,
-            nn_ocean,
-            nn_land,
+            self._ccn_ocean,
+            self._ccn_land,
             t,
             plo,
             qicn,

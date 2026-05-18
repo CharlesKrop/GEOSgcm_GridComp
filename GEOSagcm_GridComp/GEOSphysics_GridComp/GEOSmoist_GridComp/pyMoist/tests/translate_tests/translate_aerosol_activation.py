@@ -6,7 +6,7 @@ from ndsl import Quantity, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from pyMoist.aerosol_activation import AerActivation
+from pyMoist.aerosol_activation import AerosolActivation
 
 
 class TranslateAerosolActivation(TranslateFortranData2Py):
@@ -85,10 +85,15 @@ class TranslateAerosolActivation(TranslateFortranData2Py):
         return qty
 
     def compute(self, inputs):
-        aer_activation = AerActivation(
+        ccn_lnd = Float(inputs["CCN_LND"])
+        ccn_ocn = Float(inputs["CCN_OCN"])
+
+        aer_activation = AerosolActivation(
             self.stencil_factory,
             self.quantity_factory,
             int(inputs["n_modes"]),
+            nn_land=Float(ccn_lnd),
+            nn_ocean=Float(ccn_ocn),
         )
 
         # Outputs
@@ -115,9 +120,6 @@ class TranslateAerosolActivation(TranslateFortranData2Py):
         qlcn = self.make_ijk_field(inputs["QLCN"])
         qicn = self.make_ijk_field(inputs["QICN"])
 
-        ccn_lnd = Float(inputs["CCN_LND"])
-        ccn_ocn = Float(inputs["CCN_OCN"])
-
         # Unused - but present in the original Fortran
         # aero_f_dust = inputs["AERO_F_DUST"].astype(Float)
         # aero_f_organic = inputs["AERO_F_ORGANIC"].astype(Float)
@@ -142,9 +144,7 @@ class TranslateAerosolActivation(TranslateFortranData2Py):
             qils=qils,
             qlcn=qlcn,
             qlls=qlls,
-            nn_land=Float(ccn_lnd * 1.0e6),
             frland=frland,
-            nn_ocean=Float(ccn_ocn * 1.0e6),
             aero_hygroscopicity=aero_hygroscopicity,
             nwfa=nwfa,
             nactl=nactl,
@@ -175,9 +175,7 @@ class TranslateAerosolActivation(TranslateFortranData2Py):
                 qils=qils,
                 qlcn=qlcn,
                 qlls=qlls,
-                nn_land=Float(ccn_lnd * 1.0e6),
                 frland=frland,
-                nn_ocean=Float(ccn_ocn * 1.0e6),
                 aero_hygroscopicity=aero_hygroscopicity,
                 nwfa=nwfa,
                 nactl=nactl,

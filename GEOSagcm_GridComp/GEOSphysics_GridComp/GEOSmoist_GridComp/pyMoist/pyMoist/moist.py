@@ -1,6 +1,6 @@
 from pyMoist.state import MoistState
 from pyMoist.convection_tracers import ConvectionTracers
-from ndsl.stencils import set_value, copy, add, divide, add_to_self, add_to_self_2d, multiply_2d, subtract_2d, copy_2d, set_value_2D
+from ndsl.stencils import set_value, copy, add, divide, add_to_self, add_to_self_2d, multiply_2d, subtract_2d, copy_2d, set_value_2D, multiply
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table, compute_saturation_specific_humidity, GlobalTable_saturation_tables
 from ndsl import StencilFactory, QuantityFactory, NDSLRuntime
 from ndsl.dsl.gt4py import computation, PARALLEL, interval, FORWARD, K, BACKWARD
@@ -12,6 +12,7 @@ from pyMoist.locals import MoistLocals
 from pyMoist.config import MoistConfig
 from pyMoist.convection import UWConfiguration, UWState, ComputeUwshcuInv, GF2020, GF2020Config, GF2020State, GF2020CumulusParameterizationConfig
 from pyMoist.microphysics import GFDL1M, GFDL1MConfig, GFDL1MState
+from pyMoist.aerosol_activation import AerosolActivation
 
 
 def get_alarm():
@@ -155,6 +156,18 @@ def compute_convection_fraction(convection_fraction: FloatFieldIJ, cape: FloatFi
 
 def initialize_convection_tracers():
     pass
+
+
+def compute_vertical_velocity(omega: FloatField, p_mb: FloatField, t: FloatField, w: FloatField):
+    with computation(PARALLEL), interval(...):
+        w = -omega / (constants.MAPL_GRAV * p_mb * 100.0 / (constants.MAPL_RGAS * t))
+
+
+def non_neural_network_aerosol_activation(land_fraction: FloatFieldIJ, concentration: FloatField):
+    from __externals__ import CCN_LAND, CCN_OCEAN
+
+    with computation(PARALLEL), interval(...):
+        concentration = (CCN_LAND * land_fraction + CCN_OCEAN * (1.0 - land_fraction)) * 1.0e6  # number/m3
 
 
 def export_concentration(
@@ -392,6 +405,15 @@ class Moist(NDSLRuntime):
                 "CONVECTION_FRACTION_MIN": config.CONVECTION_FRACTION_MIN,
                 "CONVECTION_FRACTION_EXP": config.CONVECTION_FRACTION_EXP,
             },
+        )
+        self._compute_vertical_velocity = stencil_factory.from_dims_halo(func=compute_vertical_velocity, compute_dims=[I_DIM, J_DIM, K_DIM])
+        self._non_neural_network_aerosol_activation = stencil_factory.from_dims_halo(
+            func=non_neural_network_aerosol_activation, compute_dims=[I_DIM, J_DIM, K_DIM], externals={"CCN_LAND": config.CCN_LAND, "CCN_OCEAN": config.CCN_OCEAN}
+        )
+        self._multiply = stencil_factory.from_dims_halo(func=multiply, compute_dims=[I_DIM, J_DIM, K_DIM])
+        # TODO n_modes probably shouldn't be a constant
+        self._aerosol_activation = AerosolActivation(
+            stencil_factory=stencil_factory, quantity_factory=quantity_factory, n_modes=constants.N_MODES, nn_ocean=config.CCN_OCEAN, nn_land=config.CCN_LAND
         )
         self._export_concentration = stencil_factory.from_dims_halo(func=export_concentration, compute_dims=[I_DIM, J_DIM, K_DIM])
 
@@ -985,10 +1007,36 @@ class Moist(NDSLRuntime):
             initialize_convection_tracers()
 
             # get aerosol activation properties
-            if self._config.USE_AEROSOL_NN:
-                do_aerosol_activateion = True
+            if self._config.USE_AEROSOL_NEURAL_NETWORK:
+                if self._config.HYDROSTATIC:
+                    self._compute_vertical_velocity(omega=state.atmospheric_state.omega, p_mb=self._locals.p_mb, t=state.atmospheric_state.t, w=self._locals.temporary_3d)
+                else:
+                    self._copy(input=state.atmospheric_state.vertical_motion.velocity, output=self._locals.temporary_3d)
+
+                self._multiply(factor_1=self._locals.p_mb, factor_2=100.0, product=self._locals.p_pascals)
+                self._aerosol_activation(
+                    aero_dgn=NEED_FLORIANS_FEATURE_FOR_NAMED_DDIM_INDEX,
+                    aero_num=NEED_FLORIANS_FEATURE_FOR_NAMED_DDIM_INDEX,
+                    aero_sigma=NEED_FLORIANS_FEATURE_FOR_NAMED_DDIM_INDEX,
+                    aero_hygroscopicity=NEED_FLORIANS_FEATURE_FOR_NAMED_DDIM_INDEX,
+                    t=state.atmospheric_state.t,
+                    plo=self._locals.p_mb,
+                    qicn=state.cloud_condensates.convective_ice,
+                    qils=state.cloud_condensates.large_scale_ice,
+                    qlcn=state.cloud_condensates.convective_liquid,
+                    qlls=state.cloud_condensates.convective_ice,
+                    frland=state.surface_conditions.land_fraction,
+                    nwfa=state.cloud_condensates.number_concentration_water_friendly_aerosols,
+                    vvel=self._locals.temporary_3d,
+                    tke=state.atmospheric_state.turbulent_kinetic_energy,
+                    nactl=state.cloud_condensates.convective_liquid,
+                    nacti=state.cloud_condensates.ice_concentration,
+                )
             else:
-                do_aerosol_activateion = False
+                self._non_neural_network_aerosol_activation(land_fraction=state.surface_conditions.land_fraction, concentration=state.cloud_condensates.ice_concentration)
+                self._non_neural_network_aerosol_activation(
+                    land_fraction=state.surface_conditions.land_fraction, concentration=state.cloud_condensates.liquid_concentration
+                )
 
             # export concentrations
             self._export_concentration(
