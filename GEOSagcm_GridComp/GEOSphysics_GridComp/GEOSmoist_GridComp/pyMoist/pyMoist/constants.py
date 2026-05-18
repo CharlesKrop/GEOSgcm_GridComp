@@ -145,5 +145,5 @@ R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1, also used in GFDL_1M, but defined in ae
 # Python equivalent of Fortran's tiny(X)
 FLOAT_TINY = np.finfo(Float).tiny
 
-# Define how many modes in an Aerosol Activation
+# Define number of modes for Aerosol Activation
 N_MODES = 14
