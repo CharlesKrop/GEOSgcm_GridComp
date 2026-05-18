@@ -89,7 +89,6 @@ class TranslateAerosolActivation(TranslateFortranData2Py):
             self.stencil_factory,
             self.quantity_factory,
             int(inputs["n_modes"]),
-            USE_AERSOL_NN=True,
         )
 
         # Outputs

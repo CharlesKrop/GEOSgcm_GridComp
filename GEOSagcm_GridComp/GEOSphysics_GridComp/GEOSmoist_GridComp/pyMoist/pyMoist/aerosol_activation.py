@@ -266,7 +266,6 @@ class AerActivation(NDSLRuntime):
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         n_modes: Int,
-        USE_AERSOL_NN: bool,
     ) -> None:
         """
         Initialize the AerActivation class.
@@ -275,19 +274,14 @@ class AerActivation(NDSLRuntime):
         stencil_factory (StencilFactory): Factory for creating stencil computations.
         quantity_factory (QuantityFactory): Factory for creating quantities.
         n_modes (Int): Number of aerosol modes.
-        USE_AERSOL_NN (bool): Flag indicating whether to use neural network for aerosol.
 
         Raises:
         NotImplementedError: If the number of modes is not equal to the expected number.
-        NotImplementedError: If the neural network for aerosol is not implemented.
         """
         super().__init__(stencil_factory)
 
         if constants.N_MODES != n_modes:
             raise NotImplementedError(f"Coding limitation: {constants.N_MODES} modes are expected, getting {n_modes}")
-
-        if not USE_AERSOL_NN:
-            raise NotImplementedError("Non NN Aerosol not implemented")
 
         # Locals
         quantity_factory.add_data_dimensions(
