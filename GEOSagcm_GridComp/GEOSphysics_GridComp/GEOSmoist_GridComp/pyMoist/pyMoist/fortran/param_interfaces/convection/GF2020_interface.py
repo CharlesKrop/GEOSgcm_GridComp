@@ -12,10 +12,10 @@ from pyMoist.convection.GF_2020 import GF2020, GF2020Config, GF2020CumulusParame
 from pyMoist.convection_tracers import ConvectionTracers
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
+from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.fortran.moist_workarounds import MOIST_WORKAROUNDS
-from pyMoist.fortran.profiler import TimedCUDAProfiler
 from pyMoist.saturation_tables import SaturationVaporPressureTable
 
 
@@ -462,7 +462,7 @@ class GF2020Interface(UserCode):
 
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
                 # adjust pbl_level from fortran indexing to python indexing
-                self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] - 1
+                self._managed_state.ndsl_state.pbl_level[:] = self._managed_state.ndsl_state.pbl_level[:] - 1
 
                 # run GF 2020 Convection
                 self._gf_2020(
@@ -471,10 +471,14 @@ class GF2020Interface(UserCode):
                 )
 
                 # adjust pbl_level from python indexing to fortran indexing
-                self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] + 1
+                self._managed_state.ndsl_state.pbl_level[:] = self._managed_state.ndsl_state.pbl_level[:] + 1
 
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
+                safe_assign_array(
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q,
+                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                )
 
     def finalize(
         self,
