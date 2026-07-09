@@ -12,22 +12,11 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
     MidSpecificConstants,
     ShallowSpecificConstants,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -126,14 +115,10 @@ class TestCore:
             }
         )
 
-    def __call__(
-        self, constants: dict, cu_param_constants: dict, plume_idx: int, **inputs
-    ):
+    def __call__(self, constants: dict, cu_param_constants: dict, plume_idx: int, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         # plume_dependent_constants = GF2020PlumeDependentConstants()
         # self.shallow = ShallowSpecificConstants(cumulus_parameterization_config)
         # self.mid = MidSpecificConstants(cumulus_parameterization_config)
@@ -166,31 +151,19 @@ class TestCore:
         state.input_output.t_old.data[:] = inputs["t_old"]
         state.input_output.vapor_old.data[:] = inputs["vapor_old"]
         state.input.grid_scale_forcing_t.data[:] = inputs["grid_scale_forcing_t"]
-        state.input.grid_scale_forcing_vapor.data[:] = inputs[
-            "grid_scale_forcing_vapor"
-        ]
+        state.input.grid_scale_forcing_vapor.data[:] = inputs["grid_scale_forcing_vapor"]
         state.input.subgrid_scale_forcing_t.data[:] = inputs["subgrid_scale_forcing_t"]
-        state.input.subgrid_scale_forcing_vapor.data[:] = inputs[
-            "subgrid_scale_forcing_vapor"
-        ]
-        state.input_output.geopotential_height_forced.data[:] = inputs[
-            "geopotential_height_forced"
-        ]
+        state.input.subgrid_scale_forcing_vapor.data[:] = inputs["subgrid_scale_forcing_vapor"]
+        state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height_forced"]
         state.output.epsilon_forced.data[:, :, plume_idx] = inputs["epsilon_forced"]
         state.output.precip.data[:, :, plume_idx] = inputs["precip"]
-        state.output.scale_dependence_factor.data[:, :, plume_idx] = inputs[
-            "scale_dependence_factor"
-        ]
+        state.output.scale_dependence_factor.data[:, :, plume_idx] = inputs["scale_dependence_factor"]
         state.output.lightning_density.data[:] = inputs["lightning_density"]
         state.input.seed_convection.data[:] = inputs["seed_convection"]
         state.output.error_code.data[:, :, plume_idx] = inputs["error_code"]
         state.input_output.grid_length.data[:] = inputs["grid_length"]
-        state.input.lateral_entrainment_rate.data[:] = inputs[
-            "lateral_entrainment_rate"
-        ]
-        state.output.entrainment_rate.data[:, :, :, plume_idx] = inputs[
-            "entrainment_rate"
-        ]
+        state.input.lateral_entrainment_rate.data[:] = inputs["lateral_entrainment_rate"]
+        state.output.entrainment_rate.data[:, :, :, plume_idx] = inputs["entrainment_rate"]
 
         # prefill locals with nans to replicate fortran initalization
         locals.t_excess.field[:] = np.nan
@@ -316,14 +289,10 @@ class TestCore:
 
         # write output
         outputs = {
-            "geopotential_height_forced": state.input_output.geopotential_height_forced.field[
-                :
-            ],
+            "geopotential_height_forced": state.input_output.geopotential_height_forced.field[:],
             "epsilon_forced": state.output.epsilon_forced.field[:, :, plume_idx],
             "precip": state.output.precip.field[:, :, plume_idx],
-            "scale_dependence_factor": state.output.scale_dependence_factor.field[
-                :, :, plume_idx
-            ],
+            "scale_dependence_factor": state.output.scale_dependence_factor.field[:, :, plume_idx],
             "lightning_density": state.output.lightning_density.field[:],
             "error_code": state.output.error_code.field[:, :, plume_idx],
             "grid_length": state.input_output.grid_length.field[:],
@@ -337,19 +306,14 @@ class TestCore:
             "local_t_new_pbl": locals.t_new_pbl.field[:],
             "local_vapor_forced_pbl": locals.vapor_forced_pbl.field[:],
             "local_dmoist_static_energydt": locals.dmoist_static_energydt.field[:],
-            "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[
-                :
-            ]
-            + 1,
+            "local_maximum_updraft_origin_level": locals.maximum_updraft_origin_level.field[:] + 1,
             "local_ocean_fraction": locals.ocean_fraction.field[:],
             "local_error_code_2": locals.error_code_2.field[:],
             "local_error_code_3": locals.error_code_3.field[:],
             "local_cap_max": locals.cap_max.field[:],
             "local_cap_max_increment": locals.cap_max_increment.field[:],
             "local_geopotential_height": locals.geopotential_height.field[:],
-            "local_geopotential_height_modified": locals.geopotential_height_modified.field[
-                :
-            ],
+            "local_geopotential_height_modified": locals.geopotential_height_modified.field[:],
             "local_cloud_workfunction_0": locals.cloud_workfunction_0.field[:],
             "local_cloud_workfunction_0_pbl": locals.cloud_workfunction_0_pbl.field[:],
             "local_cloud_workfunction_1": locals.cloud_workfunction_1.field[:],
@@ -368,31 +332,17 @@ class TestCore:
             "local_cape_removal_time_scale": locals.cape_removal_time_scale.field[:],
             "local_f_dicycle_modified": locals.f_dicycle_modified.field[:],
             "local_add_buoyancy": locals.add_buoyancy.field[:],
-            "local_cloud_moist_static_energy_downdraft_forced": locals.cloud_moist_static_energy_downdraft_forced.field[
-                :
-            ],
-            "local_downdraft_saturation_vapor_forced": locals.downdraft_saturation_vapor_forced.field[
-                :
-            ],
-            "local_cloud_moist_static_energy_forced_transported": locals.cloud_moist_static_energy_forced_transported.field[
-                :
-            ],
+            "local_cloud_moist_static_energy_downdraft_forced": locals.cloud_moist_static_energy_downdraft_forced.field[:],
+            "local_downdraft_saturation_vapor_forced": locals.downdraft_saturation_vapor_forced.field[:],
+            "local_cloud_moist_static_energy_forced_transported": locals.cloud_moist_static_energy_forced_transported.field[:],
             "local_c1d": locals.c1d.field[:],
-            "local_evaporation_below_cloud_base": locals.evaporation_below_cloud_base.field[
-                :
-            ],
+            "local_evaporation_below_cloud_base": locals.evaporation_below_cloud_base.field[:],
             "local_mass_flux_ensemble": locals.mass_flux_ensemble.field[:],
             "local_precipitation_ensemble": locals.precipitation_ensemble.field[:],
-            "local_scale_dependence_factor_downdraft": locals.scale_dependence_factor_downdraft.field[
-                :
-            ],
+            "local_scale_dependence_factor_downdraft": locals.scale_dependence_factor_downdraft.field[:],
             "local_random_number": locals.random_number.field[:],
-            "local_detrainment_function_updraft": locals.detrainment_function_updraft.field[
-                :
-            ],
-            "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.field[
-                :
-            ],
+            "local_detrainment_function_updraft": locals.detrainment_function_updraft.field[:],
+            "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.field[:],
         }
 
         return outputs
@@ -411,9 +361,7 @@ class TranslateGF2020_CumulusParameterization_Setup_shallow(TranslateFortranData
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
         outputs = self.test_core(self.constants, self.cu_param_constants, 0, **inputs)
@@ -434,9 +382,7 @@ class TranslateGF2020_CumulusParameterization_Setup_mid(TranslateFortranData2Py)
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
         outputs = self.test_core(self.constants, self.cu_param_constants, 1, **inputs)
@@ -457,9 +403,7 @@ class TranslateGF2020_CumulusParameterization_Setup_deep(TranslateFortranData2Py
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
         outputs = self.test_core(self.constants, self.cu_param_constants, 2, **inputs)

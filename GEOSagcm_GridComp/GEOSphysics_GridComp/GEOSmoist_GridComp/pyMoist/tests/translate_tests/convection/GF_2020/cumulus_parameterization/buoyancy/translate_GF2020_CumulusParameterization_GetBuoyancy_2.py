@@ -130,7 +130,7 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_2_shallow(TranslateFor
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 0, **inputs)
 
         return outputs
 
@@ -151,7 +151,7 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_2_mid(TranslateFortran
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 1, **inputs)
 
         return outputs
 
@@ -172,6 +172,6 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_2_deep(TranslateFortra
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 2, **inputs)
 
         return outputs

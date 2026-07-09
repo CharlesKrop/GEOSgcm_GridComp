@@ -13,7 +13,7 @@ def set_constants(
     plume_dependent_constants: GF2020PlumeDependentConstants,
     plume: Plumes,
 ):
-    if plume == Plumes.SHALLOW:
+    if plume == Plumes.SHALLOW.value:
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(0)
         plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_LAND = cumulus_parameterization_config.DOWNDRAFT_MAX_HEIGHT_LAND_SHALLOW
@@ -67,7 +67,7 @@ def set_constants(
         # closure choice
         plume_dependent_constants.CLOSURE_CHOICE = cumulus_parameterization_config.CLOSURE_CHOICE_SHALLOW
 
-    elif plume == Plumes.MID:
+    elif plume == Plumes.MID.value:
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(1)
         plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_LAND = cumulus_parameterization_config.DOWNDRAFT_MAX_HEIGHT_LAND_MID
@@ -121,7 +121,7 @@ def set_constants(
         # closure choice
         plume_dependent_constants.CLOSURE_CHOICE = cumulus_parameterization_config.CLOSURE_CHOICE_MID
 
-    elif plume == Plumes.DEEP:
+    elif plume == Plumes.DEEP.value:
         # set a number of plume dependent constants
         plume_dependent_constants.PLUME_INDEX = Int(2)
         plume_dependent_constants.DOWNDRAFT_MAX_HEIGHT_LAND = cumulus_parameterization_config.DOWNDRAFT_MAX_HEIGHT_LAND_DEEP

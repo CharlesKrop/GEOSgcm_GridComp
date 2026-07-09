@@ -1,6 +1,7 @@
 import numpy as np
 from f90nml import Namelist
 from ndsl import StencilFactory
+from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
@@ -80,7 +81,7 @@ class TestCore:
         constants: dict,
         cu_param_constants: dict,
         convection_tracers_input: dict,
-        plume: str,
+        plume: int,
         ddim_fields: dict,
         **inputs,
     ):
@@ -166,7 +167,7 @@ class TestCore:
         locals.total_normalized_integrated_evaporate_forced.data[:] = inputs["local_total_normalized_integrated_evaporate_forced"]
         state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
         state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
-        state.input_output.chemistry_tracers.field[:] = ddim_fields["chemistry_tracers"]
+        # state.input_output.chemistry_tracers.field[:] = ddim_fields["chemistry_tracers"]
         state.input_output.chemistry_tracers_output.field[:, :, :, plume_dependent_constants.PLUME_INDEX, :] = ddim_fields["chemistry_tracers_output"]
         locals.chemistry_tracers_cloud_levels.field[:] = ddim_fields["local_chemistry_tracers_cloud_levels"]
         locals.chemistry_tracers_sc_updraft.field[:] = ddim_fields["local_chemistry_tracers_sc_updraft"]
@@ -215,7 +216,7 @@ class TestCore:
                 chemistry_tracers_total_pw_updraft=locals.chemistry_tracers_total_pw_updraft,
                 chemistry_tracers_total_pw_downdraft=locals.chemistry_tracers_total_pw_downdraft,
                 convection_tracers=convection_tracers,
-                plume_dependent_constants=plume_dependent_constants,
+                plume=Int(plume),
             )
 
         outputs = {
@@ -277,7 +278,7 @@ class TranslateGF2020_CumulusParameterization_AtmosphericComposition_shallow(Tra
             self.constants,
             self.cu_param_constants,
             self.convection_tracers,
-            "shallow",
+            0,
             ddim_fields=self.ddim_fields,
             **inputs,
         )
@@ -307,7 +308,7 @@ class TranslateGF2020_CumulusParameterization_AtmosphericComposition_mid(Transla
             self.constants,
             self.cu_param_constants,
             self.convection_tracers,
-            "mid",
+            1,
             ddim_fields=self.ddim_fields,
             **inputs,
         )

@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, OptimizationConfig
+from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization import (
