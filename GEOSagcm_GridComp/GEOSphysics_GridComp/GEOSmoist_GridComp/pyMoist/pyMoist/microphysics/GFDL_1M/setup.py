@@ -4,40 +4,15 @@ from ndsl import Local, LocalState, NDSLRuntime, Quantity, QuantityFactory, Sten
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
 from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
+from ndsl.stencils.basic_operations import set_value
 
 from pyMoist.constants import MAPL_ALHL, MAPL_CP, MAPL_CPDRY, MAPL_CPVAP, MAPL_GRAV, MAPL_KAPPA, MAPL_P00, MAPL_RGAS, MAPL_RVAP
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.shared_stencils import prepare_tendencies
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.interpolations import vertical_interpolation
-
-
-def set_unused_to_zero(
-    shallow_convective_precipitation: FloatFieldIJ,
-    deep_convective_precipitation: FloatFieldIJ,
-    anvil_precipitation: FloatFieldIJ,
-    shallow_convective_snow: FloatFieldIJ,
-    deep_convective_snow: FloatFieldIJ,
-    anvil_snow: FloatFieldIJ,
-):
-    """Set unused fields to zero. These fields are read in by the fortran,
-    immediately set to zero, and never touched again.
-
-    Args:
-        shallow_convective_precipitation (FloatFieldIJ)
-        deep_convective_precipitation (FloatFieldIJ)
-        anvil_precipitation (FloatFieldIJ)
-        shallow_convective_snow (FloatFieldIJ)
-        deep_convective_snow (FloatFieldIJ)
-        anvil_snow (FloatFieldIJ)
-    """
-    with computation(FORWARD), interval(0, 1):
-        shallow_convective_precipitation = 0.0
-        deep_convective_precipitation = 0.0
-        anvil_precipitation = 0.0
-        shallow_convective_snow = 0.0
-        deep_convective_snow = 0.0
-        anvil_snow = 0.0
+from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
 
 def calculate_derived_states(
@@ -48,7 +23,6 @@ def calculate_derived_states(
     edge_height_above_surface: FloatField,
     layer_height_above_surface: FloatField,
     layer_thickness: FloatField,
-    layer_thickness_negative: FloatField,
     dp: FloatField,
     mass: FloatField,
     mass_inverse: FloatField,
@@ -60,11 +34,12 @@ def calculate_derived_states(
     u_unmodified: FloatField,
     v: FloatField,
     v_unmodified: FloatField,
-    th: FloatField,
 ):
     """
     Computes derived state fields required for the rest of the GFDL single moment
     microphysics module.
+
+    Stencil MUST be built using K_INTERFACE_DIM to function properly
 
     Args:
         p_interface (FloatField)
@@ -74,7 +49,6 @@ def calculate_derived_states(
         edge_height_above_surface (FloatField)
         layer_height_above_surface (FloatField)
         layer_thickness (FloatField)
-        layer_thickness_negative (FloatField)
         dp (FloatField)
         mass (FloatField)
         mass_inverse (FloatField)
@@ -86,26 +60,23 @@ def calculate_derived_states(
         u_unmodified (FloatField)
         v (FloatField)
         v_unmodified (FloatField)
-        th (FloatField)
     """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
         p_interface_mb = p_interface * 0.01
         edge_height_above_surface = geopotential_height_interface - geopotential_height_interface.at(K=k_end)
+
     with computation(PARALLEL), interval(0, -1):
         p_mb = 0.5 * (p_interface_mb + p_interface_mb[0, 0, 1])
         layer_height_above_surface = 0.5 * (edge_height_above_surface + edge_height_above_surface[0, 0, 1])
         layer_thickness = edge_height_above_surface - edge_height_above_surface[0, 0, 1]
-        layer_thickness_negative = -1.0 * layer_thickness
         dp = p_interface[0, 0, 1] - p_interface
         mass = dp / MAPL_GRAV
         mass_inverse = 1 / mass
         sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         u_unmodified = u
         v_unmodified = v
-        th = (100.0 * p_mb / MAPL_P00) ** (MAPL_KAPPA)
-        th = t / th
 
 
 @function
@@ -285,7 +256,7 @@ class GFDL1MSetupLocals(LocalState):
 
 class GFDL1MSetup(NDSLRuntime):
     """
-    Perform the following functions to setup GFDL Single Moment microphysics:
+    Conglomeration of small stencils required to setup the main macro/micro physics schemes within the GFDL1M module. Contains the following stencils:
 
     prepare_tendencies: preloads macrophysics tendencies for post-phase_change calculations
     calculate_derived_states: computes fields required for the module but not provided by the module
@@ -322,13 +293,8 @@ class GFDL1MSetup(NDSLRuntime):
         self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
 
         # construct stencils
-        self._set_unused_to_zero = stencil_factory.from_dims_halo(
-            func=set_unused_to_zero,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-
-        self._prepare_tendencies = stencil_factory.from_dims_halo(
-            func=prepare_tendencies,
+        self._set_value = stencil_factory.from_dims_halo(
+            func=set_value,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -339,6 +305,12 @@ class GFDL1MSetup(NDSLRuntime):
 
         self._find_lcl_level = stencil_factory.from_dims_halo(
             func=find_lcl_level,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        ##### v11.8 CODE BELOW HERE
+        self._prepare_tendencies = stencil_factory.from_dims_halo(
+            func=prepare_tendencies,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -372,119 +344,57 @@ class GFDL1MSetup(NDSLRuntime):
 
     def __call__(
         self,
-        p_interface: Quantity,
-        z_interface: Quantity,
-        u: Quantity,
-        v: Quantity,
-        t: Quantity,
-        lcl_height: Quantity,
-        lower_tropospheric_stability: Quantity,
-        estimated_inversion_strength: Quantity,
-        mixing_ratio_vapor: Quantity,
-        mixing_ratio_rain: Quantity,
-        mixing_ratio_snow: Quantity,
-        mixing_ratio_graupel: Quantity,
-        mixing_ratio_convective_liquid: Quantity,
-        mixing_ratio_convective_ice: Quantity,
-        mixing_ratio_large_scale_liquid: Quantity,
-        mixing_ratio_large_scale_ice: Quantity,
-        cloud_fraction_convective: Quantity,
-        cloud_fraction_large_scale: Quantity,
-        shallow_convection_rain: Quantity,
-        shallow_convection_snow: Quantity,
-        dudt_macro: Quantity,
-        dvdt_macro: Quantity,
-        dtdt_macro: Quantity,
-        dvapordt_macro: Quantity,
-        dliquiddt_macro: Quantity,
-        dicedt_macro: Quantity,
-        dcloud_fractiondt_macro: Quantity,
-        draindt_macro: Quantity,
-        dsnowdt_macro: Quantity,
-        dgraupeldt_macro: Quantity,
-        shallow_convective_precipitation: Quantity,
-        deep_convective_precipitation: Quantity,
-        anvil_precipitation: Quantity,
-        shallow_convective_snow: Quantity,
-        deep_convective_snow: Quantity,
-        anvil_snow: Quantity,
-        local_p_mb: Quantity,
-        local_p_interface_mb: Quantity,
-        local_edge_height_above_surface: Quantity,
-        local_layer_height_above_surface: Quantity,
-        local_layer_thickness: Quantity,
-        local_layer_thickness_negative: Quantity,
-        local_dp: Quantity,
-        local_mass: Quantity,
-        local_mass_inverse: Quantity,
-        local_saturation_specific_humidity: Quantity,
-        local_dsaturation_specific_humidity: Quantity,
-        local_u_unmodified: Quantity,
-        local_v_unmodified: Quantity,
-        local_lcl_level: Quantity,
+        state: GFDL1MState,
+        locals: GFDL1MLocals,
     ):
         """Setup the GFDL1M microphysics module
 
         Args:
-            p_interface (Quantity)
-            z_interface (Quantity)
-            u (Quantity)
-            v (Quantity)
-            t (Quantity)
-            lcl_height (Quantity)
-            lower_tropospheric_stability (Quantity)
-            estimated_inversion_strength (Quantity)
-            mixing_ratio_vapor (Quantity)
-            mixing_ratio_rain (Quantity)
-            mixing_ratio_snow (Quantity)
-            mixing_ratio_graupel (Quantity)
-            mixing_ratio_convective_liquid (Quantity)
-            mixing_ratio_convective_ice (Quantity)
-            mixing_ratio_large_scale_liquid (Quantity)
-            mixing_ratio_large_scale_ice (Quantity)
-            cloud_fraction_convective (Quantity)
-            cloud_fraction_large_scale (Quantity)
-            shallow_convection_rain (Quantity)
-            shallow_convection_snow (Quantity)
-            dudt_macro (Quantity)
-            dvdt_macro (Quantity)
-            dtdt_macro (Quantity)
-            dvapordt_macro (Quantity)
-            dliquiddt_macro (Quantity)
-            dicedt_macro (Quantity)
-            dcloud_fractiondt_macro (Quantity)
-            draindt_macro (Quantity)
-            dsnowdt_macro (Quantity)
-            dgraupeldt_macro (Quantity)
-            shallow_convective_precipitation (Quantity)
-            deep_convective_precipitation (Quantity)
-            anvil_precipitation (Quantity)
-            shallow_convective_snow (Quantity)
-            deep_convective_snow (Quantity)
-            anvil_snow (Quantity)
-            local_p_mb (Quantity)
-            local_p_interface_mb (Quantity)
-            local_edge_height_above_surface (Quantity)
-            local_layer_height_above_surface (Quantity)
-            local_layer_thickness (Quantity)
-            local_layer_thickness_negative (Quantity)
-            local_dp (Quantity)
-            local_mass (Quantity)
-            local_mass_inverse (Quantity)
-            local_saturation_specific_humidity (Quantity)
-            local_dsaturation_specific_humidity (Quantity)
-            local_u_unmodified (Quantity)
-            local_v_unmodified (Quantity)
-            local_lcl_level (Quantity)
+            state (GFDL1MState): Variables associated with the larger model outside of the GFDL1M microphysics module.
+            locals (GFDL1MLocals): The local fields for the GFDL1M microphysics module.
         """
+        # Initialize reflectivity
+        self._set_value(
+            field=locals.reflectivity,
+            value=Float(-30.0),
+        )
+
+        self._calculate_derived_states(
+            p_interface=state.p_interface,
+            p_interface_mb=locals.p_interface_mb,
+            p_mb=locals.p_mb,
+            geopotential_height_interface=locals.z_interface,
+            edge_height_above_surface=locals.edge_height_above_surface,
+            layer_height_above_surface=locals.layer_height_above_surface,
+            layer_thickness=locals.layer_thickness,
+            dp=locals.dp,
+            mass=locals.mass,
+            mass_inverse=locals.mass_inverse,
+            t=state.t,
+            esx=self._esx,
+            sat=locals.saturation_specific_humidity,
+            dsat=locals.dsaturation_specific_humidity,
+            u=state.u,
+            u_unmodified=locals.u_unmodified,
+            v=state.v,
+            v_unmodified=locals.v_unmodified,
+        )
+
         # set unused fields to zero
-        self._set_unused_to_zero(
-            shallow_convective_precipitation=shallow_convective_precipitation,
-            deep_convective_precipitation=deep_convective_precipitation,
-            anvil_precipitation=anvil_precipitation,
-            shallow_convective_snow=shallow_convective_snow,
-            deep_convective_snow=deep_convective_snow,
-            anvil_snow=anvil_snow,
+        self._set_value(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.anvil_precipitation, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.shallow_convective_snow, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.deep_convective_snow, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.anvil_snow, value=Float(0.0))
+        ##### v11.8 CODE BELOW HERE
+
+        self._find_lcl_level(
+            t=state.t,
+            p_mb=locals.p_mb,
+            vapor=state.mixing_ratio.vapor,
+            esx=self._esx,
+            lcl_level=locals.lcl_level,
         )
 
         # prepare macrophysics tendencies
@@ -534,14 +444,6 @@ class GFDL1MSetup(NDSLRuntime):
             v=v,
             v_unmodified=local_v_unmodified,
             th=self._locals.th,
-        )
-
-        self._find_lcl_level(
-            t=t,
-            p_mb=local_p_mb,
-            vapor=mixing_ratio_vapor,
-            esx=self._esx,
-            lcl_level=local_lcl_level,
         )
 
         if lcl_height is not None:
