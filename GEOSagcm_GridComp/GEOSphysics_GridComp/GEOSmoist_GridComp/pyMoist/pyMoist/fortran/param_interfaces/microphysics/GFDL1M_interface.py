@@ -190,6 +190,7 @@ class GFDL1MInterface(UserCode):
         internal_repository = MAPLMemoryRepository(internal_state, ndsl_stack.quantity_factory)
         export_repository = MAPLMemoryRepository(export_state, ndsl_stack.quantity_factory)
 
+        # INTERNAL STATE
         self._managed_state.register("mixing_ratio.vapor", "Q", internal_repository)
         self._managed_state.register("mixing_ratio.rain", "QRAIN", internal_repository)
         self._managed_state.register("mixing_ratio.snow", "QSNOW", internal_repository)
@@ -203,20 +204,19 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("concentration.liquid", "NACTL", internal_repository)
         self._managed_state.register("concentration.ice", "NACTI", internal_repository)
 
+        # IMPORT STATE
         self._managed_state.register_2D("area", "AREA", import_repository)
-        self._managed_state.register("p_interface", "PLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
-        self._managed_state.register("z_interface", "ZLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
+        self._managed_state.register_K_interface("p_interface", "PLE", import_repository)
+        self._managed_state.register_K_interface("z_interface", "ZLE", import_repository)
         self._managed_state.register("t", "T", import_repository)
         self._managed_state.register("u", "U", import_repository)
         self._managed_state.register("v", "V", import_repository)
         self._managed_state.register_2D("land_fraction", "FRLAND", import_repository)
-        self._managed_state.register(
-            "covariance_liquid_water_static_energy_and_total_water_specific_humidity",
-            "SLQT",
-            import_repository,
-        )
+        self._managed_state.register("covariance_liquid_water_static_energy_and_total_water_specific_humidity", "SLQT", import_repository)
         self._managed_state.register("omega", "OMEGA", import_repository)
         self._managed_state.register("pdf_first_plume_fractional_area", "PDF_A", import_repository)
+        self._managed_state.register_2D("evaporation", "EVAP", import_repository)
+        self._managed_state.register_2D("surface_geopotential_height", "PHIS", import_repository)
 
         self._managed_state.register("vertical_motion.velocity", "W", import_repository)
         self._managed_state.register("vertical_motion.variance", "W2", import_repository)
@@ -230,16 +230,7 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("total_water.variance", "QT2", import_repository)
         self._managed_state.register("total_water.third_moment", "QT3", import_repository)
 
-        # MAPL_GetPointer fails on:
-        # self_manage_state.register("surface_temperature", "TS", import_repository)
-        # self._manage_state.register(
-        #     "scalar_diffusivity_interface",
-        #     "KH",
-        #     import_repository,
-        #     dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
-        # )
-        # self_manage_state.register("sensible_heat_flux", "SH", import_repository)
-
+        # EXPORT STATE
         self._managed_state.register_2D("convection_fraction", "CNV_FRC", export_repository, alloc=True)
         self._managed_state.register_2D("surface_type", "SRF_TYPE", export_repository, alloc=True)
         self._managed_state.register("cloud_liquid_evaporation", "EVAPC", export_repository, alloc=True)
@@ -252,11 +243,13 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("hydrostatic_pdf_iterations", "PDFITERS", export_repository, alloc=True)
         self._managed_state.register_2D("lower_tropospheric_stability", "LTS", export_repository, alloc=True)
         self._managed_state.register_2D("estimated_inversion_strength", "EIS", export_repository, alloc=True)
-        self._managed_state.register_2D("lcl_height", "ZLCL", export_repository)
+        self._managed_state.register_2D("boundary_layer_level_for_uw_shallow_conv", "KPBL_SC", export_repository)
         self._managed_state.register("shallow_convection_rain", "SHLW_PRC3", export_repository, alloc=True)
         self._managed_state.register("shallow_convection_snow", "SHLW_SNO3", export_repository, alloc=True)
         self._managed_state.register("critical_relative_humidity_for_pdf", "RHCRIT", export_repository, alloc=True)
         self._managed_state.register("large_scale_rainwater_source", "DQRL", export_repository)
+        self._managed_state.register_2D("ice_water_path", "IWP", export_repository)
+        self._managed_state.register_2D("liquid_water_path", "LWP", export_repository)
 
         self._managed_state.register("radiation_field.cloud_fraction", "FCLD", export_repository, alloc=True)
         self._managed_state.register("radiation_field.vapor", "QV", export_repository, alloc=True)
@@ -269,16 +262,12 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("cloud_particle_effective_radius.liquid", "RL", export_repository, alloc=True)
         self._managed_state.register("cloud_particle_effective_radius.ice", "RI", export_repository, alloc=True)
 
+        self._managed_state.register_2D("precipitation_at_surface.water", "PRCP_WATER", export_repository, alloc=True)
         self._managed_state.register_2D("precipitation_at_surface.rain", "PRCP_RAIN", export_repository, alloc=True)
         self._managed_state.register_2D("precipitation_at_surface.snow", "PRCP_SNOW", export_repository, alloc=True)
         self._managed_state.register_2D("precipitation_at_surface.ice", "PRCP_ICE", export_repository, alloc=True)
         self._managed_state.register_2D("precipitation_at_surface.graupel", "PRCP_GRAUPEL", export_repository, alloc=True)
-        self._managed_state.register_2D(
-            "precipitation_at_surface.shallow_convective_precipitation",
-            "SC_PRCP",
-            export_repository,
-            alloc=True,
-        )
+        self._managed_state.register_2D("precipitation_at_surface.shallow_convective_precipitation", "SC_PRCP", export_repository, alloc=True)
         self._managed_state.register_2D("precipitation_at_surface.deep_convective_precipitation", "CN_PRCP", export_repository, alloc=True)
         self._managed_state.register_2D("precipitation_at_surface.anvil_precipitation", "AN_PRCP", export_repository, alloc=True)
         self._managed_state.register_2D("precipitation_at_surface.shallow_convective_snow", "SC_SNR", export_repository, alloc=True)
@@ -289,35 +278,14 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register_2D("non_anvil_large_scale.snow", "LS_SNR", export_repository, alloc=True)
         self._managed_state.register("non_anvil_large_scale.evaporation", "REV_LS", export_repository, alloc=True)
         self._managed_state.register("non_anvil_large_scale.sublimation", "RSU_LS", export_repository, alloc=True)
-        self._managed_state.register(
-            "non_anvil_large_scale.liquid_precip_flux",
-            "PFL_LS",
-            export_repository,
-            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
-            alloc=True,
-        )
-        self._managed_state.register(
-            "non_anvil_large_scale.ice_precip_flux",
-            "PFI_LS",
-            export_repository,
-            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
-            alloc=True,
-        )
+        self._managed_state.register_K_interface("non_anvil_large_scale.ice_precip_flux", "PFI_LS", export_repository, alloc=True)
+        self._managed_state.register_K_interface("non_anvil_large_scale.liquid_precip_flux", "PFL_LS", export_repository, alloc=True)
+        self._managed_state.register_K_interface("non_anvil_large_scale.rain_precip_flux", "PFR_LS", export_repository, alloc=True)
+        self._managed_state.register_K_interface("non_anvil_large_scale.snow_precip_flux", "PFS_LS", export_repository, alloc=True)
+        self._managed_state.register_K_interface("non_anvil_large_scale.graupel_precip_flux", "PFG_LS", export_repository, alloc=True)
 
-        self._managed_state.register(
-            "anvil.liquid_precip_flux",
-            "PFL_AN",
-            export_repository,
-            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
-            alloc=True,
-        )
-        self._managed_state.register(
-            "anvil.ice_precip_flux",
-            "PFI_AN",
-            export_repository,
-            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
-            alloc=True,
-        )
+        self._managed_state.register_K_interface("anvil.liquid_precip_flux", "PFL_AN", export_repository, alloc=True)
+        self._managed_state.register_K_interface("anvil.ice_precip_flux", "PFI_AN", export_repository, alloc=True)
 
         self._managed_state.register("tendencies.dcloud_fractiondt_macro", "DQADT_macro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dvapordt_macro", "DQVDT_macro", export_repository, alloc=True)
@@ -341,16 +309,40 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("tendencies.dtdt_micro", "DTDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dtdt_friction_pressure_weighted", "DTDTFRIC", export_repository)
 
-        self._managed_state.register("radar.simulated_reflectivity", "DBZ", export_repository)
-        self._managed_state.register_2D("radar.maximum_composite_reflectivity", "DBZ_MAX", export_repository)
-        self._managed_state.register_2D("radar.base_1km_agl_reflectivity", "DBZ_1KM", export_repository)
-        self._managed_state.register_2D("radar.echo_top_reflectivity", "DBZ_TOP", export_repository)
-        self._managed_state.register_2D("radar.minus_10c_reflectivity", "DBZ_M10C", export_repository)
+        self._managed_state.register("radar.simulated_reflectivity", "REF_DBZ", export_repository)
+        self._managed_state.register_2D("radar.maximum_composite_reflectivity", "REF_DBZ_MAX", export_repository)
+        self._managed_state.register_2D("radar.base_1km_agl_reflectivity", "REF_DBZ_1KM", export_repository)
+        self._managed_state.register_2D("radar.echo_top_reflectivity", "REF_DBZ_TOP", export_repository)
+        self._managed_state.register_2D("radar.minus_10c_reflectivity", "REF_DBZ_M10C", export_repository)
 
-        self._managed_state.register("mass_fraction.suspended_rain", "QRTOT", export_repository)
         self._managed_state.register("mass_fraction.suspended_graupel", "QGTOT", export_repository)
+        self._managed_state.register("mass_fraction.suspended_rain", "QRTOT", export_repository)
         self._managed_state.register("mass_fraction.suspended_snow", "QSTOT", export_repository)
 
+        self._managed_state.register("fall_speed.graupel", "VFALL_GRAUPEL", export_repository)
+        self._managed_state.register("fall_speed.ice", "VFALL_ICE", export_repository)
+        self._managed_state.register("fall_speed.rain", "VFALL_RAIN", export_repository)
+        self._managed_state.register("fall_speed.snow", "VFALL_SNOW", export_repository)
+
+        self._managed_state.register("fill_negative_tendency_cloud_macro.graupel", "DQGDT_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.convective_ice", "DQICNDT_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.large_scale_ice", "DQILSSDT_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.convective_liquid", "DQLCNDT_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.large_scale_liquid", "DQLLSDT_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.rain", "DQR_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.snow", "DQS_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.vapor", "DQVDT_FILL_CLDMACRO", export_repository)
+
+        self._managed_state.register("fill_negative_tendency_cloud_macro.graupel", "DQGDT_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.convective_ice", "DQICNDT_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.large_scale_ice", "DQILSSDT_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.convective_liquid", "DQLCNDT_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.large_scale_liquid", "DQLLSDT_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.rain", "DQR_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.snow", "DQS_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.vapor", "DQVDT_FILL_CLDMICRO", export_repository)
+
+        # system to alert that radar diag is requested, but not yet implemented. remove when implemented
         do_radar_diagnostic = (
             export_repository.associated("DBZ")
             or export_repository.associated("DBZ_MAX")
