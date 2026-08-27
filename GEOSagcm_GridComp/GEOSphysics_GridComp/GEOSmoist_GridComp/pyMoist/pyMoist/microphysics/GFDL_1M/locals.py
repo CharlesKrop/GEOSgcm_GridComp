@@ -7,12 +7,19 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclasses.dataclass
 class GFDL1MLocals(LocalState):
+    reflectivity: Local = dataclasses.field(
+        metadata={
+            "name": "reflectivity",
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "dBZ",
+            "dtype": Float,
+        }
+    )
     p_interface_mb: Local = dataclasses.field(
         metadata={
             "name": "p_interface_mb",
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "millibars",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -21,7 +28,6 @@ class GFDL1MLocals(LocalState):
             "name": "p_mb",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "millibars",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -30,7 +36,6 @@ class GFDL1MLocals(LocalState):
             "name": "edge_height_above_surface",
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
             "units": "m",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -39,7 +44,6 @@ class GFDL1MLocals(LocalState):
             "name": "layer_height_above_surface",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "m",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -48,16 +52,6 @@ class GFDL1MLocals(LocalState):
             "name": "layer_thickness",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "m",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    layer_thickness_negative: Local = dataclasses.field(
-        metadata={
-            "name": "layer_thickness_negative",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "m",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -66,7 +60,6 @@ class GFDL1MLocals(LocalState):
             "name": "dp",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "Pa",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -75,7 +68,6 @@ class GFDL1MLocals(LocalState):
             "name": "mass",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg m-2",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -84,7 +76,6 @@ class GFDL1MLocals(LocalState):
             "name": "mass_inverse",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg m-2",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -93,7 +84,6 @@ class GFDL1MLocals(LocalState):
             "name": "u_unmodified",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "m s-1",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -102,7 +92,6 @@ class GFDL1MLocals(LocalState):
             "name": "v_unmodified",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "m s-1",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -111,7 +100,6 @@ class GFDL1MLocals(LocalState):
             "name": "saturation_specific_humidity",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -120,7 +108,6 @@ class GFDL1MLocals(LocalState):
             "name": "dsaturation_specific_humidity",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -129,16 +116,19 @@ class GFDL1MLocals(LocalState):
             "name": "lcl_level",
             "dims": [I_DIM, J_DIM],
             "units": "?",
-            "intent": "?",
             "dtype": Int,
         }
     )
+
+
+@dataclasses.dataclass
+class GFDL1MLocals_old(LocalState):
+
     total_concentration: Local = dataclasses.field(
         metadata={
             "name": "total_concentration",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -150,7 +140,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dvapordt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -159,7 +148,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dliquiddt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -168,7 +156,6 @@ class GFDL1MLocals(LocalState):
                 "name": "draindt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -177,7 +164,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dicedt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -186,7 +172,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dsnowdt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -195,7 +180,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dgraupeldt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -204,7 +188,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dcloudfractiondt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -213,7 +196,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dtdt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -222,7 +204,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dudt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
@@ -231,7 +212,6 @@ class GFDL1MLocals(LocalState):
                 "name": "dvdt",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "intent": "?",
                 "dtype": Float,
             }
         )
