@@ -876,8 +876,6 @@ subroutine GF_Run (GC, IMPORT, EXPORT, CLOCK, RC)
        end do ! LM loop
     endif
 
-    end if ! endif USE_PYGF2020
-
     call MAPL_TimerOff (MAPL,"--GF")
 
 end subroutine GF_Run
