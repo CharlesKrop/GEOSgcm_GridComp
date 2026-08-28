@@ -3,14 +3,15 @@ import dataclasses
 from ndsl import Local, LocalState, NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, function, interval, log
-from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ
-from ndsl.stencils.basic_operations import set_value
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ, Int
+from ndsl.stencils.basic_operations import set_value, copy, add
 
 from pyMoist.constants import MAPL_ALHL, MAPL_CP, MAPL_CPDRY, MAPL_CPVAP, MAPL_GRAV, MAPL_KAPPA, MAPL_P00, MAPL_RGAS, MAPL_RVAP
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.shared_stencils import prepare_tendencies
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.interpolations import vertical_interpolation
+from pyMoist.shared.atmos_recipes import get_fac_eis
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
@@ -157,47 +158,6 @@ def update_lcl_height(
         lcl_height = layer_height_above_surface.at(K=lcl_level)
 
 
-def compute_estimated_inversion_strength(
-    t: FloatField,
-    th: FloatField,
-    layer_height_above_surface: FloatField,
-    t700: FloatFieldIJ,
-    th700: FloatFieldIJ,
-    z700: FloatFieldIJ,
-    lcl_level: IntFieldIJ,
-    esx: GlobalTable_saturation_tables,
-    lower_tropospheric_stability: FloatFieldIJ,
-    estimated_inversion_strength: FloatFieldIJ,
-):
-    """
-    Find estimated inversion strength. Returns Estimated Inversion
-    Strength (K) according to Wood and Betherton, J.Climate, 2006.
-    Based on Fortran code written by Donifan Barahona.
-
-    Args:
-        t (FloatField)
-        th (FloatField)
-        layer_height_above_surface (FloatField)
-        t700 (FloatFieldIJ)
-        th700 (FloatFieldIJ)
-        z700 (FloatFieldIJ)
-        lcl_level (IntFieldIJ)
-        esx (GlobalTable_saturation_tables)
-        lower_tropospheric_stability (FloatFieldIJ)
-        estimated_inversion_strength (FloatFieldIJ)
-    """
-    with computation(FORWARD), interval(-1, None):
-        lower_tropospheric_stability = th700 - th
-        lcl_height = layer_height_above_surface.at(K=lcl_level - 1)
-
-        # Simplified single adiabat eq4 of https://doi.org/10.1175/JCLI3988.1
-        t850 = 0.5 * (t + t700)
-        qs850, _ = saturation_specific_humidity(t=t850, p=100.0 * 850.0, esx=esx)
-        gamma850 = (1.0 + (MAPL_ALHL * qs850 / (MAPL_RGAS * t850))) / (1.0 + (MAPL_ALHL * MAPL_ALHL * qs850 / (MAPL_CP * MAPL_RVAP * t850 * t850)))
-        gamma850 = MAPL_GRAV / MAPL_CP * (1.0 - gamma850)
-        estimated_inversion_strength = lower_tropospheric_stability - gamma850 * (z700 - lcl_height)
-
-
 def update_precipitation(
     mixing_ratio: FloatField,
     shallow_convection_values: FloatField,
@@ -216,37 +176,10 @@ def update_precipitation(
 
 @dataclasses.dataclass
 class GFDL1MSetupLocals(LocalState):
-    th: Local = dataclasses.field(
+    temporary_3d: Local = dataclasses.field(
         metadata={
-            "name": "th",
+            "name": "temporary_3d",
             "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    t700: Local = dataclasses.field(
-        metadata={
-            "name": "t700",
-            "dims": [I_DIM, J_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    th700: Local = dataclasses.field(
-        metadata={
-            "name": "th700",
-            "dims": [I_DIM, J_DIM],
-            "units": "?",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    z700: Local = dataclasses.field(
-        metadata={
-            "name": "z700",
-            "dims": [I_DIM, J_DIM],
             "units": "?",
             "intent": "?",
             "dtype": Float,
@@ -308,24 +241,13 @@ class GFDL1MSetup(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        ##### v11.8 CODE BELOW HERE
-        self._prepare_tendencies = stencil_factory.from_dims_halo(
-            func=prepare_tendencies,
+        self._add = stencil_factory.from_dims_halo(
+            func=add,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._update_lcl_height = stencil_factory.from_dims_halo(
-            func=update_lcl_height,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-
-        self._vertical_interpolation = stencil_factory.from_dims_halo(
-            func=vertical_interpolation,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-
-        self._compute_estimated_inversion_strength = stencil_factory.from_dims_halo(
-            func=compute_estimated_inversion_strength,
+        self._copy = stencil_factory.from_dims_halo(
+            func=copy,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -380,15 +302,6 @@ class GFDL1MSetup(NDSLRuntime):
             v_unmodified=locals.v_unmodified,
         )
 
-        # set unused fields to zero
-        self._set_value(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.anvil_precipitation, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.shallow_convective_snow, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.deep_convective_snow, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.anvil_snow, value=Float(0.0))
-        ##### v11.8 CODE BELOW HERE
-
         self._find_lcl_level(
             t=state.t,
             p_mb=locals.p_mb,
@@ -397,98 +310,41 @@ class GFDL1MSetup(NDSLRuntime):
             lcl_level=locals.lcl_level,
         )
 
-        # prepare macrophysics tendencies
-        self._prepare_tendencies(
-            u=u,
-            v=v,
-            t=t,
-            vapor=mixing_ratio_vapor,
-            rain=mixing_ratio_rain,
-            snow=mixing_ratio_snow,
-            graupel=mixing_ratio_graupel,
-            convective_liquid=mixing_ratio_convective_liquid,
-            convective_ice=mixing_ratio_convective_ice,
-            large_scale_liquid=mixing_ratio_large_scale_liquid,
-            large_scale_ice=mixing_ratio_large_scale_ice,
-            convective_cloud_fraction=cloud_fraction_convective,
-            large_scale_cloud_fraction=cloud_fraction_large_scale,
-            du_dt=dudt_macro,
-            dv_dt=dvdt_macro,
-            dt_dt=dtdt_macro,
-            dvapor_dt=dvapordt_macro,
-            dliquid_dt=dliquiddt_macro,
-            dice_dt=dicedt_macro,
-            dcloud_fraction_dt=dcloud_fractiondt_macro,
-            drain_dt=draindt_macro,
-            dsnow_dt=dsnowdt_macro,
-            dgraupel_dt=dgraupeldt_macro,
-        )
-        self._calculate_derived_states(
-            p_interface=p_interface,
-            p_interface_mb=local_p_interface_mb,
-            p_mb=local_p_mb,
-            geopotential_height_interface=z_interface,
-            edge_height_above_surface=local_edge_height_above_surface,
-            layer_height_above_surface=local_layer_height_above_surface,
-            layer_thickness=local_layer_thickness,
-            layer_thickness_negative=local_layer_thickness_negative,
-            dp=local_dp,
-            mass=local_mass,
-            mass_inverse=local_mass_inverse,
-            t=t,
-            esx=self._esx,
-            sat=local_saturation_specific_humidity,
-            dsat=local_dsaturation_specific_humidity,
-            u=u,
-            u_unmodified=local_u_unmodified,
-            v=v,
-            v_unmodified=local_v_unmodified,
-            th=self._locals.th,
-        )
+        if self.config.GFDL_MP_KLID > 0.0:
+            k_lid = Int(self.config.GFDL_MP_KLID)
+        else:
+            k_lid = Int(1)
 
-        if lcl_height is not None:
-            self._update_lcl_height(
-                layer_height_above_surface=local_layer_height_above_surface,
-                lcl_level=local_lcl_level,
-                lcl_height=lcl_height,
-            )
+        # set unused exports to zero
+        self._set_value(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.anvil_precipitation, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.shallow_convective_snow, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.deep_convective_snow, value=Float(0.0))
+        self._set_value(field=state.precipitation_at_surface.anvil_snow, value=Float(0.0))
 
-        self._vertical_interpolation(
-            field=self._locals.th,
-            interpolated_field=self._locals.th700,
-            p_interface_mb=local_p_interface_mb,
-            target_pressure=Float(70000.0),
-        )
+        # pre-fill macrophysics exports
+        self._copy(input=state.u, output=state.tendencies.dudt_macro)
+        self._copy(input=state.v, output=state.tendencies.dvdt_macro)
+        self._copy(input=state.t, output=state.tendencies.dtdt_macro)
+        self._copy(input=state.mixing_ratio.vapor, output=state.tendencies.dvapordt_macro)
+        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, output=locals.placeholder.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dliquiddt_macro)
+        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, output=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dicedt_macro)
+        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, output=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dcloud_fractiondt_macro)
+        self._copy(input=state.mixing_ratio.graupel, output=state.tendencies.dgraupeldt_macro)
+        self._copy(input=state.mixing_ratio.rain, output=state.tendencies.draindt_macro)
+        self._copy(input=state.mixing_ratio.snow, output=state.tendencies.dsnowdt_macro)
+        self._set_value(field=state.cloud_liquid_evaporation, value=Float(0.0))
+        self._set_value(field=state.cloud_ice_sublimation, value=Float(0.0))
+        self._set_value(field=state.hydrostatic_pdf_iterations, value=Float(0.0))
+        self._set_value(field=state.relative_humidity_after_pdf, value=Float(0.0))
 
-        self._vertical_interpolation(
-            field=t,
-            interpolated_field=self._locals.t700,
-            p_interface_mb=local_p_interface_mb,
-            target_pressure=Float(70000.0),
-        )
+        # include shallow precip condensated if present
+        if state.shallow_convection_rain is not None:
+            self._update_precipitation(state.mixing_ratio.rain, state.shallow_convection_rain)
 
-        self._vertical_interpolation(
-            field=local_layer_height_above_surface,
-            interpolated_field=self._locals.z700,
-            p_interface_mb=local_p_interface_mb,
-            target_pressure=Float(70000.0),
-        )
-
-        self._compute_estimated_inversion_strength(
-            t=t,
-            th=self._locals.th,
-            layer_height_above_surface=local_layer_height_above_surface,
-            t700=self._locals.t700,
-            th700=self._locals.th700,
-            z700=self._locals.z700,
-            lcl_level=local_lcl_level,
-            esx=self._esx,
-            lower_tropospheric_stability=lower_tropospheric_stability,
-            estimated_inversion_strength=estimated_inversion_strength,
-        )
-
-        if shallow_convection_rain is not None:
-            self._update_precipitation(mixing_ratio_rain, shallow_convection_rain)
-
-        if shallow_convection_snow is not None:
-            self._update_precipitation(mixing_ratio_snow, shallow_convection_snow)
+        if state.shallow_convection_snow is not None:
+            self._update_precipitation(state.mixing_ratio.snow, state.shallow_convection_snow)

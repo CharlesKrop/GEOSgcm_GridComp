@@ -223,7 +223,7 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    shallow_convection_rain: Quantity = dataclasses.field(
+    shallow_convection_rain: Quantity | None = dataclasses.field(
         metadata={
             "name": "shallow_convection_rain",
             "dims": [I_DIM, J_DIM, K_DIM],
@@ -231,9 +231,9 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
-    shallow_convection_snow: Quantity = dataclasses.field(
+    shallow_convection_snow: Quantity | None = dataclasses.field(
         metadata={
-            "name": "shallow_convective_snow",
+            "name": "shallow_convection_snow",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg kg-1 s-1",
             "dtype": Float,
