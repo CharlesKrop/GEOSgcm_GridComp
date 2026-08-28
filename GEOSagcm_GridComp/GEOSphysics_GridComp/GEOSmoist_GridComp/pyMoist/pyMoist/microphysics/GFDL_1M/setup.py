@@ -73,6 +73,7 @@ def calculate_derived_states(
         mass = dp / MAPL_GRAV
         mass_inverse = 1 / mass
         sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
+        sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         u_unmodified = u
         v_unmodified = v
 
@@ -126,7 +127,10 @@ def find_lcl_level(
     with computation(PARALLEL), interval(-1, None):
         qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         rhsfc = 100.0 * vapor / qsat
+        qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
+        rhsfc = 100.0 * vapor / qsat
         tlcl = find_t_lcl(t=t, rh=rhsfc)
+        rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
         rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
         cpm = (1.0 - vapor) * MAPL_CPDRY + vapor * MAPL_CPVAP
         plcl = p_mb * ((tlcl / t) ** (cpm / rm))

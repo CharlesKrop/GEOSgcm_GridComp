@@ -11,6 +11,7 @@ from ndsl.dsl.typing import Float, Int
 from pyMoist.fortran import get_NDSL_physics
 from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
+from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
 from pyMoist.microphysics.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
@@ -22,6 +23,7 @@ def _default_or_get_from_namelist(default, name_in_namelist: str, namelist: dict
 
 class GFDL1MInterface(UserCode):
     def __init__(self) -> None:
+        self._gfdl_1m = None
         self._gfdl_1m = None
 
     def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
@@ -53,8 +55,14 @@ class GFDL1MInterface(UserCode):
         LPHYS_HYDROSTATIC = maplpy.get_resource("PHYS_HYDROSTATIC", mapl_state, default=True)
         LHYDROSTATIC = LPHYS_HYDROSTATIC
 
+        # v11.10 ties these two together, but preserves the existance of both as independent parameters
+        LPHYS_HYDROSTATIC = maplpy.get_resource("PHYS_HYDROSTATIC", mapl_state, default=True)
+        LHYDROSTATIC = LPHYS_HYDROSTATIC
+
         config = GFDL1MConfig(
             USE_BERGERON=maplpy.get_resource("USE_BERGERON:", mapl_state, default=use_aerosol_nn),
+            LPHYS_HYDROSTATIC=LPHYS_HYDROSTATIC,
+            LHYDROSTATIC=LHYDROSTATIC,
             LPHYS_HYDROSTATIC=LPHYS_HYDROSTATIC,
             LHYDROSTATIC=LHYDROSTATIC,
             DT_MOIST=maplpy.get_resource("DSL__GFLD1M_DT", mapl_state, default=Float(0.0)),
@@ -173,7 +181,14 @@ class GFDL1MInterface(UserCode):
         if not self._gfdl_1m:
             raise RuntimeError("GFDL1M Runtime called before initialization was finished. Abort.")
         return self._gfdl_1m  # type: ignore[unreachable]
+        self._first_run = True
 
+    def _get_code(self) -> GFDL1M:
+        if not self._gfdl_1m:
+            raise RuntimeError("GFDL1M Runtime called before initialization was finished. Abort.")
+        return self._gfdl_1m  # type: ignore[unreachable]
+
+    def _first_run_init(
     def _first_run_init(
         self,
         mapl_state: CVoidPointer,
@@ -181,6 +196,10 @@ class GFDL1MInterface(UserCode):
         export_state: CVoidPointer,
         internal_state: CVoidPointer,
     ):
+        if not self._first_run:
+            return
+        self._first_run = False
+
         if not self._first_run:
             return
         self._first_run = False
@@ -375,6 +394,7 @@ class GFDL1MInterface(UserCode):
                 self._managed_state.fortran_to_ndsl()
 
             with TimedCUDAProfiler("GFDL 1M Numerics", {}):
+                self._get_code()(self._managed_state.ndsl_state)
                 self._get_code()(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
