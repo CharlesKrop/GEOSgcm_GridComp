@@ -68,10 +68,16 @@ def compute_extra_inputs_from_state(
         convection_fraction (FloatFieldIJ)
         esx (GlobalTable_saturation_tables)
     """
-    from __externals__ import GF_MIN_AREA, LHYDROSTATIC, STOCH_BOT, STOCH_TOP, STOCHASTIC_CONVECTION, k_end
+    from __externals__ import GF_MIN_AREA, STOCH_BOT, STOCH_TOP, STOCHASTIC_CONVECTION, k_end
 
     # compute derived states
     with computation(PARALLEL), interval(...):
+        # Top of atmosphere edge
+        if K == 0:
+            edge_height_above_surface = geopotential_height_interface - geopotential_height_interface.at(K=k_end)
+
+    with computation(PARALLEL), interval(...):
+        # 2. Remaining edges and all layer variables (L = 1 to LM)
         edge_height_above_surface = geopotential_height_interface - geopotential_height_interface.at(K=k_end)
 
     with computation(PARALLEL), interval(0, -1):
@@ -81,10 +87,7 @@ def compute_extra_inputs_from_state(
         th = t / p_kappa
         mass = (p_interface[0, 0, 1] - p_interface) / constants.MAPL_GRAV
 
-        if LHYDROSTATIC:
-            vertical_motion = -1 * omega / (constants.MAPL_GRAV * p / (constants.MAPL_RDRY * t * (1.0 + constants.MAPL_VIREPS * vapor)))
-        else:
-            vertical_motion = w
+        vertical_motion = -1 * omega / (constants.MAPL_GRAV * p / (constants.MAPL_RDRY * t * (1.0 + constants.MAPL_VIREPS * vapor)))
 
     with computation(FORWARD), interval(0, 1):
         tpwi = vapor * mass
@@ -1216,7 +1219,6 @@ class GF2020Setup(NDSLRuntime):
                 "STOCH_TOP": config.STOCH_TOP,
                 "STOCH_BOT": config.STOCH_BOT,
                 "GF_MIN_AREA": config.GF_MIN_AREA,
-                "LHYDROSTATIC": config.LHYDROSTATIC,
             },
         )
 
