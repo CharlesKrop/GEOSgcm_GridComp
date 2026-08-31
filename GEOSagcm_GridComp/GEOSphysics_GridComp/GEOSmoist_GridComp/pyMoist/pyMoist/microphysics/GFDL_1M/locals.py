@@ -119,6 +119,7 @@ class GFDL1MLocals(LocalState):
             "dtype": Int,
         }
     )
+    lid_level: Int = -999
 
 
 @dataclasses.dataclass
