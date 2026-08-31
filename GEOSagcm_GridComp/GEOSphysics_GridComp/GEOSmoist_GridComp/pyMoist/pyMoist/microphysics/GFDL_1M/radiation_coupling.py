@@ -5,7 +5,7 @@ from ndsl.dsl.typing import FloatField
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
-from pyMoist.shared.incloud_processes import fix_up_clouds
+from pyMoist.shared.cloud_processes import fix_up_clouds
 from pyMoist.shared.radiation_coupling import radiation_coupling
 
 

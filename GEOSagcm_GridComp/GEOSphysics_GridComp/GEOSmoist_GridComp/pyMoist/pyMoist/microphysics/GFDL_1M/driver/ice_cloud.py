@@ -8,7 +8,7 @@ from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverCon
 from pyMoist.microphysics.GFDL_1M.driver.constants import constants
 from pyMoist.microphysics.GFDL_1M.driver.sat_tables import GFDL_driver_tables, GlobalTable_driver_qsat
 from pyMoist.microphysics.GFDL_1M.driver.stencils import wqs2
-from pyMoist.shared.incloud_processes import ice_fraction
+from pyMoist.shared.cloud_processes import ice_fraction
 
 
 @function

@@ -2,7 +2,7 @@ from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 
 import pyMoist.constants as constants
-from pyMoist.shared.incloud_processes import cloud_effective_radius_ice
+from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
 
 
 def sublimate(

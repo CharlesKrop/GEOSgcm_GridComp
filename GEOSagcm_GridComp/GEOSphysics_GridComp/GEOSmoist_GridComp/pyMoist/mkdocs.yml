@@ -128,6 +128,6 @@ nav:
       - "Numerical Recipes": shared/numerical_recipes.md
       - "Common Atmospheric Recipes": shared/atmos_recipes.md
       - "GT4Py Workarounds": shared/gt4py_workarounds.md
-      - "In cloud processes": shared/incloud_processes.md
+      - "In cloud processes": shared/cloud_processes.md
       - "Radiation Coupling": shared/radiation_coupling.md
       - "Redistribute Clouds (microphysics)": shared/redistribute_clouds.md

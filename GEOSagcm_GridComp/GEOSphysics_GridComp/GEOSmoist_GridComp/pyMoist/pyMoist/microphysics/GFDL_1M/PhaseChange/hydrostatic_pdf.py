@@ -8,7 +8,7 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity_frozen_surface,
     saturation_specific_humidity_liquid_surface,
 )
-from pyMoist.shared.incloud_processes import ice_fraction
+from pyMoist.shared.cloud_processes import ice_fraction
 
 
 @function

@@ -11,7 +11,7 @@ from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
-from pyMoist.shared.incloud_processes import find_lcl_level
+from pyMoist.shared.cloud_processes import find_lcl_level
 
 
 def calculate_derived_states(

@@ -1,7 +1,7 @@
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import FloatField
 
-from pyMoist.shared.incloud_processes import cloud_effective_radius_ice, cloud_effective_radius_liquid
+from pyMoist.shared.cloud_processes import cloud_effective_radius_ice, cloud_effective_radius_liquid
 
 
 def radiation_coupling(

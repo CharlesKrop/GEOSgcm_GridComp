@@ -2,7 +2,7 @@ from ndsl.dsl.gt4py import PARALLEL, computation, exp, interval
 from ndsl.dsl.typing import FloatField, FloatFieldIJ
 
 import pyMoist.constants as constants
-from pyMoist.shared.incloud_processes import ice_fraction
+from pyMoist.shared.cloud_processes import ice_fraction
 
 
 def melt_freeze(

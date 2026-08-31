@@ -1,7 +1,7 @@
 from tkinter.tix import MAX
 
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor
-from pyMoist.shared.incloud_processes import fix_up_clouds
+from pyMoist.shared.cloud_processes import fix_up_clouds
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval, sqrt

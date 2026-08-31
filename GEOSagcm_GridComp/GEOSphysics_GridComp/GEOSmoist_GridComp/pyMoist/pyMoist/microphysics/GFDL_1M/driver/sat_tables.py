@@ -5,7 +5,7 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, GlobalTable, K, computation, exp, 
 from ndsl.dsl.typing import Float, FloatField
 
 from pyMoist.microphysics.GFDL_1M.driver.constants import constants
-from pyMoist.shared.incloud_processes import ice_fraction
+from pyMoist.shared.cloud_processes import ice_fraction
 
 
 # Workaround to create a 1d off-grid axis that can be written to
