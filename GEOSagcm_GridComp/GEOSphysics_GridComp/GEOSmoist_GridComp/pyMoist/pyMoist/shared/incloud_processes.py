@@ -2,11 +2,62 @@
 These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
-from ndsl.dsl.gt4py import PARALLEL, GlobalTable, computation, exp, float32, float64, floor, function, interval, log10, round_away_from_zero, sin, K, FORWARD
+from ndsl.dsl.gt4py import (
+    PARALLEL,
+    GlobalTable,
+    computation,
+    exp,
+    float32,
+    float64,
+    floor,
+    function,
+    interval,
+    log10,
+    round_away_from_zero,
+    sin,
+    K,
+    FORWARD,
+    BACKWARD,
+    log,
+)
 from ndsl.dsl.typing import Float, FloatField, BoolFieldIJ
 
 import pyMoist.constants as constants
 from pyMoist.shared.atmos_recipes import air_density
+from pyMoist.saturation_tables import saturation_specific_humidity
+from pyMoist.constants import (
+    LBE,
+    MAPL_RVAP,
+    MAPL_RGAS,
+    MAPL_CPVAP,
+    MAPL_CPDRY,
+    MAPL_TICE,
+    ICE_RADII_PARAM,
+    JaT_ICE_ALL,
+    JaT_ICE_MAX,
+    MAPL_PI,
+    aT_ICE_ALL,
+    aT_ICE_MAX,
+    aICEFRPWR,
+    iT_ICE_MAX,
+    iT_ICE_ALL,
+    iICEFRPWR,
+    lT_ICE_MAX,
+    lT_ICE_ALL,
+    lICEFRPWR,
+    oT_ICE_MAX,
+    oT_ICE_ALL,
+    oICEFRPWR,
+    LIQ_RADII_PARAM,
+    BX,
+    R13BBETA,
+    ABETA,
+    LBX,
+    LBE,
+    MAPL_CP,
+    MAPL_ALHL,
+    MAPL_ALHS,
+)
 
 
 @function
@@ -14,7 +65,7 @@ def ice_fraction_modis(
     temp: Float,
 ):
     # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
-    tc = max(-46.0, min(temp - constants.MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
+    tc = max(-46.0, min(temp - MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
     ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc**2 + 0.0106 * tc**3 + 0.000339 * tc**4 + 0.00000395 * tc**5
     ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
     return ice_frct
@@ -39,53 +90,53 @@ def ice_fraction(
     # Anvil clouds
     # Anvil-Convective sigmoidal function like figure 6(right)
     # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-    if constants.ICE_RADII_PARAM == 1:
+    if ICE_RADII_PARAM == 1:
         # Jason formula
-        if temp <= constants.JaT_ICE_ALL:
+        if temp <= JaT_ICE_ALL:
             icefrct_c = 1.000
-        elif temp > constants.JaT_ICE_ALL and temp <= constants.JaT_ICE_MAX:
-            icefrct_c = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.JaT_ICE_ALL) / (constants.JaT_ICE_MAX - constants.JaT_ICE_ALL)))
+        elif temp > JaT_ICE_ALL and temp <= JaT_ICE_MAX:
+            icefrct_c = sin(0.5 * MAPL_PI * (1.00 - (temp - JaT_ICE_ALL) / (JaT_ICE_MAX - JaT_ICE_ALL)))
         else:
             icefrct_c = 0.00
     else:
         # Default formula
-        if temp <= constants.aT_ICE_ALL:
+        if temp <= aT_ICE_ALL:
             icefrct_c = 1.000
-        elif temp > constants.aT_ICE_ALL and temp <= constants.aT_ICE_MAX:
-            icefrct_c = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.aT_ICE_ALL) / (constants.aT_ICE_MAX - constants.aT_ICE_ALL)))
+        elif temp > aT_ICE_ALL and temp <= aT_ICE_MAX:
+            icefrct_c = sin(0.5 * MAPL_PI * (1.00 - (temp - aT_ICE_ALL) / (aT_ICE_MAX - aT_ICE_ALL)))
         else:
             icefrct_c = 0.00
-    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** constants.aICEFRPWR
+    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** aICEFRPWR
 
     # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
     srf_type_int = round(srf_type)
 
     if srf_type_int == 2 or srf_type_int == 3 or srf_type_int == 4:  # 2 = snow, 3 = ice, 4 = landice
-        if temp <= constants.iT_ICE_ALL:
+        if temp <= iT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.iT_ICE_ALL and temp <= constants.iT_ICE_MAX:
-            icefrct_m = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.iT_ICE_ALL) / (constants.iT_ICE_MAX - constants.iT_ICE_ALL)))
+        elif temp > iT_ICE_ALL and temp <= iT_ICE_MAX:
+            icefrct_m = sin(0.5 * MAPL_PI * (1.00 - (temp - iT_ICE_ALL) / (iT_ICE_MAX - iT_ICE_ALL)))
         else:
             icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.iICEFRPWR
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** iICEFRPWR
 
     elif srf_type_int == 1:  # land
-        if temp <= constants.lT_ICE_ALL:
+        if temp <= lT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.lT_ICE_ALL and temp <= constants.lT_ICE_MAX:
-            icefrct_m = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.lT_ICE_ALL) / (constants.lT_ICE_MAX - constants.lT_ICE_ALL)))
+        elif temp > lT_ICE_ALL and temp <= lT_ICE_MAX:
+            icefrct_m = sin(0.5 * MAPL_PI * (1.00 - (temp - lT_ICE_ALL) / (lT_ICE_MAX - lT_ICE_ALL)))
         else:
             icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.lICEFRPWR
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** lICEFRPWR
 
     elif srf_type_int == 0:  # ocean
-        if temp <= constants.oT_ICE_ALL:
+        if temp <= oT_ICE_ALL:
             icefrct_m = 1.000
-        elif temp > constants.oT_ICE_ALL and temp <= constants.oT_ICE_MAX:
-            icefrct_m = sin(0.5 * constants.MAPL_PI * (1.00 - (temp - constants.oT_ICE_ALL) / (constants.oT_ICE_MAX - constants.oT_ICE_ALL)))
+        elif temp > oT_ICE_ALL and temp <= oT_ICE_MAX:
+            icefrct_m = sin(0.5 * MAPL_PI * (1.00 - (temp - oT_ICE_ALL) / (oT_ICE_MAX - oT_ICE_ALL)))
         else:
             icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** constants.oICEFRPWR
+        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** oICEFRPWR
 
     else:
         # unknown surface type detected - you should not be here
@@ -119,20 +170,20 @@ def cloud_effective_radius_liquid(
     # Calculate cloud drop number concentration from the aerosol model + ....
     nnx = max(liquid_concentration * 1.0e-6, 10.0)
     # Calculate Radius in meters [m]
-    if constants.LIQ_RADII_PARAM == 1:
+    if LIQ_RADII_PARAM == 1:
         # Jason Version
         radius = min(
             60.0e-6,
             max(
                 2.5e-6,
-                1.0e-6 * constants.BX * (wc / nnx) ** constants.R13BBETA * constants.ABETA * 6.92,
+                1.0e-6 * BX * (wc / nnx) ** R13BBETA * ABETA * 6.92,
             ),
         )
     else:
         # [liu&daum, 2000 and 2005. liu et al 2008]
         radius = min(
             60.0e-6,
-            max(2.5e-6, 1.0e-6 * constants.LBX * (wc / nnx) ** constants.LBE),
+            max(2.5e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE),
         )
     return radius
 
@@ -157,18 +208,18 @@ def cloud_effective_radius_ice(
     # Calculate ice water content
     wc = 1.0e3 * air_density(pressure, temperature) * ice_mixing_ratio  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # Calculate radius in meters [m]
-    if constants.ICE_RADII_PARAM == 1:
+    if ICE_RADII_PARAM == 1:
         # Ice cloud effective radius -- [klaus wyser, 1998]
-        if temperature > constants.MAPL_TICE or ice_mixing_ratio <= 0.0:
+        if temperature > MAPL_TICE or ice_mixing_ratio <= 0.0:
             bb = -2.0
         else:
-            bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (constants.MAPL_TICE - temperature) ** 1.5)
+            bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (MAPL_TICE - temperature) ** 1.5)
         bb = min(max(bb, -6.0), -2.0)
         radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
         radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
     else:
         # Ice cloud effective radius ----- [Sun, 2001]
-        tc = temperature - constants.MAPL_TICE
+        tc = temperature - MAPL_TICE
         zfsr = 1.2351 + 0.0105 * tc
         aa = 45.8966 * (wc**0.2214)
         bb = 0.79570 * (wc**0.2535)
@@ -215,11 +266,7 @@ def fix_up_clouds(
             # remove all cloud quantities above the lid level
             if K < lid_level:
                 vapor = vapor + type_one_ice + type_one_liquid + type_two_ice + type_two_liquid
-                t = (
-                    t
-                    - (constants.MAPL_ALHL / constants.MAPL_CP) * (type_one_liquid + type_two_liquid)
-                    - (constants.MAPL_ALHS / constants.MAPL_CP) * (type_one_ice + type_two_ice)
-                )
+                t = t - (MAPL_ALHL / MAPL_CP) * (type_one_liquid + type_two_liquid) - (MAPL_ALHS / MAPL_CP) * (type_one_ice + type_two_ice)
                 type_one_ice = 0.0
                 type_one_liquid = 0.0
                 type_one_cloud_fraction = 0.0
@@ -239,7 +286,7 @@ def fix_up_clouds(
             # fix if type one cloud fraction too small
             if type_one_cloud_fraction < MIN_CLOUD_FRACTION:
                 vapor = vapor + type_one_liquid + type_two_liquid
-                t = t - (constants.MAPL_ALHL / constants.MAPL_CP) * type_one_liquid - (constants.MAPL_ALHS / constants.MAPL_CP) * type_two_liquid
+                t = t - (MAPL_ALHL / MAPL_CP) * type_one_liquid - (MAPL_ALHS / MAPL_CP) * type_two_liquid
                 type_one_ice = 0.0
                 type_one_liquid = 0.0
                 type_one_cloud_fraction = 0.0
@@ -247,7 +294,7 @@ def fix_up_clouds(
             # fix if type two cloud fraction too small
             if type_two_cloud_fraction < MIN_CLOUD_FRACTION:
                 vapor = vapor + type_two_liquid + type_two_ice
-                t = t - (constants.MAPL_ALHL / constants.MAPL_CP) * type_two_liquid - (constants.MAPL_ALHS / constants.MAPL_CP) * type_two_ice
+                t = t - (MAPL_ALHL / MAPL_CP) * type_two_liquid - (MAPL_ALHS / MAPL_CP) * type_two_ice
                 type_two_ice = 0.0
                 type_two_liquid = 0.0
                 type_two_cloud_fraction = 0.0
@@ -255,31 +302,31 @@ def fix_up_clouds(
             # fix if type one liquid is too small
             if type_one_liquid < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_one_liquid
-                t = t - (constants.MAPL_ALHL / constants.MAPL_CP) * type_one_liquid
+                t = t - (MAPL_ALHL / MAPL_CP) * type_one_liquid
                 type_one_liquid = 0.0
 
             # fix if type one ice is too small
             if type_one_ice < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_one_ice
-                t = t - (constants.MAPL_ALHS / constants.MAPL_CP) * type_one_ice
+                t = t - (MAPL_ALHS / MAPL_CP) * type_one_ice
                 type_one_ice = 0.0
 
             # fix if type two liquid is too small
             if type_two_liquid < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_two_liquid
-                t = t - (constants.MAPL_ALHL / constants.MAPL_CP) * type_two_liquid
+                t = t - (MAPL_ALHL / MAPL_CP) * type_two_liquid
                 type_two_liquid = 0.0
 
             # fix if type two ice is too small
             if type_two_ice < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_two_ice
-                t = t - (constants.MAPL_ALHS / constants.MAPL_CP) * type_two_ice
+                t = t - (MAPL_ALHS / MAPL_CP) * type_two_ice
                 type_two_ice = 0.0
 
             # fix all type one quantities if liquid + ice is too small
             if (type_one_liquid + type_two_liquid) < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_one_liquid + type_two_liquid
-                t = t - (constants.MAPL_ALHL / constants.MAPL_CP) * type_one_liquid - (constants.MAPL_ALHS / constants.MAPL_CP) * type_two_liquid
+                t = t - (MAPL_ALHL / MAPL_CP) * type_one_liquid - (MAPL_ALHS / MAPL_CP) * type_two_liquid
                 type_two_ice = 0.0
                 type_one_liquid = 0.0
                 type_one_cloud_fraction = 0.0
@@ -287,7 +334,7 @@ def fix_up_clouds(
             # fix all type two quantities if liquid + ice is too small
             if (type_two_liquid + type_two_ice) < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_two_liquid + type_two_ice
-                t = t - (constants.MAPL_ALHL / constants.MAPL_CP) * type_two_liquid - (constants.MAPL_ALHS / constants.MAPL_CP) * type_two_ice
+                t = t - (MAPL_ALHL / MAPL_CP) * type_two_liquid - (MAPL_ALHS / MAPL_CP) * type_two_ice
                 type_two_cloud_fraction = 0.0
                 type_two_liquid = 0.0
                 type_two_ice = 0.0
@@ -454,7 +501,7 @@ def make_ice_number(
 
         k = (mui + 3) * (mui * 3) / (mui + 2) / (mui + 1)
 
-        crystal_number = k * cloud_ice_mixing_ratio * internal_lambda * internal_lambda * internal_lambda / (constants.MAPL_PI * ice_density)
+        crystal_number = k * cloud_ice_mixing_ratio * internal_lambda * internal_lambda * internal_lambda / (MAPL_PI * ice_density)
 
     return crystal_number
 
@@ -486,7 +533,7 @@ def make_droplet_number(
 
     Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
     """
-    am_r = constants.MAPL_PI * 1000.0 / 6.0
+    am_r = MAPL_PI * 1000.0 / 6.0
 
     if cloud_water_mixing_ratio <= 0.0:
         droplet_number = 0.0
@@ -503,3 +550,68 @@ def make_droplet_number(
         droplet_number = float32(qnc)
 
     return droplet_number
+
+
+@function
+def find_t_lcl(
+    t: Float,
+    rh: Float,
+):
+    """
+    Computes the LCL temperature
+
+    Arguments:
+        t (Float): temperature at surface (K)
+        rh (Float): relative humidity at surface
+
+    Returns:
+        tlcl: LCL temperature
+    """
+    term1 = 1.0 / (t - 55.0)
+    term2 = log(max(0.1, rh) / 100.0) / 2840.0
+    denom = term1 - term2
+    tlcl = (1.0 / denom) + 55.0
+    return tlcl
+
+
+def find_lcl_level(
+    t: FloatField,
+    p_mb: FloatField,
+    vapor: FloatField,
+    esx: GlobalTable_saturation_tables,
+    lcl_level: IntFieldIJ,
+):
+    """
+    Find the level of the lifted condensation level (LCL).
+
+    Arguments:
+        t (FloatField): (in) Atmospheric temperature (K)
+        p_mb (FloatField): (in) pressure (mb)
+        vapor (FloatField): (in) water vapor mixing radio (kg/kg)
+        esx (GlobalTable_saturation_tables): (in) saturation vapor pressure table, details unknown
+        lcl_level (IntFieldIJ): (out) LCL level
+    """
+    from __externals__ import k_end
+
+    # set up mask to stop computation
+    with computation(FORWARD), interval(0, 1):
+        found_level: BoolFieldIJ = False
+
+    # get LCL pressure
+    with computation(PARALLEL), interval(-1, None):
+        qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
+        rhsfc = 100.0 * vapor / qsat
+        qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
+        rhsfc = 100.0 * vapor / qsat
+        tlcl = find_t_lcl(t=t, rh=rhsfc)
+        rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
+        rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
+        cpm = (1.0 - vapor) * MAPL_CPDRY + vapor * MAPL_CPVAP
+        plcl = p_mb * ((tlcl / t) ** (cpm / rm))
+
+    # find nearest level <= LCL pressure
+    with computation(BACKWARD), interval(...):
+        if found_level == False:  # noqa
+            lcl_level = K
+        if p_mb <= plcl.at(K=k_end):
+            found_level = True

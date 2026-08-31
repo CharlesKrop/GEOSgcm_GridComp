@@ -78,87 +78,6 @@ def calculate_derived_states(
         v_unmodified = v
 
 
-@function
-def find_t_lcl(
-    t: Float,
-    rh: Float,
-):
-    """
-    Computes the LCL temperature
-
-    Arguments:
-        t (Float): temperature at surface (K)
-        rh (Float): relative humidity at surface
-
-    Returns:
-        tlcl: LCL temperature
-    """
-    term1 = 1.0 / (t - 55.0)
-    term2 = log(max(0.1, rh) / 100.0) / 2840.0
-    denom = term1 - term2
-    tlcl = (1.0 / denom) + 55.0
-    return tlcl
-
-
-def find_lcl_level(
-    t: FloatField,
-    p_mb: FloatField,
-    vapor: FloatField,
-    esx: GlobalTable_saturation_tables,
-    lcl_level: IntFieldIJ,
-):
-    """
-    Find the level of the lifted condensation level (LCL).
-
-    Arguments:
-        t (FloatField): (in) Atmospheric temperature (K)
-        p_mb (FloatField): (in) pressure (mb)
-        vapor (FloatField): (in) water vapor mixing radio (kg/kg)
-        esx (GlobalTable_saturation_tables): (in) saturation vapor pressure table, details unknown
-        lcl_level (IntFieldIJ): (out) LCL level
-    """
-    from __externals__ import k_end
-
-    # set up mask to stop computation
-    with computation(FORWARD), interval(0, 1):
-        found_level: BoolFieldIJ = False
-
-    # get LCL pressure
-    with computation(PARALLEL), interval(-1, None):
-        qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
-        rhsfc = 100.0 * vapor / qsat
-        qsat, _ = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
-        rhsfc = 100.0 * vapor / qsat
-        tlcl = find_t_lcl(t=t, rh=rhsfc)
-        rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
-        rm = (1.0 - vapor) * MAPL_RGAS + vapor * MAPL_RVAP
-        cpm = (1.0 - vapor) * MAPL_CPDRY + vapor * MAPL_CPVAP
-        plcl = p_mb * ((tlcl / t) ** (cpm / rm))
-
-    # find nearest level <= LCL pressure
-    with computation(BACKWARD), interval(...):
-        if found_level == False:  # noqa
-            lcl_level = K
-        if p_mb <= plcl.at(K=k_end):
-            found_level = True
-
-
-def update_lcl_height(
-    layer_height_above_surface: FloatField,
-    lcl_level: IntFieldIJ,
-    lcl_height: FloatFieldIJ,
-):
-    """Update LCL height
-
-    Args:
-        layer_height_above_surface (FloatField)
-        lcl_level (IntFieldIJ)
-        lcl_height (FloatFieldIJ)
-    """
-    with computation(FORWARD), interval(0, 1):
-        lcl_height = layer_height_above_surface.at(K=lcl_level)
-
-
 def update_precipitation(
     mixing_ratio: FloatField,
     shallow_convection_values: FloatField,
@@ -181,8 +100,6 @@ class GFDL1MSetupLocals(LocalState):
         metadata={
             "name": "temporary_3d",
             "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -193,11 +110,7 @@ class GFDL1MSetup(NDSLRuntime):
     Conglomeration of small stencils required to setup the main macro/micro physics schemes within the GFDL1M module. Contains the following stencils:
 
     prepare_tendencies: preloads macrophysics tendencies for post-phase_change calculations
-    calculate_derived_states: computes fields required for the module but not provided by the module
-    find_k_lcl: identifies the LCL level
-    update_z_lcl (conditional): computes the geometric height of the LCL and returns it to the model
-    vertical_interpolation: interpolates various fields to the desired geometric height
-    find_eis: computes the estimated inversion strength
+    calculate_derived_states: computes fields required for the module but not provided by the model
     update_precipitation (conditional): updates precipitation (rain and snow) using shallow convection values
     """
 
@@ -312,9 +225,9 @@ class GFDL1MSetup(NDSLRuntime):
         )
 
         if self.config.GFDL_MP_KLID > 0.0:
-            k_lid = Int(self.config.GFDL_MP_KLID)
+            locals.lid_level = Int(self.config.GFDL_MP_KLID)
         else:
-            k_lid = Int(1)
+            locals.lid_level = Int(1)
 
         # set unused exports to zero
         self._set_value(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
