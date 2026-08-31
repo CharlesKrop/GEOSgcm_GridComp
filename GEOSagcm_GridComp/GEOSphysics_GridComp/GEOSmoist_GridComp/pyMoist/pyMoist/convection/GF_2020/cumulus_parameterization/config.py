@@ -54,12 +54,9 @@ class GF2020CumulusParameterizationConfig:
     CLOSURE_CHOICE_MID: Int
     CLOSURE_CHOICE_DEEP: Int
     # plume independent
-    SHALLOW_MID_DEEP: Bool
-    ZERO_DIFF: Int
     MOIST_TRIGGER: Int
     LAMBDA_DEEP: Float
     LAMBDA_SHALLOW_DOWN: Float
-    CAP_MAXS: Float
     OUTPUT_SOUNDING: Int
     USE_SCALE_DEP: Int
     SATURATION_CALCULATION_CHOICE: Int
@@ -83,9 +80,12 @@ class GF2020CumulusParameterizationConfig:
     MIN_ENTRAINMENT_RATE: Float
     USE_SMOOTH_TENDENCIES: Int
     USE_RAIN_EVAP_BELOW_CLOUD_BASE: Int
-    USE_CLOUD_DISSIPATION: Float
     LIGHTNING_DIAGNOSTICS: Int
     USE_TRACER_SCAVENGE: Int
     USE_TRACER_EVAPORATION: Int
     USE_FLUX_FORM: Int
     MAX_TEMP_VAPOR_TENDENCY: Float
+    USE_INV_LAYERS: Bool
+    CAP_MAXS_DP: Float
+    CAP_MAXS_MD: Float
+    CAP_MAXS_SH: Float
