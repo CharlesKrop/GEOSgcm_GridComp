@@ -271,6 +271,14 @@ class GFDL1MState(State):
             "dtype": Float,
         }
     )
+    boundary_layer_level_for_uw_shallow_conv: Quantity | None = dataclasses.field(
+        metadata={
+            "name": "boundary_layer_level_for_uw_shallow_conv",
+            "dims": [I_DIM, J_DIM],
+            "units": "1",
+            "dtype": Float,
+        }
+    )
 
     @dataclasses.dataclass
     class VerticalMotion:
