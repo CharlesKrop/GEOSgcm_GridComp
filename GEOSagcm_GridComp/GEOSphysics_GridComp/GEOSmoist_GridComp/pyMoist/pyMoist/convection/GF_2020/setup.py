@@ -124,6 +124,37 @@ def compute_extra_inputs_from_state(
         else:
             modified_area = area
 
+def compute_sgs_vvel(
+    edge_height_above_surface: FloatField,
+    vertical_motion: FloatField,
+    buoyancy: FloatField,
+    SGS_VVEL_DP: FloatField, 
+    SGS_VVEL_MD: FloatField,
+    SGS_VVEL_SH: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        dz = edge_height_above_surface - edge_height_above_surface
+        B  = max(buoyancy,0.0)
+        wmin = 0.1
+
+        Ldeep = min(1000.0,max(200.0,2.0*dz))
+        Lmid  = min(600.0 ,max(150.0,1.5*dz))
+        Lshal = min(300.0 ,max(75.0 ,1.0*dz))
+
+        wsgs = sqrt(2.0*B*Ldeep)
+        weff = sqrt(buoyancy**2 + wsgs**2)
+        SGS_VVEL_DP = max(weff,wmin)
+
+    with computation(PARALLEL), interval(...):
+        wsgs = sqrt(2.0*B*Lmid)
+        weff = sqrt(buoyancy**2 + wsgs**2)
+        SGS_VVEL_MD = max(weff,wmin)
+
+    with computation(PARALLEL), interval(...):
+        wsgs = sqrt(2.0*B*Lshal)
+        weff = sqrt(buoyancy**2 + wsgs**2)
+        SGS_VVEL_SH = max(weff,wmin)
+
 
 def pass_back_to_model_state(local_seed_convection: FloatFieldIJ, model_state_seed_convection: FloatFieldIJ):
     with computation(FORWARD), interval(0, 1):
@@ -1222,6 +1253,11 @@ class GF2020Setup(NDSLRuntime):
             },
         )
 
+        self._compute_sgs_vvel = stencil_factory.from_dims_halo(
+            func=compute_sgs_vvel,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
         self._pass_back_to_model_state = stencil_factory.from_dims_halo(
             func=pass_back_to_model_state,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -1329,6 +1365,16 @@ class GF2020Setup(NDSLRuntime):
             modified_area=locals.derived_state.modified_area,
             convection_fraction=state.convection_fraction,
             esx=self._esx,
+        )
+
+        # Is this the right place for this?
+        self._compute_sgs_vvel(
+            edge_height_above_surface=locals.derived_state.edge_height_above_surface,
+            vertical_motion=locals.derived_state.vertical_velocity,
+            buoyancy=state.buoyancy,
+            SGS_VVEL_DP=state.SGS_VVEL_DP, # Double check that these belong in state
+            SGS_VVEL_MD=state.SGS_VVEL_MD,
+            SGS_VVEL_SH=state.SGS_VVEL_SH,
         )
 
         if state.seed_convection is not None:

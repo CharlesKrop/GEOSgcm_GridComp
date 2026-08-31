@@ -898,3 +898,31 @@ class GF2020State(State):
             "dtype": Float,
         }
     )
+    SGS_VVEL_DP: Quantity = dataclasses.field(
+        metadata={
+            "name": "SGS_VVEL_DP",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    SGS_VVEL_MD: Quantity = dataclasses.field(
+        metadata={
+            "name": "SGS_VVEL_MD",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    SGS_VVEL_SH: Quantity = dataclasses.field(
+        metadata={
+            "name": "SGS_VVEL_SH",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "intent": "?",
+            "dtype": Float,
+        }
+    )
+
