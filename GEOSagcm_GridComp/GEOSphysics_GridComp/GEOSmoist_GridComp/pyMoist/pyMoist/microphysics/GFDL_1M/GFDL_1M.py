@@ -6,7 +6,7 @@ from pyMoist.microphysics.GFDL_1M.driver import GFDL1MDriver
 from pyMoist.microphysics.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
-from pyMoist.microphysics.GFDL_1M.macrophysics_core.macrophysics import GFDL1MMacrophysics
+from pyMoist.microphysics.GFDL_1M.macrophysics import GFDL1MMacrophysics
 from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.microphysics.GFDL_1M.shared_stencils import (
     get_total_concentration,
@@ -60,6 +60,9 @@ class GFDL1M(NDSLRuntime):
 
         # Locals
         self._locals = GFDL1MLocals.make_locals(quantity_factory)
+
+        # Make config visible at runtime
+        self._config = config
 
         # Build components
         self.prepare_tendencies = stencil_factory.from_dims_halo(
@@ -152,6 +155,10 @@ class GFDL1M(NDSLRuntime):
             state=state,
             locals=self._locals,
         )
+
+        # print a debug warning, if any non-physical values are identified
+        if self._config.DEBUG_TQ_ERRORS:
+            option_not_implemented = True
 
         # update the model state with macrophysics tendencies
         self._update_tendencies(
