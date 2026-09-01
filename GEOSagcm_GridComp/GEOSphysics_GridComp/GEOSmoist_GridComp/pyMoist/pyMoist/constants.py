@@ -76,33 +76,58 @@ MAPL_CELSIUS_TO_KELVIN = Float(273.15)  # K
 
 # ice_fraction constants
 # In anvil/convective clouds
-aT_ICE_ALL = Float(252.16)
+aT_ICE_ALL = Float(233.16)
 aT_ICE_MAX = Float(268.16)
-aICEFRPWR = Float(2.0)
-# Over snow/ice SRF_TYPE = 2
-iT_ICE_ALL = Float(236.16)
-iT_ICE_MAX = Float(261.16)
-iICEFRPWR = Float(6.0)
-# Over Land     SRF_TYPE = 1
-lT_ICE_ALL = Float(239.16)
-lT_ICE_MAX = Float(261.16)
-lICEFRPWR = Float(2.0)
-# Over Oceans   SRF_TYPE = 0
-oT_ICE_ALL = Float(238.16)
-oT_ICE_MAX = Float(263.16)
-oICEFRPWR = Float(4.0)
+aT_ICE_PWR = Float(4.5)
+# Land ice (Antarctica/Greenland)
+liT_ICE_ALL = Float(234.16)
+liT_ICE_MAX = Float(268.15)
+liT_ICE_PWR = Float(4.2)
+# Sea Ice (Arctic)
+iT_ICE_ALL = Float(235.16)
+iT_ICE_MAX = Float(271.15)
+iT_ICE_PWR = Float(4.5)
+# Snow surface (High altitude winter land)
+sT_ICE_ALL = Float(236.16)
+sT_ICE_MAX = Float(268.15)
+sT_ICE_PWR = Float(4.0)  
+# Land (Ice-free)
+lT_ICE_ALL = Float(241.16) 
+lT_ICE_MAX = Float(266.16)
+lT_ICE_PWR = Float(1.5) 
+# Over Oceans   
+oT_ICE_ALL = Float(235.16)
+oT_ICE_MAX = Float(271.15)
+oT_ICE_PWR = Float(4.5)
 # Jason method constants (translator note: I have no clue who jason is)
 # In anvil/convective clouds
 JaT_ICE_ALL = Float(245.16)
 JaT_ICE_MAX = Float(261.16)
-JaICEFRPWR = Float(2.0)
-# Over snow/ice
-JiT_ICE_ALL = Float(MAPL_TICE - 40.0)
-JiT_ICE_MAX = Float(MAPL_TICE)
-JiICEFRPWR = Float(4.0)
+JaT_ICE_PWR = Float(2.0)
+#Over Land Ice SRF_TYPE == 4
+JliT_ICE_ALL = Float(236.16)
+JliT_ICE_MAX = Float(261.16)
+JliT_ICE_PWR = Float(5.0)
+# Over Ice SRF_TYPE == 3
+JiT_ICE_ALL = Float(236.16)
+JiT_ICE_MAX = Float(261.16)
+JiT_ICE_PWR = Float(5.0)
+# Over Snow SRF_TYPE = 2
+JsT_ICE_ALL = Float(236.16)
+JsT_ICE_MAX = Float(261.16)
+JsT_ICE_PWR = Float(5.0)
+# Over Land     SRF_TYPE = 1
+JlT_ICE_ALL = Float(239.16)
+JlT_ICE_MAX = Float(261.16)
+JlT_ICE_PWR = Float(2.0)
+# Over Oceans   SRF_TYPE = 0
+JoT_ICE_ALL = Float(238.16)
+JoT_ICE_MAX = Float(263.16)
+JoT_ICE_PWR = Float(4.0)
 
 # Other miscellaneous parameters
-TAUFRZ = Float(450)
+TAUFRZ = Float(600)
+TAUMLT = Float(300)
 K_COND = Float(2.4e-2)  # J m**-1 s**-1 K**-1
 DIFFU = Float(2.2e-5)  # m**2 s**-1
 dQCMAX = Float(1.0e-4)
