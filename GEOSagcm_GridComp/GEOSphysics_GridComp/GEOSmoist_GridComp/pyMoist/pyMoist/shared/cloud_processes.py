@@ -66,6 +66,11 @@ from pyMoist.constants import (
     R_AIR,
     TAUFRZ,
     TAUMLT,
+    EPSILON,
+    RHO_I,
+    RHO_W,
+    K_COND,
+    DIFFU,
 )
 
 
@@ -1197,17 +1202,112 @@ def melt_freeze(
 
         else:
             # MELTING REGIME (TE > TICE)
-            
+
             # 1. Target melt (assuming 0% ice fraction above freezing)
             target_melt = ice
 
             # 2. Thermodynamic limit (prevent latent cooling below freezing point)
-            max_phase_change = max( 0.0, (t - MAPL_TICE) * MAPL_CP / latent_heat_fusion )
+            max_phase_change = max(0.0, (t - MAPL_TICE) * MAPL_CP / latent_heat_fusion)
 
             # 3. Apply relaxation timescale
-            condensate_phase_changed = ( 1.0 - exp( -dtime / max(dtime, TAUMLT) ) ) * min( target_melt, max_phase_change )
+            condensate_phase_changed = (1.0 - exp(-dtime / max(dtime, TAUMLT))) * min(target_melt, max_phase_change)
 
             # 4. Update states (ice -> liquid, temp cools)
             ice = ice - condensate_phase_changed
             liquid = liquid + condensate_phase_changed
             t = t - (latent_heat_fusion * condensate_phase_changed) / MAPL_CP
+
+
+def evaporate(
+    p_mb: FloatField,
+    t: FloatField,
+    vapor: FloatField,
+    rh_crit: FloatField,
+    liquid: FloatField,
+    ice: FloatField,
+    cloud_fraction: FloatField,
+    concentration_liquid: FloatField,
+    saturation_specific_humidity: FloatField,
+):
+    from __externals__ import DTIME, CCW_EVAP_EFF
+
+    # EVAPORATION OF CLOUD WATER - DelGenio et al (1996, J. Clim., 9, 270-303) formulation (Eq.s 15-17)
+
+    with computation(PARALLEL), interval(...):
+        es = 100.0 * p_mb * saturation_specific_humidity / (EPSILON + (1.0 - EPSILON) * saturation_specific_humidity)  # (100's <-^ convert from mbar to Pa)
+
+        rh_limited = min(vapor / saturation_specific_humidity, 1.00)
+
+        k1 = (MAPL_ALHL**2) * RHO_W / (K_COND * MAPL_RVAP * (t**2))
+
+        # DIFFU is given for 1000 mb, so 1000.0/p_mb accounts for increased diffusivity at lower pressure
+        k2 = MAPL_RVAP * t * RHO_W / (DIFFU * (1000.0 / p_mb) * es)
+
+        if cloud_fraction > 0.0 and liquid > 0.0:
+            liquid_modified = liquid / cloud_fraction
+        else:
+            liquid_modified = 0.0
+
+        radius = cloud_effective_radius_liquid(p_mb, t, liquid_modified, concentration_liquid)
+
+        if rh_limited < rh_crit and radius > 0.0:
+            evap = CCW_EVAP_EFF * liquid * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)
+            evap = max(0.0, min(evap, liquid))
+        else:
+            evap = 0.0
+
+        total_condensate = ice + liquid
+        if total_condensate > 0.0:
+            cloud_fraction = cloud_fraction * (total_condensate - evap) / total_condensate
+
+        vapor = vapor + evap
+        liquid = liquid - evap
+        t = t - (MAPL_ALHL / MAPL_CP) * evap
+
+
+def sublimate(
+    p_mb: FloatField,
+    t: FloatField,
+    vapor: FloatField,
+    rh_crit: FloatField,
+    liquid: FloatField,
+    ice: FloatField,
+    cloud_fraction: FloatField,
+    saturation_specific_humidity: FloatField,
+):
+    from __externals__ import DTIME, CCI_EVAP_EFF
+
+    # SUBLIMATION OF CLOUD WATER - DelGenio et al (1996, J. Clim., 9, 270-303) formulation (Eq.s 15-17)
+
+    with computation(PARALLEL), interval(...):
+        es = 100.0 * p_mb * saturation_specific_humidity / (EPSILON + (1.0 - EPSILON) * saturation_specific_humidity)  # (100's <-^ convert from mbar to Pa)
+
+        rh_limited = min(vapor / saturation_specific_humidity, 1.00)
+
+        # NOTE MAPL_ALHS is MAPL_ALHL in the fortran. this is a bug. has been fixed in the NDSL
+        # but IS STILL WRONG IN THE FORTRAN. this will lead to numerical differences
+        k1 = (MAPL_ALHS**2) * RHO_I / (K_COND * MAPL_RVAP * (t**2))
+
+        # DIFFU is given for 1000 mb, so 1000.0/p_mb accounts for increased diffusivity at lower pressure
+        k2 = MAPL_RVAP * t * RHO_I / (DIFFU * (1000.0 / p_mb) * es)
+
+        if cloud_fraction > 0.0 and ice > 0.0:
+            ice_modified = ice / cloud_fraction
+        else:
+            ice_modified = 0.0
+
+        radius = cloud_effective_radius_ice(p_mb, t, ice_modified)
+
+        if rh_limited < rh_crit and radius > 0.0:
+            subl = CCI_EVAP_EFF * ice * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)
+            subl = max(0.0, min(subl, ice))
+        else:
+            subl = 0.0
+
+        total_condensate = ice + liquid
+        if total_condensate > 0.0:
+            cloud_fraction = cloud_fraction * (total_condensate - subl) / total_condensate
+
+        vapor = vapor + subl
+        ice = ice - subl
+        t = t - (MAPL_ALHS / MAPL_CP) * subl

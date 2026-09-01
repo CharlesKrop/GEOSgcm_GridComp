@@ -11,7 +11,6 @@ from ndsl.utils import safe_assign_array
 from pyMoist import GFDL1M, GFDL1MConfig, GFDL1MState
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 
-
 # ⚠️ Careful those are _hot caches_ bench - do are NOT
 # expect the same timings online in the model.
 MICRO_BENCH = False
@@ -165,7 +164,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         safe_assign_array(state.shallow_convection_rain.field[:], inputs["shallow_convection_rain"])
         safe_assign_array(state.shallow_convection_snow.field[:], inputs["shallow_convection_snow"])
         # safe_assign_array(state.large_scale_rainwater_source.field[:] , inputs["large_scale_rainwater_source"])
-        safe_assign_array(state.tendencies.dtdt_friction_pressure_weighted.field[:], inputs["tendencies_dtdt_friction_pressure_weighted"])
+        safe_assign_array(state.Tendencies.dtdt_friction_pressure_weighted.field[:], inputs["tendencies_dtdt_friction_pressure_weighted"])
         safe_assign_array(state.mixing_ratio.vapor.field[:], inputs["mixing_ratio_vapor"])
         safe_assign_array(state.mixing_ratio.rain.field[:], inputs["mixing_ratio_rain"])
         safe_assign_array(state.mixing_ratio.snow.field[:], inputs["mixing_ratio_snow"])
@@ -202,16 +201,16 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         safe_assign_array(state.total_water.third_moment.field[:], inputs["total_water_third_moment"])
         safe_assign_array(state.lower_tropospheric_stability.field[:], inputs["lower_tropospheric_stability"])
         safe_assign_array(state.estimated_inversion_strength.field[:], inputs["estimated_inversion_strength"])
-        safe_assign_array(state.tendencies.dcloud_fractiondt_macro.field[:], inputs["tendencies_dcloud_fractiondt_macro"])
-        safe_assign_array(state.tendencies.dvapordt_macro.field[:], inputs["tendencies_dvapordt_macro"])
-        safe_assign_array(state.tendencies.dicedt_macro.field[:], inputs["tendencies_dicedt_macro"])
-        safe_assign_array(state.tendencies.dliquiddt_macro.field[:], inputs["tendencies_dliquiddt_macro"])
-        safe_assign_array(state.tendencies.draindt_macro.field[:], inputs["tendencies_draindt_macro"])
-        safe_assign_array(state.tendencies.dgraupeldt_macro.field[:], inputs["tendencies_dgraupeldt_macro"])
-        safe_assign_array(state.tendencies.dsnowdt_macro.field[:], inputs["tendencies_dsnowdt_macro"])
-        safe_assign_array(state.tendencies.dudt_macro.field[:], inputs["tendencies_dudt_macro"])
-        safe_assign_array(state.tendencies.dvdt_macro.field[:], inputs["tendencies_dvdt_macro"])
-        safe_assign_array(state.tendencies.dtdt_macro.field[:], inputs["tendencies_dtdt_macro"])
+        safe_assign_array(state.Tendencies.dcloud_fractiondt_macro.field[:], inputs["tendencies_dcloud_fractiondt_macro"])
+        safe_assign_array(state.Tendencies.dvapordt_macro.field[:], inputs["tendencies_dvapordt_macro"])
+        safe_assign_array(state.Tendencies.dicedt_macro.field[:], inputs["tendencies_dicedt_macro"])
+        safe_assign_array(state.Tendencies.dliquiddt_macro.field[:], inputs["tendencies_dliquiddt_macro"])
+        safe_assign_array(state.Tendencies.draindt_macro.field[:], inputs["tendencies_draindt_macro"])
+        safe_assign_array(state.Tendencies.dgraupeldt_macro.field[:], inputs["tendencies_dgraupeldt_macro"])
+        safe_assign_array(state.Tendencies.dsnowdt_macro.field[:], inputs["tendencies_dsnowdt_macro"])
+        safe_assign_array(state.Tendencies.dudt_macro.field[:], inputs["tendencies_dudt_macro"])
+        safe_assign_array(state.Tendencies.dvdt_macro.field[:], inputs["tendencies_dvdt_macro"])
+        safe_assign_array(state.Tendencies.dtdt_macro.field[:], inputs["tendencies_dtdt_macro"])
         safe_assign_array(state.convection_fraction.field[:], inputs["convection_fraction"])
         safe_assign_array(state.surface_type.field[:], inputs["surface_type"])
         safe_assign_array(state.cloud_liquid_evaporation.field[:], inputs["cloud_liquid_evaporation"])
@@ -244,16 +243,16 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
         safe_assign_array(state.anvil.liquid_precip_flux.field[:], inputs["anvil_liquid_precip_flux"])
         safe_assign_array(state.anvil.ice_precip_flux.field[:], inputs["anvil_ice_precip_flux"])
         safe_assign_array(state.critical_relative_humidity_for_pdf.field[:], inputs["critical_relative_humidity_for_pdf"])
-        safe_assign_array(state.tendencies.dcloud_fractiondt_micro.field[:], inputs["tendencies_dcloud_fractiondt_micro"])
-        safe_assign_array(state.tendencies.dvapordt_micro.field[:], inputs["tendencies_dvapordt_micro"])
-        safe_assign_array(state.tendencies.dicedt_micro.field[:], inputs["tendencies_dicedt_micro"])
-        safe_assign_array(state.tendencies.dliquiddt_micro.field[:], inputs["tendencies_dliquiddt_micro"])
-        safe_assign_array(state.tendencies.draindt_micro.field[:], inputs["tendencies_draindt_micro"])
-        safe_assign_array(state.tendencies.dgraupeldt_micro.field[:], inputs["tendencies_dgraupeldt_micro"])
-        safe_assign_array(state.tendencies.dsnowdt_micro.field[:], inputs["tendencies_dsnowdt_micro"])
-        safe_assign_array(state.tendencies.dudt_micro.field[:], inputs["tendencies_dudt_micro"])
-        safe_assign_array(state.tendencies.dvdt_micro.field[:], inputs["tendencies_dvdt_micro"])
-        safe_assign_array(state.tendencies.dtdt_micro.field[:], inputs["tendencies_dtdt_micro"])
+        safe_assign_array(state.Tendencies.dcloud_fractiondt_micro.field[:], inputs["tendencies_dcloud_fractiondt_micro"])
+        safe_assign_array(state.Tendencies.dvapordt_micro.field[:], inputs["tendencies_dvapordt_micro"])
+        safe_assign_array(state.Tendencies.dicedt_micro.field[:], inputs["tendencies_dicedt_micro"])
+        safe_assign_array(state.Tendencies.dliquiddt_micro.field[:], inputs["tendencies_dliquiddt_micro"])
+        safe_assign_array(state.Tendencies.draindt_micro.field[:], inputs["tendencies_draindt_micro"])
+        safe_assign_array(state.Tendencies.dgraupeldt_micro.field[:], inputs["tendencies_dgraupeldt_micro"])
+        safe_assign_array(state.Tendencies.dsnowdt_micro.field[:], inputs["tendencies_dsnowdt_micro"])
+        safe_assign_array(state.Tendencies.dudt_micro.field[:], inputs["tendencies_dudt_micro"])
+        safe_assign_array(state.Tendencies.dvdt_micro.field[:], inputs["tendencies_dvdt_micro"])
+        safe_assign_array(state.Tendencies.dtdt_micro.field[:], inputs["tendencies_dtdt_micro"])
         # safe_assign_array(state.radar.simulated_reflectivity.field[:] , inputs["radar_simulated_reflectivity"])
         # safe_assign_array(state.radar.maximum_composite_reflectivity.field[:] , inputs["radar_maximum_composite_reflectivity"])
         # safe_assign_array(state.radar.base_1km_agl_reflectivity.field[:] , inputs["radar_base_1km_agl_reflectivity"])
@@ -281,7 +280,7 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "shallow_convection_rain": state.shallow_convection_rain.field[:],
             "shallow_convection_snow": state.shallow_convection_snow.field[:],
             # "large_scale_rainwater_source": state.large_scale_rainwater_source.field[:],
-            "tendencies_dtdt_friction_pressure_weighted": state.tendencies.dtdt_friction_pressure_weighted.field[:],  # noqa
+            "tendencies_dtdt_friction_pressure_weighted": state.Tendencies.dtdt_friction_pressure_weighted.field[:],  # noqa
             "mixing_ratio_vapor": state.mixing_ratio.vapor.field[:],
             "mixing_ratio_rain": state.mixing_ratio.rain.field[:],
             "mixing_ratio_snow": state.mixing_ratio.snow.field[:],
@@ -317,16 +316,16 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "total_water_third_moment": state.total_water.third_moment.field[:],
             "lower_tropospheric_stability": state.lower_tropospheric_stability.field[:],
             "estimated_inversion_strength": state.estimated_inversion_strength.field[:],
-            "tendencies_dcloud_fractiondt_macro": state.tendencies.dcloud_fractiondt_macro.field[:],
-            "tendencies_dvapordt_macro": state.tendencies.dvapordt_macro.field[:],
-            "tendencies_dicedt_macro": state.tendencies.dicedt_macro.field[:],
-            "tendencies_dliquiddt_macro": state.tendencies.dliquiddt_macro.field[:],
-            "tendencies_draindt_macro": state.tendencies.draindt_macro.field[:],
-            "tendencies_dgraupeldt_macro": state.tendencies.dgraupeldt_macro.field[:],
-            "tendencies_dsnowdt_macro": state.tendencies.dsnowdt_macro.field[:],
-            "tendencies_dudt_macro": state.tendencies.dudt_macro.field[:],
-            "tendencies_dvdt_macro": state.tendencies.dvdt_macro.field[:],
-            "tendencies_dtdt_macro": state.tendencies.dtdt_macro.field[:],
+            "tendencies_dcloud_fractiondt_macro": state.Tendencies.dcloud_fractiondt_macro.field[:],
+            "tendencies_dvapordt_macro": state.Tendencies.dvapordt_macro.field[:],
+            "tendencies_dicedt_macro": state.Tendencies.dicedt_macro.field[:],
+            "tendencies_dliquiddt_macro": state.Tendencies.dliquiddt_macro.field[:],
+            "tendencies_draindt_macro": state.Tendencies.draindt_macro.field[:],
+            "tendencies_dgraupeldt_macro": state.Tendencies.dgraupeldt_macro.field[:],
+            "tendencies_dsnowdt_macro": state.Tendencies.dsnowdt_macro.field[:],
+            "tendencies_dudt_macro": state.Tendencies.dudt_macro.field[:],
+            "tendencies_dvdt_macro": state.Tendencies.dvdt_macro.field[:],
+            "tendencies_dtdt_macro": state.Tendencies.dtdt_macro.field[:],
             "convection_fraction": state.convection_fraction.field[:],
             "surface_type": state.surface_type.field[:],
             "cloud_liquid_evaporation": state.cloud_liquid_evaporation.field[:],
@@ -359,16 +358,16 @@ class TranslateGFDL_1M(TranslateFortranData2Py):
             "anvil_liquid_precip_flux": state.anvil.liquid_precip_flux.field[:],
             "anvil_ice_precip_flux": state.anvil.ice_precip_flux.field[:],
             "critical_relative_humidity_for_pdf": state.critical_relative_humidity_for_pdf.field[:],
-            "tendencies_dcloud_fractiondt_micro": state.tendencies.dcloud_fractiondt_micro.field[:],
-            "tendencies_dvapordt_micro": state.tendencies.dvapordt_micro.field[:],
-            "tendencies_dicedt_micro": state.tendencies.dicedt_micro.field[:],
-            "tendencies_dliquiddt_micro": state.tendencies.dliquiddt_micro.field[:],
-            "tendencies_draindt_micro": state.tendencies.draindt_micro.field[:],
-            "tendencies_dgraupeldt_micro": state.tendencies.dgraupeldt_micro.field[:],
-            "tendencies_dsnowdt_micro": state.tendencies.dsnowdt_micro.field[:],
-            "tendencies_dudt_micro": state.tendencies.dudt_micro.field[:],
-            "tendencies_dvdt_micro": state.tendencies.dvdt_micro.field[:],
-            "tendencies_dtdt_micro": state.tendencies.dtdt_micro.field[:],
+            "tendencies_dcloud_fractiondt_micro": state.Tendencies.dcloud_fractiondt_micro.field[:],
+            "tendencies_dvapordt_micro": state.Tendencies.dvapordt_micro.field[:],
+            "tendencies_dicedt_micro": state.Tendencies.dicedt_micro.field[:],
+            "tendencies_dliquiddt_micro": state.Tendencies.dliquiddt_micro.field[:],
+            "tendencies_draindt_micro": state.Tendencies.draindt_micro.field[:],
+            "tendencies_dgraupeldt_micro": state.Tendencies.dgraupeldt_micro.field[:],
+            "tendencies_dsnowdt_micro": state.Tendencies.dsnowdt_micro.field[:],
+            "tendencies_dudt_micro": state.Tendencies.dudt_micro.field[:],
+            "tendencies_dvdt_micro": state.Tendencies.dvdt_micro.field[:],
+            "tendencies_dtdt_micro": state.Tendencies.dtdt_micro.field[:],
             # inputs["radar_simulated_reflectivity"]: state.radar.simulated_reflectivity.field[:],
             # inputs["radar_maximum_composite_reflectivity"]: state.radar.maximum_composite_reflectivity.field[:], # noqa
             # inputs["radar_base_1km_agl_reflectivity"]: state.radar.base_1km_agl_reflectivity.field[:],

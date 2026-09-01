@@ -3,7 +3,6 @@
 import numpy as np
 from ndsl.dsl.typing import Float, Int
 
-
 _f32 = np.float32
 _f64 = np.float64
 
@@ -102,14 +101,15 @@ JiT_ICE_MAX = Float(MAPL_TICE)
 JiICEFRPWR = Float(4.0)
 
 # Other miscellaneous parameters
-TAUFRZ = Float(600.0) # timescale for freezing
-TAUMLT = Float(300.0) # timescale for melting
+TAUFRZ = Float(600.0)  # timescale for freezing
+TAUMLT = Float(300.0)  # timescale for melting
 K_COND = Float(2.4e-2)  # J m**-1 s**-1 K**-1
 DIFFU = Float(2.2e-5)  # m**2 s**-1
 dQCMAX = Float(1.0e-4)
 
 # cloud radius Constants based on DOI 10.1088/1748-9326/3/4/045021
-RHO_I = Float(916.8)  # Density of ice crystal in kg/m^3
+RHO_I = Float(890.0)  # Density of ice crystal in kg/m^3
+RHO_W = Float(1000.0)  # Density of liquid water in kg/m^3
 # cloud radius eqs are in cgs units
 
 # Constants for _fix_up_clouds_stencil
@@ -122,7 +122,6 @@ ICE_RADII_PARAM = Int(1)
 BX = Float(100.0) * (Float(3.0) / (Float(4.0) * MAPL_PI)) ** (Float(1.0) / Float(3.0))
 R13BBETA = Float(1.0) / Float(3.0) - Float(0.14)
 ABETA = Float(0.07)
-RHO_W = Float(1000.0)
 LDISS = Float(0.07)
 LK = Float(0.75)
 LBX = LDISS * Float(1.0e3) * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3))) ** (Float(1.0) / Float(3.0))

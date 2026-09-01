@@ -133,16 +133,16 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
         state.anvil.liquid_precip_flux.field[:] = inputs["anvil_liquid_precip_flux"]
         state.anvil.ice_precip_flux.field[:] = inputs["anvil_ice_precip_flux"]
         state.relative_humidity_after_pdf.field[:] = inputs["relative_humidity_after_pdf"]
-        state.tendencies.dvapordt_micro.field[:] = inputs["dvapordt_micro"]
-        state.tendencies.dliquiddt_micro.field[:] = inputs["dliquiddt_micro"]
-        state.tendencies.dicedt_micro.field[:] = inputs["dicedt_micro"]
-        state.tendencies.dcloud_fractiondt_micro.field[:] = inputs["dcloud_fractiondt_micro"]
-        state.tendencies.draindt_micro.field[:] = inputs["draindt_micro"]
-        state.tendencies.dsnowdt_micro.field[:] = inputs["dsnowdt_micro"]
-        state.tendencies.dgraupeldt_micro.field[:] = inputs["dgraupeldt_micro"]
-        state.tendencies.dudt_micro.field[:] = inputs["dudt_micro"]
-        state.tendencies.dvdt_micro.field[:] = inputs["dvdt_micro"]
-        state.tendencies.dtdt_micro.field[:] = inputs["dtdt_micro"]
+        state.Tendencies.dvapordt_micro.field[:] = inputs["dvapordt_micro"]
+        state.Tendencies.dliquiddt_micro.field[:] = inputs["dliquiddt_micro"]
+        state.Tendencies.dicedt_micro.field[:] = inputs["dicedt_micro"]
+        state.Tendencies.dcloud_fractiondt_micro.field[:] = inputs["dcloud_fractiondt_micro"]
+        state.Tendencies.draindt_micro.field[:] = inputs["draindt_micro"]
+        state.Tendencies.dsnowdt_micro.field[:] = inputs["dsnowdt_micro"]
+        state.Tendencies.dgraupeldt_micro.field[:] = inputs["dgraupeldt_micro"]
+        state.Tendencies.dudt_micro.field[:] = inputs["dudt_micro"]
+        state.Tendencies.dvdt_micro.field[:] = inputs["dvdt_micro"]
+        state.Tendencies.dtdt_micro.field[:] = inputs["dtdt_micro"]
 
         code = GFDL1MFinalize(
             stencil_factory=self.stencil_factory,
@@ -189,20 +189,20 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
             radiation_graupel=state.radiation_field.graupel,
             radiation_ice=state.radiation_field.ice,
             radiation_cloud_fraction=state.radiation_field.cloud_fraction,
-            dudt_micro=state.tendencies.dudt_micro,
-            dvdt_micro=state.tendencies.dvdt_micro,
-            dtdt_micro=state.tendencies.dtdt_micro,
-            dvapordt_micro=state.tendencies.dvapordt_micro,
-            dliquiddt_micro=state.tendencies.dliquiddt_micro,
-            dicedt_micro=state.tendencies.dicedt_micro,
-            dcloud_fractiondt_micro=state.tendencies.dcloud_fractiondt_micro,
-            draindt_micro=state.tendencies.draindt_micro,
-            dsnowdt_micro=state.tendencies.dsnowdt_micro,
-            dgraupeldt_micro=state.tendencies.dgraupeldt_micro,
-            dudt_macro=state.tendencies.dudt_macro,
-            dvdt_macro=state.tendencies.dvdt_macro,
-            draindt_macro=state.tendencies.draindt_macro,
-            dtdt_friction_pressure_weighted=state.tendencies.dtdt_friction_pressure_weighted,
+            dudt_micro=state.Tendencies.dudt_micro,
+            dvdt_micro=state.Tendencies.dvdt_micro,
+            dtdt_micro=state.Tendencies.dtdt_micro,
+            dvapordt_micro=state.Tendencies.dvapordt_micro,
+            dliquiddt_micro=state.Tendencies.dliquiddt_micro,
+            dicedt_micro=state.Tendencies.dicedt_micro,
+            dcloud_fractiondt_micro=state.Tendencies.dcloud_fractiondt_micro,
+            draindt_micro=state.Tendencies.draindt_micro,
+            dsnowdt_micro=state.Tendencies.dsnowdt_micro,
+            dgraupeldt_micro=state.Tendencies.dgraupeldt_micro,
+            dudt_macro=state.Tendencies.dudt_macro,
+            dvdt_macro=state.Tendencies.dvdt_macro,
+            draindt_macro=state.Tendencies.draindt_macro,
+            dtdt_friction_pressure_weighted=state.Tendencies.dtdt_friction_pressure_weighted,
             local_p_mb=locals_.p_mb,
             local_mass=locals_.mass,
             local_u_unmodified=locals_.u_unmodified,
@@ -261,14 +261,14 @@ class TranslateGFDL_1M_Finalize(TranslateFortranData2Py):
             "anvil_liquid_precip_flux": state.anvil.liquid_precip_flux.field[:],
             "anvil_ice_precip_flux": state.anvil.ice_precip_flux.field[:],
             "relative_humidity_after_pdf": state.relative_humidity_after_pdf.field[:],
-            "dvapordt_micro": state.tendencies.dvapordt_micro.field[:],
-            "dliquiddt_micro": state.tendencies.dliquiddt_micro.field[:],
-            "dicedt_micro": state.tendencies.dicedt_micro.field[:],
-            "dcloud_fractiondt_micro": state.tendencies.dcloud_fractiondt_micro.field[:],
-            "draindt_micro": state.tendencies.draindt_micro.field[:],
-            "dsnowdt_micro": state.tendencies.dsnowdt_micro.field[:],
-            "dgraupeldt_micro": state.tendencies.dgraupeldt_micro.field[:],
-            "dudt_micro": state.tendencies.dudt_micro.field[:],
-            "dvdt_micro": state.tendencies.dvdt_micro.field[:],
-            "dtdt_micro": state.tendencies.dtdt_micro.field[:],
+            "dvapordt_micro": state.Tendencies.dvapordt_micro.field[:],
+            "dliquiddt_micro": state.Tendencies.dliquiddt_micro.field[:],
+            "dicedt_micro": state.Tendencies.dicedt_micro.field[:],
+            "dcloud_fractiondt_micro": state.Tendencies.dcloud_fractiondt_micro.field[:],
+            "draindt_micro": state.Tendencies.draindt_micro.field[:],
+            "dsnowdt_micro": state.Tendencies.dsnowdt_micro.field[:],
+            "dgraupeldt_micro": state.Tendencies.dgraupeldt_micro.field[:],
+            "dudt_micro": state.Tendencies.dudt_micro.field[:],
+            "dvdt_micro": state.Tendencies.dvdt_micro.field[:],
+            "dtdt_micro": state.Tendencies.dtdt_micro.field[:],
         }
