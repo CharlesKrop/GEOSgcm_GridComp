@@ -243,7 +243,7 @@ class GFDL1MSetup(NDSLRuntime):
         self._copy(input=state.v, output=state.tendencies.dvdt_macro)
         self._copy(input=state.t, output=state.tendencies.dtdt_macro)
         self._copy(input=state.mixing_ratio.vapor, output=state.tendencies.dvapordt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, output=locals.placeholder.temporary_3d)
+        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, output=self._locals.temporary_3d)
         self._copy(input=self._locals.temporary_3d, output=state.tendencies.dliquiddt_macro)
         self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, output=self._locals.temporary_3d)
         self._copy(input=self._locals.temporary_3d, output=state.tendencies.dicedt_macro)
