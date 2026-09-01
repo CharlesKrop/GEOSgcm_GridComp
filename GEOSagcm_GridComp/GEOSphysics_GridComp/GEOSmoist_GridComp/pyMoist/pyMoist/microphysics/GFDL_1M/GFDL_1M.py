@@ -6,7 +6,7 @@ from pyMoist.microphysics.GFDL_1M.driver import GFDL1MDriver
 from pyMoist.microphysics.GFDL_1M.finalize import GFDL1MFinalize
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
-from pyMoist.microphysics.GFDL_1M.PhaseChange import PhaseChange
+from pyMoist.microphysics.GFDL_1M.macrophysics_core.macrophysics import GFDL1MMacrophysics
 from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.microphysics.GFDL_1M.shared_stencils import (
     get_total_concentration,
@@ -74,7 +74,7 @@ class GFDL1M(NDSLRuntime):
             saturation_tables=saturation_tables,
         )
 
-        self._phase_change = PhaseChange(
+        self._macrophysics = GFDL1MMacrophysics(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             config=config,
@@ -140,87 +140,17 @@ class GFDL1M(NDSLRuntime):
         if not self._post_init_done:
             raise RuntimeError("pyMoist.GFDL_1M: post_init wasn't called.")
 
-        # miscellaneous setup for GFDL1M microphysics
-        # compute additional inputs, prefill outputs, reset temporaries
+        # miscellaneous setup required for macro and/or microphysics schemes
         self._setup(
-            p_interface=state.p_interface,
-            z_interface=state.z_interface,
-            u=state.u,
-            v=state.v,
-            t=state.t,
-            lcl_height=state.lcl_height,
-            lower_tropospheric_stability=state.lower_tropospheric_stability,
-            estimated_inversion_strength=state.estimated_inversion_strength,
-            mixing_ratio_vapor=state.mixing_ratio.vapor,
-            mixing_ratio_rain=state.mixing_ratio.rain,
-            mixing_ratio_snow=state.mixing_ratio.snow,
-            mixing_ratio_graupel=state.mixing_ratio.graupel,
-            mixing_ratio_convective_liquid=state.mixing_ratio.convective_liquid,
-            mixing_ratio_convective_ice=state.mixing_ratio.convective_ice,
-            mixing_ratio_large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-            mixing_ratio_large_scale_ice=state.mixing_ratio.large_scale_ice,
-            cloud_fraction_convective=state.cloud_fraction.convective,
-            cloud_fraction_large_scale=state.cloud_fraction.large_scale,
-            shallow_convection_rain=state.shallow_convection_rain,
-            shallow_convection_snow=state.shallow_convection_snow,
-            dudt_macro=state.tendencies.dudt_macro,
-            dvdt_macro=state.tendencies.dvdt_macro,
-            dtdt_macro=state.tendencies.dtdt_macro,
-            dvapordt_macro=state.tendencies.dvapordt_macro,
-            dliquiddt_macro=state.tendencies.dliquiddt_macro,
-            dicedt_macro=state.tendencies.dicedt_macro,
-            dcloud_fractiondt_macro=state.tendencies.dcloud_fractiondt_macro,
-            draindt_macro=state.tendencies.draindt_macro,
-            dsnowdt_macro=state.tendencies.dsnowdt_macro,
-            dgraupeldt_macro=state.tendencies.dgraupeldt_macro,
-            shallow_convective_precipitation=state.precipitation_at_surface.shallow_convective_precipitation,
-            deep_convective_precipitation=state.precipitation_at_surface.deep_convective_precipitation,
-            anvil_precipitation=state.precipitation_at_surface.anvil_precipitation,
-            shallow_convective_snow=state.precipitation_at_surface.shallow_convective_snow,
-            deep_convective_snow=state.precipitation_at_surface.deep_convective_snow,
-            anvil_snow=state.precipitation_at_surface.anvil_snow,
-            local_p_mb=self._locals.p_mb,
-            local_p_interface_mb=self._locals.p_interface_mb,
-            local_edge_height_above_surface=self._locals.edge_height_above_surface,
-            local_layer_height_above_surface=self._locals.layer_height_above_surface,
-            local_layer_thickness=self._locals.layer_thickness,
-            local_layer_thickness_negative=self._locals.layer_thickness_negative,
-            local_dp=self._locals.dp,
-            local_mass=self._locals.mass,
-            local_mass_inverse=self._locals.mass_inverse,
-            local_saturation_specific_humidity=self._locals.saturation_specific_humidity,
-            local_dsaturation_specific_humidity=self._locals.dsaturation_specific_humidity,
-            local_u_unmodified=self._locals.u_unmodified,
-            local_v_unmodified=self._locals.v_unmodified,
-            local_lcl_level=self._locals.lcl_level,
+            state=state,
+            locals=self._locals,
         )
 
         # compute macrophysical tendencies, use the hydrostatic pdf to distribute particles,
         # then melt, freeze, and evaporate, all according to options defined in namelist
-        self._phase_change(
-            t=state.t,
-            mixing_ratio_vapor=state.mixing_ratio.vapor,
-            mixing_ratio_large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-            mixing_ratio_convective_liquid=state.mixing_ratio.convective_liquid,
-            mixing_ratio_large_scale_ice=state.mixing_ratio.large_scale_ice,
-            mixing_ratio_convective_ice=state.mixing_ratio.convective_ice,
-            cloud_fraction_large_scale=state.cloud_fraction.large_scale,
-            cloud_fraction_convective=state.cloud_fraction.convective,
-            concentration_ice=state.concentration.ice,
-            concentration_liquid=state.concentration.liquid,
-            relative_humidity_after_pdf=state.relative_humidity_after_pdf,
-            estimated_inversion_strength=state.estimated_inversion_strength,
-            area=state.area,
-            critical_relative_humidity_for_pdf=state.critical_relative_humidity_for_pdf,
-            pdf_iters=state.hydrostatic_pdf_iterations,
-            cloud_liquid_evaporation=state.cloud_liquid_evaporation,
-            cloud_ice_sublimation=state.cloud_ice_sublimation,
-            convection_fraction=state.convection_fraction,
-            surface_type=state.surface_type,
-            local_lcl_level=self._locals.lcl_level,
-            local_p_mb=self._locals.p_mb,
-            local_p_interface_mb=self._locals.p_interface_mb,
-            local_saturation_specific_humidity=self._locals.saturation_specific_humidity,
+        self._macrophysics(
+            state=state,
+            locals=self._locals,
         )
 
         # update the model state with macrophysics tendencies

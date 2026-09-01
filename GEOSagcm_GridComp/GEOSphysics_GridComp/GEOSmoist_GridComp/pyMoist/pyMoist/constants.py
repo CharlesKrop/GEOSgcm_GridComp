@@ -102,7 +102,8 @@ JiT_ICE_MAX = Float(MAPL_TICE)
 JiICEFRPWR = Float(4.0)
 
 # Other miscellaneous parameters
-TAUFRZ = Float(450)
+TAUFRZ = Float(600.0) # timescale for freezing
+TAUMLT = Float(300.0) # timescale for melting
 K_COND = Float(2.4e-2)  # J m**-1 s**-1 K**-1
 DIFFU = Float(2.2e-5)  # m**2 s**-1
 dQCMAX = Float(1.0e-4)
