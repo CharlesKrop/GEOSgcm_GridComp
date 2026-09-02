@@ -57,6 +57,7 @@ class GFDLMPV3:
 
         # f90nml lowercases group and key names by default
         mp_nml = full_nml.get("gfdl_mp_nml", {})
+        ndsl_log.info(f"[GFDL1M Microphysics]: full microphysics namelist:\n{mp_nml}")
 
         for field in dataclasses.fields(GFDLMPV3Config):
             name = field.name
