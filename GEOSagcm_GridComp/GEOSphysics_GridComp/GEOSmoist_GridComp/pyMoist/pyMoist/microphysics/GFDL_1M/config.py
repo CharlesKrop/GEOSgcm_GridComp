@@ -5,6 +5,7 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclass
 class GFDL1MConfig:
+    CWD: str
     LPHYS_HYDROSTATIC: bool
     LHYDROSTATIC: bool
     DT_MOIST: Float
