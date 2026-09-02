@@ -156,6 +156,14 @@ class GFDL1MMacrophysicsLocals(LocalState):
 
 
 class GFDL1MMacrophysics(NDSLRuntime):
+    """GFDL 1M Macrophysics
+
+    This class implements the macrophysics component of the GFDL 1M scheme. It includes a hydrostatic PDF solver,
+    critical relative humidity calculations, and phase change evaluations.
+
+    NDSL integration: Kropiewnicki September 2026
+    """
+
     def __init__(
         self,
         stencil_factory: StencilFactory,
