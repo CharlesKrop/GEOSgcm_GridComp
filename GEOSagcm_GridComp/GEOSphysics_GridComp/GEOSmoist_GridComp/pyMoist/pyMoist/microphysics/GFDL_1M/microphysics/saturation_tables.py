@@ -220,23 +220,23 @@ class GFDLMPV3Tables:
             MPI.COMM_WORLD.Barrier()
 
         # NOTE do we still need to do this?
-        self.table1 = self._table_0.view[0, 0, :]
-        self.table1 = self._table_1.view[0, 0, :]
-        self.table2 = self._table_2.view[0, 0, :]
-        self.table3 = self._table_3.view[0, 0, :]
-        self.table4 = self._table_4.view[0, 0, :]
-        self.des1 = self._dtable_0.view[0, 0, :]
-        self.des1 = self._dtable_1.view[0, 0, :]
-        self.des2 = self._dtable_2.view[0, 0, :]
-        self.des3 = self._dtable_3.view[0, 0, :]
-        self.des4 = self._dtable_4.view[0, 0, :]
+        self.table_0 = self._table_0[0, 0, :]
+        self.table_1 = self._table_1[0, 0, :]
+        self.table_2 = self._table_2[0, 0, :]
+        self.table_3 = self._table_3[0, 0, :]
+        self.table_4 = self._table_4[0, 0, :]
+        self.dtable_0 = self._dtable_0[0, 0, :]
+        self.dtable_1 = self._dtable_1[0, 0, :]
+        self.dtable_2 = self._dtable_2[0, 0, :]
+        self.dtable_3 = self._dtable_3[0, 0, :]
+        self.dtable_4 = self._dtable_4[0, 0, :]
 
 
 # Table needs to be calculated only once
 _cached_table: GFDLMPV3Tables | None = None
 
 
-def get_saturation_vapor_pressure_table(
+def get_saturation_vapor_pressure_tables(
     stencil_factory: StencilFactory,
 ) -> GFDLMPV3Tables:
     if _cached_table is None:
