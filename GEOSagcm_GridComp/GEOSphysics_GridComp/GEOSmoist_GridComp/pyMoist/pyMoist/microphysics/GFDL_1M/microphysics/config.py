@@ -1,9 +1,11 @@
-from dataclasses import dataclass
+import dataclasses
 from ndsl.dsl.typing import Float, Int, Bool
 
 
-@dataclass
+@dataclasses.dataclass
 class GFDLMPV3Config:
+    """Configuration for the GFDL MP V3 microphysics scheme."""
+
     NTIMES: Int  # cloud microphysics sub cycles
     NCONDS: Int  # condensation sub cycles
     CFFLAG: Int  # cloud fraction scheme
@@ -129,3 +131,8 @@ class GFDLMPV3Config:
     PWBF_QI_CRT: Float  # WBF liquid to ice freezing threshold (kg/m^3)
     PGAUT_QS_CRT: Float  # snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
     C_PAUT: Float  # cloud water to rain autoconversion efficiency
+
+    @classmethod
+    def init_to_none(cls) -> "GFDLMPV3Config":
+        """Create an all-None instance, meant to be fully populated afterward."""
+        return cls(**{f.name: None for f in dataclasses.fields(cls)})
