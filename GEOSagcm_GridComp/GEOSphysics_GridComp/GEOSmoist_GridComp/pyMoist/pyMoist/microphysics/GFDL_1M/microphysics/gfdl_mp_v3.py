@@ -3,7 +3,7 @@ import dataclasses
 
 import f90nml
 
-from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3Config
+from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3NamelistConfig
 from pyMoist.microphysics.GFDL_1M.microphysics import constants
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import get_saturation_vapor_pressure_tables
 from ndsl import StencilFactory, ndsl_log, NDSLRuntime, QuantityFactory
@@ -61,7 +61,7 @@ class GFDLMPV3(NDSLRuntime):
         self._gfdl_1m_config = gfdl_1m_config
 
         # initialize data classes - config will be updated in read_namelist and heat_capacities will be updated in setup_heat_capacities
-        self._mp_config = GFDLMPV3Config.init_to_none()
+        self._mp_namelist = GFDLMPV3NamelistConfig.init_to_none()
         self._mp_heat_capacities = GFDLMPV3HeatCapacities.init_to_none()
 
         # read namelist and initialize configuration - must be done before heat capacities are initialized
@@ -120,27 +120,27 @@ class GFDLMPV3(NDSLRuntime):
         mp_nml = full_nml.get("gfdl_mp_nml", {})
         ndsl_log.info(f"[GFDL1M Microphysics]: full microphysics namelist:\n{mp_nml}")
 
-        for field in dataclasses.fields(GFDLMPV3Config):
+        for field in dataclasses.fields(GFDLMPV3NamelistConfig):
             name = field.name
             key = name.lower()
 
             if key in mp_nml:
                 # value came from the namelist file - cast to the declared field type
                 value = mp_nml[key]
-                setattr(self._mp_config, name, field.type(value))
+                setattr(self._mp_namelist, name, field.type(value))
             else:
                 # not overridden in the namelist - fall back to the default in constants.py
                 if not hasattr(constants, "_" + name):
                     ndsl_log.error(f"[GFDL1M Microphysics]: '{name}' does not have a fallback value specified, it must be included in the namelist")
                     # NOTE can this error message be incorporated directly into exc_info?
                     raise AttributeError(f"[GFDL1M Microphysics]: '{name}' does not have a fallback value specified, it must be included in the namelist")
-                setattr(self._mp_config, name, getattr(constants, "_" + name))
+                setattr(self._mp_namelist, name, getattr(constants, "_" + name))
 
     def _setup_heat_capacities(self):
         if self._gfdl_1m_config.LHYDROSTATIC:
             self._mp_heat_capacities.C_AIR = constants.CP_AIR
             self._mp_heat_capacities.C_VAP = constants.CP_VAP
-            self._mp_config.DO_SEDI_W = False
+            self._mp_namelist.DO_SEDI_W = False
         else:
             self._mp_heat_capacities.C_AIR = constants.CV_AIR
             self._mp_heat_capacities.C_VAP = constants.CV_VAP

@@ -3,8 +3,8 @@ from ndsl.dsl.typing import Float, Int, Bool
 
 
 @dataclasses.dataclass
-class GFDLMPV3Config:
-    """Configuration for the GFDL MP V3 microphysics scheme."""
+class GFDLMPV3NamelistConfig:
+    """Namelist for the GFDL MP V3 microphysics scheme."""
 
     NTIMES: Int  # cloud microphysics sub cycles
     NCONDS: Int  # condensation sub cycles
@@ -133,6 +133,6 @@ class GFDLMPV3Config:
     C_PAUT: Float  # cloud water to rain autoconversion efficiency
 
     @classmethod
-    def init_to_none(cls) -> "GFDLMPV3Config":
+    def init_to_none(cls) -> "GFDLMPV3NamelistConfig":
         """Create an all-None instance, meant to be fully populated afterward."""
         return cls(**{f.name: None for f in dataclasses.fields(cls)})
