@@ -1,5 +1,7 @@
-"""This file contains all constants for GFDL Microphysics Core V3. These constants should not be used outside of,
-the microphysics core, nor should any external constants be required beyond what is in this file."""
+"""This file contains all constants for GFDL Microphysics Core V3. These constants should not be used outside of, the microphysics core, nor should any external
+constants be required beyond what is in this file. Any values starting with "_" (e.g. _NTIMES) should not be used directly. Use the value found in GFDLMPV3Config
+instead, these values are merely fallbacks to fill that if they are not specified in the namelist (replicating fortran behavior and providing a single source of truth
+for all constants)."""
 
 from ndsl.dsl.typing import Float, Int, Float64
 import math
@@ -94,50 +96,50 @@ ONE_R8 = Float64(1.0)  # constant 1
 # namelist parameters
 # values listed are fallback in case they are not specified in the namelist
 # -----------------------------------------------------------------------
-NTIMES = Int(1)  # cloud microphysics sub cycles
+_NTIMES = Int(1)  # cloud microphysics sub cycles
 
-NCONDS = Int(1)  # condensation sub cycles
+_NCONDS = Int(1)  # condensation sub cycles
 
-CFFLAG = Int(1)  # cloud fraction scheme
+_CFFLAG = Int(1)  # cloud fraction scheme
 # 1: GFDL cloud scheme
 # 2: Xu and Randall (1996)
 # 3: Park et al. (2016)
 # 4: Gultepe and Isaac (2007)
 
-ICLOUD_F = Int(0)  # GFDL cloud scheme
+_ICLOUD_F = Int(0)  # GFDL cloud scheme
 # 0: subgrid variability based scheme
 # 1: same as 0, but for old fvgfs implementation
 # 2: binary cloud scheme
 # 3: extension of 0
 
-IRAIN_F = Int(0)  # cloud water to rain autoconversion scheme
+_IRAIN_F = Int(0)  # cloud water to rain autoconversion scheme
 # 0: subgrid variability based scheme
 # 1: no subgrid varaibility
 
-INFLAG = Int(1)  # ice nucleation scheme
+_INFLAG = Int(1)  # ice nucleation scheme
 # 1: Hong et al. (2004)
 # 2: Meyers et al. (1992)
 # 3: Meyers et al. (1992)
 # 4: Cooper (1986)
 # 5: Fletcher (1962)
 
-IGFLAG = Int(3)  # ice generation scheme
+_IGFLAG = Int(3)  # ice generation scheme
 # 1: WSM6
 # 2: WSM6 with 0 at 0 C
 # 3: WSM6 with 0 at 0 C and fixed value at - 10 C
 # 4: combination of 1 and 3
 
-IFFLAG = Int(1)  # ice fall scheme
+_IFFLAG = Int(1)  # ice fall scheme
 # 1: Deng and Mace (2008)
 # 2: Heymsfield and Donner (1990)
 # 3: Combination of Deng and Mace (2008) and Mishra et al (2014, JGR)
 
-REWFLAG = Int(1)  # cloud water effective radius scheme
+_REWFLAG = Int(1)  # cloud water effective radius scheme
 # 1: Martin et al. (1994)
 # 2: Martin et al. (1994), GFDL revision
 # 4: effective radius
 
-REIFLAG = Int(5)  # cloud ice effective radius scheme
+_REIFLAG = Int(5)  # cloud ice effective radius scheme
 # 1: Heymsfield and Mcfarquhar (1996)
 # 2: Donner et al. (1997)
 # 3: Fu (2007)
@@ -146,197 +148,197 @@ REIFLAG = Int(5)  # cloud ice effective radius scheme
 # 6: Sun and Rikus (1999), Sun (2001)
 # 7: effective radius
 
-RERFLAG = Int(1)  # rain effective radius scheme
+_RERFLAG = Int(1)  # rain effective radius scheme
 # 1: effective radius
 
-RESFLAG = Int(1)  # snow effective radius scheme
+_RESFLAG = Int(1)  # snow effective radius scheme
 # 1: effective radius
 
-REGFLAG = Int(1)  # graupel effective radius scheme
+_REGFLAG = Int(1)  # graupel effective radius scheme
 # 1: effective radius
 
-RADR_FLAG = Int(1)  # radar reflectivity for rain
+_RADR_FLAG = Int(1)  # radar reflectivity for rain
 # 1: Mark Stoelinga (2005)
 # 2: Smith et al. (1975), Tong and Xue (2005)
 # 3: Marshall-Palmer formula (https://en.wikipedia.org/wiki/DBZ_(meteorology))
 
-RADS_FLAG = Int(1)  # radar reflectivity for snow
+_RADS_FLAG = Int(1)  # radar reflectivity for snow
 # 1: Mark Stoelinga (2005)
 # 2: Smith et al. (1975), Tong and Xue (2005)
 # 3: Marshall-Palmer formula (https://en.wikipedia.org/wiki/DBZ_(meteorology))
 
-RADG_FLAG = Int(1)  # radar reflectivity for graupel
+_RADG_FLAG = Int(1)  # radar reflectivity for graupel
 # 1: Mark Stoelinga (2005)
 # 2: Smith et al. (1975), Tong and Xue (2005)
 # 3: Marshall-Palmer formula (https://en.wikipedia.org/wiki/DBZ_(meteorology))
 
-SEDFLAG = Int(1)  # sedimentation scheme
+_SEDFLAG = Int(1)  # sedimentation scheme
 # 1: implicit scheme
 # 2: explicit scheme
 # 3: lagrangian scheme
 # 4: combined implicit and lagrangian scheme
 
-VDIFFFLAG = Int(2)  # wind difference scheme in accretion
+_VDIFFFLAG = Int(2)  # wind difference scheme in accretion
 # 1: Wisner et al. (1972)
 # 2: Mizuno (1990)
 # 3: Murakami (1990)
 
-DO_SCALE_DEP = True  # impose scale dependence using sigma function
+_DO_SCALE_DEP = True  # impose scale dependence using sigma function
 
-DO_SEDI_UV = True  # transport of horizontal momentum in sedimentation
-DO_SEDI_W = False  # transport of vertical momentum in sedimentation
+_DO_SEDI_UV = True  # transport of horizontal momentum in sedimentation
+_DO_SEDI_W = False  # transport of vertical momentum in sedimentation
 
 # WMP: 01-Dec-2025
 # sedi_heat makes Tropical Cyclones too intense (even unphysical, may be a conversion bug for DTDT)
-DO_SEDI_HEAT = False  # transport of heat in sedimentation
+_DO_SEDI_HEAT = False  # transport of heat in sedimentation
 
-DO_SEDI_MELT_QI = False  # melt cloud ice, snow, and graupel during sedimentation
-DO_SEDI_MELT_QS = False  # melt cloud ice, snow, and graupel during sedimentation
-DO_SEDI_MELT_QG = False  # melt cloud ice, snow, and graupel during sedimentation
+_DO_SEDI_MELT_QI = False  # melt cloud ice, snow, and graupel during sedimentation
+_DO_SEDI_MELT_QS = False  # melt cloud ice, snow, and graupel during sedimentation
+_DO_SEDI_MELT_QG = False  # melt cloud ice, snow, and graupel during sedimentation
 
-DO_QA = False  # do inline cloud fraction
-RAD_SNOW = True  # include snow in cloud fraciton calculation
-RAD_GRAUPEL = True  # include graupel in cloud fraction calculation
-RAD_RAIN = True  # include rain in cloud fraction calculation
-DO_CLD_ADJ = True  # do cloud fraction adjustment
+_DO_QA = False  # do inline cloud fraction
+_RAD_SNOW = True  # include snow in cloud fraciton calculation
+_RAD_GRAUPEL = True  # include graupel in cloud fraction calculation
+_RAD_RAIN = True  # include rain in cloud fraction calculation
+_DO_CLD_ADJ = True  # do cloud fraction adjustment
 
-DO_REF = False  # do radar calculations
+_DO_REF = False  # do radar calculations
 
-Z_SLOPE_LIQ = True  # use linear mono slope for autocconversions
-Z_SLOPE_ICE = True  # use linear mono slope for autocconversions
+_Z_SLOPE_LIQ = True  # use linear mono slope for autocconversions
+_Z_SLOPE_ICE = True  # use linear mono slope for autocconversions
 
-USE_RHC_CEVAP = False  # cap of rh for cloud water evaporation
-USE_RHC_REVAP = True  # cap of rh for rain evaporation
+_USE_RHC_CEVAP = False  # cap of rh for cloud water evaporation
+_USE_RHC_REVAP = True  # cap of rh for rain evaporation
 
-USE_ENHANCED_DRY_EVAP = True  # Alternative minimum evaporation formula
+_USE_ENHANCED_DRY_EVAP = True  # Alternative minimum evaporation formula
 
-CONST_VW = False  # if True, the constants are specified by v * _fac
-CONST_VI = False  # if True, the constants are specified by v * _fac
-CONST_VS = False  # if True, the constants are specified by v * _fac
-CONST_VG = False  # if True, the constants are specified by v * _fac
-CONST_VR = False  # if True, the constants are specified by v * _fac
+_CONST_VW = False  # if True, the constants are specified by v * _fac
+_CONST_VI = False  # if True, the constants are specified by v * _fac
+_CONST_VS = False  # if True, the constants are specified by v * _fac
+_CONST_VG = False  # if True, the constants are specified by v * _fac
+_CONST_VR = False  # if True, the constants are specified by v * _fac
 
-LIQ_ICE_COMBINE = False  # combine all liquid water, combine all solid water
-SNOW_GRAUPLE_COMBINE = True  # combine snow and graupel
+_LIQ_ICE_COMBINE = False  # combine all liquid water, combine all solid water
+_SNOW_GRAUPLE_COMBINE = True  # combine snow and graupel
 
-PROG_CCN = True  # do prognostic ccn (Yi Ming's method)
-PROG_CIN = False  # do prognostic cin
+_PROG_CCN = True  # do prognostic ccn (Yi Ming's method)
+_PROG_CIN = False  # do prognostic cin
 
-FIX_NEGATIVE = True  # fix negative water species
+_FIX_NEGATIVE = True  # fix negative water species
 
-DO_EVAP_TIMESCALE = True  # whether to apply a timescale to evaporation
-DO_COND_TIMESCALE = True  # whether to apply a timescale to condensation
+_DO_EVAP_TIMESCALE = True  # whether to apply a timescale to evaporation
+_DO_COND_TIMESCALE = True  # whether to apply a timescale to condensation
 
-DO_HAIL = False  # use hail parameters instead of graupel
+_DO_HAIL = False  # use hail parameters instead of graupel
 
-CONSV_CHECKER = False  # turn on energy and water conservation checker
+_CONSV_CHECKER = False  # turn on energy and water conservation checker
 
-DO_WARM_RAIN_MP = False  # do warm rain cloud microphysics only
+_DO_WARM_RAIN_MP = False  # do warm rain cloud microphysics only
 
-DO_WBF = True  # do Wegener Bergeron Findeisen process
+_DO_WBF = True  # do Wegener Bergeron Findeisen process
 
-DO_BIGG = False  # do Bigg process
+_DO_BIGG = False  # do Bigg process
 
-DO_PSD_WATER_FALL = False  # calculate cloud water terminal velocity based on PSD
-DO_PSD_ICE_FALL = False  # calculate cloud ice terminal velocity based on PSD
+_DO_PSD_WATER_FALL = False  # calculate cloud water terminal velocity based on PSD
+_DO_PSD_ICE_FALL = False  # calculate cloud ice terminal velocity based on PSD
 
-DO_PSD_WATER_NUM = False  # calculate cloud water number concentration based on PSD
-DO_PSD_ICE_NUM = True  # calculate cloud ice number concentration based on PSD
+_DO_PSD_WATER_NUM = False  # calculate cloud water number concentration based on PSD
+_DO_PSD_ICE_NUM = True  # calculate cloud ice number concentration based on PSD
 
-CP_HEATING = False  # update temperature based on constant pressure
+_CP_HEATING = False  # update temperature based on constant pressure
 
-DELAY_COND_EVAP = True  # do condensation evaporation only at the last time step
+_DELAY_COND_EVAP = True  # do condensation evaporation only at the last time step
 
-DO_SUBGRID_PROC = True  # do temperature sentive high vertical resolution processes
+_DO_SUBGRID_PROC = True  # do temperature sentive high vertical resolution processes
 
-FAST_FR_MLT = True  # do freezing and melting in fast microphysics
-FAST_DEP_SUB = True  # do deposition and sublimation in fast microphysics
+_FAST_FR_MLT = True  # do freezing and melting in fast microphysics
+_FAST_DEP_SUB = True  # do deposition and sublimation in fast microphysics
 
-DO_MP_DIAG = False  # enable microphysical quantities diagnostic
+_DO_MP_DIAG = False  # enable microphysical quantities diagnostic
 
-MP_TIME = Float(150.0)  # maximum microphysics time step (s)
+_MP_TIME = Float(150.0)  # maximum microphysics time step (s)
 
-N0W_SIG = Float(1.2)  # intercept parameter (significant) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
-N0I_SIG = Float(1.2)  # intercept parameter (significant) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
-N0R_SIG = Float(8.0)  # intercept parameter (significant) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
-N0S_SIG = Float(3.0)  # intercept parameter (significant) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
-N0G_SIG = Float(4.0)  # intercept parameter (significant) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
-N0H_SIG = Float(4.0)  # intercept parameter (significant) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
+_N0W_SIG = Float(1.2)  # intercept parameter (significant) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
+_N0I_SIG = Float(1.2)  # intercept parameter (significant) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
+_N0R_SIG = Float(8.0)  # intercept parameter (significant) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
+_N0S_SIG = Float(3.0)  # intercept parameter (significant) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
+_N0G_SIG = Float(4.0)  # intercept parameter (significant) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
+_N0H_SIG = Float(4.0)  # intercept parameter (significant) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
 
-N0W_EXP = Float(66)  # intercept parameter (exponent) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
-N0I_EXP = Float(10)  # intercept parameter (exponent) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
-N0R_EXP = Float(6)  # intercept parameter (exponent) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
-N0S_EXP = Float(6)  # intercept parameter (exponent) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
-N0G_EXP = Float(6)  # intercept parameter (exponent) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
-N0H_EXP = Float(4)  # intercept parameter (exponent) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
+_N0W_EXP = Float(66)  # intercept parameter (exponent) of cloud water (Lin et al. 1983) (1/m^4) (Martin et al. 1994)
+_N0I_EXP = Float(10)  # intercept parameter (exponent) of cloud ice (Lin et al. 1983) (1/m^4) (McFarquhar et al. 2015)
+_N0R_EXP = Float(6)  # intercept parameter (exponent) of rain (Lin et al. 1983) (1/m^4) (Marshall and Palmer 1948)
+_N0S_EXP = Float(6)  # intercept parameter (exponent) of snow (Lin et al. 1983) (1/m^4) (Gunn and Marshall 1958)
+_N0G_EXP = Float(6)  # intercept parameter (exponent) of graupel (Rutledge and Hobbs 1984) (1/m^4) (Houze et al. 1979)
+_N0H_EXP = Float(4)  # intercept parameter (exponent) of hail (Lin et al. 1983) (1/m^4) (Federer and Waldvogel 1975)
 
-MUW = Float(11.0)  # shape parameter of cloud water in Gamma distribution (Martin et al. 1994)
-MUI = Float(1.0)  # shape parameter of cloud ice in Gamma distribution (McFarquhar et al. 2015)
-MUR = Float(1.0)  # shape parameter of rain in Gamma distribution (Marshall and Palmer 1948)
-MUS = Float(1.0)  # shape parameter of snow in Gamma distribution (Gunn and Marshall 1958)
-MUG = Float(1.0)  # shape parameter of graupel in Gamma distribution (Houze et al. 1979)
-MUH = Float(1.0)  # shape parameter of hail in Gamma distribution (Federer and Waldvogel 1975)
+_MUW = Float(11.0)  # shape parameter of cloud water in Gamma distribution (Martin et al. 1994)
+_MUI = Float(1.0)  # shape parameter of cloud ice in Gamma distribution (McFarquhar et al. 2015)
+_MUR = Float(1.0)  # shape parameter of rain in Gamma distribution (Marshall and Palmer 1948)
+_MUS = Float(1.0)  # shape parameter of snow in Gamma distribution (Gunn and Marshall 1958)
+_MUG = Float(1.0)  # shape parameter of graupel in Gamma distribution (Houze et al. 1979)
+_MUH = Float(1.0)  # shape parameter of hail in Gamma distribution (Federer and Waldvogel 1975)
 
-ALINW = Float(3.0e7)  # "a" in Lin et al. (1983) for cloud water (Ikawa and Saito 1990)
-ALINI = Float(11.72)  # "a" in Lin et al. (1983) for cloud ice (Ikawa and Saita 1990)
-ALINR = Float(842.0)  # "a" in Lin et al. (1983) for rain (Liu and Orville 1969)
-ALINS = Float(4.8)  # "a" in Lin et al. (1983) for snow (straka 2009)
-ALING = Float(1.0)  # "a" in Lin et al. (1983), similar to a, but for graupel (Pruppacher and Klett 2010)
-ALINH = Float(1.0)  # "a" in Lin et al. (1983), similar to a, but for hail (Pruppacher and Klett 2010)
+_ALINW = Float(3.0e7)  # "a" in Lin et al. (1983) for cloud water (Ikawa and Saito 1990)
+_ALINI = Float(11.72)  # "a" in Lin et al. (1983) for cloud ice (Ikawa and Saita 1990)
+_ALINR = Float(842.0)  # "a" in Lin et al. (1983) for rain (Liu and Orville 1969)
+_ALINS = Float(4.8)  # "a" in Lin et al. (1983) for snow (straka 2009)
+_ALING = Float(1.0)  # "a" in Lin et al. (1983), similar to a, but for graupel (Pruppacher and Klett 2010)
+_ALINH = Float(1.0)  # "a" in Lin et al. (1983), similar to a, but for hail (Pruppacher and Klett 2010)
 
-BLINW = Float(2.0)  # "b" in Lin et al. (1983) for cloud water (Ikawa and Saito 1990)
-BLINI = Float(0.41)  # "b" in Lin et al. (1983) for cloud ice (Ikawa and Saita 1990)
-BLINR = Float(0.8)  # "b" in Lin et al. (1983) for rain (Liu and Orville 1969)
-BLINS = Float(0.25)  # "b" in Lin et al. (1983) for snow (straka 2009)
-BLING = Float(0.5)  # "b" in Lin et al. (1983), similar to b, but for graupel (Pruppacher and Klett 2010)
-BLINH = Float(0.5)  # "b" in Lin et al. (1983), similar to b, but for hail (Pruppacher and Klett 2010)
+_BLINW = Float(2.0)  # "b" in Lin et al. (1983) for cloud water (Ikawa and Saito 1990)
+_BLINI = Float(0.41)  # "b" in Lin et al. (1983) for cloud ice (Ikawa and Saita 1990)
+_BLINR = Float(0.8)  # "b" in Lin et al. (1983) for rain (Liu and Orville 1969)
+_BLINS = Float(0.25)  # "b" in Lin et al. (1983) for snow (straka 2009)
+_BLING = Float(0.5)  # "b" in Lin et al. (1983), similar to b, but for graupel (Pruppacher and Klett 2010)
+_BLINH = Float(0.5)  # "b" in Lin et al. (1983), similar to b, but for hail (Pruppacher and Klett 2010)
 
-TICE_MLT = Float(273.16)  # can set ice melting temperature to 268 based on observation (Kay et al. 2016) (K)
+_TICE_MLT = Float(273.16)  # can set ice melting temperature to 268 based on observation (Kay et al. 2016) (K)
 
-T_MIN = Float(178.0)  # minimum temperature to freeze - dry all water vapor (K)
-T_SUB = Float(184.0)  # minimum temperature for sublimation of cloud ice (K)
+_T_MIN = Float(178.0)  # minimum temperature to freeze - dry all water vapor (K)
+_T_SUB = Float(184.0)  # minimum temperature for sublimation of cloud ice (K)
 
-RH_INC = Float(0.30)  # rh increment for complete evaporation of cloud water and cloud ice
-RH_INR = Float(0.30)  # rh increment for minimum evaporation of rain
+_RH_INC = Float(0.30)  # rh increment for complete evaporation of cloud water and cloud ice
+_RH_INR = Float(0.30)  # rh increment for minimum evaporation of rain
 
 # simple process timescales
-TAU_R2G = Float(900.0)  # rain freezing to graupel time scale (s)
-TAU_I2S = Float(300.0)  # cloud ice to snow autoconversion time scale (s)
-TAU_L2R = Float(450.0)  # cloud water to rain autoconversion time scale (s)
+_TAU_R2G = Float(900.0)  # rain freezing to graupel time scale (s)
+_TAU_I2S = Float(300.0)  # cloud ice to snow autoconversion time scale (s)
+_TAU_L2R = Float(450.0)  # cloud water to rain autoconversion time scale (s)
 # other timescales
-TAU_V2L = Float(75.0)  # water vapor to cloud water condensation time scale (s)
-TAU_L2V = Float(150.0)  # cloud water to water vapor evaporation time scale (s)
-TAU_REVP = Float(600.0)  # rain evaporation time scale (s)
-TAU_FREZ = Float(600.0)  # cloud liquid freezing time scale (s)
-TAU_IMLT = Float(600.0)  # cloud ice melting time scale (s)
-TAU_SMLT = Float(900.0)  # snow melting time scale (s)
-TAU_GMLT = Float(1200.0)  # graupel melting time scale (s)
+_TAU_V2L = Float(75.0)  # water vapor to cloud water condensation time scale (s)
+_TAU_L2V = Float(150.0)  # cloud water to water vapor evaporation time scale (s)
+_TAU_REVP = Float(600.0)  # rain evaporation time scale (s)
+_TAU_FREZ = Float(600.0)  # cloud liquid freezing time scale (s)
+_TAU_IMLT = Float(600.0)  # cloud ice melting time scale (s)
+_TAU_SMLT = Float(900.0)  # snow melting time scale (s)
+_TAU_GMLT = Float(1200.0)  # graupel melting time scale (s)
 # subgridz timescales
-TAU_WBF = Float(1200.0)  # Wegener Bergeron Findeisen time scale (s)
+_TAU_WBF = Float(1200.0)  # Wegener Bergeron Findeisen time scale (s)
 
-CCN_O = Float(90.0)  # ccn over ocean (1/cm^3)
-CCN_L = Float(270.0)  # ccn over land (1/cm^3)
+_CCN_O = Float(90.0)  # ccn over ocean (1/cm^3)
+_CCN_L = Float(270.0)  # ccn over land (1/cm^3)
 
-RTHRESHU = Float(7.0e-6)  # unstable critical cloud drop radius (micro m)
-RTHRESHS = Float(10.0e-6)  # stable critical cloud drop radius (micro m)
+_RTHRESHU = Float(7.0e-6)  # unstable critical cloud drop radius (micro m)
+_RTHRESHS = Float(10.0e-6)  # stable critical cloud drop radius (micro m)
 
-IN_CLOUD_LIQ = True  # use in-cloud liquid
-IN_CLOUD_ICE = True  # use in-cloud frozen
+_IN_CLOUD_LIQ = True  # use in-cloud liquid
+_IN_CLOUD_ICE = True  # use in-cloud frozen
 
-CLD_MIN = Float(0.05)  # minimum cloud fraction
+_CLD_MIN = Float(0.05)  # minimum cloud fraction
 
-QI_LIM = Float(1.0)  # cloud ice limiter (0: no, 1: full, >1: extra) to prevent large ice build up
+_QI_LIM = Float(1.0)  # cloud ice limiter (0: no, 1: full, >1: extra) to prevent large ice build up
 
-QL_MLT = Float(2.0e-3)  # maximum cloud water allowed from melted cloud ice (kg/kg)
-QS_MLT = Float(1.0e-6)  # maximum cloud water allowed from melted snow (kg/kg)
+_QL_MLT = Float(2.0e-3)  # maximum cloud water allowed from melted cloud ice (kg/kg)
+_QS_MLT = Float(1.0e-6)  # maximum cloud water allowed from melted snow (kg/kg)
 
-QL0_MAX = Float(2.0e-3)  # maximum cloud water value (autoconverted to rain) (kg/kg)
+_QL0_MAX = Float(2.0e-3)  # maximum cloud water value (autoconverted to rain) (kg/kg)
 
-PSAUT_QI_CRT = Float(1.0e-4)  # cloud ice to snow autoconversion threshold (kg/m^3)
-PWBF_QI_CRT = Float(0.8e-4)  # WBF liquid to ice freezing threshold (kg/m^3)
-PGAUT_QS_CRT = Float(0.6e-3)  # snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
+_PSAUT_QI_CRT = Float(1.0e-4)  # cloud ice to snow autoconversion threshold (kg/m^3)
+_PWBF_QI_CRT = Float(0.8e-4)  # WBF liquid to ice freezing threshold (kg/m^3)
+_PGAUT_QS_CRT = Float(0.6e-3)  # snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)
 
-C_PAUT = Float(0.5)  # cloud water to rain autoconversion efficiency
+_C_PAUT = Float(0.5)  # cloud water to rain autoconversion efficiency
 
 # -----------------------------------------------------------------------
 # collection efficiencies for accretion
