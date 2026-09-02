@@ -1,4 +1,7 @@
-class GFDL_MP3_Driver:
+from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3Config
+
+
+class GFDLMPV3:
     """GFDL Cloud Microphysics Package (GFDL MP) Version 3
     The algorithms are originally derived from Lin et al. (1983).
     Most of the key elements have been simplified / improved.
@@ -10,12 +13,15 @@ class GFDL_MP3_Driver:
     Version 2: Harris et al. (2020 doi: 10.1029/2020MS002223), Zhou et al. (2022 doi: 10.25923/pz3c-8b96)
     Version 3: Zhou et al. (2022 doi: 10.1029/2021MS002971)
     NASA integration: Putman April 2025
-    NDSL integration: Kropiewnicki August 2026
+    NDSL integration: Kropiewnicki September 2026
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, config: GFDLMPV3Config):
+        # make config visible at runtime
+        self.config = config
+
+        # initialize saturation tables
+
 
     def __call__(self, *args, **kwds):
         pass
-    
