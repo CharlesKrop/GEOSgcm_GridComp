@@ -55,6 +55,14 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
+    layer_thickness_negative: Local = dataclasses.field(
+        metadata={
+            "name": "layer_thickness_negative",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "m",
+            "dtype": Float,
+        }
+    )
     dp: Local = dataclasses.field(
         metadata={
             "name": "dp",
@@ -111,6 +119,22 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
+    dcondensatedt: Local = dataclasses.field(
+        metadata={
+            "name": "dcondensate_dt",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    temporary_3d: Local = dataclasses.field(
+        metadata={
+            "name": "temporary_3d",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "N/A",
+            "dtype": Float,
+        }
+    )
     lcl_level: Local = dataclasses.field(
         metadata={
             "name": "lcl_level",
@@ -120,101 +144,3 @@ class GFDL1MLocals(LocalState):
         }
     )
     lid_level: Int = -999
-
-
-@dataclasses.dataclass
-class GFDL1MLocals_old(LocalState):
-
-    total_concentration: Local = dataclasses.field(
-        metadata={
-            "name": "total_concentration",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "dtype": Float,
-        }
-    )
-
-    @dataclasses.dataclass
-    class DriverTendencies(LocalState):
-        dvapordt: Local = dataclasses.field(
-            metadata={
-                "name": "dvapordt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dliquiddt: Local = dataclasses.field(
-            metadata={
-                "name": "dliquiddt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        draindt: Local = dataclasses.field(
-            metadata={
-                "name": "draindt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dicedt: Local = dataclasses.field(
-            metadata={
-                "name": "dicedt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dsnowdt: Local = dataclasses.field(
-            metadata={
-                "name": "dsnowdt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dgraupeldt: Local = dataclasses.field(
-            metadata={
-                "name": "dgraupeldt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dcloudfractiondt: Local = dataclasses.field(
-            metadata={
-                "name": "dcloudfractiondt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dtdt: Local = dataclasses.field(
-            metadata={
-                "name": "dtdt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dudt: Local = dataclasses.field(
-            metadata={
-                "name": "dudt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-        dvdt: Local = dataclasses.field(
-            metadata={
-                "name": "dvdt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "dtype": Float,
-            }
-        )
-
-    driver_tendencies: DriverTendencies

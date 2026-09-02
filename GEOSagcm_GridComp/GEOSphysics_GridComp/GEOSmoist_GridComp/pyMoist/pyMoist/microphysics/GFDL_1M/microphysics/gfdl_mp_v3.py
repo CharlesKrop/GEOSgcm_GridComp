@@ -6,9 +6,16 @@ import f90nml
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3Config
 from pyMoist.microphysics.GFDL_1M.microphysics import constants
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import get_saturation_vapor_pressure_tables
-from ndsl import StencilFactory, ndsl_log
+from ndsl import StencilFactory, ndsl_log, NDSLRuntime, QuantityFactory
 from ndsl.dsl.typing import Float, Float64
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
+from ndsl.stencils.basic_operations import set_value
+from ndsl.stencils.basic_operations_2d import set_value_2d
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.microphysics.driver import GFDLMPV3Driver
+from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 
 
 @dataclasses.dataclass
@@ -31,7 +38,7 @@ class GFDLMPV3HeatCapacities:
         return cls(**{f.name: None for f in dataclasses.fields(cls)})
 
 
-class GFDLMPV3:
+class GFDLMPV3(NDSLRuntime):
     """GFDL Cloud Microphysics Package (GFDL MP) Version 3
     The algorithms are originally derived from Lin et al. (1983).
     Most of the key elements have been simplified / improved.
@@ -46,7 +53,10 @@ class GFDLMPV3:
     NDSL integration: Kropiewnicki September 2026
     """
 
-    def __init__(self, stencil_factory: StencilFactory, gfdl_1m_config: GFDL1MConfig, namelist: str = "input.nml"):
+    def __init__(self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, gfdl_1m_config: GFDL1MConfig, namelist: str = "input.nml"):
+        # initialize NDSLRuntime parent class
+        super.__init__(stencil_factory)
+
         # make overatching GFDL1M config visible throughout the class
         self._gfdl_1m_config = gfdl_1m_config
 
@@ -63,6 +73,28 @@ class GFDLMPV3:
 
         # initialize saturation tables
         self._saturation_tables = get_saturation_vapor_pressure_tables(stencil_factory=stencil_factory)
+
+        # initialize locals
+        self._mp_locals = GFDLMPV3Locals.make_locals(quantity_factory)
+
+        # construct stencil
+        self._set_value_k_interface = stencil_factory.from_dims_halo(
+            func=set_value,
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+        )
+
+        self._set_value = stencil_factory.from_dims_halo(
+            func=set_value,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._set_value_2d = stencil_factory.from_dims_halo(
+            func=set_value_2d,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        # initialize the driver
+        self._driver = GFDLMPV3Driver(stencil_factory)
 
     def _read_namelist(self, nml_path: str):
         """Populate config from the gfdl_mp_nml group of a Fortran namelist file.
@@ -133,5 +165,46 @@ class GFDLMPV3:
         self._mp_heat_capacities.C1_LIQ = constants.C_LIQ / self._mp_heat_capacities.C_AIR
         self._mp_heat_capacities.C1_ICE = constants.C_ICE / self._mp_heat_capacities.C_AIR
 
-    def __call__(self, *args, **kwds):
-        pass
+    def __call__(self, state: GFDL1MState, locals: GFDL1MLocals):
+        # reset state fields to zero
+        self._set_value_2d(field=state.precipitation_at_surface.water, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.rain, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.snow, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.ice, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.graupel, value=Float(0.0))
+
+        # reset gfdl locals to zero
+        self._set_value_2d(field=locals.dcondensatedt, value=Float(0.0))
+        self._set_value(field=state.non_anvil_large_scale.evaporation, value=Float(0.0))
+        self._set_value(field=state.non_anvil_large_scale.sublimation, value=Float(0.0))
+        self._set_value_k_interface
+
+        # reset mp locals to zero
+        self._set_value(field=self._mp_locals.mppcw, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppew, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppe1, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mpper, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppdi, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppd1, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppds, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppdg, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppsi, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mpps1, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppss, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppsg, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppfw, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppfr, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppar, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppas, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppag, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mpprs, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mpprg, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppxr, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppxs, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppxg, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppmi, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppms, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppmg, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppm1, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppm2, value=Float(0, 0))
+        self._set_value(field=self._mp_locals.mppm3, value=Float(0, 0))
