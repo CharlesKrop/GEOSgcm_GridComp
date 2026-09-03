@@ -13,12 +13,27 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
     MidSpecificConstants,
     ShallowSpecificConstants,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
-from pyMoist.convection.GF_2020.cumulus_parameterization.environment import environment_conditions
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
+    MAXENS1,
+    MAXENS2,
+    MAXENS3,
+    NUMBER_OF_PLUMES,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.environment import (
+    environment_conditions,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
+    GF2020CumulusParameterizationLocals,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
+    GF2020PlumeDependentConstants,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
+    set_constants,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
 
 
 class TestCore:
@@ -50,7 +65,9 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: int, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
+            **cu_param_constants
+        )
         # plume_dependent_constants = GF2020PlumeDependentConstants()
         # plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
         self.shallow = ShallowSpecificConstants(cumulus_parameterization_config)
@@ -84,21 +101,31 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        locals.geopotential_height.data[:] = inputs["local_geopotential_height"]
-        locals.environment_saturation_mixing_ratio.data[:] = inputs["local_env_saturation_mixing_ratio"]
-        locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy"]
-        locals.environment_saturation_moist_static_energy.data[:] = inputs["local_env_saturation_moist_static_energy"]
-        state.input_output.t_old.data[:] = inputs["t_old"]
-        state.input_output.vapor_old.data[:] = inputs["vapor_old"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.output.error_code.data[:, :, plume] = inputs["error_code"]
+        locals.geopotential_height[:] = inputs["local_geopotential_height"]
+        locals.environment_saturation_mixing_ratio[:] = inputs[
+            "local_env_saturation_mixing_ratio"
+        ]
+        locals.environment_moist_static_energy[:] = inputs[
+            "local_env_moist_static_energy"
+        ]
+        locals.environment_saturation_moist_static_energy[:] = inputs[
+            "local_env_saturation_moist_static_energy"
+        ]
+        state.input_output.t_old[:] = inputs["t_old"]
+        state.input_output.vapor_old[:] = inputs["vapor_old"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        state.input_output.topography_height_no_negative[:] = inputs[
+            "topography_height_no_negative"
+        ]
+        state.input_output.p_surface[:] = inputs["p_surface"]
+        state.output.error_code[:, :, plume] = inputs["error_code"]
 
         code = self.stencil_factory.from_dims_halo(
             func=environment_conditions,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"SATURATION_CALCULATION_CHOICE": cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE},
+            externals={
+                "SATURATION_CALCULATION_CHOICE": cumulus_parameterization_config.SATURATION_CALCULATION_CHOICE
+            },
         )
 
         if constants_enable_plume == 1:
@@ -119,13 +146,21 @@ class TestCore:
         outputs = {
             # state fields
             "local_geopotential_height": locals.geopotential_height.field[:],
-            "local_env_saturation_mixing_ratio": locals.environment_saturation_mixing_ratio.field[:],
-            "local_env_moist_static_energy": locals.environment_moist_static_energy.field[:],
-            "local_env_saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[:],
+            "local_env_saturation_mixing_ratio": locals.environment_saturation_mixing_ratio.field[
+                :
+            ],
+            "local_env_moist_static_energy": locals.environment_moist_static_energy.field[
+                :
+            ],
+            "local_env_saturation_moist_static_energy": locals.environment_saturation_moist_static_energy.field[
+                :
+            ],
             "t_old": state.input_output.t_old.field[:],
             "vapor_old": state.input_output.vapor_old.field[:],
             "p_forced": state.input_output.p_forced.field[:],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[
+                :
+            ],
             "p_surface": state.input_output.p_surface.field[:],
             "error_code": state.output.error_code.field[:, :, plume],
         }
@@ -133,7 +168,9 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(
+    TranslateFortranData2Py
+):
     def __init__(
         self,
         grid: Grid,
@@ -146,7 +183,9 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(Tr
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
+        self.cu_param_constants = data_loader.load(
+            "GF2020_CumulusParameterization-constants"
+        )
 
     def compute_func(self, **inputs):
         outputs = self.test_core(self.constants, self.cu_param_constants, 0, **inputs)
@@ -154,7 +193,9 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_shallow(Tr
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(
+    TranslateFortranData2Py
+):
     def __init__(
         self,
         grid: Grid,
@@ -167,7 +208,9 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(Transl
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
+        self.cu_param_constants = data_loader.load(
+            "GF2020_CumulusParameterization-constants"
+        )
 
     def compute_func(self, **inputs):
         outputs = self.test_core(self.constants, self.cu_param_constants, 1, **inputs)
@@ -175,7 +218,9 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_mid(Transl
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep(TranslateFortranData2Py):
+class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep(
+    TranslateFortranData2Py
+):
     def __init__(
         self,
         grid: Grid,
@@ -188,7 +233,9 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_1_deep(Trans
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
+        self.cu_param_constants = data_loader.load(
+            "GF2020_CumulusParameterization-constants"
+        )
 
     def compute_func(self, **inputs):
         outputs = self.test_core(self.constants, self.cu_param_constants, 2, **inputs)

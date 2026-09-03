@@ -2,14 +2,30 @@ import dataclasses
 
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, max, sqrt
+from ndsl.dsl.gt4py import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    exp,
+    function,
+    interval,
+    log,
+    max,
+    sqrt,
+)
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
-from ndsl.stencils import set_IJ_mask_value, set_value, set_value_2D
+from ndsl.stencils import set_boolean_value_2d, set_value, set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
+from pyMoist.microphysics.GFDL_1M.driver.config_constants import (
+    GFDL1MDriverConfigDependentConstants,
+)
 from pyMoist.microphysics.GFDL_1M.driver.constants import constants
-from pyMoist.microphysics.GFDL_1M.driver.sat_tables import GFDL_driver_tables, GlobalTable_driver_qsat
+from pyMoist.microphysics.GFDL_1M.driver.sat_tables import (
+    GFDL_driver_tables,
+    GlobalTable_driver_qsat,
+)
 from pyMoist.microphysics.GFDL_1M.driver.stencils import implicit_fall, wqs2
 
 
@@ -108,10 +124,17 @@ def revap_racc(
         lhl = lv00 + d0_vap * t
         q_liq = mixing_ratio_liquid + mixing_ratio_rain
         q_sol = mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel
-        cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+        cvm = (
+            c_air
+            + mixing_ratio_vapor * c_vap
+            + q_liq * constants.C_LIQ
+            + q_sol * constants.C_ICE
+        )
         lcpk = lhl / cvm
 
-        tin = t - lcpk * mixing_ratio_liquid  # presence of clouds suppresses the rain evap
+        tin = (
+            t - lcpk * mixing_ratio_liquid
+        )  # presence of clouds suppresses the rain evap
         qpz = mixing_ratio_vapor + mixing_ratio_liquid
         qsat, dqsdt = wqs2(tin, density, table2, des2)
         dqh = max(mixing_ratio_liquid, rh_limited * max(qpz, constants.QCMIN))
@@ -140,12 +163,26 @@ def revap_racc(
                 dq = 0.25 * (q_minus - qsat) ** 2 / dqh
             qden = mixing_ratio_rain * density
             t2 = tin * tin
-            evap = crevp_0 * t2 * dq * (crevp_1 * sqrt(qden) + crevp_2 * exp(0.725 * log(qden))) / (crevp_3 * t2 + crevp_4 * qsat * density)
-            evap = min(mixing_ratio_rain, min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)))
+            evap = (
+                crevp_0
+                * t2
+                * dq
+                * (crevp_1 * sqrt(qden) + crevp_2 * exp(0.725 * log(qden)))
+                / (crevp_3 * t2 + crevp_4 * qsat * density)
+            )
+            evap = min(
+                mixing_ratio_rain,
+                min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)),
+            )
             mixing_ratio_rain = mixing_ratio_rain - evap
             mixing_ratio_vapor = mixing_ratio_vapor + evap
             q_liq = q_liq - evap
-            cvm = c_air + mixing_ratio_vapor * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            cvm = (
+                c_air
+                + mixing_ratio_vapor * c_vap
+                + q_liq * constants.C_LIQ
+                + q_sol * constants.C_ICE
+            )
             t = t - evap * lhl / cvm
             revap = evap / (0.5 * dts)
 
@@ -153,8 +190,18 @@ def revap_racc(
         # accretion: pracc
         # -----------------------------------------------------------------------
 
-        if mixing_ratio_rain > constants.QPMIN and mixing_ratio_liquid > constants.QCMIN and qsat < q_minus:
-            sink = 0.5 * dts * density_factor * cracw * exp(0.95 * log(mixing_ratio_rain * density))
+        if (
+            mixing_ratio_rain > constants.QPMIN
+            and mixing_ratio_liquid > constants.QCMIN
+            and qsat < q_minus
+        ):
+            sink = (
+                0.5
+                * dts
+                * density_factor
+                * cracw
+                * exp(0.95 * log(mixing_ratio_rain * density))
+            )
             sink = sink / (1.0 + sink) * mixing_ratio_liquid
             mixing_ratio_liquid = mixing_ratio_liquid - sink
             mixing_ratio_rain = mixing_ratio_rain + sink
@@ -299,7 +346,9 @@ def warm_rain_step_1(
         mixing_ratio_liquid = mixing_ratio_liquid / cloud_fraction_limited
         mixing_ratio_ice = mixing_ratio_ice / cloud_fraction_limited
 
-        fac_rc = min(1.0, estimated_inversion_strength / 15.0) ** 2  # Estimated inversion strength determine stable regime
+        fac_rc = (
+            min(1.0, estimated_inversion_strength / 15.0) ** 2
+        )  # Estimated inversion strength determine stable regime
         fac_rc = constants.RC * (rthreshs * fac_rc + rthreshu * (1.0 - fac_rc)) ** 3
         # NOTE: the multiplication "constants.RC * (result of parenthetical)" produces different results
         # in Fortran and Python, despite constants.RC and (result of parenthetical) being identical.
@@ -317,11 +366,16 @@ def warm_rain_step_1(
                     if dq > 0.0:
                         sink = min(
                             dq,
-                            dts * c_praut * density * exp(constants.SO3 * log(mixing_ratio_liquid)),
+                            dts
+                            * c_praut
+                            * density
+                            * exp(constants.SO3 * log(mixing_ratio_liquid)),
                         )
                         sink = min(ql0_max, min(mixing_ratio_liquid, max(0.0, sink)))
                         mixing_ratio_liquid = mixing_ratio_liquid - sink
-                        mixing_ratio_rain = mixing_ratio_rain + sink * cloud_fraction_limited
+                        mixing_ratio_rain = (
+                            mixing_ratio_rain + sink * cloud_fraction_limited
+                        )
 
     with computation(FORWARD), interval(1, None):
         if irain_f == 0:
@@ -393,10 +447,18 @@ def warm_rain_step_1(
                         # revised continuous form: linearly decays
                         # (with subgrid dl) to zero at qc == ql + dl
                         # --------------------------------------------------------------------
-                        sink = min(1.0, dq / dl) * dts * c_praut * density * exp(constants.SO3 * log(mixing_ratio_liquid))
+                        sink = (
+                            min(1.0, dq / dl)
+                            * dts
+                            * c_praut
+                            * density
+                            * exp(constants.SO3 * log(mixing_ratio_liquid))
+                        )
                         sink = min(ql0_max, min(mixing_ratio_liquid, max(0.0, sink)))
                         mixing_ratio_liquid = mixing_ratio_liquid - sink
-                        mixing_ratio_rain = mixing_ratio_rain + sink * cloud_fraction_limited
+                        mixing_ratio_rain = (
+                            mixing_ratio_rain + sink * cloud_fraction_limited
+                        )
 
         # Revert In-Cloud condensate
         mixing_ratio_liquid = mixing_ratio_liquid * cloud_fraction_limited
@@ -415,8 +477,15 @@ def warm_rain_step_1(
             if mixing_ratio_rain < constants.THR:
                 terminal_speed_rain = constants.VR_MIN
             else:
-                terminal_speed_rain = vr_fac * constants.VCONR * sqrt(min(10.0, constants.SFCRHO / density)) * exp(0.2 * log(qden / constants.NORMR))
-                terminal_speed_rain = min(vr_max, max(constants.VR_MIN, terminal_speed_rain))
+                terminal_speed_rain = (
+                    vr_fac
+                    * constants.VCONR
+                    * sqrt(min(10.0, constants.SFCRHO / density))
+                    * exp(0.2 * log(qden / constants.NORMR))
+                )
+                terminal_speed_rain = min(
+                    vr_max, max(constants.VR_MIN, terminal_speed_rain)
+                )
 
     with computation(FORWARD), interval(-1, None):
         z_interface[0, 0, 1] = constants.ZS
@@ -476,7 +545,15 @@ def warm_rain_step_1(
 
     with computation(PARALLEL), interval(...):
         if do_sedi_w == True:  # noqa
-            dmass = dp * (1.0 + mixing_ratio_vapor + mixing_ratio_liquid + mixing_ratio_rain + mixing_ratio_ice + mixing_ratio_snow + mixing_ratio_graupel)
+            dmass = dp * (
+                1.0
+                + mixing_ratio_vapor
+                + mixing_ratio_liquid
+                + mixing_ratio_rain
+                + mixing_ratio_ice
+                + mixing_ratio_snow
+                + mixing_ratio_graupel
+            )
 
 
 def warm_rain_step_2(
@@ -535,18 +612,38 @@ def warm_rain_step_2(
         des3 (GlobalTable_driver_qsat)
         des4 (GlobalTable_driver_qsat)
     """
-    from __externals__ import c_air, c_vap, cracw, crevp_0, crevp_1, crevp_2, crevp_3, crevp_4, d0_vap, do_sedi_w, dts, lv00, tau_revp
+    from __externals__ import (
+        c_air,
+        c_vap,
+        cracw,
+        crevp_0,
+        crevp_1,
+        crevp_2,
+        crevp_3,
+        crevp_4,
+        d0_vap,
+        do_sedi_w,
+        dts,
+        lv00,
+        tau_revp,
+    )
 
     # -----------------------------------------------------------------------
     # vertical velocity transportation during sedimentation
     # -----------------------------------------------------------------------
     with computation(FORWARD), interval(0, 1):
         if do_sedi_w == True:  # noqa
-            w = (dmass * w + driver_liquid_precip_flux * terminal_speed_rain) / (dmass - driver_liquid_precip_flux)
+            w = (dmass * w + driver_liquid_precip_flux * terminal_speed_rain) / (
+                dmass - driver_liquid_precip_flux
+            )
 
     with computation(FORWARD), interval(1, None):
         if do_sedi_w == True:  # noqa
-            w = (dmass * w - driver_liquid_precip_flux[0, 0, -1] * terminal_speed_rain[0, 0, -1] + driver_liquid_precip_flux * terminal_speed_rain) / (
+            w = (
+                dmass * w
+                - driver_liquid_precip_flux[0, 0, -1] * terminal_speed_rain[0, 0, -1]
+                + driver_liquid_precip_flux * terminal_speed_rain
+            ) / (
                 dmass + driver_liquid_precip_flux[0, 0, -1] - driver_liquid_precip_flux
             )
 
@@ -630,7 +727,9 @@ def update_outputs(
         mass = mass + driver_liquid_precip_flux + driver_ice_precip_flux
 
     with computation(FORWARD), interval(...):
-        liquid_precip_flux[0, 0, 1] = liquid_precip_flux[0, 0, 1] + driver_liquid_precip_flux
+        liquid_precip_flux[0, 0, 1] = (
+            liquid_precip_flux[0, 0, 1] + driver_liquid_precip_flux
+        )
         ice_precip_flux[0, 0, 1] = ice_precip_flux[0, 0, 1] + driver_ice_precip_flux
 
     with computation(FORWARD), interval(0, 1):
@@ -784,7 +883,7 @@ class GFDL1MWarmRain(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value_IJ = stencil_factory.from_dims_halo(
-            func=set_value_2D,
+            func=set_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value = stencil_factory.from_dims_halo(
@@ -796,7 +895,7 @@ class GFDL1MWarmRain(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
         self._set_IJ_mask = stencil_factory.from_dims_halo(
-            func=set_IJ_mask_value,
+            func=set_boolean_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
