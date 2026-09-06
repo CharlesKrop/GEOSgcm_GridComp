@@ -15,18 +15,8 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.driver import GFDLMPV3Driver
-from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from math import gamma, exp, log, sqrt
 import numpy as np
-
-
-@dataclasses.dataclass
-class GFDLMPV3HeatCapacities:
-
-    @classmethod
-    def init_to_none(cls) -> "GFDLMPV3HeatCapacities":
-        """Create an all-None instance, meant to be fully populated afterward."""
-        return cls(**{f.name: None for f in dataclasses.fields(cls)})
 
 
 class GFDLMPV3(NDSLRuntime):
@@ -63,9 +53,6 @@ class GFDLMPV3(NDSLRuntime):
 
         # initialize saturation tables
         self._saturation_tables = get_saturation_vapor_pressure_tables(stencil_factory=stencil_factory)
-
-        # initialize locals
-        self._mp_locals = GFDLMPV3Locals.make_locals(quantity_factory)
 
         # construct stencil
         self._set_value_k_interface = stencil_factory.from_dims_halo(
@@ -755,32 +742,4 @@ class GFDLMPV3(NDSLRuntime):
         self._set_value(field=state.non_anvil_large_scale.sublimation, value=Float(0.0))
         self._set_value_k_interface
 
-        # reset mp locals to zero
-        self._set_value(field=self._mp_locals.mppcw, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppew, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppe1, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mpper, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppdi, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppd1, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppds, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppdg, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppsi, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mpps1, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppss, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppsg, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppfw, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppfr, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppar, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppas, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppag, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mpprs, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mpprg, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppxr, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppxs, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppxg, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppmi, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppms, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppmg, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppm1, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppm2, value=Float(0, 0))
-        self._set_value(field=self._mp_locals.mppm3, value=Float(0, 0))
+        self._driver()
