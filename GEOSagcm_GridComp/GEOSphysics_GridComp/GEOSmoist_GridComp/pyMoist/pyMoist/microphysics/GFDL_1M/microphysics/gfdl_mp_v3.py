@@ -50,6 +50,7 @@ class GFDLMPV3(NDSLRuntime):
         # open to discussion on merging into a one step initialization
         self._mp_config = GFDLMPV3CloudMPConfig.init_to_none()
         self._setup_cloud_mp_config(quantity_factory, gfdl_1m_config, self._mp_namelist, self._mp_config)
+        
 
         # initialize saturation tables
         self._saturation_tables = get_saturation_vapor_pressure_tables(stencil_factory=stencil_factory)
@@ -71,11 +72,18 @@ class GFDLMPV3(NDSLRuntime):
         )
 
         # initialize the driver
-        self._driver = GFDLMPV3Driver(stencil_factory)
+        self._driver = GFDLMPV3Driver(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            gfdl_1m_config=self._gfdl_1m_config,
+            mp_namelist=self._mp_namelist,
+            mp_config=self._mp_config,
+        )
 
     def _setup_cloud_mp_config(
         self, quantity_factory: QuantityFactory, gfdl_1m_config: GFDL1MConfig, mp_namelist: GFDLMPV3NamelistConfig, mp_config: GFDLMPV3CloudMPConfig
     ):
+        
         # construct quantities for the tables: these must be given a data dimension and defined as a
         # quantity so that they can be brought into stencils as GlobalTables
         quantity_factory.update_data_dimensions({"LEN2_TABLE": 2})
@@ -102,6 +110,14 @@ class GFDLMPV3(NDSLRuntime):
         act = np.array(20, dtype=Float)
         occ = np.array(3, dtype=Float)
         crevp = np.array(5, dtype=Float)
+
+        # these options are inputs in the original GFDL version
+        # GEOS does not support them, so set them manually here
+        mp_config.CONSV_TE = False
+        mp_config.DO_INLINE_MP = False
+        mp_config.LAST_STEP = True
+        mp_config.USE_COND = True
+        mp_config.MOIST_KAPPA = True
 
         # --------------------------------------------------
         # heat capacities and related parameters
@@ -740,6 +756,5 @@ class GFDLMPV3(NDSLRuntime):
         self._set_value_2d(field=locals.dcondensatedt, value=Float(0.0))
         self._set_value(field=state.non_anvil_large_scale.evaporation, value=Float(0.0))
         self._set_value(field=state.non_anvil_large_scale.sublimation, value=Float(0.0))
-        self._set_value_k_interface
 
-        self._driver()
+        self._driver(state, locals)

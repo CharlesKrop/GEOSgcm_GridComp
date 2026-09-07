@@ -623,6 +623,13 @@ GlobalTableL3x10 = GlobalTable[(Float, (3, 10))]
 class GFDLMPV3CloudMPConfig:
     """Configuration for the GFDL MP V3 microphysics scheme."""
 
+    # options converted from inputs to config terms by GMAO
+    CONSV_TE: Bool
+    DO_INLINE_MP: Bool
+    LAST_STEP: Bool
+    USE_COND: Bool
+    MOIST_KAPPA: Bool
+
     # heat capacities and related terms
     C_AIR: Float
     C_VAP: Float
