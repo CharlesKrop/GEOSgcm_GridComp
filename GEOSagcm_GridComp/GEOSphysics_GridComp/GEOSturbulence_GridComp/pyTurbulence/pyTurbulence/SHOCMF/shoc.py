@@ -14,7 +14,9 @@ def invert_interface_inputs(
     zi: FloatField,
     phii_inv: FloatField,
 ):
-
+    """
+    Map GEOS interface variables to those of SHOC
+    """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
@@ -50,7 +52,9 @@ def invert_inputs(
     wthv_mf: FloatField,
     wthv_mf_inv: FloatField,
 ):
-
+    """
+    Map GEOS variables to those of SHOC
+    """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
@@ -93,6 +97,9 @@ def setup_derived_inputs(
     zl: FloatField,
     hl: FloatField,
 ):
+    """
+    Calculate derived variables
+    """
     with computation(PARALLEL), interval(...):
         wrk = 1.0 / prsl
         qv = max(qwv, 0.0)
@@ -117,6 +124,9 @@ def define_vertical_grid_increments(
     adzl: FloatField,
     zi: FloatField,
 ):
+    """
+    Define vertical grid increments for later use in the vertical differentiation
+    """
     from __externals__ import k_end
 
     # NOT SURE ABOUT THIS, NEEDS TO BE TESTED
@@ -130,6 +140,96 @@ def define_vertical_grid_increments(
     with computation(FORWARD), interval(-1,None):
         adzi[0,0,1]  = zi-zl[0,0,-1]
         adzl = adzi
+
+def tke_shear_prod(
+    rdtn: FloatField,
+    def2: FloatField,
+    adzi: FloatField,
+    u: FloatField,
+    v: FloatField,
+):
+    """
+    Calculate shear production of TKE
+    """
+    from __externals__ import dtn
+
+    with computation(PARALLEL), interval(...):
+        rdtn = 1.0 / dtn
+        def2 = 0.0
+
+    with computation(FORWARD), interval(0,1):
+        rdzw_up = 1.0/adzi[0,0,1]
+        wrku1: FloatFieldIJ = (u[0,0,1]-u)*rdzw_up
+        wrkv1: FloatFieldIJ = (v[0,0,1]-v)*rdzw_up
+        def2 = wrku1*wrku1 + wrkv1*wrkv1
+        txd: FloatFieldIJ = rdzw_up
+
+    with computation(PARALLEL), interval(1,-1):
+        rdzw_up = 1./adzi[0,0,1]
+        rdzw_dn = txd
+
+    with computation(FORWARD), interval(1,-1):
+        wrku1 = (u[0,0,1]-u)*rdzw_up
+        wrku2: FloatFieldIJ = (u-u[0,0,-1])*rdzw_dn
+        wrkv1 = (v[0,0,1]-v)*rdzw_up
+        wrkv2: FloatFieldIJ = (v-v[0,0,-1])*rdzw_dn
+
+    with computation(PARALLEL), interval(1,-1):
+        def2 = 0.5 * (wrku1*wrku1 + wrku2*wrku2 + wrkv1*wrkv1 + wrkv2*wrkv2)
+        txd = rdzw_up
+
+    with computation(FORWARD), interval(-1,None):
+        rdzw_dn = txd
+        wrku2 = (u-u[0,0,-1])*rdzw_dn
+        wrkv2 = (v-v[0,0,-1])*rdzw_dn
+        def2 = wrku2*wrku2 + wrkv2*wrkv2
+
+def calc_numbers(
+    u: FloatField,
+    v: FloatField,
+    adzi: FloatField,
+    RI: FloatField,
+    PRNUM: FloatField,
+    thv: FloatField,
+):
+    """
+    Defines Richardson number and Prandtl number on edges
+    """
+    from __externals__ import k_end PRNUMBER
+
+    with computation(PARALLEL), interval(0,-1):
+        DU = (u - u[0,0,1])**2 + (v - v[0,0,1])**2
+        DU = max( sqrt(DU) / adzi[0,0,1], 0.005 )
+
+    with computation(PARALLEL), interval(...):
+        RI = 0.0
+        RI[0,0,1] = 0.0
+    with computation(PARALLEL), interval(0,-1):
+        RI[0,0,1] = constants.ggr*( (thv[0,0,1] - thv) / adzi[0,0,1] ) / ( 0.5*( thv+thv[0,0,1] ) * (DU**2) )
+    
+    with computation(PARALLEL), interval(...):
+        kinv = k_end - K + 1
+        if PRNUMBER < 0.0:
+            if RI[0,0,1] <= 0.0 or tke_mf.at(K=kinv+1) > 1e-4:
+                PRNUM[0,0,1] = -1.*PRNUMBER
+            else:
+                PRNUM[0,0,1] = -1.*PRNUMBER+2.1*min(10.,RI[0,0,1])
+        else:
+            PRNUM[0,0,1] = PRNUMBER
+
+def reset_tke(
+    tke: FloatField,
+    min_tke: FloatField,
+    tkesbdiss: FloatField,
+    tkebshear: FloatField,
+    tkesbbuoy: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        tke = max(min_tke,tke)
+        tkesbdiss = 0.
+        tkesbshear = 0.
+        tkesbbuoy  = 0.
+ 
 
 
 
@@ -176,6 +276,21 @@ class RUN_SHOC(NDSLRuntime):
 
         self._define_vertical_grid_increments = self.stencil_factory.from_dims_halo(
             func=define_vertical_grid_increments,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._tke_shear_prod = self.stencil_factory.from_dims_halo(
+            func=tke_shear_prod,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._calc_numbers = self.stencil_factory.from_dims_halo(
+            func=calc_numbers,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._reset_tke = self.stencil_factory.from_dims_halo(
+            func=reset_tke,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -257,6 +372,31 @@ class RUN_SHOC(NDSLRuntime):
             zi=,
         )
 
+        # The three stencils below solve the TKE equation
+        self._tke_shear_prod(
+            rdtn=,
+            def2=,
+            adzi=,
+            u=,
+            v=,
+        )
+
+        self._calc_numbers(
+            u=,
+            v=,
+            adzi=,
+            RI=,
+            PRNUM=,
+            thv=,
+        )
+
+        self._reset_tke(
+            tke=,
+            min_tke=,
+            tkesbdiss=,
+            tkebshear=,
+            tkesbbuoy=,
+        )
 
         
 
