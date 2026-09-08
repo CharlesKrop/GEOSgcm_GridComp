@@ -33,6 +33,8 @@ def invert_inputs(
     prsl_inv: FloatField,
     u: FloatField,
     v: FloatField,
+    u_inv: FloatField,
+    v_inv: FloatField,
     omega: FloatField,
     omega_inv: FloatField,
     tabs: FloatField,
@@ -89,10 +91,7 @@ def setup_derived_inputs(
     qpl: FloatField,
     qpi: FloatField,
     total_water: FloatField,
-    qcl: FloatField,
-    qci: FloatField,
     prespot: FloatField,
-    tabs: FloatField,
     gamaz: FloatField,
     zl: FloatField,
     hl: FloatField,
@@ -191,11 +190,12 @@ def calc_numbers(
     RI: FloatField,
     PRNUM: FloatField,
     thv: FloatField,
+    tke_mf: FloatField,
 ):
     """
     Defines Richardson number and Prandtl number on edges
     """
-    from __externals__ import k_end PRNUMBER
+    from __externals__ import k_end, PRNUMBER
 
     with computation(PARALLEL), interval(0,-1):
         DU = (u - u[0,0,1])**2 + (v - v[0,0,1])**2
@@ -221,7 +221,7 @@ def reset_tke(
     tke: FloatField,
     min_tke: FloatField,
     tkesbdiss: FloatField,
-    tkebshear: FloatField,
+    tkesbshear: FloatField,
     tkesbbuoy: FloatField,
 ):
     with computation(PARALLEL), interval(...):
