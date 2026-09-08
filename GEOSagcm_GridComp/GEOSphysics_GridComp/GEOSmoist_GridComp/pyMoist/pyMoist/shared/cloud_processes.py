@@ -747,7 +747,6 @@ def bergeron_partition(
     convective_liquid: Float,
     concentration_ice: Float,
     delta_condensate: Float,
-    fraction_ice: Float,
     convection_fraction: Float,
     surface_type: Float,
     ese: GlobalTable_saturation_tables,
@@ -769,7 +768,6 @@ def bergeron_partition(
         convective_liquid (Float)
         concentration_ice (Float)
         delta_condensate (Float)
-        fraction_ice (Float)
         convection_fraction (Float)
         surface_type (Float)
         ese (GlobalTable_saturation_tables)
@@ -964,6 +962,11 @@ def hydrostatic_pdf(
     """
     from __externals__ import MIN_CLOUD_FRACTION, PDFSHAPE, USE_BERGERON, dtime
 
+    with computation(PARALLEL), interval(...):
+        # pre-declare internals to make linter happy
+        t_internal_previous = 0.0
+        f_t_internal_previous = 0.0
+
     # PHASE 1: setup & environmental isolation
     with computation(FORWARD), interval(0, 1):
         if iteration_method != -999:
@@ -988,6 +991,7 @@ def hydrostatic_pdf(
         # total environmental water (can be negative due to CN saturation assumptions)
         total_water_internal = large_scale_condensate_internal + vapor_internal
 
+    with computation(PARALLEL), interval(...):
         # PHASE 2: pre-calculate Double Gaussian PDF (if applicable)
         if PDFSHAPE == 6:
             option_not_implemented = True
@@ -1047,7 +1051,6 @@ def hydrostatic_pdf(
                     convective_liquid=convective_liquid,
                     concentration_ice=concentration_ice,
                     delta_condensate=delta_condensate,
-                    fraction_ice=fraction_ice,
                     convection_fraction=convection_fraction,
                     surface_type=surface_type,
                     ese=ese,
@@ -1082,7 +1085,7 @@ def hydrostatic_pdf(
                     * (MAPL_ALHL / MAPL_CP)
                     * (large_scale_condensate_internal - large_scale_condensate_internal_old)
                     * (1.0 - large_scale_cloud_fraction)
-                    + fraction_ice * (MAPL_ALHS / MAPL_CP) * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraciton)
+                    + fraction_ice * (MAPL_ALHS / MAPL_CP) * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
                 )
 
                 PDFITERS = count
@@ -1097,7 +1100,7 @@ def hydrostatic_pdf(
                     * (MAPL_ALHL / MAPL_CP)
                     * (large_scale_condensate_internal - large_scale_condensate_internal_old)
                     * (1.0 - large_scale_cloud_fraction)
-                    + fraction_ice * (MAPL_ALHS / MAPL_CP) * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraciton)
+                    + fraction_ice * (MAPL_ALHS / MAPL_CP) * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
                 )
 
                 PDFITERS = count
@@ -1133,11 +1136,11 @@ def hydrostatic_pdf(
         large_scale_condensate_internal = large_scale_condensate_internal * (1.0 - convective_cloud_fraction)
 
         # determine net change in total resolved condensate
-        excess_condensate = large_scale_condensate_internal - (QLLS + large_scale_ice)
+        excess_condensate = large_scale_condensate_internal - (large_scale_liquid + large_scale_ice)
 
         if excess_condensate < 0.0:
             # net evaporation: liquid evaporates first, then ice
-            dliquid = max(excess_condensate, -QLLS)
+            dliquid = max(excess_condensate, -large_scale_liquid)
             dice = max(excess_condensate - dliquid, -large_scale_ice)
         else:
             # net condensation: partition based on ice fraction

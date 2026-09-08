@@ -791,4 +791,3 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         # full microphysics loop
         if self._mp_config.DO_FULL_MP:
-            

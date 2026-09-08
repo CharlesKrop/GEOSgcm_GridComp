@@ -5,7 +5,6 @@ import f90nml
 from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
-from ndsl.constants import I_DIM, J_DIM, K_INTERFACE_DIM
 from ndsl.dsl.typing import Float, Int
 
 from pyMoist.fortran import get_NDSL_physics
