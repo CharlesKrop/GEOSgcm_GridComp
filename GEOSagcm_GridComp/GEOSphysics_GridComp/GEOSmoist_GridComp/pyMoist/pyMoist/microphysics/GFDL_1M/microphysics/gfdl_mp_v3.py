@@ -115,6 +115,8 @@ class GFDLMPV3(NDSLRuntime):
         # GEOS does not support them, so set them manually here
         mp_config.CONSV_TE = False
         mp_config.DO_INLINE_MP = False
+        mp_config.DO_FAST_MP = False
+        mp_config.DO_FULL_MP = True
         mp_config.LAST_STEP = True
         mp_config.USE_COND = True
         mp_config.MOIST_KAPPA = True
