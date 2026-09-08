@@ -1,18 +1,19 @@
+import dataclasses
 from tkinter.tix import MAX
 
-from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor
-from pyMoist.shared.cloud_processes import fix_up_clouds, hydrostatic_pdf, melt_freeze, evaporate, sublimate
-from pyMoist.shared.numerical_recipes import fill_negative_q
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval, sqrt
-from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, IntFieldIJ, Int
+from ndsl.dsl.typing import BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
+from ndsl.stencils.basic_operations import add, copy
+
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.saturation_tables import SaturationVaporPressureTable
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-import dataclasses
-from ndsl.stencils.basic_operations import copy, add
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.saturation_tables import SaturationVaporPressureTable
+from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor
+from pyMoist.shared.cloud_processes import evaporate, fix_up_clouds, hydrostatic_pdf, melt_freeze, sublimate
+from pyMoist.shared.numerical_recipes import fill_negative_q
 
 
 def compute_macrophysics_factors(
@@ -33,7 +34,7 @@ def compute_macrophysics_factors(
         minrhcrit (FloatFieldIJ)
         turnrhcrit (FloatFieldIJ)
     """
-    from __externals__ import MIN_RH_UNSTABLE, MIN_RH_STABLE, TURNRHCRIT_PARAM
+    from __externals__ import MIN_RH_STABLE, MIN_RH_UNSTABLE, TURNRHCRIT_PARAM
 
     with computation(FORWARD), interval(0, 1):
         fac_eis = compute_estimated_inversion_strength_factor(estimated_inversion_strength)

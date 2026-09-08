@@ -1,17 +1,17 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.stencils.basic_operations import copy, add, set_value
+from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import Float
-from ndsl.dsl.gt4py import computation, PARALLEL, interval
+from ndsl.stencils.basic_operations import add, copy, set_value
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 from pyMoist.microphysics.GFDL_1M.macrophysics import GFDL1MMacrophysics
+from pyMoist.microphysics.GFDL_1M.microphysics.gfdl_mp_v3 import GFDLMPV3
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
-from pyMoist.microphysics.GFDL_1M.microphysics.gfdl_mp_v3 import GFDLMPV3
 
 
 def flip_sign(input: FloatField, output: FloatField):
@@ -176,4 +176,3 @@ class GFDL1M(NDSLRuntime):
         self._copy(input=state.mixing_ratio.graupel, output=state.radiation_field.graupel)
         self._copy(input=state.mixing_ratio.rain, output=state.radiation_field.rain)
         self._copy(input=state.mixing_ratio.snow, output=state.radiation_field.snow)
-        

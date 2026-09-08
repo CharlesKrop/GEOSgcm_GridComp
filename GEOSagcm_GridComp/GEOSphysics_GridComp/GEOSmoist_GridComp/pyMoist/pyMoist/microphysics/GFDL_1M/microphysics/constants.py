@@ -3,8 +3,10 @@ constants be required beyond what is in this file. Any values starting with "_" 
 instead, these values are merely fallbacks to fill that if they are not specified in the namelist (replicating fortran behavior and providing a single source of truth
 for all constants)."""
 
-from ndsl.dsl.typing import Float, Int, Float64
 import math
+
+from ndsl.dsl.typing import Float, Float64, Int
+
 
 # -----------------------------------------------------------------------
 # physics constants

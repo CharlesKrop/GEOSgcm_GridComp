@@ -3,6 +3,7 @@
 import numpy as np
 from ndsl.dsl.typing import Float, Int
 
+
 _f32 = np.float32
 _f64 = np.float64
 

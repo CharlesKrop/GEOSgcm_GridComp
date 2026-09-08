@@ -1,7 +1,7 @@
-from ndsl.dsl.gt4py import function
-from ndsl.dsl.typing import Bool, Float64, Float
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, RGRAV, TICE, QCMIN
-from ndsl.dsl.gt4py import isnan
+from ndsl.dsl.gt4py import function, isnan
+from ndsl.dsl.typing import Bool, Float, Float64
+
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE
 
 
 @function

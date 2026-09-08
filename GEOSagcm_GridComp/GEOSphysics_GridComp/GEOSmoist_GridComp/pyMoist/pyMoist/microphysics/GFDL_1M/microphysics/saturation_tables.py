@@ -1,8 +1,9 @@
-from ndsl import StencilFactory, QuantityFactory, SubtileGridSizer, ndsl_log
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, DELT, TICE, LV0, DC_VAP, RVGAS, E00, D2_ICE, LI2
 from mpi4py import MPI
-from ndsl.dsl.typing import FloatField, FloatField64, Int, Bool, FloatFieldIJ, Float32
-from ndsl.dsl.gt4py import computation, FORWARD, interval, log, exp, K, log10
+from ndsl import QuantityFactory, StencilFactory, SubtileGridSizer, ndsl_log
+from ndsl.dsl.gt4py import FORWARD, K, computation, exp, interval, log, log10
+from ndsl.dsl.typing import Bool, Float32, FloatField, FloatField64, FloatFieldIJ, Int
+
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import D2_ICE, DC_VAP, DELT, E00, LI2, LV0, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, TICE
 from pyMoist.shared.cloud_processes import ice_fraction
 
 
@@ -29,7 +30,7 @@ def compute_table_core(
     do_smith_table: Bool,
     table: FloatField,
 ):
-    from __externals__ import k_end, N_MIN
+    from __externals__ import N_MIN, k_end
 
     with computation(FORWARD), interval(0, 1):
         # initialize internal constants

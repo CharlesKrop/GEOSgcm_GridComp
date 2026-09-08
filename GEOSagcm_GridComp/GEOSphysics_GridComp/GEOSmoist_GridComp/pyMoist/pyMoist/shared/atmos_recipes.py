@@ -5,7 +5,7 @@ meteorological quantities"""
 from ndsl.dsl.gt4py import exp, function
 from ndsl.dsl.typing import Float
 
-from pyMoist.constants import MAPL_GRAV, SIGMA_EXP, SIGMA_DX
+from pyMoist.constants import MAPL_GRAV, SIGMA_DX, SIGMA_EXP
 
 
 @function

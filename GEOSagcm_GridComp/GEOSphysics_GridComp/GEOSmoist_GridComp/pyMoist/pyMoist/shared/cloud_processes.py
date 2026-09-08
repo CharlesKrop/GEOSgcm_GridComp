@@ -3,8 +3,11 @@ These functions evaluate various in-cloud microphysical
 processes/quantities."""
 
 from ndsl.dsl.gt4py import (
+    BACKWARD,
+    FORWARD,
     PARALLEL,
     GlobalTable,
+    K,
     computation,
     exp,
     float32,
@@ -12,66 +15,62 @@ from ndsl.dsl.gt4py import (
     floor,
     function,
     interval,
+    log,
     log10,
     round_away_from_zero,
     sin,
-    K,
-    FORWARD,
-    BACKWARD,
-    log,
     sqrt,
 )
-from ndsl.dsl.typing import Float, FloatField, BoolFieldIJ, Bool, Int, IntFieldIJ, FloatFieldIJ
+from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 
-from pyMoist.shared.atmos_recipes import air_density
-from pyMoist.saturation_tables import (
-    saturation_specific_humidity,
-    GlobalTable_saturation_tables,
-    saturation_specific_humidity_liquid_surface,
-    saturation_specific_humidity_frozen_surface,
-)
 from pyMoist.constants import (
-    LBE,
-    MAPL_RVAP,
-    MAPL_RGAS,
-    MAPL_CPVAP,
-    MAPL_CPDRY,
-    MAPL_TICE,
-    ICE_RADII_PARAM,
-    JaT_ICE_ALL,
-    JaT_ICE_MAX,
-    MAPL_PI,
-    aT_ICE_ALL,
-    aT_ICE_MAX,
-    aICEFRPWR,
-    iT_ICE_MAX,
-    iT_ICE_ALL,
-    iICEFRPWR,
-    lT_ICE_MAX,
-    lT_ICE_ALL,
-    lICEFRPWR,
-    oT_ICE_MAX,
-    oT_ICE_ALL,
-    oICEFRPWR,
-    LIQ_RADII_PARAM,
-    BX,
-    R13BBETA,
     ABETA,
-    LBX,
+    BX,
+    DIFFU,
+    EPSILON,
+    ICE_RADII_PARAM,
+    K_COND,
     LBE,
-    MAPL_CP,
+    LBX,
+    LIQ_RADII_PARAM,
+    MAPL_ALHF,
     MAPL_ALHL,
     MAPL_ALHS,
-    MAPL_ALHF,
+    MAPL_CP,
+    MAPL_CPDRY,
+    MAPL_CPVAP,
+    MAPL_PI,
+    MAPL_RGAS,
+    MAPL_RVAP,
+    MAPL_TICE,
+    R13BBETA,
     R_AIR,
-    TAUFRZ,
-    TAUMLT,
-    EPSILON,
     RHO_I,
     RHO_W,
-    K_COND,
-    DIFFU,
+    TAUFRZ,
+    TAUMLT,
+    JaT_ICE_ALL,
+    JaT_ICE_MAX,
+    aICEFRPWR,
+    aT_ICE_ALL,
+    aT_ICE_MAX,
+    iICEFRPWR,
+    iT_ICE_ALL,
+    iT_ICE_MAX,
+    lICEFRPWR,
+    lT_ICE_ALL,
+    lT_ICE_MAX,
+    oICEFRPWR,
+    oT_ICE_ALL,
+    oT_ICE_MAX,
 )
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    saturation_specific_humidity,
+    saturation_specific_humidity_frozen_surface,
+    saturation_specific_humidity_liquid_surface,
+)
+from pyMoist.shared.atmos_recipes import air_density
 
 
 @function
@@ -963,7 +962,7 @@ def hydrostatic_pdf(
         estfrz (Float)
         estlqu (Float)
     """
-    from __externals__ import dtime, PDFSHAPE, MIN_CLOUD_FRACTION, USE_BERGERON
+    from __externals__ import MIN_CLOUD_FRACTION, PDFSHAPE, USE_BERGERON, dtime
 
     # PHASE 1: setup & environmental isolation
     with computation(FORWARD), interval(0, 1):
@@ -1229,7 +1228,7 @@ def evaporate(
     concentration_liquid: FloatField,
     saturation_specific_humidity: FloatField,
 ):
-    from __externals__ import DTIME, CCW_EVAP_EFF
+    from __externals__ import CCW_EVAP_EFF, DTIME
 
     # EVAPORATION OF CLOUD WATER - DelGenio et al (1996, J. Clim., 9, 270-303) formulation (Eq.s 15-17)
 
@@ -1275,7 +1274,7 @@ def sublimate(
     cloud_fraction: FloatField,
     saturation_specific_humidity: FloatField,
 ):
-    from __externals__ import DTIME, CCI_EVAP_EFF
+    from __externals__ import CCI_EVAP_EFF, DTIME
 
     # SUBLIMATION OF CLOUD WATER - DelGenio et al (1996, J. Clim., 9, 270-303) formulation (Eq.s 15-17)
 

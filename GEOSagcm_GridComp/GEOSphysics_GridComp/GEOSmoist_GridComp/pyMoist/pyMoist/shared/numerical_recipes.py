@@ -1,5 +1,5 @@
-from ndsl.dsl.gt4py import exp, float64, function, log, computation, PARALLEL, interval, FORWARD
-from ndsl.dsl.typing import FloatField, Bool, FloatFieldIJ
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, float64, function, interval, log
+from ndsl.dsl.typing import Bool, FloatField, FloatFieldIJ
 
 
 @function

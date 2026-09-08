@@ -4,13 +4,13 @@ from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField, Int
-from ndsl.stencils.basic_operations import set_value, copy, add
+from ndsl.stencils.basic_operations import add, copy, set_value
 
 from pyMoist.constants import MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.cloud_processes import find_lcl_level
 
 

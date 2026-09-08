@@ -1,4 +1,5 @@
 import dataclasses
+
 from ndsl import Local, LocalState
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float, Float64
