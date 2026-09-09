@@ -1,4 +1,3 @@
-#define ACC_PREFIX !$acc
 !   $Id$
 
 #include "MAPL_Generic.h"
@@ -6,25 +5,6 @@
 !=============================================================================
 
 module GEOS_TurbulenceGridCompMod
-
-#ifdef SERIALIZE
-USE m_serialize, ONLY: &
-  fs_enable_serialization
-USE utils_ppser, ONLY:  &
-  ppser_initialize, &
-  ppser_intlength, &
-  ppser_reallength, &
-  ppser_realtype, &
-  ppser_savepoint, &
-  ppser_serializer, &
-  ppser_serializer_ref, &
-  ppser_zrperturb, &
-  ppser_get_mode
-USE savepoint_helpers
-USE utils_ppser_buffered
-USE utils_ppser_kbuff
-#endif
-
 
 !BOP
 
@@ -2623,27 +2603,14 @@ end if
 ! Begin... 
 !---------
 
-#ifdef SERIALIZE
-integer :: comm, rank, mpierr
-type(ESMF_VM) :: vm
-#endif
+!$ser verbatim integer :: comm, rank, mpierr 
+!$ser verbatim type(ESMF_VM) :: vm
 print *, "TURBULENCE BEFORE SER ON"
-#ifdef SERIALIZE
-call ESMF_VMGetCurrent(vm,rc=status)
-call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
-call MPI_COMM_rank(comm,rank,mpierr)
-PRINT *, '>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<'
-PRINT *, '>>> WARNING: SERIALIZATION IS ON <<<'
-PRINT *, '>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<'
-
-! setup serialization environment
-call ppser_initialize( &
-           directory='./serialbox_data', &
-           prefix='Generator', &
-           mpi_rank=rank, &
-           unique_id=.true.)
-call fs_enable_serialization()
-#endif
+!$ser verbatim call ESMF_VMGetCurrent(vm,rc=status)
+!$ser verbatim call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
+!$ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
+!$ser init directory='./serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
+!$ser on
 print *, "TURBULENCE AFTER SER ON"
 
 ! Get my name and set-up traceback handle
