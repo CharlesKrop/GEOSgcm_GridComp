@@ -114,8 +114,8 @@ class GFDLMPV3(NDSLRuntime):
         # GEOS does not support them, so set them manually here
         mp_config.CONSV_TE = False
         mp_config.DO_INLINE_MP = False
-        mp_config.DO_FAST_MP = False
-        mp_config.DO_FULL_MP = True
+        mp_config.DO_MP_FAST = False
+        mp_config.DO_MP_FULL = True
         mp_config.LAST_STEP = True
         mp_config.USE_COND = True
         mp_config.MOIST_KAPPA = True
@@ -744,6 +744,44 @@ class GFDLMPV3(NDSLRuntime):
             * exp(-3.0 * log(mp_config.EXPOR))
         )
         mp_config.CGFR[1] = 0.66
+
+    def check_config(self, namelist: GFDLMPV3NamelistConfig, config: GFDLMPV3CloudMPConfig):
+        """Checks for any flags that are no meeting the expected value.
+        Failing flags are likely not implemented,
+        or at the very least not fully implemented
+
+        Args:
+            namelist (GFDLMPV3NamelistConfig): namelist containing user-specified GFDLMPV3 configuration
+            config (GFDLMPV3CloudMPConfig): dataclass of all non-constant (i.e. computed from constants or namelist values) parameters
+
+        Raises:
+            ValueError: list of non-compliant constants with actual and expected values
+        """
+        failures = []
+
+        # Helper function to evaluate and record non-compliant flags
+        def check_param(param_name, actual, expected):
+            if actual != expected:
+                failures.append({"parameter": param_name, "actual": actual, "expected": expected})
+
+        # Flag checks (Boolean flags)
+        check_param("GFDLMPV3CloudMPConfig.DO_MP_FAST", config.DO_MP_FAST, False)
+        check_param("GFDLMPV3CloudMPConfig.DO_MP_FULL", config.DO_MP_FULL, True)
+        check_param("GFDLMPV3NamelistConfig.DO_PSD_ICE_FALL", namelist.DO_PSD_ICE_FALL, False)
+        check_param("GFDLMPV3NamelistConfig.DO_PSD_WATER_FALL", namelist.DO_PSD_WATER_FALL, False)
+        check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QG", namelist.DO_SEDI_MELT_QG, False)
+        check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QI", namelist.DO_SEDI_MELT_QI, False)
+        check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QS", namelist.DO_SEDI_MELT_QS, False)
+        check_param("GFDLMPV3NamelistConfig.DO_HAIL", namelist.DO_HAIL, False)
+
+        # Threshold checks
+        # if config_dependent_constants.DTS >= 300.0:
+        #     # checking against a "expected" string will always fail, but this ensures the system prints the correct value in the error
+        #     failures.append({"parameter": "DTS", "actual": config_dependent_constants.DTS, "expected": "< 300.0"})
+
+        if failures:
+            formatted_failures = "\n".join(f"  - Parameter: {f['parameter']}, Actual: {f['actual']}, Expected: {f['expected']}" for f in failures)
+            raise ValueError(f"One or more namelist parameters do not meet expected values:\n{formatted_failures}")
 
     def __call__(self, state: GFDL1MState, locals: GFDL1MLocals):
         # reset state fields to zero

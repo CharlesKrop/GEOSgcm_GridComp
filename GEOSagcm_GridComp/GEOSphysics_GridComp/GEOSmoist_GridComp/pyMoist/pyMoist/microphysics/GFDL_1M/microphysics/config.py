@@ -626,10 +626,12 @@ class GFDLMPV3CloudMPConfig:
     """Configuration for the GFDL MP V3 microphysics scheme."""
 
     # options converted from inputs to config terms by GMAO
+    # NOTE these can be moved to the namelist with ease,
+    # but have been left here for now to maintain continuity with Fortran
     CONSV_TE: Bool
     DO_INLINE_MP: Bool
-    DO_FAST_MP: Bool
-    DO_FULL_MP: Bool
+    DO_MP_FAST: Bool
+    DO_MP_FULL: Bool
     LAST_STEP: Bool
     USE_COND: Bool
     MOIST_KAPPA: Bool

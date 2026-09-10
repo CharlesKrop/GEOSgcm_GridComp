@@ -786,8 +786,14 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         # fast microphysics loop
         if self._mp_config.DO_MP_FAST:
-            ndsl_log.error("[GFDL1M Microphysics]: NDSL version of DO_MP_FAST option has not been implemented, please use DO_MP_FULL instead")
-            raise ValueError("[GFDL1M Microphysics]: NDSL version of DO_MP_FAST option has not been implemented, please use DO_MP_FULL instead")
+            ndsl_log.error(
+                "[GFDL1M Microphysics]: NDSL version of DO_MP_FAST option has not been implemented, please use DO_MP_FAST instead. "
+                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+            )
+            raise ValueError(
+                "[GFDL1M Microphysics]: NDSL version of DO_MP_FAST option has not been implemented, please use DO_MP_FAST instead. "
+                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+            )
 
         # full microphysics loop
-        if self._mp_config.DO_FULL_MP:
+        if self._mp_config.DO_MP_FULL:
