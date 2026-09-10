@@ -50,7 +50,10 @@ class GF2020Interface(UserCode):
         gf_2020_env_setting = maplpy.get_resource("DSL__GF_ENV_SETTING", mapl_state, default=Int(1))
 
         zero_diff = maplpy.get_resource("ZERO_DIFF:", mapl_state, default=Int(0))
-        hydrostatic = maplpy.get_resource("HYDROSTATIC:", mapl_state, default=True)
+
+        # TEMPORARY DEBUG - hard code hydrostatic to false to get around a weird fortran bool=255 error
+        debug_hydrostatic = False
+        hydrostatic = debug_hydrostatic  # maplpy.get_resource("HYDROSTATIC:", mapl_state, default=True)
 
         sh_md_dp = maplpy.get_resource("SH_MD_DP:", mapl_state, default=True)
 

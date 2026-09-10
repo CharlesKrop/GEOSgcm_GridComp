@@ -49,10 +49,13 @@ class GFDL1MInterface(UserCode):
             cci_evap_eff_default = Float(1e-2)
         use_aerosol_nn = maplpy.get_resource("USE_AEROSOL_NN:", mapl_state, default=True)
 
+        # TEMPORARY DEBUG - hard code hydrostatic to false to get around a weird fortran bool=255 error
+        debug_hydrostatic = False
+
         config = GFDL1MConfig(
             USE_BERGERON=maplpy.get_resource("USE_BERGERON:", mapl_state, default=use_aerosol_nn),
             LPHYS_HYDROSTATIC=maplpy.get_resource("PHYS_HYDROSTATIC", mapl_state, default=True),
-            LHYDROSTATIC=maplpy.get_resource("HYDROSTATIC", mapl_state, default=True),
+            LHYDROSTATIC=debug_hydrostatic,  # maplpy.get_resource("HYDROSTATIC", mapl_state, default=True),
             DT_MOIST=maplpy.get_resource("DSL__GFLD1M_DT", mapl_state, default=Float(0.0)),
             LMELTFRZ=maplpy.get_resource("MELTFRZ", mapl_state, default=True),
             TURNRHCRIT_PARAM=maplpy.get_resource("TURNRHCRIT:", mapl_state, default=Float(-9999.0)),
