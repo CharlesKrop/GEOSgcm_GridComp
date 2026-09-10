@@ -85,14 +85,14 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["error_code"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
+            "error_code"
+        ]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = (
+            inputs["cloud_top_level"] - 1
         )
-        state.output.cloud_top_level.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["cloud_top_level"] - 1
-        locals.precipitation_flux.data[:] = inputs["local_precipitation_flux"]
-        state.output.convective_precip_flux.data[:] = inputs["convective_precip_flux"]
+        locals.precipitation_flux[:] = inputs["local_precipitation_flux"]
+        state.output.convective_precip_flux[:] = inputs["convective_precip_flux"]
 
         code = self.stencil_factory.from_dims_halo(
             func=deep_precipitation_output,
@@ -112,12 +112,12 @@ class TestCore:
             "error_code": state.output.error_code.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ],
-            "cloud_top_level": state.output.cloud_top_level.data[
+            "cloud_top_level": state.output.cloud_top_level.field[
                 :, :, plume_dependent_constants.PLUME_INDEX
             ]
             + 1,
-            "local_precipitation_flux": locals.precipitation_flux.data[:],
-            "convective_precip_flux": state.output.convective_precip_flux.data[:],
+            "local_precipitation_flux": locals.precipitation_flux.field[:],
+            "convective_precip_flux": state.output.convective_precip_flux.field[:],
         }
 
         return outputs
