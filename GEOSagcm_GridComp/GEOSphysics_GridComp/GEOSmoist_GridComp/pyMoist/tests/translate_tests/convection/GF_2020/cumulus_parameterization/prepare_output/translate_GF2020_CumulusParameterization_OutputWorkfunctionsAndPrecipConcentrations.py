@@ -61,6 +61,9 @@ class TestCore:
         }
 
         out_vars.update(in_vars["data_vars"])
+        # TODO: As per Charles this is not relevant output
+        out_vars.pop("dnicedt")
+        out_vars.pop("dnliquiddt")
 
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
@@ -164,12 +167,6 @@ class TestCore:
                 :
             ],
             "dcloudicedt": state.output.dcloudicedt.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "dnliquiddt": state.output.dnliquiddt.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "dnicedt": state.output.dnicedt.field[
                 :, :, :, plume_dependent_constants.PLUME_INDEX
             ],
         }
