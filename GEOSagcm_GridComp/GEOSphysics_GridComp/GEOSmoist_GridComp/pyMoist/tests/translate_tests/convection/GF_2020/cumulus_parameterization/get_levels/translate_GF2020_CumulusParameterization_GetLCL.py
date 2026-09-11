@@ -6,29 +6,13 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-    Plumes,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.get_levels import find_lcl
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
-    set_constants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -66,13 +50,9 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -104,23 +84,13 @@ class TestCore:
         locals.vapor_cloud_levels[:] = inputs["local_vapor_cloud_levels_forced"]
         state.input_output.omega[:] = inputs["omega"]
         state.input_output.air_density[:] = inputs["air_density"]
-        locals.geopotential_height_cloud_levels[:] = inputs[
-            "local_geopotential_height_cloud_levels"
-        ]
-        state.input_output.topography_height_no_negative[:] = inputs[
-            "topography_height_no_negative"
-        ]
+        locals.geopotential_height_cloud_levels[:] = inputs["local_geopotential_height_cloud_levels"]
+        state.input_output.topography_height_no_negative[:] = inputs["topography_height_no_negative"]
         state.input.ocean_fraction[:] = inputs["ocean_fraction"]
-        state.output.updraft_origin_level[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["updraft_origin_level"] - 1
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
         state.input_output.grid_length[:] = inputs["grid_length"]
-        state.output.lcl_level[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["lcl_level"] - 1
-        )
-        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
+        state.output.lcl_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
 
         code = self.stencil_factory.from_dims_halo(
             func=find_lcl,
@@ -163,25 +133,13 @@ class TestCore:
             "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels.field[:],
             "omega": state.input_output.omega.field[:],
             "air_density": state.input_output.air_density.field[:],
-            "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.field[
-                :
-            ],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[
-                :
-            ],
+            "local_geopotential_height_cloud_levels": locals.geopotential_height_cloud_levels.field[:],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
             "ocean_fraction": state.input.ocean_fraction.field[:],
-            "updraft_origin_level": state.output.updraft_origin_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
+            "updraft_origin_level": state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "grid_length": state.input_output.grid_length.field[:],
-            "lcl_level": state.output.lcl_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "error_code": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
         }
 
         return outputs
@@ -200,14 +158,10 @@ class TranslateGF2020_CumulusParameterization_GetLCL_shallow(TranslateFortranDat
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -225,14 +179,10 @@ class TranslateGF2020_CumulusParameterization_GetLCL_mid(TranslateFortranData2Py
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.MID.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -250,13 +200,9 @@ class TranslateGF2020_CumulusParameterization_GetLCL_deep(TranslateFortranData2P
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

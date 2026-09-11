@@ -67,14 +67,14 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        locals.del_moist_static_energy_cloud_ensemble.data[:] = inputs["local_del_moist_static_energy_cloud_ensemble"]
-        locals.del_vapor_cloud_ensemble.data[:] = inputs["local_del_vapor_cloud_ensemble"]
-        locals.del_cloud_liquid_cloud_ensemble.data[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
-        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble"]
-        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        locals.del_moist_static_energy_cloud_ensemble[:] = inputs["local_del_moist_static_energy_cloud_ensemble"]
+        locals.del_vapor_cloud_ensemble[:] = inputs["local_del_vapor_cloud_ensemble"]
+        locals.del_cloud_liquid_cloud_ensemble[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
+        locals.del_u_cloud_ensemble[:] = inputs["local_del_u_cloud_ensemble"]
+        locals.del_v_cloud_ensemble[:] = inputs["local_del_v_cloud_ensemble"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(
@@ -99,14 +99,14 @@ class TestCore:
 
         # write output
         outputs = {
-            "error_code": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "local_del_moist_static_energy_cloud_ensemble": locals.del_moist_static_energy_cloud_ensemble.data[:],
-            "local_del_vapor_cloud_ensemble": locals.del_vapor_cloud_ensemble.data[:],
-            "local_del_cloud_liquid_cloud_ensemble": locals.del_cloud_liquid_cloud_ensemble.data[:],
-            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.data[:],
-            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.data[:],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "local_del_moist_static_energy_cloud_ensemble": locals.del_moist_static_energy_cloud_ensemble.field[:],
+            "local_del_vapor_cloud_ensemble": locals.del_vapor_cloud_ensemble.field[:],
+            "local_del_cloud_liquid_cloud_ensemble": locals.del_cloud_liquid_cloud_ensemble.field[:],
+            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.field[:],
+            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.field[:],
         }
 
         return outputs

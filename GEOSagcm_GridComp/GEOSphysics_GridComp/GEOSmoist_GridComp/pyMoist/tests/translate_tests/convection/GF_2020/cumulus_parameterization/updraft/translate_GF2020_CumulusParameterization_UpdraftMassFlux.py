@@ -71,19 +71,19 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.input_output.pbl_level.data[:] = inputs["pbl_level"] - 1
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        locals.normalized_massflux_updraft_modified.data[:] = inputs["local_normalized_massflux_updraft_modified"]
-        locals.random_number.data[:] = inputs["local_random_number"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.input_output.pbl_level[:] = inputs["pbl_level"] - 1
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.lcl_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.input_output.p_surface[:] = inputs["p_surface"]
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        locals.normalized_massflux_updraft[:] = inputs["local_normalized_massflux_updraft"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        locals.normalized_massflux_updraft_modified[:] = inputs["local_normalized_massflux_updraft_modified"]
+        locals.random_number[:] = inputs["local_random_number"]
 
         # initialize test code
         code = UpdraftMassFlux(
@@ -114,19 +114,19 @@ class TestCore:
 
         # write output
         outputs = {
-            "error_code": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "updraft_origin_level": state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "pbl_level": state.input_output.pbl_level.data[:] + 1,
-            "updraft_lfc_level": state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "lcl_level": state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "p_surface": state.input_output.p_surface.data[:],
-            "ocean_fraction": state.input.ocean_fraction.data[:],
-            "local_normalized_massflux_updraft": locals.normalized_massflux_updraft.data[:],
-            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "local_normalized_massflux_updraft_modified": locals.normalized_massflux_updraft_modified.data[:],
-            "local_random_number": locals.random_number.data[:],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "updraft_origin_level": state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "pbl_level": state.input_output.pbl_level.field[:] + 1,
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "lcl_level": state.output.lcl_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "p_surface": state.input_output.p_surface.field[:],
+            "ocean_fraction": state.input.ocean_fraction.field[:],
+            "local_normalized_massflux_updraft": locals.normalized_massflux_updraft.field[:],
+            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "local_normalized_massflux_updraft_modified": locals.normalized_massflux_updraft_modified.field[:],
+            "local_random_number": locals.random_number.field[:],
         }
 
         return outputs

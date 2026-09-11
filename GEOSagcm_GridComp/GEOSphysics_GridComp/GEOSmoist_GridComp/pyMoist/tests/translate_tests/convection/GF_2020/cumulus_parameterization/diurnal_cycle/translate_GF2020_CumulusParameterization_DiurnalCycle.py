@@ -1,36 +1,18 @@
 from f90nml import Namelist
 from ndsl import StencilFactory
+from ndsl.dsl.typing import Int
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
-from ndsl.dsl.typing import Int
 
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-    Plumes,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import (
-    DiurnalCycle,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
-    set_constants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
+from pyMoist.convection.GF_2020.cumulus_parameterization.diurnal_cycle import DiurnalCycle
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -74,13 +56,9 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -103,42 +81,28 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["error_code"]
-        )
-        state.output.updraft_lfc_level.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["updraft_lfc_level"] - 1
-        state.output.cloud_top_level.data[
-            :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["cloud_top_level"] - 1
-        state.input_output.pbl_level.data[:] = inputs["pbl_level"] - 1
-        state.input_output.grid_length.data[:] = inputs["grid_length"]
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs[
-            "local_geopotential_height_cloud_levels_forced"
-        ]
-        state.input_output.topography_height_no_negative.data[:] = inputs[
-            "topography_height_no_negative"
-        ]
-        state.input_output.t_old.data[:] = inputs["t_old"]
-        locals.t_new.data[:] = inputs["local_t_new"]
-        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced"]
-        state.input_output.vapor_old.data[:] = inputs["vapor_old"]
-        locals.vapor_forced.data[:] = inputs["local_vapor_forced"]
-        state.input_output.u.data[:] = inputs["u"]
-        state.input_output.v.data[:] = inputs["v"]
-        locals.vertical_velocity_2d.data[:] = inputs["local_vertical_velocity_2d"]
-        locals.cape_removal_time_scale.data[:] = inputs["local_cape_removal_time_scale"]
-        state.output.cape_removal_time_scale.data[:] = inputs["cape_removal_time_scale"]
-        locals.pbl_time_scale.data[:] = inputs["local_pbl_time_scale"]
-        state.output.pbl_time_scale.data[:] = inputs["pbl_time_scale"]
-        locals.cloud_workfunction_1_pbl.data[:] = inputs[
-            "local_cloud_work_function_1_pbl"
-        ]
-        locals.cloud_workfunction_1_fa.data[:] = inputs[
-            "local_cloud_work_function_1_fa"
-        ]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.input_output.pbl_level[:] = inputs["pbl_level"] - 1
+        state.input_output.grid_length[:] = inputs["grid_length"]
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        state.input_output.topography_height_no_negative[:] = inputs["topography_height_no_negative"]
+        state.input_output.t_old[:] = inputs["t_old"]
+        locals.t_new[:] = inputs["local_t_new"]
+        locals.t_cloud_levels_forced[:] = inputs["local_t_cloud_levels_forced"]
+        state.input_output.vapor_old[:] = inputs["vapor_old"]
+        locals.vapor_forced[:] = inputs["local_vapor_forced"]
+        state.input_output.u[:] = inputs["u"]
+        state.input_output.v[:] = inputs["v"]
+        locals.vertical_velocity_2d[:] = inputs["local_vertical_velocity_2d"]
+        locals.cape_removal_time_scale[:] = inputs["local_cape_removal_time_scale"]
+        state.output.cape_removal_time_scale[:] = inputs["cape_removal_time_scale"]
+        locals.pbl_time_scale[:] = inputs["local_pbl_time_scale"]
+        state.output.pbl_time_scale[:] = inputs["pbl_time_scale"]
+        locals.cloud_workfunction_1_pbl[:] = inputs["local_cloud_work_function_1_pbl"]
+        locals.cloud_workfunction_1_fa[:] = inputs["local_cloud_work_function_1_fa"]
 
         # initialize test code
         code = DiurnalCycle(
@@ -178,26 +142,14 @@ class TestCore:
 
         # write output
         outputs = {
-            "error_code": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "updraft_lfc_level": state.output.updraft_lfc_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "cloud_top_level": state.output.cloud_top_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
             "pbl_level": state.input_output.pbl_level.field[:] + 1,
             "grid_length": state.input_output.grid_length.field[:],
             "ocean_fraction": state.input.ocean_fraction.field[:],
-            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[
-                :
-            ],
-            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[
-                :
-            ],
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[:],
+            "topography_height_no_negative": state.input_output.topography_height_no_negative.field[:],
             "t_old": state.input_output.t_old.field[:],
             "local_t_new": locals.t_new.field[:],
             "local_t_cloud_levels_forced": locals.t_cloud_levels_forced.field[:],
@@ -217,9 +169,7 @@ class TestCore:
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -232,14 +182,10 @@ class TranslateGF2020_CumulusParameterization_DiurnalCycle_shallow(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -257,21 +203,15 @@ class TranslateGF2020_CumulusParameterization_DiurnalCycle_mid(TranslateFortranD
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.MID.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_DiurnalCycle_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_DiurnalCycle_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -284,13 +224,9 @@ class TranslateGF2020_CumulusParameterization_DiurnalCycle_deep(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

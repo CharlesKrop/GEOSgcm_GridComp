@@ -68,15 +68,15 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        locals.cloud_moist_static_energy.data[:] = inputs["local_cloud_moist_static_energy"]
-        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs["local_env_moist_static_energy_cloud_levels"]
-        locals.environment_saturation_moist_static_energy_cloud_levels.data[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels"]
-        locals.d_buoyancy.data[:] = inputs["local_d_buoyancy"]
-        locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.lcl_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        locals.cloud_moist_static_energy[:] = inputs["local_cloud_moist_static_energy"]
+        locals.environment_moist_static_energy_cloud_levels[:] = inputs["local_env_moist_static_energy_cloud_levels"]
+        locals.environment_saturation_moist_static_energy_cloud_levels[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels"]
+        locals.d_buoyancy[:] = inputs["local_d_buoyancy"]
+        locals.geopotential_height_cloud_levels[:] = inputs["local_geopotential_height_cloud_levels"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(

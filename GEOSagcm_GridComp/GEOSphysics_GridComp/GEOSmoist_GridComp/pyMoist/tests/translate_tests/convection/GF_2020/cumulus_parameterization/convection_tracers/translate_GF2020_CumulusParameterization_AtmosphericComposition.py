@@ -145,28 +145,26 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
-        state.output.downdraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["downdraft_origin_level"] - 1
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
-        locals.environment_massflux.data[:] = inputs["local_environment_massflux"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        state.output.normalized_massflux_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_downdraft_forced"]
-        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
-        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
-        state.output.mass_entrainment_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_downdraft_forced"]
-        state.output.mass_detrainment_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_downdraft_forced"]
-        locals.vertical_velocity_3d.data[:] = inputs["local_vertical_velocity_3d"]
-        state.output.total_normalized_integrated_condensate_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "total_normalized_integrated_condensate_forced"
-        ]
-        locals.total_normalized_integrated_evaporate_forced.data[:] = inputs["local_total_normalized_integrated_evaporate_forced"]
-        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        state.output.downdraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["downdraft_origin_level"] - 1
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        locals.geopotential_height_cloud_levels[:] = inputs["local_geopotential_height_cloud_levels"]
+        locals.environment_massflux[:] = inputs["local_environment_massflux"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        state.output.normalized_massflux_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_downdraft_forced"]
+        state.output.mass_entrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
+        state.output.mass_detrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_entrainment_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_downdraft_forced"]
+        state.output.mass_detrainment_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_downdraft_forced"]
+        locals.vertical_velocity_3d[:] = inputs["local_vertical_velocity_3d"]
+        state.output.total_normalized_integrated_condensate_forced[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["total_normalized_integrated_condensate_forced"]
+        locals.total_normalized_integrated_evaporate_forced[:] = inputs["local_total_normalized_integrated_evaporate_forced"]
+        state.output.evaporate_in_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
+        state.output.epsilon_forced[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
         # state.input_output.chemistry_tracers.field[:] = ddim_fields["chemistry_tracers"]
         state.input_output.chemistry_tracers_output.field[:, :, :, plume_dependent_constants.PLUME_INDEX, :] = ddim_fields["chemistry_tracers_output"]
         locals.chemistry_tracers_cloud_levels.field[:] = ddim_fields["local_chemistry_tracers_cloud_levels"]

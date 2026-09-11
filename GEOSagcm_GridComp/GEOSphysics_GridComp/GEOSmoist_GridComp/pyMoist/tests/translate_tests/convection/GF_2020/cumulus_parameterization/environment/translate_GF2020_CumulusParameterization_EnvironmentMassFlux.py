@@ -6,31 +6,13 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-    Plumes,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.environment import (
-    environment_mass_flux,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
-    set_constants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
+from pyMoist.convection.GF_2020.cumulus_parameterization.environment import environment_mass_flux
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -57,13 +39,9 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -86,18 +64,10 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
-        state.output.epsilon_forced[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["epsilon_forced"]
-        )
-        state.output.normalized_massflux_updraft_forced[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["normalized_massflux_updraft_forced"]
-        state.output.normalized_massflux_downdraft_forced[
-            :, :, :, plume_dependent_constants.PLUME_INDEX
-        ] = inputs["normalized_massflux_downdraft_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.epsilon_forced[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        state.output.normalized_massflux_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_downdraft_forced"]
         locals.environment_massflux[:] = inputs["local_environment_massflux"]
 
         code = self.stencil_factory.from_dims_halo(
@@ -116,27 +86,17 @@ class TestCore:
             )
 
         outputs = {
-            "error_code": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "epsilon_forced": state.output.epsilon_forced.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.field[
-                :, :, :, plume_dependent_constants.PLUME_INDEX
-            ],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "epsilon_forced": state.output.epsilon_forced.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "normalized_massflux_downdraft_forced": state.output.normalized_massflux_downdraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
             "local_environment_massflux": locals.environment_massflux.field[:],
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -149,21 +109,15 @@ class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_shallow(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -176,21 +130,15 @@ class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_mid(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.MID.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -203,13 +151,9 @@ class TranslateGF2020_CumulusParameterization_EnvironmentMassFlux_deep(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

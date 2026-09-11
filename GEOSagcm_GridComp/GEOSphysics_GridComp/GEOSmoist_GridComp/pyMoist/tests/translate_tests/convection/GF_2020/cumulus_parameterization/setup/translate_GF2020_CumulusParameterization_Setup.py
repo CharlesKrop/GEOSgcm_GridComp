@@ -6,15 +6,9 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    DeepSpecificConstants,
-    GF2020CumulusParameterizationConfig,
-    MidSpecificConstants,
-    ShallowSpecificConstants,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
 from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.setup import Setup
 from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
@@ -119,10 +113,6 @@ class TestCore:
         # initialize constants
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
-        # plume_dependent_constants = GF2020PlumeDependentConstants()
-        # self.shallow = ShallowSpecificConstants(cumulus_parameterization_config)
-        # self.mid = MidSpecificConstants(cumulus_parameterization_config)
-        # self.deep = DeepSpecificConstants(cumulus_parameterization_config)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -145,25 +135,25 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.input.t_excess.data[:] = inputs["t_excess"]
-        state.input.vapor_excess.data[:] = inputs["vapor_excess"]
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        state.input_output.t_old.data[:] = inputs["t_old"]
-        state.input_output.vapor_old.data[:] = inputs["vapor_old"]
-        state.input.grid_scale_forcing_t.data[:] = inputs["grid_scale_forcing_t"]
-        state.input.grid_scale_forcing_vapor.data[:] = inputs["grid_scale_forcing_vapor"]
-        state.input.subgrid_scale_forcing_t.data[:] = inputs["subgrid_scale_forcing_t"]
-        state.input.subgrid_scale_forcing_vapor.data[:] = inputs["subgrid_scale_forcing_vapor"]
-        state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height_forced"]
-        state.output.epsilon_forced.data[:, :, plume_idx] = inputs["epsilon_forced"]
-        state.output.precip.data[:, :, plume_idx] = inputs["precip"]
-        state.output.scale_dependence_factor.data[:, :, plume_idx] = inputs["scale_dependence_factor"]
-        state.output.lightning_density.data[:] = inputs["lightning_density"]
-        state.input.seed_convection.data[:] = inputs["seed_convection"]
-        state.output.error_code.data[:, :, plume_idx] = inputs["error_code"]
-        state.input_output.grid_length.data[:] = inputs["grid_length"]
-        state.input.lateral_entrainment_rate.data[:] = inputs["lateral_entrainment_rate"]
-        state.output.entrainment_rate.data[:, :, :, plume_idx] = inputs["entrainment_rate"]
+        state.input.t_excess[:] = inputs["t_excess"]
+        state.input.vapor_excess[:] = inputs["vapor_excess"]
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        state.input_output.t_old[:] = inputs["t_old"]
+        state.input_output.vapor_old[:] = inputs["vapor_old"]
+        state.input.grid_scale_forcing_t[:] = inputs["grid_scale_forcing_t"]
+        state.input.grid_scale_forcing_vapor[:] = inputs["grid_scale_forcing_vapor"]
+        state.input.subgrid_scale_forcing_t[:] = inputs["subgrid_scale_forcing_t"]
+        state.input.subgrid_scale_forcing_vapor[:] = inputs["subgrid_scale_forcing_vapor"]
+        state.input_output.geopotential_height_forced[:] = inputs["geopotential_height_forced"]
+        state.output.epsilon_forced[:, :, plume_idx] = inputs["epsilon_forced"]
+        state.output.precip[:, :, plume_idx] = inputs["precip"]
+        state.output.scale_dependence_factor[:, :, plume_idx] = inputs["scale_dependence_factor"]
+        state.output.lightning_density[:] = inputs["lightning_density"]
+        state.input.seed_convection[:] = inputs["seed_convection"]
+        state.output.error_code[:, :, plume_idx] = inputs["error_code"]
+        state.input_output.grid_length[:] = inputs["grid_length"]
+        state.input.lateral_entrainment_rate[:] = inputs["lateral_entrainment_rate"]
+        state.output.entrainment_rate[:, :, :, plume_idx] = inputs["entrainment_rate"]
 
         # prefill locals with nans to replicate fortran initalization
         locals.t_excess.field[:] = np.nan

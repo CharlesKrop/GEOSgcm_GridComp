@@ -1,14 +1,25 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, abs, computation, interval, max, min
+from ndsl.dsl.gt4py import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    K,
+    abs,
+    computation,
+    interval,
+    max,
+    min,
+)
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.column_operations import column_min
 
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import Plumes
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    GF2020CumulusParameterizationConfig,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatField_ConvectionTracers,
     FloatField_ConvectionTracers_Plume,
@@ -16,11 +27,17 @@ from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import (
     FloatFieldIJ_Plume,
     IntFieldIJ_Plume,
 )
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
+    GF2020CumulusParameterizationState,
+)
 from pyMoist.convection.GF_2020.locals import GF2020Locals
 from pyMoist.convection.GF_2020.state import GF2020State
 from pyMoist.convection_tracers import ConvectionTracers
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity, saturation_specific_humidity_liquid_surface
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    saturation_specific_humidity,
+    saturation_specific_humidity_liquid_surface,
+)
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
 from pyMoist.shared.incloud_processes import ice_fraction
 
@@ -121,10 +138,16 @@ def check_vapor_mixing_ratio(
         if do_this_column != 0:
             min_value, min_index = column_min(distance, 0, k_end - 1)
             if min_value < 0.0:
-                if abs(t_tendency_from_vapor.at(K=min_index) * DT_MOIST) < constants.FLOAT_TINY:
+                if (
+                    abs(t_tendency_from_vapor.at(K=min_index) * DT_MOIST)
+                    < constants.FLOAT_TINY
+                ):
                     fix_out_vapor = 0.999999
                 else:
-                    fix_out_vapor = (cumulus_parameterization_constants.smaller_qv - vapor_current.at(K=min_index)) / (t_tendency_from_vapor.at(K=min_index) * DT_MOIST)
+                    fix_out_vapor = (
+                        cumulus_parameterization_constants.smaller_qv
+                        - vapor_current.at(K=min_index)
+                    ) / (t_tendency_from_vapor.at(K=min_index) * DT_MOIST)
                 fix_out_vapor = max(0.0, min(fix_out_vapor, 1.0))
 
 
@@ -201,14 +224,24 @@ def feedback(
         dbuoyancydt (FloatField)
         do_this_column (IntFieldIJ)
     """
-    from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, CONVECTION_TRACER, USE_MOMENTUM_TRANSPORT
+    from __externals__ import (
+        APPLY_SUBSIDENCE_MICROPHYSICS,
+        CONVECTION_TRACER,
+        USE_MOMENTUM_TRANSPORT,
+    )
 
     with computation(FORWARD), interval(0, 1):
         if do_this_column != 0:
             precip = (
-                precip_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW]
-                + precip_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID]
-                + precip_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP]
+                precip_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.SHALLOW
+                ]
+                + precip_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.MID
+                ]
+                + precip_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
             ) * fix_out_vapor
 
     with computation(PARALLEL), interval(...):
@@ -216,75 +249,152 @@ def feedback(
         if do_this_column != 0:
             # feedback the tendencies from convection
             dtdt = (
-                dtdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                + dtdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                + dtdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                dtdt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.SHALLOW
+                ]
+                + dtdt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.MID
+                ]
+                + dtdt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
             ) * fix_out_vapor
             dvapordt = (
-                dvapordt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                + dvapordt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                + dvapordt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                dvapordt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.SHALLOW
+                ]
+                + dvapordt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.MID
+                ]
+                + dvapordt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
             ) * fix_out_vapor
             dcloudicedt = (
-                dcloudicedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                + dcloudicedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                + dcloudicedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                dcloudicedt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.SHALLOW
+                ]
+                + dcloudicedt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.MID
+                ]
+                + dcloudicedt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
             ) * fix_out_vapor
-            evaporation_sublimation_tendency = evaporation_sublimation_tendency_from_cumulus_parameterization * fix_out_vapor  # already contains deep and mid amounts.
+            evaporation_sublimation_tendency = (
+                evaporation_sublimation_tendency_from_cumulus_parameterization
+                * fix_out_vapor
+            )  # already contains deep and mid amounts.
 
             # precip flux is only computed for deep plume
-            convective_precip_flux = convective_precip_flux_from_cumulus_parameterization * fix_out_vapor  # ice/liquid precip flux of the deep plume
+            convective_precip_flux = (
+                convective_precip_flux_from_cumulus_parameterization * fix_out_vapor
+            )  # ice/liquid precip flux of the deep plume
 
             if USE_MOMENTUM_TRANSPORT > 0:
                 dudt = (
-                    dudt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dudt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dudt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dudt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.SHALLOW
+                    ]
+                    + dudt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.MID
+                    ]
+                    + dudt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.DEEP
+                    ]
                 ) * fix_out_vapor
                 dvdt = (
-                    dvdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dvdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dvdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dvdt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.SHALLOW
+                    ]
+                    + dvdt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.MID
+                    ]
+                    + dvdt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.DEEP
+                    ]
                 ) * fix_out_vapor
 
             if APPLY_SUBSIDENCE_MICROPHYSICS == 1:
                 dlarge_scale_icedt = (
-                    dlarge_scale_icedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dlarge_scale_icedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dlarge_scale_icedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dlarge_scale_icedt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.SHALLOW
+                    ]
+                    + dlarge_scale_icedt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.MID
+                    ]
+                    + dlarge_scale_icedt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.DEEP
+                    ]
                 ) * fix_out_vapor
                 dconvective_icedt = (
-                    dconvective_icedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dconvective_icedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dconvective_icedt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dconvective_icedt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.SHALLOW
+                    ]
+                    + dconvective_icedt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.MID
+                    ]
+                    + dconvective_icedt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.DEEP
+                    ]
                 ) * fix_out_vapor
                 dlarge_scale_liquiddt = (
-                    dlarge_scale_liquiddt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dlarge_scale_liquiddt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dlarge_scale_liquiddt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dlarge_scale_liquiddt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.SHALLOW
+                    ]
+                    + dlarge_scale_liquiddt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.MID
+                    ]
+                    + dlarge_scale_liquiddt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.DEEP
+                    ]
                 ) * fix_out_vapor
                 dconvective_liquiddt = (
-                    dconvective_liquiddt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dconvective_liquiddt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dconvective_liquiddt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dconvective_liquiddt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.SHALLOW
+                    ]
+                    + dconvective_liquiddt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.MID
+                    ]
+                    + dconvective_liquiddt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.DEEP
+                    ]
                 ) * fix_out_vapor
                 dlarge_scale_cloud_fractiondt = (
-                    dlarge_scale_cloud_fractiondt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dlarge_scale_cloud_fractiondt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dlarge_scale_cloud_fractiondt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dlarge_scale_cloud_fractiondt_from_cumulus_parameterization[
+                        0, 0, 0
+                    ][cumulus_parameterization_constants.SHALLOW]
+                    + dlarge_scale_cloud_fractiondt_from_cumulus_parameterization[
+                        0, 0, 0
+                    ][cumulus_parameterization_constants.MID]
+                    + dlarge_scale_cloud_fractiondt_from_cumulus_parameterization[
+                        0, 0, 0
+                    ][cumulus_parameterization_constants.DEEP]
                 ) * fix_out_vapor
                 dconvective_cloud_fractiondt = (
-                    dconvective_cloud_fractiondt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                    + dconvective_cloud_fractiondt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                    + dconvective_cloud_fractiondt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                    dconvective_cloud_fractiondt_from_cumulus_parameterization[0, 0, 0][
+                        cumulus_parameterization_constants.SHALLOW
+                    ]
+                    + dconvective_cloud_fractiondt_from_cumulus_parameterization[
+                        0, 0, 0
+                    ][cumulus_parameterization_constants.MID]
+                    + dconvective_cloud_fractiondt_from_cumulus_parameterization[
+                        0, 0, 0
+                    ][cumulus_parameterization_constants.DEEP]
                 ) * fix_out_vapor
 
     with computation(PARALLEL), interval(...):
         if do_this_column != 0 and CONVECTION_TRACER == 1:
             dbuoyancydt = (
-                dbuoyancydt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW]
-                + dbuoyancydt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID]
-                + dbuoyancydt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP]
+                dbuoyancydt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.SHALLOW
+                ]
+                + dbuoyancydt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.MID
+                ]
+                + dbuoyancydt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
             ) * fix_out_vapor
 
 
@@ -311,15 +421,24 @@ def feedback_tracers(
     with computation(PARALLEL), interval(...):
         if do_this_column != 0 and USE_TRACER_TRANSPORT == 1:
             dconvection_tracersdt[0, 0, 0][tracer] = (
-                dconvection_tracersdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.SHALLOW, tracer]
-                + dconvection_tracersdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.MID, tracer]
-                + dconvection_tracersdt_from_cumulus_parameterization[0, 0, 0][cumulus_parameterization_constants.DEEP, tracer]
+                dconvection_tracersdt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.SHALLOW, tracer
+                ]
+                + dconvection_tracersdt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.MID, tracer
+                ]
+                + dconvection_tracersdt_from_cumulus_parameterization[0, 0, 0][
+                    cumulus_parameterization_constants.DEEP, tracer
+                ]
             ) * fix_out_vapor
 
     with computation(PARALLEL), interval(0, -1):
         if do_this_column != 0 and USE_TRACER_TRANSPORT == 1:
             # constrain positivity for tracers
-            distance = chemistry_tracers_from_cumulus_parameterization[0, 0, 0][tracer] + dconvection_tracersdt[0, 0, 0][tracer] * DT_MOIST
+            distance = (
+                chemistry_tracers_from_cumulus_parameterization[0, 0, 0][tracer]
+                + dconvection_tracersdt[0, 0, 0][tracer] * DT_MOIST
+            )
 
     with computation(FORWARD), interval(0, 1):
         # ensure temporary is initialized properly
@@ -329,10 +448,18 @@ def feedback_tracers(
             # fixer for mass of tracer
             min_value, min_index = column_min(distance, 0, k_end - 1)
             if min_value < 0.0:
-                if abs(dconvection_tracersdt.at(K=min_index, ddim=[tracer]) * DT_MOIST) < constants.FLOAT_TINY:
+                if (
+                    abs(dconvection_tracersdt.at(K=min_index, ddim=[tracer]) * DT_MOIST)
+                    < constants.FLOAT_TINY
+                ):
                     fix_tracers = 0.999999
                 else:
-                    fix_tracers = (constants.FLOAT_TINY - chemistry_tracers_from_cumulus_parameterization.at(K=min_index, ddim=[tracer])) / (
+                    fix_tracers = (
+                        constants.FLOAT_TINY
+                        - chemistry_tracers_from_cumulus_parameterization.at(
+                            K=min_index, ddim=[tracer]
+                        )
+                    ) / (
                         dconvection_tracersdt.at(K=min_index, ddim=[tracer]) * DT_MOIST
                     )
                 if fix_tracers > 1.0 or fix_tracers < 0.0:
@@ -341,7 +468,9 @@ def feedback_tracers(
     with computation(PARALLEL), interval(0, -1):
         if do_this_column != 0 and USE_TRACER_TRANSPORT == 1:
             # apply fixer
-            dconvection_tracersdt[0, 0, 0][tracer] = fix_tracers * dconvection_tracersdt[0, 0, 0][tracer]
+            dconvection_tracersdt[0, 0, 0][tracer] = (
+                fix_tracers * dconvection_tracersdt[0, 0, 0][tracer]
+            )
 
 
 def cloud_workfunction_output(
@@ -359,8 +488,12 @@ def cloud_workfunction_output(
         cloud_workfunction_3 (FloatFieldIJ)
     """
     with computation(FORWARD), interval(0, 1):
-        cloud_workfunction_2 = precip[0, 0][cumulus_parameterization_constants.MID] * fix_out_vapor
-        cloud_workfunction_3 = precip[0, 0][cumulus_parameterization_constants.DEEP] * fix_out_vapor
+        cloud_workfunction_2 = (
+            precip[0, 0][cumulus_parameterization_constants.MID] * fix_out_vapor
+        )
+        cloud_workfunction_3 = (
+            precip[0, 0][cumulus_parameterization_constants.DEEP] * fix_out_vapor
+        )
 
 
 def prefill_entrainment(
@@ -411,18 +544,28 @@ def feed_3d_model(
     with computation(PARALLEL), interval(...):
         if cumulus_parameterization_constants.FEED_3D_MODEL and do_this_column != 0:
             # sublimation/evaporation tendencies (kg/kg/s)
-            evaporation_sublimation_tendency = evaporation_sublimation_tendency_from_cumulus_parameterization.at(K=k_end - K)
+            evaporation_sublimation_tendency = (
+                evaporation_sublimation_tendency_from_cumulus_parameterization.at(
+                    K=k_end - K
+                )
+            )
             # preciptation fluxes (kg/kg/s)
-            convective_precip_flux = convective_precip_flux_from_cumulus_parameterization.at(K=k_end - K)
+            convective_precip_flux = (
+                convective_precip_flux_from_cumulus_parameterization.at(K=k_end - K)
+            )
 
             if USE_TRACER_TRANSPORT == 1:
                 # update tracer mass mixing ratios
                 tracer = 0
                 while tracer < constants.NUMBER_OF_TRACERS:
-                    convection_tracers[0, 0, 0][tracer] = convection_tracers[0, 0, 0][tracer] + DT_MOIST * dconvection_tracersdt.at(K=k_end - K, ddim=[tracer])
+                    convection_tracers[0, 0, 0][tracer] = convection_tracers[0, 0, 0][
+                        tracer
+                    ] + DT_MOIST * dconvection_tracersdt.at(K=k_end - K, ddim=[tracer])
 
                     # final check for negative tracer mass mixing ratio
-                    convection_tracers[0, 0, 0][tracer] = max(convection_tracers[0, 0, 0][tracer], constants.FLOAT_TINY)
+                    convection_tracers[0, 0, 0][tracer] = max(
+                        convection_tracers[0, 0, 0][tracer], constants.FLOAT_TINY
+                    )
                     tracer += 1
 
 
@@ -502,7 +645,8 @@ def feed_3d_model_from_plumes(
     with computation(FORWARD), interval(...):
         if (
             cumulus_parameterization_constants.FEED_3D_MODEL
-            and K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
+            and K
+            >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
             and error_code_from_cumulus_parameterization[0, 0][plume] == 0
         ):
             # deep convective total water flux
@@ -511,56 +655,103 @@ def feed_3d_model_from_plumes(
             # is based off of the fortran GEOSQsat. These two functions are effectively identical, as they
             # evaluate the same calculations in the same order; however, due to different uses of buffers,
             # slight differences arise (OoM 10^2 - 10^3 ULP).
-            saturation_specific_humidity_updraft, _ = saturation_specific_humidity_liquid_surface(
-                esw=esw,
-                lqu=estlqu,
-                t=t_updraft_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume]),
-                p=p_flipped.at(K=k_end - K),
+            saturation_specific_humidity_updraft, _ = (
+                saturation_specific_humidity_liquid_surface(
+                    esw=esw,
+                    lqu=estlqu,
+                    t=t_updraft_from_cumulus_parameterization.at(
+                        K=k_end - K, ddim=[plume]
+                    ),
+                    p=p_flipped.at(K=k_end - K),
+                )
             )
 
             saturation_specific_humidity_updraft = (
-                saturation_specific_humidity_updraft + cloud_liquid_after_rain_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume]) / 0.033
+                saturation_specific_humidity_updraft
+                + cloud_liquid_after_rain_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
+                / 0.033
             )
-            total_water_flux_deep_convection[0, 0, 1] = total_water_flux_deep_convection[0, 0, 1] + normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
-                K=k_end - K, ddim=[plume]
-            ) * (saturation_specific_humidity_updraft - vapor_flipped.at(K=k_end - K))
+            total_water_flux_deep_convection[0, 0, 1] = (
+                total_water_flux_deep_convection[0, 0, 1]
+                + normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
+                * (saturation_specific_humidity_updraft - vapor_flipped.at(K=k_end - K))
+            )
 
     with computation(PARALLEL), interval(...):
         if (
             cumulus_parameterization_constants.FEED_3D_MODEL
-            and K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
+            and K
+            >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1
             and error_code_from_cumulus_parameterization[0, 0][plume] == 0
         ):
             if plume == cumulus_parameterization_constants.SHALLOW:
                 # export entrainment rates used by GF
-                lateral_entrainment_rate_shallow = entrainment_rate_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
+                lateral_entrainment_rate_shallow = (
+                    entrainment_rate_from_cumulus_parameterization.at(
+                        K=k_end - K, ddim=[plume]
+                    )
+                )
             if plume == cumulus_parameterization_constants.MID:
                 # export entrainment rates used by GF
-                lateral_entrainment_rate_mid = entrainment_rate_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
+                lateral_entrainment_rate_mid = (
+                    entrainment_rate_from_cumulus_parameterization.at(
+                        K=k_end - K, ddim=[plume]
+                    )
+                )
             if plume == cumulus_parameterization_constants.DEEP:
                 # export entrainment rates used by GF
-                lateral_entrainment_rate_deep = entrainment_rate_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
+                lateral_entrainment_rate_deep = (
+                    entrainment_rate_from_cumulus_parameterization.at(
+                        K=k_end - K, ddim=[plume]
+                    )
+                )
             # special treatment for convective_condensate_source
             # units = 'kg m-2 s-1',
             # dcloudicedt contains contributions from all plumes, so no need to accumulate across levels
-            convective_condensate_source = dcloudicedt.at(K=k_end - K) * dz * air_density
+            convective_condensate_source = (
+                dcloudicedt.at(K=k_end - K) * dz * air_density
+            )
 
             # detraining_mass_flux
             # units = 'kg m-2 s-1'
-            mass_flux_deep_updraft_detrained = mass_flux_deep_updraft_detrained + mass_detrainment_updraft_forced_from_cumulus_parameterization.at(
-                K=k_end - K, ddim=[plume]
+            mass_flux_deep_updraft_detrained = (
+                mass_flux_deep_updraft_detrained
+                + mass_detrainment_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
             )
 
             # cloud_base_mass_flux
             # units = 'kg m-2 s-1'
-            mass_flux_cloud_base = mass_flux_cloud_base + normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
+            mass_flux_cloud_base = (
+                mass_flux_cloud_base
+                + normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
+            )
 
-            if normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume]) > 1.0e-6:
+            if (
+                normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
+                > 1.0e-6
+            ):
                 # entrainment parameter
                 # units ='m-1',
                 entrainment_parameter = entrainment_parameter + (
-                    mass_entrainment_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
-                    / (dz * normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume]))
+                    mass_entrainment_updraft_forced_from_cumulus_parameterization.at(
+                        K=k_end - K, ddim=[plume]
+                    )
+                    / (
+                        dz
+                        * normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                            K=k_end - K, ddim=[plume]
+                        )
+                    )
                 )
 
                 #     # updraft_vertical_velocity
@@ -569,30 +760,54 @@ def feed_3d_model_from_plumes(
 
             # convective_condensate_grid_mean
             # units ='kg kg-1'
-            convective_condensate_grid_mean = convective_condensate_grid_mean + cloud_liquid_after_rain_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
+            convective_condensate_grid_mean = (
+                convective_condensate_grid_mean
+                + cloud_liquid_after_rain_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
+            )
 
             #  not using progno-cloud to calculate the precip from the convective column
             #  if CNV_PRC3 will be send to progno-cloud, set CNPCPRATE = zero
             # 'convective_precipitation_from_GF',UNITS     = 'kg m-2 s-1',
             #  JAN/17/2017 : the units above are wrong. The correct are kg[precip water]/kg[air]
             convective_precipitation_RAS = convective_precipitation_RAS + (
-                condensate_to_fall_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
-                + epsilon_forced_from_cumulus_parameterization[0, 0][plume] * evaporate_in_downdraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
+                condensate_to_fall_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
+                + epsilon_forced_from_cumulus_parameterization[0, 0][plume]
+                * evaporate_in_downdraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
             ) * DT_MOIST / (dz * air_density)
 
             # updraft_area_fraction
-            if normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume]) > 1.0e-6:
+            if (
+                normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[plume]
+                )
+                > 1.0e-6
+            ):
                 updraft_areal_fraction = 0.033
 
     with computation(BACKWARD), interval(...):
         # this must be done in a separate computation because the offset write is incompatable with PARALLEL
         if cumulus_parameterization_constants.FEED_3D_MODEL:
-            if K >= k_end - cloud_top_level_from_cumulus_parameterization[0, 0][plume] - 1 and error_code_from_cumulus_parameterization[0, 0][plume] == 0:
+            if (
+                K
+                >= k_end
+                - cloud_top_level_from_cumulus_parameterization[0, 0][plume]
+                - 1
+                and error_code_from_cumulus_parameterization[0, 0][plume] == 0
+            ):
                 # convective mass flux - only updraft
                 # units = 'kg m-2 s-1'
-                mass_flux_deep_updraft_interface[0, 0, 1] = mass_flux_deep_updraft_interface[
-                    0, 0, 1
-                ] + normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[plume])
+                mass_flux_deep_updraft_interface[0, 0, 1] = (
+                    mass_flux_deep_updraft_interface[0, 0, 1]
+                    + normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                        K=k_end - K, ddim=[plume]
+                    )
+                )
 
 
 def update_convection_tracer(
@@ -612,7 +827,9 @@ def update_convection_tracer(
     # cold pool/"convection tracer"
     with computation(PARALLEL), interval(...):
         if CONVECTION_TRACER == 1:
-            cold_pool_timescale = land_fraction * (6.0 / 3600.0) + (1 - land_fraction) * (6.0 / 3600.0)
+            cold_pool_timescale = land_fraction * (6.0 / 3600.0) + (
+                1 - land_fraction
+            ) * (6.0 / 3600.0)
 
             # sink term (exp decay 1h)
             sink = DT_MOIST * abs(convection_tracer) / cold_pool_timescale
@@ -679,32 +896,112 @@ def update_outputs(
         pressure_deep_convective_cloud_top = constants.MAPL_UNDEF
 
     with computation(FORWARD), interval(0, 1):
-        if ENABLE_SHALLOW == 1 and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW] == 0:
-            pressure_shallow_convective_cloud_top = p_flipped.at(K=cloud_top_level_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW])
-            mass_flux_cloud_base_shallow = cloud_base_mass_flux_modified_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW]
+        if (
+            ENABLE_SHALLOW == 1
+            and error_code_from_cumulus_parameterization[0, 0][
+                cumulus_parameterization_constants.SHALLOW
+            ]
+            == 0
+        ):
+            pressure_shallow_convective_cloud_top = p_flipped.at(
+                K=cloud_top_level_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.SHALLOW
+                ]
+            )
+            mass_flux_cloud_base_shallow = (
+                cloud_base_mass_flux_modified_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.SHALLOW
+                ]
+            )
 
-        if ENABLE_MID == 1 and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID] == 0:
-            pressure_mid_convective_cloud_top = p_flipped.at(K=cloud_top_level_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID])
-            mass_flux_cloud_base_mid = cloud_base_mass_flux_modified_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID]
-            sigma_mid = scale_dependence_factor_from_cumulus_parameterizaiton[0, 0][cumulus_parameterization_constants.MID]
+        if (
+            ENABLE_MID == 1
+            and error_code_from_cumulus_parameterization[0, 0][
+                cumulus_parameterization_constants.MID
+            ]
+            == 0
+        ):
+            pressure_mid_convective_cloud_top = p_flipped.at(
+                K=cloud_top_level_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.MID
+                ]
+            )
+            mass_flux_cloud_base_mid = (
+                cloud_base_mass_flux_modified_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.MID
+                ]
+            )
+            sigma_mid = scale_dependence_factor_from_cumulus_parameterizaiton[0, 0][
+                cumulus_parameterization_constants.MID
+            ]
 
-        if ENABLE_DEEP == 1 and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP] == 0:
-            pressure_deep_convective_cloud_top = p_flipped.at(K=cloud_top_level_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP])
-            mass_flux_cloud_base_deep = cloud_base_mass_flux_modified_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP]
-            sigma_deep = scale_dependence_factor_from_cumulus_parameterizaiton[0, 0][cumulus_parameterization_constants.DEEP]
+        if (
+            ENABLE_DEEP == 1
+            and error_code_from_cumulus_parameterization[0, 0][
+                cumulus_parameterization_constants.DEEP
+            ]
+            == 0
+        ):
+            pressure_deep_convective_cloud_top = p_flipped.at(
+                K=cloud_top_level_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
+            )
+            mass_flux_cloud_base_deep = (
+                cloud_base_mass_flux_modified_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
+            )
+            sigma_deep = scale_dependence_factor_from_cumulus_parameterizaiton[0, 0][
+                cumulus_parameterization_constants.DEEP
+            ]
 
     with computation(PARALLEL), interval(...):
-        if ENABLE_SHALLOW == 1 and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW] == 0:
-            mass_flux_shallow = normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[cumulus_parameterization_constants.SHALLOW])
+        if (
+            ENABLE_SHALLOW == 1
+            and error_code_from_cumulus_parameterization[0, 0][
+                cumulus_parameterization_constants.SHALLOW
+            ]
+            == 0
+        ):
+            mass_flux_shallow = (
+                normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[cumulus_parameterization_constants.SHALLOW]
+                )
+            )
 
-        if ENABLE_MID == 1 and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID] == 0:
-            mass_flux_mid = normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[cumulus_parameterization_constants.MID])
+        if (
+            ENABLE_MID == 1
+            and error_code_from_cumulus_parameterization[0, 0][
+                cumulus_parameterization_constants.MID
+            ]
+            == 0
+        ):
+            mass_flux_mid = (
+                normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[cumulus_parameterization_constants.MID]
+                )
+            )
 
-        if ENABLE_DEEP == 1 and error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP] == 0:
-            mass_flux_deep_updraft = normalized_massflux_updraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[cumulus_parameterization_constants.DEEP])
+        if (
+            ENABLE_DEEP == 1
+            and error_code_from_cumulus_parameterization[0, 0][
+                cumulus_parameterization_constants.DEEP
+            ]
+            == 0
+        ):
+            mass_flux_deep_updraft = (
+                normalized_massflux_updraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[cumulus_parameterization_constants.DEEP]
+                )
+            )
             mass_flux_deep_downdraft = (
-                normalized_massflux_downdraft_forced_from_cumulus_parameterization.at(K=k_end - K, ddim=[cumulus_parameterization_constants.DEEP])
-                * epsilon_forced_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP]
+                normalized_massflux_downdraft_forced_from_cumulus_parameterization.at(
+                    K=k_end - K, ddim=[cumulus_parameterization_constants.DEEP]
+                )
+                * epsilon_forced_from_cumulus_parameterization[0, 0][
+                    cumulus_parameterization_constants.DEEP
+                ]
             )
 
     with computation(FORWARD), interval(0, 1):
@@ -759,9 +1056,15 @@ def update_convection_codes(
 ):
     with computation(FORWARD), interval(0, 1):
         # error codes
-        convection_code_shallow = error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.SHALLOW]
-        convection_code_mid = error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.MID]
-        convection_code_deep = error_code_from_cumulus_parameterization[0, 0][cumulus_parameterization_constants.DEEP]
+        convection_code_shallow = error_code_from_cumulus_parameterization[0, 0][
+            cumulus_parameterization_constants.SHALLOW
+        ]
+        convection_code_mid = error_code_from_cumulus_parameterization[0, 0][
+            cumulus_parameterization_constants.MID
+        ]
+        convection_code_deep = error_code_from_cumulus_parameterization[0, 0][
+            cumulus_parameterization_constants.DEEP
+        ]
 
 
 def update_state_with_tendencies(
@@ -850,16 +1153,24 @@ def update_state_with_tendencies(
         condensate_per_mass = convective_condensate_source / mass
         dliquiddt_deep_convection = (1.0 - fraction_ice) * condensate_per_mass
         dicedt_deep_convection = fraction_ice * condensate_per_mass
-        dcloudfractiondt_deep_convection = mass_flux_deep_updraft_detrained * SCLM_DEEP / mass
+        dcloudfractiondt_deep_convection = (
+            mass_flux_deep_updraft_detrained * SCLM_DEEP / mass
+        )
 
         # sublimation/evaporation tendencies (kg/kg/s)
-        sublimation_of_convective_precipitation = evaporation_sublimation_tendency * fraction_ice
-        evaporation_of_convective_precipitation = evaporation_sublimation_tendency * (1.0 - fraction_ice)
+        sublimation_of_convective_precipitation = (
+            evaporation_sublimation_tendency * fraction_ice
+        )
+        evaporation_of_convective_precipitation = evaporation_sublimation_tendency * (
+            1.0 - fraction_ice
+        )
 
     with computation(FORWARD), interval(...):
         # preciptation fluxes (kg/kg/s)
         ice_precip_flux_interface[0, 0, 1] = convective_precip_flux * fraction_ice
-        liquid_precip_flux_interface[0, 0, 1] = convective_precip_flux * (1.0 - fraction_ice)
+        liquid_precip_flux_interface[0, 0, 1] = convective_precip_flux * (
+            1.0 - fraction_ice
+        )
 
     with computation(PARALLEL), interval(...):
         # add liquid/ice/cloud fraction tendencies
@@ -878,25 +1189,45 @@ def update_state_with_tendencies(
             saturation_humidity, _ = saturation_specific_humidity(t, p, esx)
 
             if convective_cloud_fraction < 1.0:
-                modification = (vapor - saturation_humidity * convective_cloud_fraction) / (1.0 - convective_cloud_fraction)
+                modification = (
+                    vapor - saturation_humidity * convective_cloud_fraction
+                ) / (1.0 - convective_cloud_fraction)
             min_saturation_humidity = 0.001
-            if (modification - min_saturation_humidity * saturation_humidity) < 0.0 and convective_cloud_fraction > 0.0:
-                convective_cloud_fraction = (vapor - min_saturation_humidity * saturation_humidity) / (saturation_humidity * (1.0 - min_saturation_humidity))
+            if (
+                modification - min_saturation_humidity * saturation_humidity
+            ) < 0.0 and convective_cloud_fraction > 0.0:
+                convective_cloud_fraction = (
+                    vapor - min_saturation_humidity * saturation_humidity
+                ) / (saturation_humidity * (1.0 - min_saturation_humidity))
             # if a suitable environment relative humidity cannot be made then destroy anvil
             if convective_cloud_fraction < 0.0:
                 convective_cloud_fraction = 0.0
-                dliquiddt_deep_convection = dliquiddt_deep_convection - (convective_liquid) / DT_MOIST
-                dicedt_deep_convection = dicedt_deep_convection - (convective_ice) / DT_MOIST
-                dvapordt_deep_convection = dvapordt_deep_convection + (convective_liquid + convective_ice) / DT_MOIST
+                dliquiddt_deep_convection = (
+                    dliquiddt_deep_convection - (convective_liquid) / DT_MOIST
+                )
+                dicedt_deep_convection = (
+                    dicedt_deep_convection - (convective_ice) / DT_MOIST
+                )
+                dvapordt_deep_convection = (
+                    dvapordt_deep_convection
+                    + (convective_liquid + convective_ice) / DT_MOIST
+                )
                 vapor = vapor + (convective_liquid + convective_ice)
-                modification = (constants.MAPL_ALHL * convective_liquid + constants.MAPL_ALHS * convective_ice) / constants.MAPL_CP
+                modification = (
+                    constants.MAPL_ALHL * convective_liquid
+                    + constants.MAPL_ALHS * convective_ice
+                ) / constants.MAPL_CP
                 dtdt_deep_convection = dtdt_deep_convection - modification / DT_MOIST
                 t = t - modification
                 convective_liquid = 0.0
                 convective_ice = 0.0
 
-        total_cumulative_mass_flux_interface = total_cumulative_mass_flux_interface + mass_flux_deep_updraft_interface
-        total_detraining_mass_flux = total_detraining_mass_flux + mass_flux_deep_updraft_detrained
+        total_cumulative_mass_flux_interface = (
+            total_cumulative_mass_flux_interface + mass_flux_deep_updraft_interface
+        )
+        total_detraining_mass_flux = (
+            total_detraining_mass_flux + mass_flux_deep_updraft_detrained
+        )
 
 
 def update_ice_fraction_in_convective_tower(
@@ -971,7 +1302,9 @@ class GF2020Finalize(NDSLRuntime):
         self._estlqu = saturation_tables.lqu
 
         # initialized local
-        self.fraction_ice = self.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM], Float)
+        self.fraction_ice = self.make_local(
+            quantity_factory, [I_DIM, J_DIM, K_DIM], Float
+        )
 
         # construct stencils
         self._copy_from_cumulus_parameterization_state = stencil_factory.from_dims_halo(

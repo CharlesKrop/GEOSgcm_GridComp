@@ -63,10 +63,10 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.hydrostatic_air_density.data[:] = inputs["local_hydrostatic_air_density"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.hydrostatic_air_density[:] = inputs["local_hydrostatic_air_density"]
 
         code = self.stencil_factory.from_dims_halo(
             func=hydrostatic_air_density,

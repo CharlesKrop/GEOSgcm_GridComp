@@ -6,31 +6,13 @@ from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
-    GF2020CumulusParameterizationConfig,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import (
-    MAXENS1,
-    MAXENS2,
-    MAXENS3,
-    NUMBER_OF_PLUMES,
-    Plumes,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.locals import (
-    GF2020CumulusParameterizationLocals,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import (
-    GF2020PlumeDependentConstants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import (
-    set_constants,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import (
-    generic_find_level,
-)
-from pyMoist.convection.GF_2020.cumulus_parameterization.state import (
-    GF2020CumulusParameterizationState,
-)
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
+from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
+from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
+from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
+from pyMoist.convection.GF_2020.cumulus_parameterization.shared_stencils import generic_find_level
+from pyMoist.convection.GF_2020.cumulus_parameterization.state import GF2020CumulusParameterizationState
 
 
 class TestCore:
@@ -57,13 +39,9 @@ class TestCore:
     def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
-        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(
-            **cu_param_constants
-        )
+        cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
         plume_dependent_constants = GF2020PlumeDependentConstants()
-        plume_dependent_constants = set_constants(
-            cumulus_parameterization_config, plume_dependent_constants, plume
-        )
+        plume_dependent_constants = set_constants(cumulus_parameterization_config, plume_dependent_constants, plume)
 
         # initialize dataclasses
         state = GF2020CumulusParameterizationState.zeros(
@@ -86,21 +64,11 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "error_code"
-        ]
-        locals.environment_saturation_moist_static_energy_cloud_levels_forced[:] = (
-            inputs["local_env_saturation_moist_static_energy_cloud_levels_forced"]
-        )
-        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["updraft_lfc_level"] - 1
-        )
-        state.output.kstabm[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["kstabm"] - 1
-        )
-        state.output.kstabi[:, :, plume_dependent_constants.PLUME_INDEX] = (
-            inputs["kstabi"] - 1
-        )
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.environment_saturation_moist_static_energy_cloud_levels_forced[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels_forced"]
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.kstabm[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["kstabm"] - 1
+        state.output.kstabi[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["kstabi"] - 1
 
         code = self.stencil_factory.from_dims_halo(
             func=generic_find_level,
@@ -111,41 +79,24 @@ class TestCore:
             code(
                 array=locals.environment_saturation_moist_static_energy_cloud_levels_forced,
                 start_index=state.output.updraft_lfc_level,
-                end_index=state.output.kstabm[
-                    :, :, plume_dependent_constants.PLUME_INDEX
-                ],
+                end_index=state.output.kstabm[:, :, plume_dependent_constants.PLUME_INDEX],
                 out_index=state.output.kstabi,
                 error_code=state.output.error_code,
                 plume=plume_dependent_constants.PLUME_INDEX,
             )
 
         outputs = {
-            "error_code": state.output.error_code.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ],
-            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[
-                :
-            ],
-            "updraft_lfc_level": state.output.updraft_lfc_level.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "kstabm": state.output.kstabm.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
-            "kstabi": state.output.kstabi.field[
-                :, :, plume_dependent_constants.PLUME_INDEX
-            ]
-            + 1,
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_env_saturation_moist_static_energy_cloud_levels_forced": locals.environment_saturation_moist_static_energy_cloud_levels_forced.field[:],
+            "updraft_lfc_level": state.output.updraft_lfc_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "kstabm": state.output.kstabm.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "kstabi": state.output.kstabi.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
         }
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_StableDetrainment_shallow(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_StableDetrainment_shallow(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -158,21 +109,15 @@ class TranslateGF2020_CumulusParameterization_StableDetrainment_shallow(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_StableDetrainment_mid(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_StableDetrainment_mid(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -185,21 +130,15 @@ class TranslateGF2020_CumulusParameterization_StableDetrainment_mid(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.MID.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
 
-class TranslateGF2020_CumulusParameterization_StableDetrainment_deep(
-    TranslateFortranData2Py
-):
+class TranslateGF2020_CumulusParameterization_StableDetrainment_deep(TranslateFortranData2Py):
     def __init__(
         self,
         grid: Grid,
@@ -212,13 +151,9 @@ class TranslateGF2020_CumulusParameterization_StableDetrainment_deep(
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GF2020-constants")
-        self.cu_param_constants = data_loader.load(
-            "GF2020_CumulusParameterization-constants"
-        )
+        self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(
-            self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs
-        )
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs
