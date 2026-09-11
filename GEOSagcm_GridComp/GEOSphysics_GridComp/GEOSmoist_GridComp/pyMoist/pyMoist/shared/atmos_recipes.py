@@ -25,15 +25,9 @@ def air_density(PL: Float, TE: Float) -> Float:
 
 
 @function
-def sigma(dx, custom_dx: Float = -9e10, custom_exp: Float = -9e10) -> Float:
+def sigma(dx, custom_dx: Float = SIGMA_DX, custom_exp: Float = SIGMA_EXP) -> Float:
     """Arakawa 2011 based sigma function"""
-    internal_exp = SIGMA_EXP
-    if custom_exp != -9e10:
-        internal_exp = custom_exp
-    if custom_dx != -9e10:
-        sigma = (1.0 - 0.9839 * exp(-0.09835 * (dx / custom_dx))) ** internal_exp
-    else:
-        sigma = (1.0 - 0.9839 * exp(-0.09835 * (dx / SIGMA_DX))) ** internal_exp
+    sigma = (1.0 - 0.9839 * exp(-0.09835 * (dx / custom_dx))) ** custom_exp
 
     return sigma
 
