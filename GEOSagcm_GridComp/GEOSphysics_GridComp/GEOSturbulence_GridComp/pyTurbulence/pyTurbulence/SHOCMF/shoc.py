@@ -5,12 +5,12 @@ from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, ex
 from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ
 
 from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
-from pyTurbulence.SHOCMF.locals import SHOCMFLocals
-from pyTurbulence.SHOCMF.UW.state import SHOCMFState
+#from pyTurbulence.SHOCMF.locals import SHOCMFLocals
+#from pyTurbulence.SHOCMF.state import SHOCMFState
 import pyTurbulence.constants as constants
 
 
-def invert_interface_inputs(
+def invert_interface_vars(
     zi: FloatField,
     phii_inv: FloatField,
 ):
@@ -259,9 +259,9 @@ class RUN_SHOC(NDSLRuntime):
         self.quantity_factory = quantity_factory
 
 
-        self._invert_interface_inputs = self.stencil_factory.from_dims_halo(
-            func=invert_interface_inputs,
-            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+        self._invert_interface_vars = self.stencil_factory.from_dims_halo(
+            func=invert_interface_vars,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._invert_inputs = self.stencil_factory.from_dims_halo(
@@ -296,7 +296,7 @@ class RUN_SHOC(NDSLRuntime):
 
 
 
-    def __call__(self, state: SHOCMFState):
+    def __call__(self,):
         """
         RUN_SHOC 
         For NDSL-specific questions, email katrina.fandrich@nasa.gov
@@ -307,96 +307,96 @@ class RUN_SHOC(NDSLRuntime):
             state: SHOCMFState
         """
 
-        self._invert_interface_inputs(
-            zi=,
-            phii_inv=,
-        )
+        # self._invert_interface_vars(
+        #     zi=,
+        #     phii_inv=,
+        # )
 
-        self._invert_inputs(
-            zl=,
-            phil_inv=,
-            phii_inv=,
-            tkh=,
-            tkh_inv=,
-            prsl=,
-            prsl_inv=,
-            u=,
-            v=,
-            omega=,
-            omega_inv=,
-            tabs=,
-            tabs_inv=,
-            qwv=,
-            qwv_inv=,
-            qcl=,
-            qc_inv=,
-            qci=,
-            qi_inv=,
-            cld_sgs=,
-            cld_sgs_inv=,
-            tke=,
-            tke_inv=,
-            wthv_sec=,
-            wthv_sec_inv=,
-            wthv_mf=,
-            wthv_mf_inv=,
-        )
+        # self._invert_inputs(
+        #     zl=,
+        #     phil_inv=,
+        #     phii_inv=,
+        #     tkh=,
+        #     tkh_inv=,
+        #     prsl=,
+        #     prsl_inv=,
+        #     u=,
+        #     v=,
+        #     omega=,
+        #     omega_inv=,
+        #     tabs=,
+        #     tabs_inv=,
+        #     qwv=,
+        #     qwv_inv=,
+        #     qcl=,
+        #     qc_inv=,
+        #     qci=,
+        #     qi_inv=,
+        #     cld_sgs=,
+        #     cld_sgs_inv=,
+        #     tke=,
+        #     tke_inv=,
+        #     wthv_sec=,
+        #     wthv_sec_inv=,
+        #     wthv_mf=,
+        #     wthv_mf_inv=,
+        # )
 
-        self._setup_derived_inputs(
-            wrk=,
-            prsl=,
-            qv=,
-            qwv=,
-            thv=,
-            tabs=,
-            qcl=,
-            qci=,
-            w=,
-            omega=,
-            qpl=,
-            qpi=,
-            total_water=,
-            qcl=,
-            qci=,
-            prespot=,
-            tabs=,
-            gamaz=,
-            zl=,
-            hl=,
-        )
+        # self._setup_derived_inputs(
+        #     wrk=,
+        #     prsl=,
+        #     qv=,
+        #     qwv=,
+        #     thv=,
+        #     tabs=,
+        #     qcl=,
+        #     qci=,
+        #     w=,
+        #     omega=,
+        #     qpl=,
+        #     qpi=,
+        #     total_water=,
+        #     qcl=,
+        #     qci=,
+        #     prespot=,
+        #     tabs=,
+        #     gamaz=,
+        #     zl=,
+        #     hl=,
+        # )
 
-        self._define_vertical_grid_increments(
-            adzi=,
-            zl=,
-            adzl=,
-            zi=,
-        )
+        # self._define_vertical_grid_increments(
+        #     adzi=,
+        #     zl=,
+        #     adzl=,
+        #     zi=,
+        # )
 
-        # The three stencils below solve the TKE equation
-        self._tke_shear_prod(
-            rdtn=,
-            def2=,
-            adzi=,
-            u=,
-            v=,
-        )
+        # # The three stencils below solve the TKE equation
+        # self._tke_shear_prod(
+        #     rdtn=,
+        #     def2=,
+        #     adzi=,
+        #     u=,
+        #     v=,
+        # )
 
-        self._calc_numbers(
-            u=,
-            v=,
-            adzi=,
-            RI=,
-            PRNUM=,
-            thv=,
-        )
+        # self._calc_numbers(
+        #     u=,
+        #     v=,
+        #     adzi=,
+        #     RI=,
+        #     PRNUM=,
+        #     thv=,
+        # )
 
-        self._reset_tke(
-            tke=,
-            min_tke=,
-            tkesbdiss=,
-            tkebshear=,
-            tkesbbuoy=,
-        )
+        # self._reset_tke(
+        #     tke=,
+        #     min_tke=,
+        #     tkesbdiss=,
+        #     tkebshear=,
+        #     tkesbbuoy=,
+        # )
 
         
 
