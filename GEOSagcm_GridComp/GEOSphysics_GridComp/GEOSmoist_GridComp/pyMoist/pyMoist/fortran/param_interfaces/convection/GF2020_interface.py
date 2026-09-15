@@ -301,19 +301,19 @@ class GF2020Interface(UserCode):
 
         # register the field types (declard in convection_tracers.py) with the correct ddim size
         if not DataDimensionsField.exists("FloatFieldIJ_ConvectionTracers"):
-            DataDimensionsField.register(FloatFieldIJ_ConvectionTracers, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=IJ, dtype=Float)
+            DataDimensionsField.register(FloatFieldIJ_ConvectionTracers, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=IJ, dtype=Float)
         if not DataDimensionsField.exists("FloatField_ConvectionTracers"):
-            DataDimensionsField.register(FloatField_ConvectionTracers, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
+            DataDimensionsField.register(FloatField_ConvectionTracers, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
         if not DataDimensionsField.exists("FloatField_ConvectionTracers_Plume"):
-            DataDimensionsField.register(FloatField_ConvectionTracers_Plume, ndsl_stack.quantity_factory, ["plumes", CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
+            DataDimensionsField.register(FloatField_ConvectionTracers_Plume, ndsl_stack.quantity_factory, data_dimensions_names=["plumes", CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_Float"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_Float, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=[], dtype=Float)
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_Float, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=[], dtype=Float)
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_Bool"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_Bool, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM], axes=[], dtype=bool)
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_Bool, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=[], dtype=bool)
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_x3"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_x3, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM, SIZE_THREE_DIM], axes=[], dtype=Float)
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_x3, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM, SIZE_THREE_DIM], axes=[], dtype=Float)
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_x4"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_x4, ndsl_stack.quantity_factory, [CONVECTION_TRACER_DIM, SIZE_FOUR_DIM], axes=[], dtype=Float)
+            DataDimensionsField.register(ConvectionTracerMetaDataTable_x4, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM, SIZE_FOUR_DIM], axes=[], dtype=Float)
 
         self._managed_state.register("latitude", "DSL__GF2020_LATS", internal_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("longitude", "DSL__GF2020_LONS", internal_repository, dims=[I_DIM, J_DIM])
