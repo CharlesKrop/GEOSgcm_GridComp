@@ -32,7 +32,7 @@ class TranslateInvertInterfaceVars(TranslateFortranData2Py):
 
         _invert_interface_vars = self.stencil_factory.from_dims_halo(
             func=invert_interface_vars,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
 
         # Inputs

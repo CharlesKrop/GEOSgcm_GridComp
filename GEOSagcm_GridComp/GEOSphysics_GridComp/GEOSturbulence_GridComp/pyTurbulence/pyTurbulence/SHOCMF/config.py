@@ -7,3 +7,4 @@ from ndsl.dsl.typing import Float, Int
 class SHOCMFConfiguration:
     dtn: Float
     PRNUMBER: Float
+    min_tke: Float

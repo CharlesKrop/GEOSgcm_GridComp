@@ -20,8 +20,8 @@ def invert_interface_vars(
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
-        kinv = k_end-K+1
-        zi = phii_inv.at(k=kinv)-phii_inv.at(K=k_end)
+        kinv = k_end-K
+        zi = phii_inv.at(K=kinv)-phii_inv.at(K=k_end)
 
 def invert_inputs(
     zl: FloatField,
@@ -60,7 +60,7 @@ def invert_inputs(
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
-        kinv = k_end-K+1
+        kinv = k_end-K
         zl = phil_inv.at(K=kinv)-phii_inv.at(K=k_end+1)
         tkh = tkh_inv.at(K=kinv)
         prsl = prsl_inv.at(K=kinv)
@@ -128,16 +128,15 @@ def define_vertical_grid_increments(
     """
     from __externals__ import k_end
 
-    # NOT SURE ABOUT THIS, NEEDS TO BE TESTED
     with computation(FORWARD), interval(1,None):
-        adzi[0,0,1] = (zl - zl[0,0,-1])
-        adzl[0,0,-1] = (zi[0,0,1] - zi)
+        adzi = (zl - zl[0,0,-1])
+        adzl[0,0,-1] = (zi - zi[0,0,-1])
 
     with computation(FORWARD), interval(0,1):
-        adzi[0,0,1]   = (zl-zi[0,0,1]) 
+        adzi   = zl-zi
 
     with computation(FORWARD), interval(-1,None):
-        adzi[0,0,1]  = zi-zl[0,0,-1]
+        adzi[0,0,1]  = zi[0,0,1]-zl.at(K=k_end)
         adzl = adzi
 
 def tke_shear_prod(
@@ -219,19 +218,109 @@ def calc_numbers(
 
 def reset_tke(
     tke: FloatField,
-    min_tke: FloatField,
     tkesbdiss: FloatField,
     tkesbshear: FloatField,
     tkesbbuoy: FloatField,
 ):
+    from __externals__ import min_tke
+
     with computation(PARALLEL), interval(...):
         tke = max(min_tke,tke)
         tkesbdiss = 0.
         tkesbshear = 0.
         tkesbbuoy  = 0.
  
+def eddy_length1(
+    adzi: FloatField,
+    bet: FloatField,
+    betdz: FloatField,
+    smixt: FloatField,
+    brunt: FloatField,
+):
+    with computation(PARALLEL), interval(0,1):
+        kb = 1
+        kc = 2
+        thedz = adzi.at(K=kc+1)
 
+    with computation(PARALLEL), interval(1,-1):
+        thedz = adzi[0,0,1]+adzi
+    
+    with computation(PARALLEL), interval(-1,None):
+        thedz = adzi
+    
+    with computation(PARALLEL), interval(...):
+        betdz = bet / thedz
+        smixt = 1.0
+        brunt = 0.0
 
+def eddy_length2(
+    adzi: FloatField,
+    bet: FloatField,
+    qcl: FloatField,
+    qci: FloatField,
+    tabs: FloatField,
+    prsl: FloatField,
+    dtqw: FloatField,
+    dtqi: FloatField,
+    qpl: FloatField,
+    qpi: FloatField,
+    cld_sgs: FloatField,
+    hl: FloatField,
+    total_water: FloatField,
+
+):
+    from __externals__ import k_end
+
+    with computation(PARALLEL), interval(...):
+        kb = 0
+        kc = 1
+
+    with computation(PARALLEL), interval(0,1):
+        thedz = adzi.at(K=kc+1)
+
+    with computation(PARALLEL), interval(1,-1):
+        thedz = adzi.at(K=2) + adzi[0,0,1]
+        betdze = 0.5*(bet-bet.at(K=0)) / adzi[0,0,1]
+    
+    with computation(PARALLEL), interval(-1,None):
+        thedz = adzi[0,0,1]
+        betdze = 0.5*(bet-bet.at(K=k_end-1)) / adzi[0,0,1]
+
+    # with computation(PARALLEL), interval(...):
+    #     betdz = bet / thedz
+    #     wrk = qcl + qci
+    #     omn = qcl / (wrk+1.e-20)
+    #     lstarn = constants.fac_cond + (1.-omn)*constants.fac_fus
+    #     qsatt = omn  * MAPL_EQsat(tabs,prsl,dtqw) + (1.-omn) * MAPL_EQsat(tabs,prsl,dtqi,OverIce=True)
+    #     dqsat =  omn * dtqw + (1.-omn) * dtqi
+    #     bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
+
+    # with computation(PARALLEL), interval(...):
+    #     brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
+
+    # with computation(PARALLEL), interval(1,None):
+    #     bbb = 0.5*(bbb + (1. + constants.epsv*qsatt-wrk-qpl[0,0,-1]-qpi[0,0,-1] + 1.61*tabs[0,0,-1]*dqsat) / (1.+lstarn*dqsat) )
+    #     brunt_edge = 0.5*(cld_sgs+cld_sgs[0,0,-1])*betdz*(bbb*(hl-hl[0,0,-1]) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water-total_water[0,0,-1]) + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs)*(qpl-qpl[0,0,-1]) + (bbb*fac_sub  - (1.+fac_sub*dqsat)*tabs)*(qpi-qpi[0,0,-1]) )
+
+    # with computation(PARALLEL), interval(...):
+    #     bbb = 1. + constants.epsv*qv - qpl - qpi
+    #     brunt = brunt + (1.-cld_sgs)*betdz*( bbb*(hl.at(K=kc)-hl.at(K=kb)) + constants.epsv*tabs*(total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond-tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub -tabs)*(qpi.at(K=kc)-qpi.at(K=kb)) )
+
+    # with computation(PARALLEL), interval(1,None):
+    #     bbb = 0.5*(bbb + 1. + epsv*qv(i,j,k-1) - qpl(i,j,k-1) - qpi(i,j,k-1))
+    #     brunt_edge(i,j,k) = brunt_edge(i,j,k) + (1.-0.5*(cld_sgs(i,j,k)+cld_sgs(i,j,k-1)))*betdz*( bbb*(hl(i,j,k)-hl(i,j,k-1)) + epsv*tabs(i,j,k)*(total_water(i,j,k)-total_water(i,j,k-1)) + (bbb*fac_cond-tabs(i,j,k))*(qpl(i,j,k)-qpl(i,j,k-1)) + (bbb*fac_sub -tabs(i,j,k))*(qpi(i,j,k)-qpi(i,j,k-1)) )
+
+    # with computation(PARALLEL), interval(...):
+    #     if (brunt < 1e-5 or zl < 0.75*dryzpbl):
+    #         brunt2 = bruntmin
+    #     else:
+    #         brunt2 = brunt
+
+    # with computation(PARALLEL), interval(...):
+    #     brunt_edge(:,:,1) = brunt_edge(:,:,2)
+    #     brunt_edge(:,:,nz) = brunt_edge(:,:,nzm)
+    #     brunt2(:,:,1) = brunt2(:,:,2)
+    #     brunt2(:,:,nzm) = brunt2(:,:,nzm-1)
 
 class RUN_SHOC(NDSLRuntime):
     def __init__(
@@ -261,7 +350,7 @@ class RUN_SHOC(NDSLRuntime):
 
         self._invert_interface_vars = self.stencil_factory.from_dims_halo(
             func=invert_interface_vars,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
 
         self._invert_inputs = self.stencil_factory.from_dims_halo(
@@ -282,15 +371,23 @@ class RUN_SHOC(NDSLRuntime):
         self._tke_shear_prod = self.stencil_factory.from_dims_halo(
             func=tke_shear_prod,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"dtn": config.dtn},
         )
 
         self._calc_numbers = self.stencil_factory.from_dims_halo(
             func=calc_numbers,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"PRNUMBER": config.PRNUMBER}
         )
 
         self._reset_tke = self.stencil_factory.from_dims_halo(
             func=reset_tke,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"min_tke": config.min_tke},
+        )
+
+        self._eddy_length1 = self.stencil_factory.from_dims_halo(
+            func=eddy_length1,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -396,6 +493,14 @@ class RUN_SHOC(NDSLRuntime):
         #     tkesbdiss=,
         #     tkebshear=,
         #     tkesbbuoy=,
+        # )
+
+        # self._eddy_length1(
+        #     thedz=,
+        #     bet=,
+        #     betdz=,
+        #     smixt=,
+        #     brunt=,
         # )
 
         
