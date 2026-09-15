@@ -114,6 +114,7 @@ def compute_total_energy(
 def total_energy_and_water(
     t_local: FloatField64,
     total_energy: FloatField64,
+    dtotal_energy: FloatFieldIJ64,
     total_water: FloatField64,
     total_energy_b: FloatFieldIJ64,
     total_water_b: FloatFieldIJ64,
@@ -133,7 +134,6 @@ def total_energy_and_water(
     precip_rain: FloatFieldIJ,
     precip_snow: FloatFieldIJ,
     precip_graupel: FloatFieldIJ,
-    dtotal_energy: FloatFieldIJ64,
     sen: FloatFieldIJ,
     stress: FloatFieldIJ,
     moist_q: Bool,
@@ -482,7 +482,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         CONV_FACTOR = 86400.0 * RGRAV / gfdl_1m_config.DT_MOIST
 
         # initialize class specific locals
-        self._driver_locals = GFDLMPV3Locals.make_locals(quantity_factory)
+        self._gfdl_mp_v3_locals = GFDLMPV3Locals.make_locals(quantity_factory)
 
         # make config visible at runtime
         self._mp_namelist = mp_namelist
@@ -582,59 +582,59 @@ class GFDLMPV3Driver(NDSLRuntime):
 
     def __call__(self, state: GFDL1MState, gfdl_1m_locals: GFDL1MLocals):
         # reset mp locals to zero
-        self._set_value(field=self._driver_locals.mppcw, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppew, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppe1, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mpper, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppdi, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppd1, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppds, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppdg, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppsi, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mpps1, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppss, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppsg, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppfw, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppfr, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppar, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppas, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppag, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mpprs, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mpprg, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppxr, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppxs, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppxg, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppmi, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppms, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppmg, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppm1, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppm2, value=Float(0.0))
-        self._set_value(field=self._driver_locals.mppm3, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppcw, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppew, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppe1, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mpper, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppdi, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppd1, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppds, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppdg, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppsi, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mpps1, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppss, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppsg, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppfw, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppfr, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppar, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppas, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppag, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mpprs, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mpprg, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppxr, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppxs, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppxg, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppmi, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppms, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppmg, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppm1, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppm2, value=Float(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.mppm3, value=Float(0.0))
 
         # initialization of total energy difference
-        self._set_value_64_bit(field=self._driver_locals.total_energy.delta, value=Float64(0.0))
-        self._set_value(field=self._driver_locals.tracer_dilution_adjustment, value=Float(1.0))
+        self._set_value_64_bit(field=self._gfdl_mp_v3_locals.total_energy.delta, value=Float64(0.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.tracer_dilution_adjustment, value=Float(1.0))
 
         # copy convection fraction and surface type, work with copy instead of the original
-        self._copy_2d(input=state.convection_fraction, output=self._driver_locals.convection_fraction)
-        self._copy_2d(input=state.surface_type, output=self._driver_locals.surface_type)
+        self._copy_2d(input=state.convection_fraction, output=self._gfdl_mp_v3_locals.convection_fraction)
+        self._copy_2d(input=state.surface_type, output=self._gfdl_mp_v3_locals.surface_type)
 
         # one minus sigma used to control resoluton sensitive parameters
-        self._compute_one_minus_sigma(one_minus_sigma=self._driver_locals.one_minus_sigma, area=state.area)
+        self._compute_one_minus_sigma(one_minus_sigma=self._gfdl_mp_v3_locals.one_minus_sigma, area=state.area)
 
         # Use estimated inversion strength to determine stable vs unstable areas
         self._eis_factor_and_rates(
             estimated_inversion_strength=state.estimated_inversion_strength,
-            convection_fraction=self._driver_locals.convection_fraction,
-            factor_eis=self._driver_locals.factor_eis,
-            factor_rc=self._driver_locals.factor_rc,
-            cpaut=self._driver_locals.cpaut,
+            convection_fraction=self._gfdl_mp_v3_locals.convection_fraction,
+            factor_eis=self._gfdl_mp_v3_locals.factor_eis,
+            factor_rc=self._gfdl_mp_v3_locals.factor_rc,
+            cpaut=self._gfdl_mp_v3_locals.cpaut,
         )
 
         # conversion of temperature
         self._convert_temperature(
             t_state=state.t,
-            t_local=self._driver_locals.t,
+            t_local=self._gfdl_mp_v3_locals.t,
             vapor=state.radiation_field.vapor,
             ice=state.radiation_field.ice,
             liquid=state.radiation_field.liquid,
@@ -645,8 +645,8 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         # calculate base total energy
         self._compute_total_energy(
-            total_energy=self._driver_locals.total_energy.magnitude,
-            t_local=self._driver_locals.t,
+            total_energy=self._gfdl_mp_v3_locals.total_energy.magnitude,
+            t_local=self._gfdl_mp_v3_locals.t,
             dp=gfdl_1m_locals.dp,
             vapor=state.radiation_field.vapor,
             ice=state.radiation_field.ice,
@@ -659,11 +659,12 @@ class GFDLMPV3Driver(NDSLRuntime):
         # total_energy_checker
         if self._mp_namelist.CONSV_CHECKER:
             self._total_energy_and_water(
-                t_local=self._driver_locals.t_local,
-                total_energy=self._driver_locals.total_energy_beg_m,
-                total_water=self._driver_locals.total_water_beg_m,
-                total_energy_b=self._driver_locals.total_energy_b_beg_m,
-                total_water_b=self._driver_locals.total_water_b_beg_m,
+                t_local=self._gfdl_mp_v3_locals.t_local,
+                total_energy=self._gfdl_mp_v3_locals.total_energy_beg_m,
+                dtotal_energy=self._gfdl_mp_v3_locals.total_energy.delta,
+                total_water=self._gfdl_mp_v3_locals.total_water_beg_m,
+                total_energy_b=self._gfdl_mp_v3_locals.total_energy_b_beg_m,
+                total_water_b=self._gfdl_mp_v3_locals.total_water_b_beg_m,
                 u=state.u,
                 v=state.v,
                 w=state.vertical_motion.velocity,
@@ -680,7 +681,6 @@ class GFDLMPV3Driver(NDSLRuntime):
                 precip_rain=state.precipitation_at_surface.rain,
                 precip_snow=state.precipitation_at_surface.snow,
                 precip_graupel=state.precipitation_at_surface.graupel,
-                dtotal_energy=self._driver_locals.dtotal_energy,
                 sen=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
                 stress=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
                 moist_q=True,
@@ -689,7 +689,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             )
 
         # initialize radar reflectivity
-        self._set_value(field=self._driver_locals.reflectivity, value=Float(-30.0))
+        self._set_value(field=self._gfdl_mp_v3_locals.reflectivity, value=Float(-30.0))
 
         # setup the local state - to be used throughout the rest of microphyscis
         self._pressure_derived_fields_mixing_ratio_conversion_copy_state(
@@ -700,55 +700,55 @@ class GFDLMPV3Driver(NDSLRuntime):
             rain=state.radiation_field.rain,
             snow=state.radiation_field.snow,
             cloud_fraction=state.radiation_field.cloud_fraction,
-            local_vapor=self._driver_locals.mixing_ratio.vapor,
-            local_ice=self._driver_locals.mixing_ratio.ice,
-            local_liquid=self._driver_locals.mixing_ratio.liquid,
-            local_graupel=self._driver_locals.mixing_ratio.graupel,
-            local_rain=self._driver_locals.mixing_ratio.rain,
-            local_snow=self._driver_locals.mixing_ratio.snow,
-            local_cloud_fraction=self._driver_locals.cloud_fraction,
-            local_t=self._driver_locals.t,
+            local_vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+            local_ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+            local_liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+            local_graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+            local_rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+            local_snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+            local_cloud_fraction=self._gfdl_mp_v3_locals.cloud_fraction,
+            local_t=self._gfdl_mp_v3_locals.t,
             dp=gfdl_1m_locals.dp,
-            local_dp=self._driver_locals.dp,
-            local_dry_dp=self._driver_locals.dry_dp,
+            local_dp=self._gfdl_mp_v3_locals.dp,
+            local_dry_dp=self._gfdl_mp_v3_locals.dry_dp,
             dz=gfdl_1m_locals.layer_thickness_negative,
-            local_dz=self._driver_locals.dz,
-            local_density=self._driver_locals.density,
-            local_density_factor=self._driver_locals.density_factor,
-            local_p_thickness=self._driver_locals.p_thickness,
+            local_dz=self._gfdl_mp_v3_locals.dz,
+            local_density=self._gfdl_mp_v3_locals.density,
+            local_density_factor=self._gfdl_mp_v3_locals.density_factor,
+            local_p_thickness=self._gfdl_mp_v3_locals.p_thickness,
             u=state.u,
-            local_u=self._driver_locals.u,
+            local_u=self._gfdl_mp_v3_locals.u,
             v=state.v,
-            local_v=self._driver_locals.v,
+            local_v=self._gfdl_mp_v3_locals.v,
             w=state.w,
-            local_w=self._driver_locals.w,
+            local_w=self._gfdl_mp_v3_locals.w,
         )
 
         # total_energy_checker
         if self._mp_namelist.CONSV_CHECKER:
             self._total_energy_and_water(
-                t_local=self._driver_locals.t,
-                total_energy=self._driver_locals.total_energy.beg_d,
-                total_water=self._driver_locals.total_water.beg_d,
-                total_energy_b=self._driver_locals.total_energy.b_beg_d,
-                total_water_b=self._driver_locals.total_water.b_beg_d,
-                u=self._driver_locals.u,
-                v=self._driver_locals.v,
-                w=self._driver_locals.w,
-                dp=self._driver_locals.dry_dp,
-                cloud_vapor=self._driver_locals.mixing_ratio.vapor,
-                cloud_ice=self._driver_locals.mixing_ratio.ice,
-                cloud_liquid=self._driver_locals.mixing_ratio.liquid,
-                cloud_rain=self._driver_locals.mixing_ratio.rain,
-                cloud_snow=self._driver_locals.mixing_ratio.snow,
-                cloud_graupel=self._driver_locals.mixing_ratio.graupel,
+                t_local=self._gfdl_mp_v3_locals.t,
+                total_energy=self._gfdl_mp_v3_locals.total_energy.beg_d,
+                total_water=self._gfdl_mp_v3_locals.total_water.beg_d,
+                total_energy_b=self._gfdl_mp_v3_locals.total_energy.b_beg_d,
+                total_water_b=self._gfdl_mp_v3_locals.total_water.b_beg_d,
+                u=self._gfdl_mp_v3_locals.u,
+                v=self._gfdl_mp_v3_locals.v,
+                w=self._gfdl_mp_v3_locals.w,
+                dp=self._gfdl_mp_v3_locals.dry_dp,
+                cloud_vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                cloud_ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                cloud_liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                cloud_rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                cloud_snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
                 vapor=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
                 precip_ice=state.precipitation_at_surface.ice,
                 precip_liquid=state.precipitation_at_surface.water,
                 precip_rain=state.precipitation_at_surface.rain,
                 precip_snow=state.precipitation_at_surface.snow,
                 precip_graupel=state.precipitation_at_surface.graupel,
-                dtotal_energy=self._driver_locals.total_energy.delta,
+                dtotal_energy=self._gfdl_mp_v3_locals.total_energy.delta,
                 sen=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
                 stress=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
                 moist_q=False,
@@ -758,30 +758,30 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         # generate cloud condensation nuclei (CCN), cloud ice nuclei (CIN)
         self._generate_particle_nuclei(
-            ccn=self._driver_locals.ccn,
-            cin=self._driver_locals.cin,
+            ccn=self._gfdl_mp_v3_locals.ccn,
+            cin=self._gfdl_mp_v3_locals.cin,
             concentration_liquid=state.concentration.liquid,
             concentration_ice=state.concentration.ice,
-            density=self._driver_locals.density,
+            density=self._gfdl_mp_v3_locals.density,
             surface_geopotential_height=state.surface_geopotential_height,
         )
 
-        self._horizontal_subgrid_variation(h_var=self._driver_locals.h_var, critical_relative_humidity_for_pdf=state.critical_relative_humidity_for_pdf)
+        self._horizontal_subgrid_variation(h_var=self._gfdl_mp_v3_locals.h_var, critical_relative_humidity_for_pdf=state.critical_relative_humidity_for_pdf)
 
         # fix negative water species from outside
         if self._mp_namelist.FIX_NEGATIVE:
             self._fix_negative_water_species(
-                t=self._driver_locals.t,
-                dry_dp=self._driver_locals.dry_dp,
-                vapor=self._driver_locals.mixing_ratio.vapor,
-                ice=self._driver_locals.mixing_ratio.ice,
-                liquid=self._driver_locals.mixing_ratio.liquid,
-                graupel=self._driver_locals.mixing_ratio.graupel,
-                rain=self._driver_locals.mixing_ratio.rain,
-                snow=self._driver_locals.mixing_ratio.snow,
-                cloud_fraction=self._driver_locals.cloud_fraction,
-                mppcw=self._driver_locals.mppcw,
-                mppfr=self._driver_locals.mppfr,
+                t=self._gfdl_mp_v3_locals.t,
+                dry_dp=self._gfdl_mp_v3_locals.dry_dp,
+                vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=self._gfdl_mp_v3_locals.cloud_fraction,
+                mppcw=self._gfdl_mp_v3_locals.mppcw,
+                mppfr=self._gfdl_mp_v3_locals.mppfr,
             )
 
         # fast microphysics loop
@@ -796,4 +796,4 @@ class GFDLMPV3Driver(NDSLRuntime):
             )
 
         # full microphysics loop
-        if self._mp_config.DO_MP_FULL:
+        # if self._mp_config.DO_MP_FULL:

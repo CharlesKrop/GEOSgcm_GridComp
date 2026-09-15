@@ -764,6 +764,43 @@ class GFDLMPV3(NDSLRuntime):
             if actual != expected:
                 failures.append({"parameter": param_name, "actual": actual, "expected": expected})
 
+        # Helper function to evaluate and record flags whose value must be one of a set of allowed values.
+        # `allowed` is the full set of technically valid values.
+        # `implemented` (optional) is the subset that is actually supported right now.
+        # If omitted, `implemented` defaults to `allowed` (i.e. everything allowed is implemented).
+        def check_param_in(param_name, actual, allowed, implemented=None):
+            if implemented is None:
+                implemented = allowed
+
+            if actual not in allowed:
+                failures.append({"parameter": param_name, "actual": actual, "expected": f"one of {allowed}"})
+            elif actual not in implemented:
+                failures.append(
+                    {
+                        "parameter": param_name,
+                        "actual": actual,
+                        "expected": f"one of {implemented} (values {sorted(set(allowed) - set(implemented))} are valid options but not yet implemented)",
+                    }
+                )
+
+        # Helper function to evaluate and record parameters that must fall within (or outside) a threshold.
+        # Provide min_value and/or max_value; each bound is inclusive unless the corresponding *_exclusive flag is set to True.
+        def check_param_threshold(param_name, actual, min_value=None, max_value=None, min_exclusive=False, max_exclusive=False):
+            ok = True
+            bounds = []
+
+            if min_value is not None:
+                ok = ok and (actual > min_value if min_exclusive else actual >= min_value)
+                bounds.append(f"{'>' if min_exclusive else '>='} {min_value}")
+            if max_value is not None:
+                ok = ok and (actual < max_value if max_exclusive else actual <= max_value)
+                bounds.append(f"{'<' if max_exclusive else '<='} {max_value}")
+
+            if not ok:
+                # checking against a descriptive "expected" string ensures the system prints
+                # a human-readable requirement rather than a boolean
+                failures.append({"parameter": param_name, "actual": actual, "expected": " and ".join(bounds)})
+
         # Flag checks (Boolean flags)
         check_param("GFDLMPV3CloudMPConfig.DO_MP_FAST", config.DO_MP_FAST, False)
         check_param("GFDLMPV3CloudMPConfig.DO_MP_FULL", config.DO_MP_FULL, True)
@@ -773,6 +810,8 @@ class GFDLMPV3(NDSLRuntime):
         check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QI", namelist.DO_SEDI_MELT_QI, False)
         check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QS", namelist.DO_SEDI_MELT_QS, False)
         check_param("GFDLMPV3NamelistConfig.DO_HAIL", namelist.DO_HAIL, False)
+        check_param_in("GFDLMPV3NamelistConfig.IFFLAG", namelist.IFFLAG, [1, 2, 3, 4])
+        check_param_in("GFDLMPV3NamelistConfig.SEDFLAG", namelist.SEDFLAG, [1, 2, 3, 4], implemented=[1])
 
         # Threshold checks
         # if config_dependent_constants.DTS >= 300.0:
