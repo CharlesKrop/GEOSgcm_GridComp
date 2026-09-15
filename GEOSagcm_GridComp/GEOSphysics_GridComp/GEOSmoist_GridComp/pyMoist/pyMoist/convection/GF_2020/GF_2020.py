@@ -1,4 +1,4 @@
-from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
+from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization import GF2020CumulusParameterization, GF2020CumulusParameterizationConfig, GF2020CumulusParameterizationState
@@ -40,7 +40,8 @@ class GF2020(NDSLRuntime):
             cumulus_parameterization_config (GF2020CumulusParameterizationConfig)
             saturation_tables (SaturationVaporPressureTable | None)
         """
-        super().__init__(stencil_factory)
+        oconfig = OptimizationConfig(stree=OptimizationConfig.Tree(enabled=False))
+        super().__init__(stencil_factory, oconfig)
 
         # make saturation tables visible at runtime
         if saturation_tables is None:
@@ -97,22 +98,23 @@ class GF2020(NDSLRuntime):
         # this will be triggered in setup if surface temperature is very near zero Kelvin
 
         # call the there parts of the scheme
-        scm_stop = self._setup(
+        # TODO: Charles this is a workaround
+        self._setup(
             state=state,
             locals=self.locals,
             cumulus_parameterization_state=self.cumulus_parameterization_state,
             convection_tracers=convection_tracers,
         )
 
-        if not scm_stop:
-            self._cumulus_parameterization_core(
-                state=self.cumulus_parameterization_state,
-                convection_tracers=convection_tracers,
-            )
+        # TODO: Charles this is a workaround
+        self._cumulus_parameterization_core(
+            state=self.cumulus_parameterization_state,
+            convection_tracers=convection_tracers,
+        )
 
-            self._finalize(
-                state=state,
-                locals=self.locals,
-                cumulus_parameterization_state=self.cumulus_parameterization_state,
-                convection_tracers=convection_tracers,
-            )
+        self._finalize(
+            state=state,
+            locals=self.locals,
+            cumulus_parameterization_state=self.cumulus_parameterization_state,
+            convection_tracers=convection_tracers,
+        )

@@ -43,7 +43,12 @@ class GF2020Interface(UserCode):
         self._gf_2020 = None
         self._managed_convection_tracers = None
 
-    def init(self, mapl_state: CVoidPointer, import_state: CVoidPointer, export_state: CVoidPointer):
+    def init(
+        self,
+        mapl_state: CVoidPointer,
+        import_state: CVoidPointer,
+        export_state: CVoidPointer,
+    ):
         maplpy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
 
@@ -312,7 +317,12 @@ class GF2020Interface(UserCode):
 
         self._managed_state.register("latitude", "DSL__GF2020_LATS", internal_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("longitude", "DSL__GF2020_LONS", internal_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("p_interface", "PLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
+        self._managed_state.register(
+            "p_interface",
+            "PLE",
+            import_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+        )
         self._managed_state.register("t", "T", import_repository)
         self._managed_state.register("u", "U", import_repository)
         self._managed_state.register("v", "V", import_repository)
@@ -340,17 +350,50 @@ class GF2020Interface(UserCode):
         self._managed_state.register("u_timestep_start", "U_DYN_IN", import_repository)
         self._managed_state.register("v_timestep_start", "V_DYN_IN", import_repository)
         self._managed_state.register("vapor_timestep_start", "QV_DYN_IN", import_repository)
-        self._managed_state.register("geopotential_height_interface", "ZLE", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
-        self._managed_state.register("geopotential_height_surface", "PHIS", import_repository, dims=[I_DIM, J_DIM])
+        self._managed_state.register(
+            "geopotential_height_interface",
+            "ZLE",
+            import_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+        )
+        self._managed_state.register(
+            "geopotential_height_surface",
+            "PHIS",
+            import_repository,
+            dims=[I_DIM, J_DIM],
+        )
         self._managed_state.register("area", "AREA", import_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("pbl_level", "KPBL", import_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("convection_fraction", "CNV_FRC", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("surface_type", "SRF_TYPE", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register(
+            "convection_fraction",
+            "CNV_FRC",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "surface_type",
+            "SRF_TYPE",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
         self._managed_state.register("seed_convection", "STOCH_CNV", export_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("land_fraction", "FRLAND", import_repository, dims=[I_DIM, J_DIM])
-        self._managed_state.register("scalar_diffusivity", "KH", import_repository, dims=[I_DIM, J_DIM, K_INTERFACE_DIM])
+        self._managed_state.register(
+            "scalar_diffusivity",
+            "KH",
+            import_repository,
+            dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+        )
         self._managed_state.register("buoyancy", "BYNCY", export_repository, alloc=True)
-        self._managed_state.register("convective_precipitation_GF", "CNPCPRATE", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register(
+            "convective_precipitation_GF",
+            "CNPCPRATE",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
         self._managed_state.register("convective_precipitation_RAS", "CNV_PRC3", export_repository, alloc=True)
         self._managed_state.register("convective_rainwater_source", "DQRC", export_repository)
         self._managed_state.register("sensible_heat_flux", "SH", import_repository, dims=[I_DIM, J_DIM])
@@ -361,8 +404,18 @@ class GF2020Interface(UserCode):
             dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
             alloc=True,
         )
-        self._managed_state.register("sublimation_of_convective_precipitation", "RSU_CN", export_repository, alloc=True)
-        self._managed_state.register("evaporation_of_convective_precipitation", "REV_CN", export_repository, alloc=True)
+        self._managed_state.register(
+            "sublimation_of_convective_precipitation",
+            "RSU_CN",
+            export_repository,
+            alloc=True,
+        )
+        self._managed_state.register(
+            "evaporation_of_convective_precipitation",
+            "REV_CN",
+            export_repository,
+            alloc=True,
+        )
         self._managed_state.register(
             "ice_precip_flux_interface",
             "PFI_CN",
@@ -394,8 +447,20 @@ class GF2020Interface(UserCode):
         self._managed_state.register("dtdt_from_dynamics", "DTDTDYN", import_repository)
         self._managed_state.register("dvapordt_from_dynamics", "DQVDTDYN", import_repository)
         self._managed_state.register("sigma_mid", "SIGMA_MID", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("sigma_deep", "SIGMA_DEEP", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("total_precipitable_water_initial", "TPWI", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register(
+            "sigma_deep",
+            "SIGMA_DEEP",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "total_precipitable_water_initial",
+            "TPWI",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
         self._managed_state.register(
             "saturation_total_precipitable_water_initial",
             "TPWI_star",
@@ -409,7 +474,12 @@ class GF2020Interface(UserCode):
         self._managed_state.register("dvdt_deep_convection", "DVDT_DC", export_repository, alloc=True)
         self._managed_state.register("dliquiddt_deep_convection", "DQLDT_DC", export_repository, alloc=True)
         self._managed_state.register("dicedt_deep_convection", "DQIDT_DC", export_repository, alloc=True)
-        self._managed_state.register("dcloudfractiondt_deep_convection", "DQADT_DC", export_repository, alloc=True)
+        self._managed_state.register(
+            "dcloudfractiondt_deep_convection",
+            "DQADT_DC",
+            export_repository,
+            alloc=True,
+        )
         self._managed_state.register(
             "pressure_shallow_convective_cloud_top",
             "CNV_TOPP_SH",
@@ -444,9 +514,27 @@ class GF2020Interface(UserCode):
         self._managed_state.register("mass_flux_deep_updraft_detrained", "MFD_DC", export_repository, alloc=True)
         self._managed_state.register("mass_flux_deep_downdraft", "MDNDP", export_repository, alloc=True)
         self._managed_state.register("mass_flux_cloud_base", "CNV_MF0", export_repository, alloc=True)
-        self._managed_state.register("mass_flux_cloud_base_shallow", "MFSH", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("mass_flux_cloud_base_mid", "MFMD", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("mass_flux_cloud_base_deep", "MFDP", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register(
+            "mass_flux_cloud_base_shallow",
+            "MFSH",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "mass_flux_cloud_base_mid",
+            "MFMD",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "mass_flux_cloud_base_deep",
+            "MFDP",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
         self._managed_state.register(
             "total_cumulative_mass_flux_interface",
             "CNV_MFC",
@@ -455,18 +543,90 @@ class GF2020Interface(UserCode):
             alloc=True,
         )
         self._managed_state.register("total_detraining_mass_flux", "CNV_MFD", export_repository, alloc=True)
-        self._managed_state.register("convection_code_shallow", "ERRSH", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("convection_code_mid", "ERRMD", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("convection_code_deep", "ERRDP", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("cloud_workfunction_0", "AA0", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("cloud_workfunction_1", "AA1", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("cloud_workfunction_2", "AA2", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("cloud_workfunction_3", "AA3", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("cloud_workfunction_1_pbl", "AA1_BL", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("cloud_workfunction_1_cin", "AA1_CIN", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("pbl_time_scale", "TAU_BL", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("cape_removal_time_scale", "TAU_EC", export_repository, dims=[I_DIM, J_DIM], alloc=True)
-        self._managed_state.register("lightning_density", "LFR_GF", export_repository, dims=[I_DIM, J_DIM], alloc=True)
+        self._managed_state.register(
+            "convection_code_shallow",
+            "ERRSH",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "convection_code_mid",
+            "ERRMD",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "convection_code_deep",
+            "ERRDP",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "cloud_workfunction_0",
+            "AA0",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "cloud_workfunction_1",
+            "AA1",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "cloud_workfunction_2",
+            "AA2",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "cloud_workfunction_3",
+            "AA3",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "cloud_workfunction_1_pbl",
+            "AA1_BL",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "cloud_workfunction_1_cin",
+            "AA1_CIN",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "pbl_time_scale",
+            "TAU_BL",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "cape_removal_time_scale",
+            "TAU_EC",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
+        self._managed_state.register(
+            "lightning_density",
+            "LFR_GF",
+            export_repository,
+            dims=[I_DIM, J_DIM],
+            alloc=True,
+        )
         self._managed_state.register("convection_tracer", "CNV_TR", internal_repository)
 
         if self._gf_2020 is None:
@@ -519,7 +679,7 @@ class GF2020Interface(UserCode):
             with TimedCUDAProfiler("GF 2020 Convection Numerics", {}):
                 self._managed_state.record("GF2020-In")
                 # adjust pbl_level from fortran indexing to python indexing
-                self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] - 1
+                self._managed_state.ndsl_state.pbl_level[:] = self._managed_state.ndsl_state.pbl_level[:] - 1
 
                 # run GF 2020 Convection
                 self._gf_2020(
@@ -528,6 +688,7 @@ class GF2020Interface(UserCode):
                 )
 
                 # adjust pbl_level from python indexing to fortran indexing
+                self._managed_state.ndsl_state.pbl_level[:] = self._managed_state.ndsl_state.pbl_level[:] + 1
                 self._managed_state.ndsl_state.pbl_level.field[:] = self._managed_state.ndsl_state.pbl_level.field[:] + 1
                 self._managed_state.record("GF2020-Out")
 
@@ -537,6 +698,10 @@ class GF2020Interface(UserCode):
                     self._managed_convection_tracers.ndsl_state.tracers.data[:],
                 )
                 self._managed_state.ndsl_to_fortran()
+                safe_assign_array(
+                    MOIST_WORKAROUNDS.CNV_Tracers().Q,
+                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                )
 
     def finalize(
         self,

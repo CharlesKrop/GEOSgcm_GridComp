@@ -35,7 +35,7 @@ class TestCore:
 
         out_vars.update(in_vars["data_vars"])
 
-    def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
+    def __call__(self, constants: dict, cu_param_constants: dict, plume: int, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
@@ -63,10 +63,10 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.hydrostatic_air_density.data[:] = inputs["local_hydrostatic_air_density"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.hydrostatic_air_density[:] = inputs["local_hydrostatic_air_density"]
 
         code = self.stencil_factory.from_dims_halo(
             func=hydrostatic_air_density,
@@ -108,7 +108,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_shallow(Tran
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, plume=0, **inputs)
 
         return outputs
 
@@ -129,7 +129,7 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_mid(Translat
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 1, **inputs)
 
         return outputs
 
@@ -150,6 +150,6 @@ class TranslateGF2020_CumulusParameterization_HydrostaticAirDensity_deep(Transla
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 2, **inputs)
 
         return outputs

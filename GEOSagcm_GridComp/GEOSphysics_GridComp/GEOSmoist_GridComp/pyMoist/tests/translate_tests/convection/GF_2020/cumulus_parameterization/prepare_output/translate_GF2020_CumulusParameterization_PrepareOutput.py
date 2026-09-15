@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import prepare_output
@@ -75,24 +75,22 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.cloud_base_mass_flux_modified.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_base_mass_flux_modified"]
-        state.output.total_normalized_integrated_condensate_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "total_normalized_integrated_condensate_forced"
-        ]
-        locals.total_normalized_integrated_evaporate_forced.data[:] = inputs["local_total_normalized_integrated_evaporate_forced"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        state.output.normalized_massflux_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_downdraft_forced"]
-        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
-        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
-        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
-        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
-        state.output.mass_entrainment_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_downdraft_forced"]
-        state.output.mass_detrainment_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_downdraft_forced"]
-        locals.environment_massflux.data[:] = inputs["local_environment_massflux"]
-        locals.vapor_tendency_from_environmental_subsidence.data[:] = inputs["local_vapor_tendency_from_environmental_subsidence"]
-        locals.moist_static_energy_tendency_from_environmental_subsidence.data[:] = inputs["local_moist_static_energy_tendency_from_environmental_subsidence"]
-        locals.t_tendency_from_environmental_subsidence.data[:] = inputs["local_t_tendency_from_environmental_subsidence"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.cloud_base_mass_flux_modified[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_base_mass_flux_modified"]
+        state.output.total_normalized_integrated_condensate_forced[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["total_normalized_integrated_condensate_forced"]
+        locals.total_normalized_integrated_evaporate_forced[:] = inputs["local_total_normalized_integrated_evaporate_forced"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        state.output.normalized_massflux_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_downdraft_forced"]
+        state.output.condensate_to_fall_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
+        state.output.evaporate_in_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
+        state.output.mass_entrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
+        state.output.mass_detrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_entrainment_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_downdraft_forced"]
+        state.output.mass_detrainment_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_downdraft_forced"]
+        locals.environment_massflux[:] = inputs["local_environment_massflux"]
+        locals.vapor_tendency_from_environmental_subsidence[:] = inputs["local_vapor_tendency_from_environmental_subsidence"]
+        locals.moist_static_energy_tendency_from_environmental_subsidence[:] = inputs["local_moist_static_energy_tendency_from_environmental_subsidence"]
+        locals.t_tendency_from_environmental_subsidence[:] = inputs["local_t_tendency_from_environmental_subsidence"]
 
         code = self.stencil_factory.from_dims_halo(
             func=prepare_output,
@@ -160,7 +158,7 @@ class TranslateGF2020_CumulusParameterization_PrepareOutput_shallow(TranslateFor
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -181,7 +179,7 @@ class TranslateGF2020_CumulusParameterization_PrepareOutput_mid(TranslateFortran
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -202,6 +200,6 @@ class TranslateGF2020_CumulusParameterization_PrepareOutput_deep(TranslateFortra
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

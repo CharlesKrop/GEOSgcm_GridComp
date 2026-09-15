@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment import modify_environment_profiles
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -83,30 +83,30 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        locals.t_new.data[:] = inputs["local_t_new"]
-        locals.t_modified.data[:] = inputs["local_t_modified"]
-        locals.vapor_forced.data[:] = inputs["local_vapor_forced"]
-        locals.vapor_modified.data[:] = inputs["local_vapor_modified"]
-        locals.environment_moist_static_energy_forced.data[:] = inputs["local_env_moist_static_energy_forced"]
-        locals.environment_moist_static_energy_modified.data[:] = inputs["local_env_moist_static_energy_modified"]
-        locals.moist_static_energy_origin_level_forced.data[:] = inputs["local_moist_static_energy_origin_level_forced"]
-        locals.moist_static_energy_origin_level_modified.data[:] = inputs["local_moist_static_energy_origin_level_modified"]
-        locals.partition_liquid_ice.data[:] = inputs["local_partition_liquid_ice"]
-        locals.del_moist_static_energy_cloud_ensemble.data[:] = inputs["local_del_moist_static_energy_cloud_ensemble"]
-        locals.del_t_cloud_ensemble.data[:] = inputs["local_del_t_cloud_ensemble"]
-        locals.del_vapor_cloud_ensemble.data[:] = inputs["local_del_vapor_cloud_ensemble"]
-        locals.del_cloud_liquid_cloud_ensemble.data[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
-        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble"]
-        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble"]
-        locals.moist_static_energy_tendency_from_environmental_subsidence.data[:] = inputs["local_moist_static_energy_tendency_from_environmental_subsidence"]
-        locals.vapor_tendency_from_environmental_subsidence.data[:] = inputs["local_vapor_tendency_from_environmental_subsidence"]
-        locals.t_tendency_from_environmental_subsidence.data[:] = inputs["local_t_tendency_from_environmental_subsidence"]
-        locals.arbitrary_numerical_parameter.data[:] = inputs["local_arbitrary_numerical_parameter"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        locals.t_new[:] = inputs["local_t_new"]
+        locals.t_modified[:] = inputs["local_t_modified"]
+        locals.vapor_forced[:] = inputs["local_vapor_forced"]
+        locals.vapor_modified[:] = inputs["local_vapor_modified"]
+        locals.environment_moist_static_energy_forced[:] = inputs["local_env_moist_static_energy_forced"]
+        locals.environment_moist_static_energy_modified[:] = inputs["local_env_moist_static_energy_modified"]
+        locals.moist_static_energy_origin_level_forced[:] = inputs["local_moist_static_energy_origin_level_forced"]
+        locals.moist_static_energy_origin_level_modified[:] = inputs["local_moist_static_energy_origin_level_modified"]
+        locals.partition_liquid_ice[:] = inputs["local_partition_liquid_ice"]
+        locals.del_moist_static_energy_cloud_ensemble[:] = inputs["local_del_moist_static_energy_cloud_ensemble"]
+        locals.del_t_cloud_ensemble[:] = inputs["local_del_t_cloud_ensemble"]
+        locals.del_vapor_cloud_ensemble[:] = inputs["local_del_vapor_cloud_ensemble"]
+        locals.del_cloud_liquid_cloud_ensemble[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
+        locals.del_u_cloud_ensemble[:] = inputs["local_del_u_cloud_ensemble"]
+        locals.del_v_cloud_ensemble[:] = inputs["local_del_v_cloud_ensemble"]
+        locals.moist_static_energy_tendency_from_environmental_subsidence[:] = inputs["local_moist_static_energy_tendency_from_environmental_subsidence"]
+        locals.vapor_tendency_from_environmental_subsidence[:] = inputs["local_vapor_tendency_from_environmental_subsidence"]
+        locals.t_tendency_from_environmental_subsidence[:] = inputs["local_t_tendency_from_environmental_subsidence"]
+        locals.arbitrary_numerical_parameter[:] = inputs["local_arbitrary_numerical_parameter"]
 
         code = self.stencil_factory.from_dims_halo(
             func=modify_environment_profiles,
@@ -147,30 +147,30 @@ class TestCore:
             )
 
         outputs = {
-            "error_code": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "updraft_origin_level": state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "ocean_fraction": state.input.ocean_fraction.data[:],
-            "p_forced": state.input_output.p_forced.data[:],
-            "local_t_new": locals.t_new.data[:],
-            "local_t_modified": locals.t_modified.data[:],
-            "local_vapor_forced": locals.vapor_forced.data[:],
-            "local_vapor_modified": locals.vapor_modified.data[:],
-            "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.data[:],
-            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.data[:],
-            "local_moist_static_energy_origin_level_forced": locals.moist_static_energy_origin_level_forced.data[:],
-            "local_moist_static_energy_origin_level_modified": locals.moist_static_energy_origin_level_modified.data[:],
-            "local_partition_liquid_ice": locals.partition_liquid_ice.data[:],
-            "local_del_moist_static_energy_cloud_ensemble": locals.del_moist_static_energy_cloud_ensemble.data[:],
-            "local_del_t_cloud_ensemble": locals.del_t_cloud_ensemble.data[:],
-            "local_del_vapor_cloud_ensemble": locals.del_vapor_cloud_ensemble.data[:],
-            "local_del_cloud_liquid_cloud_ensemble": locals.del_cloud_liquid_cloud_ensemble.data[:],
-            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.data[:],
-            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.data[:],
-            "local_moist_static_energy_tendency_from_environmental_subsidence": locals.moist_static_energy_tendency_from_environmental_subsidence.data[:],
-            "local_vapor_tendency_from_environmental_subsidence": locals.vapor_tendency_from_environmental_subsidence.data[:],
-            "local_t_tendency_from_environmental_subsidence": locals.t_tendency_from_environmental_subsidence.data[:],
-            "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.data[:],
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "updraft_origin_level": state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "ocean_fraction": state.input.ocean_fraction.field[:],
+            "p_forced": state.input_output.p_forced.field[:],
+            "local_t_new": locals.t_new.field[:],
+            "local_t_modified": locals.t_modified.field[:],
+            "local_vapor_forced": locals.vapor_forced.field[:],
+            "local_vapor_modified": locals.vapor_modified.field[:],
+            "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[:],
+            "local_env_moist_static_energy_modified": locals.environment_moist_static_energy_modified.field[:],
+            "local_moist_static_energy_origin_level_forced": locals.moist_static_energy_origin_level_forced.field[:],
+            "local_moist_static_energy_origin_level_modified": locals.moist_static_energy_origin_level_modified.field[:],
+            "local_partition_liquid_ice": locals.partition_liquid_ice.field[:],
+            "local_del_moist_static_energy_cloud_ensemble": locals.del_moist_static_energy_cloud_ensemble.field[:],
+            "local_del_t_cloud_ensemble": locals.del_t_cloud_ensemble.field[:],
+            "local_del_vapor_cloud_ensemble": locals.del_vapor_cloud_ensemble.field[:],
+            "local_del_cloud_liquid_cloud_ensemble": locals.del_cloud_liquid_cloud_ensemble.field[:],
+            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.field[:],
+            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.field[:],
+            "local_moist_static_energy_tendency_from_environmental_subsidence": locals.moist_static_energy_tendency_from_environmental_subsidence.field[:],
+            "local_vapor_tendency_from_environmental_subsidence": locals.vapor_tendency_from_environmental_subsidence.field[:],
+            "local_t_tendency_from_environmental_subsidence": locals.t_tendency_from_environmental_subsidence.field[:],
+            "local_arbitrary_numerical_parameter": locals.arbitrary_numerical_parameter.field[:],
         }
 
         return outputs
@@ -192,7 +192,7 @@ class TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_shallow(
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -213,7 +213,7 @@ class TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_mid(Tran
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -234,6 +234,6 @@ class TranslateGF2020_CumulusParameterization_ModifyEnvironmentProfiles_deep(Tra
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.precip import rain_evaporation_below_cloud_base
@@ -79,26 +79,26 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
-        locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced"]
-        locals.environment_saturation_mixing_ratio_cloud_levels.data[:] = inputs["local_env_saturation_mixing_ratio_cloud_levels"]
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
-        state.output.cloud_base_mass_flux_modified.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_base_mass_flux_modified"]
-        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
-        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
-        state.output.precip.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip"]
-        locals.precipitation_flux.data[:] = inputs["local_precipitation_flux"]
-        locals.evaporation_flux.data[:] = inputs["local_evaporation_flux"]
-        locals.evaporation_below_cloud_base.data[:] = inputs["local_evaporation_below_cloud_base"]
-        state.output.dtdt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dtdt"]
-        state.output.dvapordt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvapordt"]
-        state.output.dbuoyancydt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dbuoyancydt"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.input_output.p_surface[:] = inputs["p_surface"]
+        locals.t_cloud_levels[:] = inputs["local_t_cloud_levels"]
+        locals.vapor_cloud_levels_forced[:] = inputs["local_vapor_cloud_levels_forced"]
+        locals.environment_saturation_mixing_ratio_cloud_levels[:] = inputs["local_env_saturation_mixing_ratio_cloud_levels"]
+        state.output.epsilon_forced[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
+        state.output.cloud_base_mass_flux_modified[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_base_mass_flux_modified"]
+        state.output.condensate_to_fall_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
+        state.output.evaporate_in_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
+        state.output.precip[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip"]
+        locals.precipitation_flux[:] = inputs["local_precipitation_flux"]
+        locals.evaporation_flux[:] = inputs["local_evaporation_flux"]
+        locals.evaporation_below_cloud_base[:] = inputs["local_evaporation_below_cloud_base"]
+        state.output.dtdt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dtdt"]
+        state.output.dvapordt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvapordt"]
+        state.output.dbuoyancydt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dbuoyancydt"]
 
         code = self.stencil_factory.from_dims_halo(
             func=rain_evaporation_below_cloud_base,
@@ -172,7 +172,7 @@ class TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_shal
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -193,7 +193,7 @@ class TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_mid(
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -214,6 +214,6 @@ class TranslateGF2020_CumulusParameterization_RainEvaporationBelowCloudBase_deep
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

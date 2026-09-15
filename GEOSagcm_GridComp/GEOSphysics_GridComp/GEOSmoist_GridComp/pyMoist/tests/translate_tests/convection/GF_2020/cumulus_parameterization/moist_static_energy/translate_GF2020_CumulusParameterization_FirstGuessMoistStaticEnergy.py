@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.moist_static_energy import first_guess_moist_static_energy
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -72,19 +72,19 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.start_level.data[:] = inputs["local_start_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
-        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
-        locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft"]
-        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        locals.environment_moist_static_energy_forced.data[:] = inputs["local_env_moist_static_energy_forced"]
-        locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
-        locals.t_excess.data[:] = inputs["local_t_excess"]
-        locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]
-        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.start_level[:] = inputs["local_start_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.output.mass_detrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
+        state.output.mass_entrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
+        locals.normalized_massflux_updraft[:] = inputs["local_normalized_massflux_updraft"]
+        locals.cloud_moist_static_energy_forced[:] = inputs["local_cloud_moist_static_energy_forced"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        locals.environment_moist_static_energy_forced[:] = inputs["local_env_moist_static_energy_forced"]
+        locals.vapor_excess[:] = inputs["local_vapor_excess"]
+        locals.t_excess[:] = inputs["local_t_excess"]
+        locals.add_buoyancy[:] = inputs["local_add_buoyancy"]
+        locals.environment_saturation_moist_static_energy_cloud_levels_forced[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels_forced"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(
@@ -119,7 +119,7 @@ class TestCore:
             "mass_detrainment_updraft_forced": state.output.mass_detrainment_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
             "mass_entrainment_updraft_forced": state.output.mass_entrainment_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
             "local_normalized_massflux_updraft": locals.normalized_massflux_updraft.field[:],
-            "local_cloud_moist_static_energy_forced": locals.cloud_moist_static_energy_forced,
+            "local_cloud_moist_static_energy_forced": locals.cloud_moist_static_energy_forced.field[:],
             "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
             "local_env_moist_static_energy_forced": locals.environment_moist_static_energy_forced.field[:],
             "local_vapor_excess": locals.vapor_excess.field[:],
@@ -147,7 +147,7 @@ class TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_shallo
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -168,7 +168,7 @@ class TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_mid(Tr
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -189,6 +189,6 @@ class TranslateGF2020_CumulusParameterization_FirstGuessMoistStaticEnergy_deep(T
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

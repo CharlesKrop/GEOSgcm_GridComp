@@ -6,7 +6,12 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    DeepSpecificConstants,
+    GF2020CumulusParameterizationConfig,
+    MidSpecificConstants,
+    ShallowSpecificConstants,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
@@ -661,7 +666,10 @@ class AtmosphericComposition(NDSLRuntime):
         self._environment_cloud_levels_chemistry = stencil_factory.from_dims_halo(
             func=environment_cloud_levels_chemistry,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS, "CLOUD_LEVEL_OPTION": 2},
+            externals={
+                "NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS,
+                "CLOUD_LEVEL_OPTION": 2,
+            },
         )
 
         self._updraft_chemistry = stencil_factory.from_dims_halo(
@@ -714,6 +722,10 @@ class AtmosphericComposition(NDSLRuntime):
             externals={"NUMBER_OF_TRACERS": config.NUMBER_OF_TRACERS},
         )
 
+        self.shallow = ShallowSpecificConstants(cumulus_parameterization_config)
+        self.mid = MidSpecificConstants(cumulus_parameterization_config)
+        self.deep = DeepSpecificConstants(cumulus_parameterization_config)
+
     def __call__(
         self,
         error_code: Quantity,
@@ -746,7 +758,7 @@ class AtmosphericComposition(NDSLRuntime):
         chemistry_tracers_total_pw_updraft: Quantity,
         chemistry_tracers_total_pw_downdraft: Quantity,
         convection_tracers: ConvectionTracers,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
+        plume: int,
     ):
         """Apply the effects of convection to the convection/chemistry tracers.
 
@@ -788,13 +800,19 @@ class AtmosphericComposition(NDSLRuntime):
         Raises:
             NotImplementedError: _description_
         """
+        if plume == 0:
+            constants_AVERAGE_LAYER_DEPTH = self.shallow.AVERAGE_LAYER_DEPTH
+        elif plume == 1:
+            constants_AVERAGE_LAYER_DEPTH = self.mid.AVERAGE_LAYER_DEPTH
+        else:
+            constants_AVERAGE_LAYER_DEPTH = self.deep.AVERAGE_LAYER_DEPTH
 
         # 1) get mass mixing ratios at the cloud levels
         self._environment_cloud_levels_chemistry(
             error_code=error_code,
             chemistry_tracers=chemistry_tracers,
             chemistry_tracers_cloud_levels=chemistry_tracers_cloud_levels,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
         if (convection_tracers.vect_hcts.field[:, 0] > Float(1.0e-6)).any():
@@ -827,8 +845,8 @@ class AtmosphericComposition(NDSLRuntime):
             convection_tracers_fscav=convection_tracers.fscav,
             convection_tracers_use_gcc_washout=convection_tracers.use_gcc_washout,
             tracer_cloud_boundary=self._tracer_cloud_boundary,
-            AVERAGE_LAYER_DEPTH=plume_dependent_constants.AVERAGE_LAYER_DEPTH,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            AVERAGE_LAYER_DEPTH=constants_AVERAGE_LAYER_DEPTH,
+            plume=plume,
         )
 
         # b) downdraft chemistry
@@ -848,7 +866,7 @@ class AtmosphericComposition(NDSLRuntime):
             chemistry_tracers_pw_downdraft=chemistry_tracers_pw_downdraft,
             chemistry_tracers_total_pw_downdraft=chemistry_tracers_total_pw_downdraft,
             chemistry_tracers_total_pw_updraft=chemistry_tracers_total_pw_updraft,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
         # 3) determine the vertical transport including mixing, scavenging and evaporation
@@ -871,7 +889,7 @@ class AtmosphericComposition(NDSLRuntime):
             aa=self._aa,
             bb=self._bb,
             cc=self._cc,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
         if self.cumulus_parameterization_config.USE_FLUX_FORM == 1 and self.cumulus_parameterization_config.ALP1 > 0.0:
@@ -883,9 +901,9 @@ class AtmosphericComposition(NDSLRuntime):
                     a=self._aa,
                     b=self._bb,
                     c=self._cc,
-                    f=self._dd_tracers.data[:, :, :, tracer],
+                    f=self._dd_tracers[:, :, :, tracer],
                     error_code=error_code,
-                    plume=plume_dependent_constants.PLUME_INDEX,
+                    plume=plume,
                 )
 
                 self._update_after_tridiag(
@@ -895,7 +913,7 @@ class AtmosphericComposition(NDSLRuntime):
                     chemistry_tracers=chemistry_tracers,
                     chemistry_tracers_output=chemistry_tracers_output,
                     tracer=Int(tracer),
-                    plume=plume_dependent_constants.PLUME_INDEX,
+                    plume=plume,
                 )
 
         self._vertical_transport_part_2(
@@ -911,5 +929,5 @@ class AtmosphericComposition(NDSLRuntime):
             chemistry_tracers_pw_downdraft=chemistry_tracers_pw_downdraft,
             dd_tracers=self._dd_tracers,
             residual=self._residual,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )

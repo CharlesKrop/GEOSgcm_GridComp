@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import compute_lateral_massflux, compute_uc_vc
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -87,33 +87,33 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        locals.detrainment_function_updraft.data[:] = inputs["local_detrainment_function_updraft"]
-        state.output.entrainment_rate.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["entrainment_rate"]
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        state.output.mass_entrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
-        state.output.mass_detrainment_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
-        locals.mass_entrainment_updraft.data[:] = inputs["local_mass_entrainment_updraft"]
-        locals.mass_detrainment_updraft.data[:] = inputs["local_mass_detrainment_updraft"]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
-        state.input_output.pbl_level.data[:] = inputs["pbl_level"]
-        locals.mass_entrainment_u_updraft.data[:] = inputs["local_mass_entrainment_u_updraft"]
-        locals.mass_detrainment_u_updraft.data[:] = inputs["local_mass_detrainment_u_updraft"]
-        locals.start_level.data[:] = inputs["local_start_level"] - 1
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
-        locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels"]
-        locals.u_c.data[:] = inputs["local_u_c"]
-        locals.v_c.data[:] = inputs["local_v_c"]
-        locals.moist_static_energy_origin_level.data[:] = inputs["local_moist_static_energy_origin_level"]
-        locals.moist_static_energy_origin_level_forced.data[:] = inputs["local_moist_static_energy_origin_level_forced"]
-        locals.cloud_moist_static_energy.data[:] = inputs["local_cloud_moist_static_energy"]
-        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        locals.detrainment_function_updraft[:] = inputs["local_detrainment_function_updraft"]
+        state.output.entrainment_rate[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["entrainment_rate"]
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.output.mass_entrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_entrainment_updraft_forced"]
+        state.output.mass_detrainment_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["mass_detrainment_updraft_forced"]
+        locals.mass_entrainment_updraft[:] = inputs["local_mass_entrainment_updraft"]
+        locals.mass_detrainment_updraft[:] = inputs["local_mass_detrainment_updraft"]
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"]
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        state.input_output.pbl_level[:] = inputs["pbl_level"]
+        locals.mass_entrainment_u_updraft[:] = inputs["local_mass_entrainment_u_updraft"]
+        locals.mass_detrainment_u_updraft[:] = inputs["local_mass_detrainment_u_updraft"]
+        locals.start_level[:] = inputs["local_start_level"] - 1
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        locals.u_cloud_levels[:] = inputs["local_u_cloud_levels"]
+        locals.v_cloud_levels[:] = inputs["local_v_cloud_levels"]
+        locals.u_c[:] = inputs["local_u_c"]
+        locals.v_c[:] = inputs["local_v_c"]
+        locals.moist_static_energy_origin_level[:] = inputs["local_moist_static_energy_origin_level"]
+        locals.moist_static_energy_origin_level_forced[:] = inputs["local_moist_static_energy_origin_level_forced"]
+        locals.cloud_moist_static_energy[:] = inputs["local_cloud_moist_static_energy"]
+        locals.cloud_moist_static_energy_forced[:] = inputs["local_cloud_moist_static_energy_forced"]
 
         code_part_1 = self.stencil_factory.from_dims_halo(
             func=compute_lateral_massflux,
@@ -217,7 +217,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -240,7 +240,7 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -263,6 +263,6 @@ class TranslateGF2020_CumulusParameterization_CalculateMassEntrainmentDetrainmen
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

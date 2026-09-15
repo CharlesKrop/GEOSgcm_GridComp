@@ -65,12 +65,12 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
-        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced"]
-        locals.updraft_column_temperature_forced.data[:] = inputs["local_updraft_column_temperature_forced"]
-        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs["local_cloud_total_water_after_entrainment_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.cloud_moist_static_energy_forced[:] = inputs["local_cloud_moist_static_energy_forced"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        locals.t_cloud_levels_forced[:] = inputs["local_t_cloud_levels_forced"]
+        locals.updraft_column_temperature_forced[:] = inputs["local_updraft_column_temperature_forced"]
+        locals.cloud_total_water_after_entrainment_forced[:] = inputs["local_cloud_total_water_after_entrainment_forced"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(

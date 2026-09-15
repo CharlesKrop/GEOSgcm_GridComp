@@ -8,7 +8,12 @@ from ndsl.stencils.column_operations import column_max_ddim, column_min
 import pyMoist.constants as constants
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    DeepSpecificConstants,
+    GF2020CumulusParameterizationConfig,
+    MidSpecificConstants,
+    ShallowSpecificConstants,
+)
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Ensemble, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.shared_functions import get_cloud_boundary_conditions
@@ -170,7 +175,6 @@ def updraft_mass_flux(
         # land/ocean
         if error_code[0, 0][plume] == 0:
             if execution_choice == 20:
-
                 height_updraft: FloatFieldIJ = (1.0 - ocean_fraction) * UPDRAFT_MAX_HEIGHT_LAND + ocean_fraction * UPDRAFT_MAX_HEIGHT_OCEAN
                 # add a random perturbation
                 height_updraft = height_updraft + random_number
@@ -201,7 +205,7 @@ def updraft_mass_flux(
                 # to be at "updraft_origin_level_adj" vertical level
                 alpha: FloatFieldIJ = 1.0 + (
                     (beta - 1.0)
-                    * ((updraft_origin_level_adj / (cloud_top_level[0, 0][plume] + 2)))
+                    * (updraft_origin_level_adj / (cloud_top_level[0, 0][plume] + 2))
                     / (1.0 - ((updraft_origin_level_adj) / (cloud_top_level[0, 0][plume] + 2)))
                 )
 
@@ -433,9 +437,15 @@ def updraft_moisture(
                 )
 
                 # total condensed water before rainout
-                cloud_liquid_before_rain_forced = max(0.0, cloud_total_water_after_entrainment_forced - saturation_cloud_liquid)
+                cloud_liquid_before_rain_forced = max(
+                    0.0,
+                    cloud_total_water_after_entrainment_forced - saturation_cloud_liquid,
+                )
 
-                cloud_liquid_after_rain_forced[0, 0, 0][plume] = min(cloud_liquid_before_rain_forced, cloud_liquid_after_rain_forced[0, 0, 0][plume])
+                cloud_liquid_after_rain_forced[0, 0, 0][plume] = min(
+                    cloud_liquid_before_rain_forced,
+                    cloud_liquid_after_rain_forced[0, 0, 0][plume],
+                )
 
                 # production term => condensation/diffusional growth
                 cup = (
@@ -449,7 +459,8 @@ def updraft_moisture(
                 if C0 < 1.0e-6:
                     cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced
                     cloud_total_water_after_entrainment_forced = cloud_liquid_after_rain_forced[0, 0, 0][plume] + min(
-                        cloud_total_water_after_entrainment_forced, saturation_cloud_liquid
+                        cloud_total_water_after_entrainment_forced,
+                        saturation_cloud_liquid,
                     )
                     total_normalized_integrated_condensate_forced[0, 0][plume] = 0.0
                     psum = psum + cloud_liquid_before_rain_forced * normalized_massflux_updraft_forced[0, 0, 0][plume] * dz
@@ -461,14 +472,18 @@ def updraft_moisture(
                         min_liq = ocean_fraction * CRITICAL_MIXING_RATIO_OVER_OCEAN + (1.0 - ocean_fraction) * CRITICAL_MIXING_RATIO_OVER_LAND
                         cx0 = (c1d + C0) * dz
                         cloud_liquid_after_rain_forced[0, 0, 0][plume] = cloud_liquid_before_rain_forced / (1.0 + cx0)
-                        condensate_to_fall_forced[0, 0, 0][plume] = cx0 * max(0.0, cloud_liquid_after_rain_forced[0, 0, 0][plume] - min_liq)  # units kg[rain]/kg[air]
+                        condensate_to_fall_forced[0, 0, 0][plume] = cx0 * max(
+                            0.0,
+                            cloud_liquid_after_rain_forced[0, 0, 0][plume] - min_liq,
+                        )  # units kg[rain]/kg[air]
                         # convert precipitable_water_updraft_forced to
                         # normalized precipitable_water_updraft_forced
                         condensate_to_fall_forced[0, 0, 0][plume] = condensate_to_fall_forced[0, 0, 0][plume] * normalized_massflux_updraft_forced[0, 0, 0][plume]
 
                     # total water (vapor + condensed) in updraft after the rainout
                     cloud_total_water_after_entrainment_forced = cloud_liquid_after_rain_forced[0, 0, 0][plume] + min(
-                        cloud_total_water_after_entrainment_forced, saturation_cloud_liquid
+                        cloud_total_water_after_entrainment_forced,
+                        saturation_cloud_liquid,
                     )
 
                     # integrated normalized condensates
@@ -814,6 +829,10 @@ class UpdraftMassFlux(NDSLRuntime):
         self.config = config
         self.cumulus_parameterization_config = cumulus_parameterization_config
 
+        self.shallow = ShallowSpecificConstants(cumulus_parameterization_config)
+        self.mid = MidSpecificConstants(cumulus_parameterization_config)
+        self.deep = DeepSpecificConstants(cumulus_parameterization_config)
+
         # add dimension to quantity factory and create classes for constants
         quantity_factory.update_data_dimensions({"UpdraftMassFlux_constants": len(_X_ALPHA)})
 
@@ -846,8 +865,18 @@ class UpdraftMassFlux(NDSLRuntime):
         normalized_massflux_updraft_forced: Quantity,
         normalized_massflux_updraft_modified: Quantity,
         random_number: Quantity,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
+        plume: int,
     ):
+        if plume == 0:
+            constants_updraft_max_height_land = self.shallow.UPDRAFT_MAX_HEIGHT_LAND
+            constants_updraft_max_height_ocean = self.shallow.UPDRAFT_MAX_HEIGHT_OCEAN
+        elif plume == 1:
+            constants_updraft_max_height_land = self.mid.UPDRAFT_MAX_HEIGHT_LAND
+            constants_updraft_max_height_ocean = self.mid.UPDRAFT_MAX_HEIGHT_OCEAN
+        else:
+            constants_updraft_max_height_land = self.deep.UPDRAFT_MAX_HEIGHT_LAND
+            constants_updraft_max_height_ocean = self.deep.UPDRAFT_MAX_HEIGHT_OCEAN
+
         self._updraft_mass_flux(
             error_code=error_code,
             updraft_origin_level=updraft_origin_level,
@@ -862,9 +891,9 @@ class UpdraftMassFlux(NDSLRuntime):
             normalized_massflux_updraft_forced=normalized_massflux_updraft_forced,
             normalized_massflux_updraft_modified=normalized_massflux_updraft_modified,
             random_number=random_number,
-            UPDRAFT_MAX_HEIGHT_LAND=plume_dependent_constants.UPDRAFT_MAX_HEIGHT_LAND,
-            UPDRAFT_MAX_HEIGHT_OCEAN=plume_dependent_constants.UPDRAFT_MAX_HEIGHT_OCEAN,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            UPDRAFT_MAX_HEIGHT_LAND=constants_updraft_max_height_land,
+            UPDRAFT_MAX_HEIGHT_OCEAN=constants_updraft_max_height_ocean,
+            plume=plume,
             X_ALPHA=self._X_ALPHA,
             G_ALPHA=self._G_ALPHA,
         )
@@ -915,7 +944,7 @@ class UpdraftInitialWorkfunctions(NDSLRuntime):
         t_cloud_levels_forced: Quantity,
         cloud_workfunction_0: Quantity,
         cloud_workfunction_1: Quantity,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
+        plume: Int,
     ):
         self._cloud_workfunction_aa0(
             error_code=error_code,
@@ -929,28 +958,28 @@ class UpdraftInitialWorkfunctions(NDSLRuntime):
             t_cloud_levels=t_cloud_levels,
             workfunction=cloud_workfunction_0,
             mode=Int(0),
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
-
+        nff = normalized_massflux_updraft_forced.field[:, :, :, plume]
         self._cloud_workfunction_aa0(
             error_code=error_code,
             updraft_origin_level=updraft_origin_level,
             updraft_lfc_level=updraft_lfc_level,
             cloud_top_level=cloud_top_level,
             geopotential_height=geopotential_height_cloud_levels_forced,
-            normalized_massflux_updraft=normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            normalized_massflux_updraft=nff,
             d_buoyancy=d_buoyancy_forced,
             gamma_cloud_levels=gamma_cloud_levels_forced,
             t_cloud_levels=t_cloud_levels_forced,
             workfunction=cloud_workfunction_1,
             mode=Int(0),
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
         self._check_cloud_workfunction_1(
             error_code=error_code,
             cloud_workfunction_1=cloud_workfunction_1,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
 
@@ -994,7 +1023,7 @@ class UpdraftCIN(NDSLRuntime):
         t_cloud_levels_forced: Quantity,
         cin_0: Quantity,
         cin_1: Quantity,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
+        plume: int,
     ):
         self._cloud_workfunction_aa0(
             error_code=error_code,
@@ -1008,7 +1037,7 @@ class UpdraftCIN(NDSLRuntime):
             t_cloud_levels=t_cloud_levels,
             workfunction=cin_0,
             mode=Int(2),
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
         self._cloud_workfunction_aa0(
@@ -1017,13 +1046,13 @@ class UpdraftCIN(NDSLRuntime):
             updraft_lfc_level=updraft_lfc_level,
             cloud_top_level=cloud_top_level,
             geopotential_height=geopotential_height_cloud_levels_forced,
-            normalized_massflux_updraft=normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            normalized_massflux_updraft=normalized_massflux_updraft_forced.field[:, :, :, plume],
             d_buoyancy=d_buoyancy_forced,
             gamma_cloud_levels=gamma_cloud_levels_forced,
             t_cloud_levels=t_cloud_levels_forced,
             workfunction=cin_1,
             mode=Int(2),
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
 
@@ -1074,7 +1103,7 @@ class UpdateWorkfunctionAndPrecipitationEnsemble(NDSLRuntime):
         evaporate_in_downdraft_forced: Quantity,
         epsilon_forced: Quantity,
         precipitation_ensemble: Quantity,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
+        plume: int,
     ):
         self._cloud_workfunction_aa0(
             error_code=error_code,
@@ -1088,7 +1117,7 @@ class UpdateWorkfunctionAndPrecipitationEnsemble(NDSLRuntime):
             t_cloud_levels=t_cloud_levels_modified,
             workfunction=cloud_workfunction_0_modified,
             mode=Int(0),
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )
 
         self._compute_precipitation_ensemble(
@@ -1098,5 +1127,5 @@ class UpdateWorkfunctionAndPrecipitationEnsemble(NDSLRuntime):
             evaporate_in_downdraft_forced=evaporate_in_downdraft_forced,
             epsilon_forced=epsilon_forced,
             precipitation_ensemble=precipitation_ensemble,
-            plume=plume_dependent_constants.PLUME_INDEX,
+            plume=plume,
         )

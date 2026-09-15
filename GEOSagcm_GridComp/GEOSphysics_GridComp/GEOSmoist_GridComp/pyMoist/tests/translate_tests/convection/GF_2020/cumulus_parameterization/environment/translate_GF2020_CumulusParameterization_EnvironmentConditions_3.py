@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment import environment_conditions
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -69,16 +69,16 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        locals.geopotential_height_modified.data[:] = inputs["local_geopotential_height_modified"]
-        locals.environment_saturation_mixing_ratio_modified.data[:] = inputs["local_env_saturation_mixing_ratio_modified"]
-        locals.environment_moist_static_energy_modified.data[:] = inputs["local_env_moist_static_energy_modified"]
-        locals.environment_saturation_moist_static_energy_modified.data[:] = inputs["local_env_saturation_moist_static_energy_modified"]
-        locals.t_modified.data[:] = inputs["local_t_modified"]
-        locals.vapor_modified.data[:] = inputs["local_vapor_modified"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.geopotential_height_modified[:] = inputs["local_geopotential_height_modified"]
+        locals.environment_saturation_mixing_ratio_modified[:] = inputs["local_env_saturation_mixing_ratio_modified"]
+        locals.environment_moist_static_energy_modified[:] = inputs["local_env_moist_static_energy_modified"]
+        locals.environment_saturation_moist_static_energy_modified[:] = inputs["local_env_saturation_moist_static_energy_modified"]
+        locals.t_modified[:] = inputs["local_t_modified"]
+        locals.vapor_modified[:] = inputs["local_vapor_modified"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        state.input_output.topography_height_no_negative[:] = inputs["topography_height_no_negative"]
+        state.input_output.p_surface[:] = inputs["p_surface"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
 
         code = self.stencil_factory.from_dims_halo(
             func=environment_conditions,
@@ -133,7 +133,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_shallow(Tr
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -154,7 +154,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_mid(Transl
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -175,6 +175,6 @@ class TranslateGF2020_CumulusParameterization_EnvironmentConditions_3_deep(Trans
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

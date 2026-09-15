@@ -91,40 +91,38 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        locals.start_level.data[:] = inputs["local_start_level"] - 1
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
-        locals.cloud_total_water_after_entrainment_forced.data[:] = inputs["local_cloud_total_water_after_entrainment_forced"]
-        state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_liquid_after_rain_forced"]
-        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
-        state.output.total_normalized_integrated_condensate_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "total_normalized_integrated_condensate_forced"
-        ]
-        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
-        locals.updraft_column_temperature_forced.data[:] = inputs["local_updraft_column_temperature_forced"]
-        state.input.ocean_fraction.data[:] = inputs["ocean_fraction"]
-        state.input.convection_fraction.data[:] = inputs["convection_fraction"]
-        state.input.surface_type.data[:] = inputs["surface_type"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        locals.d_buoyancy_forced.data[:] = inputs["local_d_buoyancy_forced"]
-        locals.cloud_liquid_before_rain_forced.data[:] = inputs["local_cloud_liquid_before_rain_forced"]
-        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
-        locals.vapor_forced.data[:] = inputs["local_vapor_forced"]
-        locals.gamma_cloud_levels_forced.data[:] = inputs["local_gamma_cloud_levels_forced"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:] = inputs["local_env_saturation_mixing_ratio_cloud_levels_forced"]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
-        locals.vapor_cloud_levels_forced.data[:] = inputs["local_vapor_cloud_levels_forced"]
-        locals.vapor_excess.data[:] = inputs["local_vapor_excess"]
-        state.input_output.ccn.data[:] = inputs["ccn"]
-        locals.mass_entrainment_updraft.data[:] = inputs["local_mass_entrainment_updraft"]
-        locals.mass_detrainment_updraft.data[:] = inputs["local_mass_detrainment_updraft"]
-        locals.psum.data[:] = inputs["local_psum"]
-        locals.psumh.data[:] = inputs["local_psumh"]
-        locals.c1d.data[:] = inputs["local_c1d"]
-        locals.add_buoyancy.data[:] = inputs["local_add_buoyancy"]
-        locals.vertical_velocity_3d.data[:] = inputs["local_vertical_velocity_3d"]
+        locals.start_level[:] = inputs["local_start_level"] - 1
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        locals.cloud_total_water_after_entrainment_forced[:] = inputs["local_cloud_total_water_after_entrainment_forced"]
+        state.output.cloud_liquid_after_rain_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_liquid_after_rain_forced"]
+        state.output.condensate_to_fall_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
+        state.output.total_normalized_integrated_condensate_forced[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["total_normalized_integrated_condensate_forced"]
+        locals.cloud_moist_static_energy_forced[:] = inputs["local_cloud_moist_static_energy_forced"]
+        locals.updraft_column_temperature_forced[:] = inputs["local_updraft_column_temperature_forced"]
+        state.input.ocean_fraction[:] = inputs["ocean_fraction"]
+        state.input.convection_fraction[:] = inputs["convection_fraction"]
+        state.input.surface_type[:] = inputs["surface_type"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        locals.d_buoyancy_forced[:] = inputs["local_d_buoyancy_forced"]
+        locals.cloud_liquid_before_rain_forced[:] = inputs["local_cloud_liquid_before_rain_forced"]
+        locals.t_cloud_levels[:] = inputs["local_t_cloud_levels"]
+        locals.vapor_forced[:] = inputs["local_vapor_forced"]
+        locals.gamma_cloud_levels_forced[:] = inputs["local_gamma_cloud_levels_forced"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        locals.environment_saturation_mixing_ratio_cloud_levels_forced[:] = inputs["local_env_saturation_mixing_ratio_cloud_levels_forced"]
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        locals.vapor_cloud_levels_forced[:] = inputs["local_vapor_cloud_levels_forced"]
+        locals.vapor_excess[:] = inputs["local_vapor_excess"]
+        state.input_output.ccn[:] = inputs["ccn"]
+        locals.mass_entrainment_updraft[:] = inputs["local_mass_entrainment_updraft"]
+        locals.mass_detrainment_updraft[:] = inputs["local_mass_detrainment_updraft"]
+        locals.psum[:] = inputs["local_psum"]
+        locals.psumh[:] = inputs["local_psumh"]
+        locals.c1d[:] = inputs["local_c1d"]
+        locals.add_buoyancy[:] = inputs["local_add_buoyancy"]
+        locals.vertical_velocity_3d[:] = inputs["local_vertical_velocity_3d"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(
@@ -183,38 +181,40 @@ class TestCore:
 
         # write output
         outputs = {
-            "local_start_level": locals.start_level.data[:] + 1,
-            "error_code": state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.data[:],
-            "local_cloud_total_water_after_entrainment_forced": locals.cloud_total_water_after_entrainment_forced.data[:],
-            "cloud_liquid_after_rain_forced": state.output.cloud_liquid_after_rain_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.data[:, :, plume_dependent_constants.PLUME_INDEX],
-            "local_cloud_moist_static_energy_forced": locals.cloud_moist_static_energy_forced.data[:],
-            "local_updraft_column_temperature_forced": locals.updraft_column_temperature_forced.data[:],
-            "ocean_fraction": state.input.ocean_fraction.data[:],
-            "convection_fraction": state.input.convection_fraction.data[:],
-            "surface_type": state.input.surface_type.data[:],
-            "p_forced": state.input_output.p_forced.data[:],
-            "cloud_top_level": state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "local_d_buoyancy_forced": locals.d_buoyancy_forced.data[:],
-            "local_cloud_liquid_before_rain_forced": locals.cloud_liquid_before_rain_forced.data[:],
-            "local_t_cloud_levels": locals.t_cloud_levels.data[:],
-            "local_vapor_forced": locals.vapor_forced.data[:],
-            "local_gamma_cloud_levels_forced": locals.gamma_cloud_levels_forced.data[:],
-            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "local_env_saturation_mixing_ratio_cloud_levels_forced": locals.environment_saturation_mixing_ratio_cloud_levels_forced.data[:],
-            "updraft_origin_level": state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels_forced.data[:],
-            "local_vapor_excess": locals.vapor_excess.data[:],
-            "ccn": state.input_output.ccn.data[:],
-            "local_mass_entrainment_updraft": locals.mass_entrainment_updraft.data[:],
-            "local_mass_detrainment_updraft": locals.mass_detrainment_updraft.data[:],
-            "local_psum": locals.psum.data[:],
-            "local_psumh": locals.psumh.data[:],
-            "local_c1d": locals.c1d.data[:],
-            "local_add_buoyancy": locals.add_buoyancy.data[:],
-            "local_vertical_velocity_3d": locals.vertical_velocity_3d.data[:],
+            "local_start_level": locals.start_level.field[:] + 1,
+            "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
+            "local_geopotential_height_cloud_levels_forced": locals.geopotential_height_cloud_levels_forced.field[:],
+            "local_cloud_total_water_after_entrainment_forced": locals.cloud_total_water_after_entrainment_forced.field[:],
+            "cloud_liquid_after_rain_forced": state.output.cloud_liquid_after_rain_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "condensate_to_fall_forced": state.output.condensate_to_fall_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "total_normalized_integrated_condensate_forced": state.output.total_normalized_integrated_condensate_forced.field[
+                :, :, plume_dependent_constants.PLUME_INDEX
+            ],
+            "local_cloud_moist_static_energy_forced": locals.cloud_moist_static_energy_forced.field[:],
+            "local_updraft_column_temperature_forced": locals.updraft_column_temperature_forced.field[:],
+            "ocean_fraction": state.input.ocean_fraction.field[:],
+            "convection_fraction": state.input.convection_fraction.field[:],
+            "surface_type": state.input.surface_type.field[:],
+            "p_forced": state.input_output.p_forced.field[:],
+            "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "local_d_buoyancy_forced": locals.d_buoyancy_forced.field[:],
+            "local_cloud_liquid_before_rain_forced": locals.cloud_liquid_before_rain_forced.field[:],
+            "local_t_cloud_levels": locals.t_cloud_levels.field[:],
+            "local_vapor_forced": locals.vapor_forced.field[:],
+            "local_gamma_cloud_levels_forced": locals.gamma_cloud_levels_forced.field[:],
+            "normalized_massflux_updraft_forced": state.output.normalized_massflux_updraft_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "local_env_saturation_mixing_ratio_cloud_levels_forced": locals.environment_saturation_mixing_ratio_cloud_levels_forced.field[:],
+            "updraft_origin_level": state.output.updraft_origin_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
+            "local_vapor_cloud_levels_forced": locals.vapor_cloud_levels_forced.field[:],
+            "local_vapor_excess": locals.vapor_excess.field[:],
+            "ccn": state.input_output.ccn.field[:],
+            "local_mass_entrainment_updraft": locals.mass_entrainment_updraft.field[:],
+            "local_mass_detrainment_updraft": locals.mass_detrainment_updraft.field[:],
+            "local_psum": locals.psum.field[:],
+            "local_psumh": locals.psumh.field[:],
+            "local_c1d": locals.c1d.field[:],
+            "local_add_buoyancy": locals.add_buoyancy.field[:],
+            "local_vertical_velocity_3d": locals.vertical_velocity_3d.field[:],
         }
 
         return outputs
