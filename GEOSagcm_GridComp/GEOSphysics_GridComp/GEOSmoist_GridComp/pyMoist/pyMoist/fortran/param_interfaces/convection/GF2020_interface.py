@@ -305,15 +305,25 @@ class GF2020Interface(UserCode):
         if not DataDimensionsField.exists("FloatField_ConvectionTracers"):
             DataDimensionsField.register(FloatField_ConvectionTracers, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
         if not DataDimensionsField.exists("FloatField_ConvectionTracers_Plume"):
-            DataDimensionsField.register(FloatField_ConvectionTracers_Plume, ndsl_stack.quantity_factory, data_dimensions_names=["plumes", CONVECTION_TRACER_DIM], axes=IJK, dtype=Float)
+            DataDimensionsField.register(
+                FloatField_ConvectionTracers_Plume, ndsl_stack.quantity_factory, data_dimensions_names=["plumes", CONVECTION_TRACER_DIM], axes=IJK, dtype=Float
+            )
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_Float"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_Float, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=[], dtype=Float)
+            DataDimensionsField.register(
+                ConvectionTracerMetaDataTable_Float, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=[], dtype=Float
+            )
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_Bool"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_Bool, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=[], dtype=bool)
+            DataDimensionsField.register(
+                ConvectionTracerMetaDataTable_Bool, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM], axes=[], dtype=bool
+            )
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_x3"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_x3, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM, SIZE_THREE_DIM], axes=[], dtype=Float)
+            DataDimensionsField.register(
+                ConvectionTracerMetaDataTable_x3, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM, SIZE_THREE_DIM], axes=[], dtype=Float
+            )
         if not DataDimensionsField.exists("ConvectionTracerMetaDataTable_x4"):
-            DataDimensionsField.register(ConvectionTracerMetaDataTable_x4, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM, SIZE_FOUR_DIM], axes=[], dtype=Float)
+            DataDimensionsField.register(
+                ConvectionTracerMetaDataTable_x4, ndsl_stack.quantity_factory, data_dimensions_names=[CONVECTION_TRACER_DIM, SIZE_FOUR_DIM], axes=[], dtype=Float
+            )
 
         self._managed_state.register("latitude", "DSL__GF2020_LATS", internal_repository, dims=[I_DIM, J_DIM])
         self._managed_state.register("longitude", "DSL__GF2020_LONS", internal_repository, dims=[I_DIM, J_DIM])
@@ -660,19 +670,19 @@ class GF2020Interface(UserCode):
             with TimedCUDAProfiler("GF 2020 Convection - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
                 safe_assign_array(
-                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                    self._managed_convection_tracers.ndsl_state.tracers[:],
                     MOIST_WORKAROUNDS.CNV_Tracers().Q[:],
                 )
                 safe_assign_array(
-                    self._managed_convection_tracers.ndsl_state.fscav.data[:],
+                    self._managed_convection_tracers.ndsl_state.fscav[:],
                     MOIST_WORKAROUNDS.CNV_Tracers().fscav[:],
                 )
                 safe_assign_array(
-                    self._managed_convection_tracers.ndsl_state.vect_hcts.data[:],
+                    self._managed_convection_tracers.ndsl_state.vect_hcts[:],
                     MOIST_WORKAROUNDS.CNV_Tracers().Vect_Hcts[:],
                 )
                 safe_assign_array(
-                    self._managed_convection_tracers.ndsl_state.use_gcc_washout.data[:],
+                    self._managed_convection_tracers.ndsl_state.use_gcc_washout[:],
                     MOIST_WORKAROUNDS.CNV_Tracers().use_gcc_washout[:],
                 )
 
@@ -695,12 +705,12 @@ class GF2020Interface(UserCode):
             with TimedCUDAProfiler("GF 2020 Convection - State copy-back", {}):
                 safe_assign_array(
                     MOIST_WORKAROUNDS.CNV_Tracers().Q,
-                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                    self._managed_convection_tracers.ndsl_state.tracers[:],
                 )
                 self._managed_state.ndsl_to_fortran()
                 safe_assign_array(
                     MOIST_WORKAROUNDS.CNV_Tracers().Q,
-                    self._managed_convection_tracers.ndsl_state.tracers.data[:],
+                    self._managed_convection_tracers.ndsl_state.tracers[:],
                 )
 
     def finalize(
