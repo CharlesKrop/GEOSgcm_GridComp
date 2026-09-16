@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import function, isnan
+from ndsl.dsl.gt4py import function, exp, log
 from ndsl.dsl.typing import Bool, Float, Float64
 
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE
@@ -161,3 +161,59 @@ def update_hydrometeors_and_temperature(
     tcp3 = lcpk + icpk * min(1.0, max((TICE - t), 0.0) / (TICE - T_WFR))
 
     return t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3
+
+
+@function
+def calc_particle_concentration(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    pca: Float64,
+    pcb: Float64,
+):
+    return pca / pcb * exp(mu / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def calc_effective_diameter(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    eda: Float64,
+    edb: Float64,
+):
+    return eda / edb * exp(1.0 / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def calc_optical_extinction(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    oea: Float64,
+    oeb: Float64,
+):
+    return oea / oeb * exp((mu + 2) / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def calc_reflectivity_factor(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    rra: Float64,
+    rrb: Float64,
+):
+    return rra / rrb * exp((mu + 6) / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def calc_mass_weighted_terminal_velocity(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    tva: Float64,
+    tvb: Float64,
+    blin: Float,
+):
+    return tva / tvb * exp(blin / (mu + 3) * log(6 * density * condensate))

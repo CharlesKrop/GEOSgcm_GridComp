@@ -56,41 +56,44 @@ def update_precip_fluxes(
 
 @dataclasses.dataclass
 class MPFullLocals(LocalState):
-    precip_ice: Local = dataclasses.field(
-        metadata={
-            "name": "precip_ice",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    precip_liquid: Local = dataclasses.field(
-        metadata={
-            "name": "precip_liquid",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    precip_graupel: Local = dataclasses.field(
-        metadata={
-            "name": "precip_graupel",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    precip_rain: Local = dataclasses.field(
-        metadata={
-            "name": "precip_rain",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    precip_snow: Local = dataclasses.field(
-        metadata={
-            "name": "precip_snow",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
+    @dataclasses.dataclass
+    class Precip(LocalState):
+        ice: Local = dataclasses.field(
+            metadata={
+                "name": "ice",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        liquid: Local = dataclasses.field(
+            metadata={
+                "name": "liquid",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        graupel: Local = dataclasses.field(
+            metadata={
+                "name": "graupel",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        rain: Local = dataclasses.field(
+            metadata={
+                "name": "rain",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        snow: Local = dataclasses.field(
+            metadata={
+                "name": "snow",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+
     surface_precip_ice: Local = dataclasses.field(
         metadata={
             "name": "surface_precip_ice",
@@ -98,69 +101,79 @@ class MPFullLocals(LocalState):
             "dtype": Float,
         }
     )
-    surface_precip_liquid: Local = dataclasses.field(
-        metadata={
-            "name": "surface_precip_liquid",
-            "dims": [I_DIM, J_DIM],
-            "dtype": Float,
-        }
-    )
-    surface_precip_graupel: Local = dataclasses.field(
-        metadata={
-            "name": "surface_precip_graupel",
-            "dims": [I_DIM, J_DIM],
-            "dtype": Float,
-        }
-    )
-    surface_precip_rain: Local = dataclasses.field(
-        metadata={
-            "name": "surface_precip_rain",
-            "dims": [I_DIM, J_DIM],
-            "dtype": Float,
-        }
-    )
-    surface_precip_snow: Local = dataclasses.field(
-        metadata={
-            "name": "surface_precip_snow",
-            "dims": [I_DIM, J_DIM],
-            "dtype": Float,
-        }
-    )
-    terminal_velocity_ice: Local = dataclasses.field(
-        metadata={
-            "name": "terminal_velocity_ice",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    terminal_velocity_liquid: Local = dataclasses.field(
-        metadata={
-            "name": "terminal_velocity_liquid",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    terminal_velocity_graupel: Local = dataclasses.field(
-        metadata={
-            "name": "terminal_velocity_graupel",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    terminal_velocity_rain: Local = dataclasses.field(
-        metadata={
-            "name": "terminal_velocity_rain",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
-    terminal_velocity_snow: Local = dataclasses.field(
-        metadata={
-            "name": "terminal_velocity_snow",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "dtype": Float,
-        }
-    )
+
+    @dataclasses.dataclass
+    class SurfacePrecip(LocalState):
+        liquid: Local = dataclasses.field(
+            metadata={
+                "name": "liquid",
+                "dims": [I_DIM, J_DIM],
+                "dtype": Float,
+            }
+        )
+        graupel: Local = dataclasses.field(
+            metadata={
+                "name": "graupel",
+                "dims": [I_DIM, J_DIM],
+                "dtype": Float,
+            }
+        )
+        rain: Local = dataclasses.field(
+            metadata={
+                "name": "rain",
+                "dims": [I_DIM, J_DIM],
+                "dtype": Float,
+            }
+        )
+        snow: Local = dataclasses.field(
+            metadata={
+                "name": "snow",
+                "dims": [I_DIM, J_DIM],
+                "dtype": Float,
+            }
+        )
+
+    @dataclasses.dataclass
+    class TerminalVelocity(LocalState):
+        ice: Local = dataclasses.field(
+            metadata={
+                "name": "ice",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        liquid: Local = dataclasses.field(
+            metadata={
+                "name": "liquid",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        graupel: Local = dataclasses.field(
+            metadata={
+                "name": "graupel",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        rain: Local = dataclasses.field(
+            metadata={
+                "name": "rain",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+        snow: Local = dataclasses.field(
+            metadata={
+                "name": "snow",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "dtype": Float,
+            }
+        )
+
+    precip: Precip
+    surface_precip: SurfacePrecip
+    terminal_velocity: TerminalVelocity
 
 
 class MPFull:

@@ -804,7 +804,6 @@ class GFDLMPV3(NDSLRuntime):
         # Flag checks (Boolean flags)
         check_param("GFDLMPV3CloudMPConfig.DO_MP_FAST", config.DO_MP_FAST, False)
         check_param("GFDLMPV3CloudMPConfig.DO_MP_FULL", config.DO_MP_FULL, True)
-        check_param("GFDLMPV3NamelistConfig.DO_PSD_ICE_FALL", namelist.DO_PSD_ICE_FALL, False)
         check_param("GFDLMPV3NamelistConfig.DO_PSD_WATER_FALL", namelist.DO_PSD_WATER_FALL, False)
         check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QG", namelist.DO_SEDI_MELT_QG, False)
         check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QI", namelist.DO_SEDI_MELT_QI, False)

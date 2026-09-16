@@ -17,7 +17,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import TICE, RDGAS, DZ_MIN, QFMIN, GRAV, CV_AIR, CV_VAP, C_ICE, C_LIQ
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import moist_total_energy
+from pyMoist.microphysics.GFDL_1M.microphysics.shared import moist_total_energy, calc_mass_weighted_terminal_velocity
 
 
 def calc_mhc_lhc_wrapper(
@@ -118,6 +118,30 @@ def terminal_velocity_ice(
             # 3. Apply user multiplier and safety caps
             terminal_velocity_ice = VI_FAC * terminal_velocity_ice
             terminal_velocity_ice = min(VI_MAX, max(VI_MIN, terminal_velocity_ice))
+
+
+def terminal_velocity_graupel_rain_snow(
+    condensate: FloatField,
+    density: FloatField,
+    density_factor: FloatField,
+    terminal_velocity: FloatField,
+    tva: Float64,
+    tvb: Float64,
+    blin: Float,
+    mu: Float,
+    v_min: Float,
+    v_max: Float,
+    v_fac: Float,
+    const_v: Bool,
+):
+    with computation(PARALLEL), interval(...):
+        if const_v:
+            terminal_velocity = 0.5 * (v_min + v_max)
+        else:
+            if condensate < QFMIN:
+                terminal_velocity = calc_mass_weighted_terminal_velocity(condensate, density, mu, tva, tvb, blin)
+                terminal_velocity = v_fac * terminal_velocity * density_factor
+                terminal_velocity = min(v_max, max(v_min, terminal_velocity))
 
 
 def set_heights(
@@ -517,6 +541,11 @@ class Sedimentation:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"CONV_FACTOR": CONV_FACTOR},
         )
+        self._terminal_velocity_graupel_rain_snow = stencil_factory.from_dims_halo(
+            func=terminal_velocity_graupel_rain_snow,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"DT": gfdl_1m_config.DT_MOIST},
+        )
         self._terminal_velocity_ice = stencil_factory.from_dims_halo(
             func=terminal_velocity_ice,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -579,25 +608,27 @@ class Sedimentation:
     def __call__(self, state: GFDL1MState, gfdl_1m_locals: GFDL1MLocals, gfdl_mp_v3_locals: GFDLMPV3Locals, mp_full_locals: MPFullLocals):
 
         # reset locals
-        self._set_value_2d(mp_full_locals.surface_precip_ice, Float(0.0))
-        self._set_value_2d(mp_full_locals.surface_precip_liquid, Float(0.0))
-        self._set_value_2d(mp_full_locals.surface_precip_graupel, Float(0.0))
-        self._set_value_2d(mp_full_locals.surface_precip_rain, Float(0.0))
-        self._set_value_2d(mp_full_locals.surface_precip_snow, Float(0.0))
+        self._set_value_2d(mp_full_locals.surface_precip.ice, Float(0.0))
+        self._set_value_2d(mp_full_locals.surface_precip.liquid, Float(0.0))
+        self._set_value_2d(mp_full_locals.surface_precip.graupel, Float(0.0))
+        self._set_value_2d(mp_full_locals.surface_precip.rain, Float(0.0))
+        self._set_value_2d(mp_full_locals.surface_precip.snow, Float(0.0))
 
-        self._set_value(mp_full_locals.precip_ice, Float(0.0))
-        self._set_value(mp_full_locals.precip_liquid, Float(0.0))
-        self._set_value(mp_full_locals.precip_graupel, Float(0.0))
-        self._set_value(mp_full_locals.precip_rain, Float(0.0))
-        self._set_value(mp_full_locals.precip_snow, Float(0.0))
+        self._set_value(mp_full_locals.precip.ice, Float(0.0))
+        self._set_value(mp_full_locals.precip.liquid, Float(0.0))
+        self._set_value(mp_full_locals.precip.graupel, Float(0.0))
+        self._set_value(mp_full_locals.precip.rain, Float(0.0))
+        self._set_value(mp_full_locals.precip.snow, Float(0.0))
 
-        self._set_value_2d(mp_full_locals.terminal_velocity_ice, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity_liquid, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity_graupel, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity_rain, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity_snow, Float(0.0))
+        self._set_value_2d(mp_full_locals.terminal_velocity.ice, Float(0.0))
+        self._set_value_2d(mp_full_locals.terminal_velocity.liquid, Float(0.0))
+        self._set_value_2d(mp_full_locals.terminal_velocity.graupel, Float(0.0))
+        self._set_value_2d(mp_full_locals.terminal_velocity.rain, Float(0.0))
+        self._set_value_2d(mp_full_locals.terminal_velocity.snow, Float(0.0))
 
+        # --------------------------------------------------
         # calculate heat capacities and latent heat coefficients
+        # --------------------------------------------------
         self._calc_mhc_lhc_wrapper(
             t=gfdl_mp_v3_locals.t,
             vapor=gfdl_mp_v3_locals.vapor,
@@ -616,32 +647,40 @@ class Sedimentation:
             tcp3=self._sedimentation_locals.tcp3,
         )
 
+        # --------------------------------------------------
         # terminal fall and melting of falling cloud ice into rain
+        # --------------------------------------------------
         if self._mp_namelist.DO_PSD_ICE_FALL:
-            ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of DO_PSD_ICE_FALL option has not been implemented, please use DO_MP_FULL instead. "
-                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
-            )
-            raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of DO_PSD_ICE_FALL option has not been implemented, please use DO_MP_FULL instead. "
-                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+            self._terminal_velocity_graupel_rain_snow(
+                condensate=gfdl_mp_v3_locals.ice,
+                density=gfdl_mp_v3_locals.density,
+                density_factor=gfdl_mp_v3_locals.density_factor,
+                terminal_velocity=mp_full_locals.terminal_velocity.ice,
+                tva=self._mp_config.TVAI,
+                tvb=self._mp_config.TVBI,
+                blin=self._mp_namelist.BLINI,
+                mu=self._mp_namelist.MUI,
+                v_min=self._mp_namelist.VI_MIN,
+                v_max=self._mp_namelist.VI_MAX,
+                v_fac=self._mp_namelist.VI_FAC,
+                const_v=self._mp_namelist.CONST_VI,
             )
         else:
             self._terminal_velocity_ice(
                 t=gfdl_mp_v3_locals.t,
                 ice=gfdl_mp_v3_locals.ice,
                 density=gfdl_mp_v3_locals.density,
-                terminal_velocity_ice=mp_full_locals.terminal_velocity_ice,
+                terminal_velocity_ice=mp_full_locals.terminal_velocity.ice,
                 convection_fraction=gfdl_mp_v3_locals.convection_fraction,
             )
 
         if self._mp_namelist.DO_SEDI_MELT_QI:
             ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QI option has not been implemented, please use DO_MP_FULL instead. "
+                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QI = True option has not been implemented. "
                 "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
             )
             raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QI option has not been implemented, please use DO_MP_FULL instead. "
+                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QI = True option has not been implemented. "
                 "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
             )
 
@@ -650,7 +689,7 @@ class Sedimentation:
             zs=self._sedimentation_locals.zs,
             zt=self._sedimentation_locals.zt,
             dz=gfdl_mp_v3_locals.dz,
-            terminal_velocity=mp_full_locals.terminal_velocity_ice,
+            terminal_velocity=mp_full_locals.terminal_velocity.ice,
         )
 
         self._terminal_fall(
@@ -666,9 +705,9 @@ class Sedimentation:
             graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
             rain=gfdl_mp_v3_locals.mixing_ratio.rain,
             snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            terminal_velocity=mp_full_locals.terminal_velocity_ice,
-            precip_at_surface=mp_full_locals.surface_precip_ice,
-            precip=mp_full_locals.precip_ice,
+            terminal_velocity=mp_full_locals.terminal_velocity.ice,
+            precip_at_surface=mp_full_locals.surface_precip.ice,
+            precip=mp_full_locals.precip.ice,
             dtotal_energy=gfdl_mp_v3_locals.total_energy.delta,
             u=gfdl_mp_v3_locals.u,
             v=gfdl_mp_v3_locals.v,
@@ -676,4 +715,245 @@ class Sedimentation:
             mode=Int(1),
         )
 
-        self._ensure_non_negative_at_toa(field=mp_full_locals.precip_ice)
+        self._ensure_non_negative_at_toa(field=mp_full_locals.precip.ice)
+
+        # --------------------------------------------------
+        # terminal fall and melting of falling snow into rain
+        # --------------------------------------------------
+        self._terminal_velocity_graupel_rain_snow(
+            condensate=gfdl_mp_v3_locals.snow,
+            density=gfdl_mp_v3_locals.density,
+            density_factor=gfdl_mp_v3_locals.density_factor,
+            terminal_velocity=mp_full_locals.terminal_velocity.snow,
+            tva=self._mp_config.TVAS,
+            tvb=self._mp_config.TVBS,
+            blin=self._mp_namelist.BLINS,
+            mu=self._mp_namelist.MUS,
+            v_min=self._mp_namelist.VS_MIN,
+            v_max=self._mp_namelist.VS_MAX,
+            v_fac=self._mp_namelist.VS_FAC,
+            const_v=self._mp_namelist.CONST_VS,
+        )
+
+        if self._mp_namelist.DO_SEDI_MELT_QS:
+            ndsl_log.error(
+                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QS = True option has not been implemented. "
+                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+            )
+            raise ValueError(
+                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QS = True option has not been implemented. "
+                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+            )
+
+        self._set_heights(
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            terminal_velocity=mp_full_locals.terminal_velocity.snow,
+        )
+
+        self._terminal_fall(
+            t=gfdl_mp_v3_locals.t,
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            dry_dp=gfdl_mp_v3_locals.dry_dp,
+            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+            terminal_velocity=mp_full_locals.terminal_velocity.snow,
+            precip_at_surface=mp_full_locals.surface_precip.snow,
+            precip=mp_full_locals.precip.snow,
+            dtotal_energy=gfdl_mp_v3_locals.total_energy.delta,
+            u=gfdl_mp_v3_locals.u,
+            v=gfdl_mp_v3_locals.v,
+            w=gfdl_mp_v3_locals.w,
+            mode=Int(5),
+        )
+
+        self._ensure_non_negative_at_toa(field=mp_full_locals.precip.snow)
+
+        # --------------------------------------------------
+        # terminal fall and melting of falling graupel into rain
+        # --------------------------------------------------
+        if self._mp_namelist.DO_HAIL:
+            self._terminal_velocity_graupel_rain_snow(
+                condensate=gfdl_mp_v3_locals.graupel,
+                density=gfdl_mp_v3_locals.density,
+                density_factor=gfdl_mp_v3_locals.density_factor,
+                terminal_velocity=mp_full_locals.terminal_velocity.graupel,
+                tva=self._mp_config.TVAG,
+                tvb=self._mp_config.TVBG,
+                blin=self._mp_namelist.BLING,
+                mu=self._mp_namelist.MUG,
+                v_min=self._mp_namelist.VG_MIN,
+                v_max=self._mp_namelist.VG_MAX,
+                v_fac=self._mp_namelist.VG_FAC,
+                const_v=self._mp_namelist.CONST_VG,
+            )
+        else:
+            self._terminal_velocity_graupel_rain_snow(
+                condensate=gfdl_mp_v3_locals.graupel,
+                density=gfdl_mp_v3_locals.density,
+                density_factor=gfdl_mp_v3_locals.density_factor,
+                terminal_velocity=mp_full_locals.terminal_velocity.graupel,
+                tva=self._mp_config.TVAG,
+                tvb=self._mp_config.TVBG,
+                blin=self._mp_namelist.BLING,
+                mu=self._mp_namelist.MUG,
+                v_min=self._mp_namelist.VG_MIN,
+                v_max=self._mp_namelist.VG_MAX,
+                v_fac=self._mp_namelist.VG_FAC,
+                const_v=self._mp_namelist.CONST_VG,
+            )
+
+        if self._mp_namelist.DO_SEDI_MELT_QG:
+            ndsl_log.error(
+                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QG = True option has not been implemented. "
+                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+            )
+            raise ValueError(
+                "[GFDL1M Microphysics]: NDSL version of DO_SEDI_MELT_QG = True option has not been implemented. "
+                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+            )
+
+        self._set_heights(
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            terminal_velocity=mp_full_locals.terminal_velocity.graupel,
+        )
+
+        self._terminal_fall(
+            t=gfdl_mp_v3_locals.t,
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            dry_dp=gfdl_mp_v3_locals.dry_dp,
+            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+            terminal_velocity=mp_full_locals.terminal_velocity.graupel,
+            precip_at_surface=mp_full_locals.surface_precip.graupel,
+            precip=mp_full_locals.precip.graupel,
+            dtotal_energy=gfdl_mp_v3_locals.total_energy.delta,
+            u=gfdl_mp_v3_locals.u,
+            v=gfdl_mp_v3_locals.v,
+            w=gfdl_mp_v3_locals.w,
+            mode=Int(3),
+        )
+
+        self._ensure_non_negative_at_toa(field=mp_full_locals.precip.graupel)
+
+        # --------------------------------------------------
+        # terminal fall of cloud water
+        # --------------------------------------------------
+        if self._mp_namelist.DO_PSD_WATER_FALL:
+            self._terminal_velocity_graupel_rain_snow(
+                condensate=gfdl_mp_v3_locals.liquid,
+                density=gfdl_mp_v3_locals.density,
+                density_factor=gfdl_mp_v3_locals.density_factor,
+                terminal_velocity=mp_full_locals.terminal_velocity.liquid,
+                tva=self._mp_config.TVAW,
+                tvb=self._mp_config.TVBW,
+                blin=self._mp_namelist.BLINW,
+                mu=self._mp_namelist.MUW,
+                v_min=self._mp_namelist.VW_MIN,
+                v_max=self._mp_namelist.VW_MAX,
+                v_fac=self._mp_namelist.VW_FAC,
+                const_v=self._mp_namelist.CONST_VW,
+            )
+
+        self._set_heights(
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            terminal_velocity=mp_full_locals.terminal_velocity.liquid,
+        )
+
+        self._terminal_fall(
+            t=gfdl_mp_v3_locals.t,
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            dry_dp=gfdl_mp_v3_locals.dry_dp,
+            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+            terminal_velocity=mp_full_locals.terminal_velocity.liquid,
+            precip_at_surface=mp_full_locals.surface_precip.liquid,
+            precip=mp_full_locals.precip.liquid,
+            dtotal_energy=gfdl_mp_v3_locals.total_energy.delta,
+            u=gfdl_mp_v3_locals.u,
+            v=gfdl_mp_v3_locals.v,
+            w=gfdl_mp_v3_locals.w,
+            mode=Int(2),
+        )
+
+        self._ensure_non_negative_at_toa(field=mp_full_locals.precip.liquid)
+
+        # --------------------------------------------------
+        # terminal fall of rain
+        # --------------------------------------------------
+        self._terminal_velocity_graupel_rain_snow(
+            condensate=gfdl_mp_v3_locals.rain,
+            density=gfdl_mp_v3_locals.density,
+            density_factor=gfdl_mp_v3_locals.density_factor,
+            terminal_velocity=mp_full_locals.terminal_velocity.rain,
+            tva=self._mp_config.TVAR,
+            tvb=self._mp_config.TVBR,
+            blin=self._mp_namelist.BLINR,
+            mu=self._mp_namelist.MUR,
+            v_min=self._mp_namelist.VR_MIN,
+            v_max=self._mp_namelist.VR_MAX,
+            v_fac=self._mp_namelist.VR_FAC,
+            const_v=self._mp_namelist.CONST_VR,
+        )
+
+        self._set_heights(
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            terminal_velocity=mp_full_locals.terminal_velocity.rain,
+        )
+
+        self._terminal_fall(
+            t=gfdl_mp_v3_locals.t,
+            ze=self._sedimentation_locals.ze,
+            zs=self._sedimentation_locals.zs,
+            zt=self._sedimentation_locals.zt,
+            dz=gfdl_mp_v3_locals.dz,
+            dry_dp=gfdl_mp_v3_locals.dry_dp,
+            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+            terminal_velocity=mp_full_locals.terminal_velocity.rain,
+            precip_at_surface=mp_full_locals.surface_precip.rain,
+            precip=mp_full_locals.precip.rain,
+            dtotal_energy=gfdl_mp_v3_locals.total_energy.delta,
+            u=gfdl_mp_v3_locals.u,
+            v=gfdl_mp_v3_locals.v,
+            w=gfdl_mp_v3_locals.w,
+            mode=Int(4),
+        )
+
+        self._ensure_non_negative_at_toa(field=mp_full_locals.precip.rain)
