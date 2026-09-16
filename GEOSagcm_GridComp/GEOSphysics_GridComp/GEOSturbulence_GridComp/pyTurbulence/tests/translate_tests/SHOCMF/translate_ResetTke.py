@@ -5,7 +5,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
-from pyTurbulence.SHOCMF.shoc import calc_numbers
+from pyTurbulence.SHOCMF.shoc import reset_tke
 from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
 
 
@@ -33,8 +33,8 @@ class TranslateResetTke(TranslateFortranData2Py):
             "tkesbshear": self.grid.compute_dict(),
         }
 
-        def extra_data_load(self, data_loader: DataLoader):
-            self.constants = data_loader.load("SHOCMF-constants")
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("SHOCMF-constants")
 
     def compute(self, inputs):
         config = SHOCMFConfiguration(**self.constants)

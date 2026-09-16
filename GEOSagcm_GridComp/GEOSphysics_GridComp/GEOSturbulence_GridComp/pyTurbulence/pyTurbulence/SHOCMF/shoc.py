@@ -78,7 +78,6 @@ def invert_inputs(
     
 
 def setup_derived_inputs(
-    wrk: FloatField,
     prsl: FloatField,
     qv: FloatField,
     qwv: FloatField,
@@ -91,10 +90,10 @@ def setup_derived_inputs(
     qpl: FloatField,
     qpi: FloatField,
     total_water: FloatField,
-    prespot: FloatField,
     gamaz: FloatField,
     zl: FloatField,
     hl: FloatField,
+    bet: FloatField,
 ):
     """
     Calculate derived variables
@@ -157,30 +156,26 @@ def tke_shear_prod(
 
     with computation(FORWARD), interval(0,1):
         rdzw_up = 1.0/adzi[0,0,1]
-        wrku1: FloatFieldIJ = (u[0,0,1]-u)*rdzw_up
-        wrkv1: FloatFieldIJ = (v[0,0,1]-v)*rdzw_up
+        wrku1 = (u[0,0,1]-u)*rdzw_up
+        wrkv1 = (v[0,0,1]-v)*rdzw_up
         def2 = wrku1*wrku1 + wrkv1*wrkv1
         txd: FloatFieldIJ = rdzw_up
 
-    with computation(PARALLEL), interval(1,-1):
+    with computation(FORWARD), interval(1,-1):
         rdzw_up = 1./adzi[0,0,1]
         rdzw_dn = txd
-
-    with computation(FORWARD), interval(1,-1):
         wrku1 = (u[0,0,1]-u)*rdzw_up
-        wrku2: FloatFieldIJ = (u-u[0,0,-1])*rdzw_dn
+        wrku2 = (u-u[0,0,-1])*rdzw_dn
         wrkv1 = (v[0,0,1]-v)*rdzw_up
-        wrkv2: FloatFieldIJ = (v-v[0,0,-1])*rdzw_dn
-
-    with computation(PARALLEL), interval(1,-1):
-        def2 = 0.5 * (wrku1*wrku1 + wrku2*wrku2 + wrkv1*wrkv1 + wrkv2*wrkv2)
+        wrkv2 = (v-v[0,0,-1])*rdzw_dn
+        def2 = 0.5 * ((wrku1*wrku1) + (wrku2*wrku2) + (wrkv1*wrkv1) + (wrkv2*wrkv2))
         txd = rdzw_up
 
     with computation(FORWARD), interval(-1,None):
         rdzw_dn = txd
         wrku2 = (u-u[0,0,-1])*rdzw_dn
         wrkv2 = (v-v[0,0,-1])*rdzw_dn
-        def2 = wrku2*wrku2 + wrkv2*wrkv2
+        def2 = (wrku2*wrku2) + (wrkv2*wrkv2)
 
 def calc_numbers(
     u: FloatField,
@@ -198,22 +193,28 @@ def calc_numbers(
 
     with computation(PARALLEL), interval(0,-1):
         DU = (u - u[0,0,1])**2 + (v - v[0,0,1])**2
-        DU = max( sqrt(DU) / adzi[0,0,1], 0.005 )
+        DU = max( sqrt(DU) / adzi, 0.005 )
 
     with computation(PARALLEL), interval(...):
         RI = 0.0
+
+    with computation(FORWARD), interval(...):
         RI[0,0,1] = 0.0
-    with computation(PARALLEL), interval(0,-1):
-        RI[0,0,1] = constants.ggr*( (thv[0,0,1] - thv) / adzi[0,0,1] ) / ( 0.5*( thv+thv[0,0,1] ) * (DU**2) )
+
+    with computation(FORWARD), interval(0,-1):
+        RI[0,0,1] = constants.ggr*( (thv[0,0,1] - thv) / adzi ) / ( 0.5*( thv+thv[0,0,1] ) * (DU**2) )
     
-    with computation(PARALLEL), interval(...):
-        kinv = k_end - K + 1
+    with computation(FORWARD), interval(...):
+        kinv = k_end + 1 - K
         if PRNUMBER < 0.0:
-            if RI[0,0,1] <= 0.0 or tke_mf.at(K=kinv+1) > 1e-4:
+            if RI <= 0.0 or tke_mf.at(K=kinv) > 1e-4:
+                PRNUM = -1.*PRNUMBER
                 PRNUM[0,0,1] = -1.*PRNUMBER
             else:
+                PRNUM = -1.*PRNUMBER+2.1*min(10.,RI)
                 PRNUM[0,0,1] = -1.*PRNUMBER+2.1*min(10.,RI[0,0,1])
         else:
+            PRNUM = PRNUMBER
             PRNUM[0,0,1] = PRNUMBER
 
 def reset_tke(
@@ -230,28 +231,6 @@ def reset_tke(
         tkesbshear = 0.
         tkesbbuoy  = 0.
  
-def eddy_length1(
-    adzi: FloatField,
-    bet: FloatField,
-    betdz: FloatField,
-    smixt: FloatField,
-    brunt: FloatField,
-):
-    with computation(PARALLEL), interval(0,1):
-        kb = 1
-        kc = 2
-        thedz = adzi.at(K=kc+1)
-
-    with computation(PARALLEL), interval(1,-1):
-        thedz = adzi[0,0,1]+adzi
-    
-    with computation(PARALLEL), interval(-1,None):
-        thedz = adzi
-    
-    with computation(PARALLEL), interval(...):
-        betdz = bet / thedz
-        smixt = 1.0
-        brunt = 0.0
 
 def eddy_length2(
     adzi: FloatField,
@@ -267,7 +246,9 @@ def eddy_length2(
     cld_sgs: FloatField,
     hl: FloatField,
     total_water: FloatField,
-
+    brunt: FloatField,
+    brunt2: FloatField,
+    brunt_edge: FloatField,
 ):
     from __externals__ import k_end
 
@@ -275,29 +256,29 @@ def eddy_length2(
         kb = 0
         kc = 1
 
-    with computation(PARALLEL), interval(0,1):
-        thedz = adzi.at(K=kc+1)
+    with computation(FORWARD), interval(0,1):
+        thedz = adzi.at(K=kc)
 
     with computation(PARALLEL), interval(1,-1):
-        thedz = adzi.at(K=2) + adzi[0,0,1]
-        betdze = 0.5*(bet-bet.at(K=0)) / adzi[0,0,1]
+        thedz = adzi[0,0,1] + adzi
+        betdze = 0.5*(bet-bet[0,0,-1]) / adzi
     
     with computation(PARALLEL), interval(-1,None):
-        thedz = adzi[0,0,1]
-        betdze = 0.5*(bet-bet.at(K=k_end-1)) / adzi[0,0,1]
+        thedz = adzi
+        betdze = 0.5*(bet-bet.at(K=k_end-1)) / adzi
 
-    # with computation(PARALLEL), interval(...):
-    #     betdz = bet / thedz
-    #     wrk = qcl + qci
-    #     omn = qcl / (wrk+1.e-20)
-    #     lstarn = constants.fac_cond + (1.-omn)*constants.fac_fus
-    #     qsatt = omn  * MAPL_EQsat(tabs,prsl,dtqw) + (1.-omn) * MAPL_EQsat(tabs,prsl,dtqi,OverIce=True)
-    #     dqsat =  omn * dtqw + (1.-omn) * dtqi
-    #     bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
+    with computation(PARALLEL), interval(...):
+        betdz = bet / thedz
+        wrk = qcl + qci
+        omn = qcl / (wrk+1.e-20)
+        lstarn = constants.fac_cond + (1.-omn)*constants.fac_fus
+        qsatt = omn  * MAPL_EQsat(tabs,prsl,dtqw) + (1.-omn) * MAPL_EQsat(tabs,prsl,dtqi,OverIce=True)
+        #dqsat =  omn * dtqw + (1.-omn) * dtqi
+        #bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
 
-    # with computation(PARALLEL), interval(...):
-    #     brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
-
+    with computation(PARALLEL), interval(...):
+        #brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
+        brunt = qsatt # This is test code
     # with computation(PARALLEL), interval(1,None):
     #     bbb = 0.5*(bbb + (1. + constants.epsv*qsatt-wrk-qpl[0,0,-1]-qpi[0,0,-1] + 1.61*tabs[0,0,-1]*dqsat) / (1.+lstarn*dqsat) )
     #     brunt_edge = 0.5*(cld_sgs+cld_sgs[0,0,-1])*betdz*(bbb*(hl-hl[0,0,-1]) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water-total_water[0,0,-1]) + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs)*(qpl-qpl[0,0,-1]) + (bbb*fac_sub  - (1.+fac_sub*dqsat)*tabs)*(qpi-qpi[0,0,-1]) )
@@ -388,6 +369,11 @@ class RUN_SHOC(NDSLRuntime):
 
         self._eddy_length1 = self.stencil_factory.from_dims_halo(
             func=eddy_length1,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._eddy_length2 = self.stencil_factory.from_dims_halo(
+            func=eddy_length2,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -493,14 +479,6 @@ class RUN_SHOC(NDSLRuntime):
         #     tkesbdiss=,
         #     tkebshear=,
         #     tkesbbuoy=,
-        # )
-
-        # self._eddy_length1(
-        #     thedz=,
-        #     bet=,
-        #     betdz=,
-        #     smixt=,
-        #     brunt=,
         # )
 
         

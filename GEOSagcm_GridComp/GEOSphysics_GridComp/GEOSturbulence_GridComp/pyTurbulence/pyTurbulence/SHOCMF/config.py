@@ -8,3 +8,4 @@ class SHOCMFConfiguration:
     dtn: Float
     PRNUMBER: Float
     min_tke: Float
+    BUOYOPT: Int

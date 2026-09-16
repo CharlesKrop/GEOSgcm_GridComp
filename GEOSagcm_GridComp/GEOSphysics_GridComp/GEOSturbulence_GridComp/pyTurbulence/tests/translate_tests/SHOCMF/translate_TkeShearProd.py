@@ -33,6 +33,9 @@ class TranslateTkeShearProd(TranslateFortranData2Py):
             "def2": self.grid.compute_dict(),
         }
 
+    def extra_data_load(self, data_loader: DataLoader):
+        self.constants = data_loader.load("SHOCMF-constants")
+
     def compute(self, inputs):
         config = SHOCMFConfiguration(**self.constants)
         

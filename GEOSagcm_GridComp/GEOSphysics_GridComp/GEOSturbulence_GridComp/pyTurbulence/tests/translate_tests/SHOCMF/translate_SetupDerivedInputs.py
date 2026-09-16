@@ -34,14 +34,12 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
             "bet": self.grid.compute_dict(),
             "gamaz": self.grid.compute_dict(),
             "hl": self.grid.compute_dict(),
-            "prespot": self.grid.compute_dict(),
             "qpi": self.grid.compute_dict(),
             "qpl": self.grid.compute_dict(),
             "qv": self.grid.compute_dict(),
             "thv": self.grid.compute_dict(),
             "total_water": self.grid.compute_dict(),
             "w": self.grid.compute_dict(),
-            "wrk": self.grid.compute_dict(),
         }
 
     def compute(self, inputs):
@@ -72,18 +70,16 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
         bet = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         gamaz = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         hl = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        prespot = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qpi = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qpl = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qv = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         total_water = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         w = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        wrk = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         thv = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
     
         _setup_derived_inputs(
-            wrk=wrk,
             prsl=prsl,
+            bet=bet,
             qv=qv,
             qwv=qwv,
             thv=thv,
@@ -95,7 +91,6 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
             qpl=qpl,
             qpi=qpi,
             total_water=total_water,
-            prespot=prespot,
             gamaz=gamaz,
             zl=zl,
             hl=hl,
@@ -105,12 +100,10 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
             "bet": bet.view[:],
             "gamaz": gamaz.view[:],
             "hl": hl.view[:],
-            "prespot": prespot.view[:],
             "qpi": qpi.view[:],
             "qpl": qpl.view[:],
             "qv": qv.view[:],
             "total_water": total_water.view[:],
             "w": w.view[:],
-            "wrk": wrk.view[:],
             "thv": thv.view[:],
         }

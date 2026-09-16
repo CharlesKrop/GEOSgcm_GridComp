@@ -5,7 +5,7 @@ from .SHOCMF.translate_DefineVerticalGridIncrements import TranslateDefineVertic
 from .SHOCMF.translate_TkeShearProd import TranslateTkeShearProd
 from .SHOCMF.translate_CalcNumbers import TranslateCalcNumbers
 from .SHOCMF.translate_ResetTke import TranslateResetTke
-from .SHOCMF.translate_EddyLength1 import TranslateEddyLength1
+from .SHOCMF.translate_EddyLength2 import TranslateEddyLength2
 from .SHOCMF.translate_SetupDerivedInputs import TranslateSetupDerivedInputs
 
 __all__ = [
@@ -14,7 +14,7 @@ __all__ = [
     "TranslateDefineVerticalGridIncrements",
     "TranslateTkeShearProd",
     "TranslateCalcNumbers",
-    "TranslateEddyLength1",
+    "TranslateEddyLength2",
     "TranslateResetTke",
     "TranslateSetupDerivedInputs",
 ]
