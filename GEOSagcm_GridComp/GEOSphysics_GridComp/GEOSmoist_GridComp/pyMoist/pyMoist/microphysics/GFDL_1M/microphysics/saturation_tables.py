@@ -1,10 +1,12 @@
 from mpi4py import MPI
 from ndsl import QuantityFactory, StencilFactory, SubtileGridSizer, ndsl_log
-from ndsl.dsl.gt4py import FORWARD, K, computation, exp, interval, log, log10
-from ndsl.dsl.typing import Bool, Float32, FloatField, FloatField64, FloatFieldIJ, Int
+from ndsl.dsl.gt4py import FORWARD, K, computation, exp, interval, log, log10, GlobalTable
+from ndsl.dsl.typing import Bool, Float32, FloatField, FloatField64, FloatFieldIJ, Int, Float
 
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import D2_ICE, DC_VAP, DELT, E00, LI2, LV0, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, TICE
 from pyMoist.shared.cloud_processes import ice_fraction
+
+GFDLMPV3SaturationTable = GlobalTable[(Float, (int(SATURATION_TABLE_LENGTH)))]
 
 
 def compute_table_0(
@@ -220,7 +222,7 @@ class GFDLMPV3Tables:
         if stencil_factory.config.dace_config.do_compile:
             MPI.COMM_WORLD.Barrier()
 
-        # NOTE do we still need to do this?
+        # turn the 1x1 quantities into proper 1D arrays so that they work with the GlobalTable mechanics
         self.table_0 = self._table_0[0, 0, :]
         self.table_1 = self._table_1[0, 0, :]
         self.table_2 = self._table_2[0, 0, :]
