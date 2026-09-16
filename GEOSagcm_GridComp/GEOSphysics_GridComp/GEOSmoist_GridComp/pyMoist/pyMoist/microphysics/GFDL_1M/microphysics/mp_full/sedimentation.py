@@ -1,23 +1,21 @@
 import dataclasses
-from operator import le
 
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD, log10, exp, log, max, function, BACKWARD, K
-from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ, Int, BoolFieldIJ, FloatFieldIJ64
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, log10, max
+from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64, Int
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc
+from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mass_weighted_terminal_velocity, calc_mhc_lhc, moist_total_energy
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import TICE, RDGAS, DZ_MIN, QFMIN, GRAV, CV_AIR, CV_VAP, C_ICE, C_LIQ
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import moist_total_energy, calc_mass_weighted_terminal_velocity
 
 
 def calc_mhc_lhc_wrapper(
@@ -67,7 +65,7 @@ def terminal_velocity_ice(
     terminal_velocity_ice: FloatField,
     convection_fraction: FloatFieldIJ,
 ):
-    from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aa, bb, cc, dd, ee, aaL, bbL, ccL, ddL, eeL, aaC, bbC, ccC, ddC, eeC
+    from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
 
     with computation(PARALLEL), interval(...):
         if CONST_VI:
@@ -151,7 +149,7 @@ def set_heights(
     dz: FloatField,
     terminal_velocity: FloatField,
 ):
-    from __externals__ import DT, k_end
+    from __externals__ import DT
 
     with computation(FORWARD), interval(1, None):
         half_dt: FloatFieldIJ = 0.5 * DT
@@ -262,7 +260,7 @@ def terminal_fall(
     w: FloatField,
     mode: Int,
 ):
-    from __externals__ import C_AIR, C1_ICE, C1_LIQ, C1_VAP, DO_SEDI_HEAT, DO_SEDI_UV, DO_SEDI_W, DT, SEDFLAG, k_end
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, DO_SEDI_HEAT, DO_SEDI_UV, DO_SEDI_W, DT, SEDFLAG, k_end
 
     with computation(FORWARD), interval(0, 1):
         # initialize 2d internals
@@ -411,7 +409,7 @@ def terminal_fall(
             dgz = -0.5 * GRAV * (dz[0, 0, -1] + dz)
             cv0 = dm * (CV_AIR + vapor * CV_VAP + (rain + liquid) * C_LIQ + (ice + snow + graupel) * C_ICE) + C_ICE * (precip - precip[0, 0, -1])
 
-            tz = (cv0 * tz + precip[0, 0, -1] * (C_ICE * tz[0, 0, -1] + dgz)) / (cv0 + C_ICE * precip[0, 0, -1])
+            t = (cv0 * t + precip[0, 0, -1] * (C_ICE * t[0, 0, -1] + dgz)) / (cv0 + C_ICE * precip[0, 0, -1])
 
     with computation(PARALLEL), interval(...):
         if precip_fall and DO_SEDI_HEAT:
@@ -556,11 +554,6 @@ class Sedimentation:
                 "VI_FAC": mp_namelist.VI_FAC,
                 "VI_MAX": mp_namelist.VI_MAX,
                 "VI_MIN": mp_namelist.VI_MIN,
-                "aa": Float(-4.14122e-5),
-                "bb": Float(-0.00538922),
-                "cc": Float(-0.0516344),
-                "dd": Float(0.00216078),
-                "ee": Float(1.9714),
                 "aaL": Float(-1.70704e-5),
                 "bbL": Float(-0.00319109),
                 "ccL": Float(-0.0169876),

@@ -1,12 +1,10 @@
-import dataclasses
 import os
 from math import exp, gamma, log, sqrt
 
-import f90nml
 import numpy as np
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float, Float64
+from ndsl.dsl.typing import Float
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 
@@ -188,10 +186,15 @@ class GFDLMPV3(NDSLRuntime):
         mp_config.EXPOG = exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + 3) * log(10.0))
         mp_config.EXPOH = exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + 3) * log(10.0))
 
-        # parameters for particle concentration (pc), effective diameter (ed), optical extinction (oe), radar reflectivity factor (rr), and mass-weighted terminal velocity (tv)
+        # parameters for particle concentration (pc), effective diameter (ed), optical extinction (oe),
+        # radar reflectivity factor (rr), and mass-weighted terminal velocity (tv)
 
-        mp_config.PCAW = exp(3 / (mp_namelist.MUW + 3) * log(mp_namelist.N0W_SIG)) * gamma(mp_namelist.MUW) * exp(3 * mp_namelist.N0W_EXP / (muw + 3) * log(10.0))
-        mp_config.PCAI = exp(3 / (mp_namelist.MUI + 3) * log(mp_namelist.N0I_SIG)) * gamma(mp_namelist.MUI) * exp(3 * mp_namelist.N0I_EXP / (mui + 3) * log(10.0))
+        mp_config.PCAW = (
+            exp(3 / (mp_namelist.MUW + 3) * log(mp_namelist.N0W_SIG)) * gamma(mp_namelist.MUW) * exp(3 * mp_namelist.N0W_EXP / (mp_namelist.MUW + 3) * log(10.0))
+        )
+        mp_config.PCAI = (
+            exp(3 / (mp_namelist.MUI + 3) * log(mp_namelist.N0I_SIG)) * gamma(mp_namelist.MUI) * exp(3 * mp_namelist.N0I_EXP / (mp_namelist.MUI + 3) * log(10.0))
+        )
         mp_config.PCAR = (
             exp(3 / (mp_namelist.MUR + 3) * log(mp_namelist.N0R_SIG)) * gamma(mp_namelist.MUR) * exp(3 * mp_namelist.N0R_EXP / (mp_namelist.MUR + 3) * log(10.0))
         )

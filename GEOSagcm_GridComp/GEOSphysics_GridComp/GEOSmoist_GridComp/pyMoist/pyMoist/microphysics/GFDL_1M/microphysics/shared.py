@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import function, exp, log
+from ndsl.dsl.gt4py import exp, function, log
 from ndsl.dsl.typing import Bool, Float, Float64
 
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE
