@@ -159,3 +159,7 @@ tkef1=Float(0.5)
 tkef2=Float(1.0)-tkef1
 tkhmax=Float(1000.0)
 epsv=Float(1.)/MAPL_EPSILON-Float(1.)
+
+vonk = Float(0.4)
+max_eddy_length_scale = Float(2000.)
+min_eddy_length_scale  = Float(40.)

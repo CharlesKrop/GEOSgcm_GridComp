@@ -303,6 +303,96 @@ def eddy_length2(
     #     brunt2(:,:,1) = brunt2(:,:,2)
     #     brunt2(:,:,nzm) = brunt2(:,:,nzm-1)
 
+
+def eddy_length3(
+    tke: FloatField,
+    thv: FloatField,
+    zl: FloatField,
+    dryzpbl: FloatFieldIJ,
+    brunt2: FloatField,
+    smixt: FloatField,
+    smixt1: FloatField,
+    smixt2: FloatField,
+    smixt3: FloatField,
+):
+    from __externals__ import k_end, LENOPT, LENFAC1, LENFAC2, LENFAC3
+
+    with computation(PARALLEL), interval(0,-1):
+        tkes = sqrt(tke)
+        kk = K
+        wrk = thv+0.2
+        while kk < k_end and wrk > thv.at(K=kk):
+            kk = kk+1
+        kk = kk-1
+
+        if abs(thv.at(K=kk+1)-thv.at(K=kk)) > 0.01:
+            l_par = zl.at(K=kk) + max(0.,(wrk-thv.at(K=kk))* (zl.at(K=kk+1)-zl.at(K=kk)) / (thv.at(K=kk+1)-thv.at(K=kk)))
+        else:
+            l_par = zl.at(K=kk)
+    
+    with computation(PARALLEL), interval(0,-1):
+        kk = K
+        wrk = thv-0.2 
+        while kk > 0 and wrk < thv.at(K=kk):
+            kk = kk-1
+        if kk == 0 and wrk < thv.at(K=0): 
+            kk = kk-1
+        kk = kk+1
+
+        if abs(thv.at(K=kk+1)-thv.at(K=kk)) > 0.01:
+            l_par = l_par - zl.at(K=kk) + max(0.,(thv.at(K=kk)-wrk)* (zl.at(K=kk+1)-zl.at(K=kk))/(thv.at(K=kk+1)-thv.at(K=kk)))
+        else:
+            l_par = l_par - zl.at(K=kk)
+
+    with computation(PARALLEL), interval(0,-1):
+        l_par = max(min(l_par,1500.),25.)  
+
+    with computation(PARALLEL), interval(0,-1):
+        if LENOPT < 4:
+            smixt1 = constants.vonk*zl*LENFAC1
+            smixt2 = sqrt(l_par*400.*tkes)*LENFAC2
+            if ( zl < 0.75*dryzpbl or zl < 500. ):
+                smixt3 = max(0.05,tkes)*4.*LENFAC3/(sqrt(brunt2))
+            else:
+                smixt3 = max(0.05,tkes)*LENFAC3/(sqrt(brunt2))
+            
+    with computation(PARALLEL), interval(0,-1):
+        if LENOPT == 1:
+            wrk1 = sqrt(3./(1./smixt2**2+1./smixt3**2))
+            if (zl < 300.):
+                smixt = wrk1 + (smixt1-wrk1)*exp(-(zl/60.))
+            else:
+                smixt = wrk1
+        elif (LENOPT == 2):
+            smixt = 3./(1./smixt1+1./smixt2+1./smixt3)
+        elif LENOPT == 3:
+            smixt = sqrt(3.)/sqrt(1./smixt1**2+1./smixt2**2+1./smixt3**2)
+
+    with computation(PARALLEL), interval(0,-1):
+        if LENOPT == 4: 
+            wrk2 = 1.0/(400.*tkes)
+            wrk3 = sqrt(brunt2)/(0.7*tkes)
+            wrk1 = 1.0/(wrk2+wrk3)
+            smixt = 3.3*LENFAC1*(wrk1 + (constants.vonk*zl-wrk1)*exp(-zl/(0.1*dryzpbl)))
+            smixt1 = 3.3*LENFAC1/wrk2
+            smixt2 = 3.3*LENFAC1/wrk3
+            smixt3 = 3.3*LENFAC1*constants.vonk*zl
+
+    with computation(PARALLEL), interval(0,-1):
+        smixt = min(constants.max_eddy_length_scale,max(constants.min_eddy_length_scale,smixt))
+    
+    with computation(PARALLEL), interval(0,-1):    
+        if zl > dryzpbl:
+            smixt = smixt*(0.025+0.975*exp(-(zl-dryzpbl)/3000.))
+      
+    with computation(PARALLEL), interval(-1,None):  
+        smixt = smixt[0,0,-1]
+        smixt1 = smixt1[0,0,-1]
+        smixt2 = smixt2[0,0,-1]
+        smixt3 = smixt3[0,0,-1]
+
+
+
 class RUN_SHOC(NDSLRuntime):
     def __init__(
         self,
@@ -367,13 +457,13 @@ class RUN_SHOC(NDSLRuntime):
             externals={"min_tke": config.min_tke},
         )
 
-        self._eddy_length1 = self.stencil_factory.from_dims_halo(
-            func=eddy_length1,
+        self._eddy_length2 = self.stencil_factory.from_dims_halo(
+            func=eddy_length2,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._eddy_length2 = self.stencil_factory.from_dims_halo(
-            func=eddy_length2,
+        self._eddy_length3 = self.stencil_factory.from_dims_halo(
+            func=eddy_length3,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -480,6 +570,8 @@ class RUN_SHOC(NDSLRuntime):
         #     tkebshear=,
         #     tkesbbuoy=,
         # )
+
+        #self._eddy_length2()
 
         
 

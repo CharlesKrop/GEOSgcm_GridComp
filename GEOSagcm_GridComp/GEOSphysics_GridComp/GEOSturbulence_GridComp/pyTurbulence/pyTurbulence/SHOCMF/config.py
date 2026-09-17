@@ -9,3 +9,7 @@ class SHOCMFConfiguration:
     PRNUMBER: Float
     min_tke: Float
     BUOYOPT: Int
+    LENOPT: Int
+    LENFAC1: Float
+    LENFAC2: Float
+    LENFAC3: Float
