@@ -1,7 +1,7 @@
 import dace
 from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, int32, int64, interval, isnan, log, sqrt
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, int32, int64, interval, isnan, log, sqrt, tanh
 from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ
 
 from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
@@ -106,14 +106,12 @@ def setup_derived_inputs(
         qpl = 0.0  # comment or remove when using with prognostic rain/snow
         qpi = 0.0  # comment or remove when using with prognostic rain/snow
         total_water = qcl + qci + qv
-        prespot = (constants.MAPL_P00*wrk) ** constants.kapa        # Exner function
-        bet = constants.ggr/(tabs*prespot)     # Moorthi
-        thv = thv*prespot            # Moorthi
+        prespot = (constants.MAPL_P00*wrk) ** constants.kapa        
+        bet = constants.ggr/(tabs*prespot)    
+        thv = thv*prespot       
 
-        # Lapse rate * height = reference temperature
         gamaz = constants.gocp * zl
 
-        # Liquid/ice water static energy - ! Note the the units are degrees K
         hl = tabs + gamaz - constants.fac_cond*(qcl+qpl) - constants.fac_fus *(qci+qpi)
 
 def define_vertical_grid_increments(
@@ -392,6 +390,112 @@ def eddy_length3(
         smixt3 = smixt3[0,0,-1]
 
 
+def solve_tke(
+    adzl: FloatField,
+    tkh: FloatField,
+    wthv_sec: FloatField,
+    wthv_mf: FloatField,
+    thv: FloatField,
+    brunt: FloatField,
+    tke: FloatField,
+    prnum: FloatField,
+    smixt: FloatField,
+    def2: FloatField,
+    zl: FloatField,
+    tke_mf: FloatField,
+    tkesbbuoy: FloatField,
+    tkesbshear: FloatField,
+    tkesbdiss: FloatField,
+    tscale1: FloatField,
+):
+    from __externals__ import k_end, BUOYOPT, Ce, Ces, dtn, nitr, min_tke, max_tke
+
+    with computation(PARALLEL), interval(...):
+        Cek = Ce/0.7
+
+        if K == 0:
+            ku = 1
+            kd = 1
+            Cek = Ces
+        elif K == k_end:
+            ku = K
+            kd = K
+            Cek = Ces
+        
+        grd = adzl
+        wrk  = 0.5 * (tkh.at(K=ku)+tkh.at(K=kd))
+
+        if BUOYOPT == 2:
+            a_prod_bu = (constants.ggr / thv) * wthv_sec
+        else:
+            a_prod_bu = -1.*wrk*brunt + (constants.ggr / thv)*wthv_mf
+
+        buoy_sgs = brunt
+
+        if buoy_sgs <= 0.0:
+            smix = grd
+        else:
+            smix = min(grd,max(0.1*grd, 0.76*sqrt(tke/(buoy_sgs+1.e-10))))
+
+        Cee = Cek* (constants.pt19 + constants.pt51*smix/grd)
+        wrk   = 0.5 * wrk * (prnum.at(K=ku) + prnum.at(K=kd))
+
+        a_prod_sh = min(min(constants.tkhmax,wrk)*def2,0.1)  
+        wtke = tke
+        wtk2 = wtke
+        wrk  = (dtn*Cee)/smixt
+        wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
+
+        wrk2 = min_tke*(1.+9.*exp(-zl/100.))+0.5*(tke_mf+tke_mf)
+        itr=1
+        while itr <= nitr:                    
+            wtke   = min(max(wrk2, wtke), max_tke)
+            a_diss = wrk*sqrt(wtke)           
+            wtke   = wrk1 / (1.+a_diss)
+            wtke   = constants.tkef1*wtke + constants.tkef2*wtk2   
+            wtk2   = wtke
+            itr = itr + 1
+
+        tke = min(max(wrk2, wtke), max_tke)
+        tscale1 = (dtn+dtn) / a_diss        
+        a_diss = (a_diss/dtn)*tke  
+
+        tkesbdiss = -a_diss
+        tkesbshear = a_prod_sh
+        tkesbbuoy = a_prod_bu
+          
+
+def environmental_tke(
+    tscale1: FloatField,
+    zl: FloatField,
+    tke: FloatField,
+    dryzpbl: FloatFieldIJ,
+    brunt_edge: FloatField,
+    prnum:FloatField,
+    tkh: FloatField,
+    isotropy: FloatField,
+):
+    from __externals__ import shoc_lambda, ck
+
+    with computation(PARALLEL), interval(1,None):
+        wrk = 0.5*(tscale1+tscale1[0,0,-1])
+        lambda_zfac = 0.5+0.5*tanh((zl-0.75*dryzpbl-100.)/100) 
+
+        if brunt_edge <= 1e-5:
+            isotropy = max(30.,min(constants.max_eddy_dissipation_time_scale,wrk))
+        else:
+            isotropy = max(30.,min(constants.max_eddy_dissipation_time_scale,wrk/(1.0+shoc_lambda*lambda_zfac*brunt_edge*wrk*wrk)))
+        
+        if tke < 2e-4: 
+            isotropy = 30.
+
+        wrk1 = ck / prnum
+        tkh = wrk1*isotropy*0.5*(tke+tke[0,0,-1]) 
+        tkh = min(tkh,constants.tkhmax)
+    
+    with computation(FORWARD), interval(0,1):
+        isotropy = isotropy[0,0,1]
+
 
 class RUN_SHOC(NDSLRuntime):
     def __init__(
@@ -465,6 +569,7 @@ class RUN_SHOC(NDSLRuntime):
         self._eddy_length3 = self.stencil_factory.from_dims_halo(
             func=eddy_length3,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"LENOPT":config.LENOPT, "LENFAC1":config.LENFAC1, "LENFAC2":config.LENFAC2,"LENFAC3":config.LENFAC3}
         )
 
 
@@ -572,6 +677,37 @@ class RUN_SHOC(NDSLRuntime):
         # )
 
         #self._eddy_length2()
+
+        # self._eddy_length3(
+        #     tke=tke,
+        #     thv=thv,
+        #     zl=zl,
+        #     dryzpbl=dryzpbl,
+        #     brunt2=brunt2,
+        #     smixt=smixt,
+        #     smixt1=smixt1,
+        #     smixt2=smixt2,
+        #     smixt3=smixt3,
+        # )
+
+        # self._solve_tke(
+        #     adzl=,
+        #     tkh=,
+        #     wthv_sec=,
+        #     wthv_mf=,
+        #     thv=,
+        #     brunt=,
+        #     tke=,
+        #     prnum=,
+        #     smixt=,
+        #     def2=,
+        #     zl=,
+        #     tke_mf=,
+        #     tkesbbuoy=,
+        #     tkesbshear=,
+        #     tkesbdiss=,
+        #     tscale1=,
+        # )
 
         
 
