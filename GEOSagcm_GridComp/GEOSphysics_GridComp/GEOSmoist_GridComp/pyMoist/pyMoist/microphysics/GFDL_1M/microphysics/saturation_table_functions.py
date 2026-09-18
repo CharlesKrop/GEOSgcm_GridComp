@@ -26,7 +26,8 @@ def saturation_specific_humidity(t: Float, density: Float, table: GFDLMPV3Satura
     # Apply protections (bounds checking)
     # Ensures index is >= 0 AND it+1 <= es_table_length - 1
     index = max(0, min(index, SATURATION_TABLE_LENGTH - 2))
-    return RDELT * (dtable.A[index] + (ap1 - index) * (dtable.A[index + 1] - dtable.A[index])) / (RVGAS * t * density)
+    dsat_p = RDELT * (dtable.A[index] + (ap1 - index) * (dtable.A[index + 1] - dtable.A[index])) / (RVGAS * t * density)
+    return sat_p, dsat_p
 
 
 @function
@@ -46,7 +47,8 @@ def saturation_specific_humidity_no_density(t: Float, p: Float, vapor: Float, ta
     """
 
     density = p / (RDGAS * t * (1.0 + ZVIR * vapor))
-    return saturation_specific_humidity(t, density, table, dtable)
+    sat_p, dsat_p = saturation_specific_humidity(t, density, table, dtable)
+    return sat_p, dsat_p
 
 
 @function

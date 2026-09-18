@@ -127,7 +127,7 @@ def evaporation(
 
             # calculate supersaturation and subgrid variability of water
             precipitation = vapor + liquid
-            sat_spec_humidity = saturation_specific_humidity(t_in, density, table_0, dtable_0)
+            sat_spec_humidity, dsat_spec_humiditydt = saturation_specific_humidity(t_in, density, table_0, dtable_0)
             dvapor = sat_spec_humidity - vapor
 
             dqh = max(liquid, h_var * max(precipitation, QCMIN))
@@ -158,7 +158,7 @@ def evaporation(
                     cvm,
                     CREVP,
                 )
-                sink = min(rain, DT * fac_revp * sink, dvapor / (1.0 + lcpk * sat_spec_humidity))
+                sink = min(rain, DT * fac_revp * sink, dvapor / (1.0 + lcpk * dsat_spec_humiditydt))
 
                 # -----------------------------------------------------------------------
                 # Enhanced scale-aware rain evaporation in dry environmental air.
@@ -170,7 +170,7 @@ def evaporation(
                     # True scale-aware target RH based on subgrid moisture variance
                     rh_rain = max(0.70, 1.0 - h_var)
                     # Calculate total mass NEEDED to hit the target RH threshold (Units: kg/kg)
-                    tmp = max((rh_rain * sat_spec_humidity - vapor), 0.0) / (1.0 + lcpk * sat_spec_humidity)
+                    tmp = max((rh_rain * sat_spec_humidity - vapor), 0.0) / (1.0 + lcpk * dsat_spec_humiditydt)
                     # Apply the dimensionless timescale factor so it doesn't evaporate instantly
                     # (Units: dimensionless * kg/kg = kg/kg)
                     tmp = fac_revp * tmp
