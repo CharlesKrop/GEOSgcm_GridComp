@@ -1,5 +1,5 @@
-from ndsl.dsl.gt4py import exp, function, log, sqrt
-from ndsl.dsl.typing import Bool, Float, Float64
+from ndsl.dsl.gt4py import exp, function, log, sqrt, computation, PARALLEL, interval
+from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL5, GFDLMPV3TableL3
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE
@@ -53,38 +53,44 @@ def accretion_3d(
     return accretion * tmp
 
 
-@function
-def moist_heat_capacity_3(vapor: Float, total_liquid: Float, total_solid: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
-    """moist heat capacity, three input variables"""
-    return Float64(ONE_R8 + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
+def calc_mhc_lhc_wrapper(
+    t: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    total_liquid: FloatField,
+    total_solid: FloatField,
+    cvm: FloatField,
+    total_energy: FloatField,
+    lcpk: FloatField,
+    icpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+):
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, D1_ICE, D1_VAP, LI00, LI20, LV00, T_WFR
 
-
-@function
-def moist_heat_capacity_4(dry: Float64, vapor: Float, total_liquid: Float, total_solid: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
-    """moist heat capacity, four input variables"""
-    return Float64(dry + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
-
-
-@function
-def moist_heat_capacity_6(vapor: Float, ice: Float, liquid: Float, graupel: Float, rain: Float, snow: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
-    """moist heat capacity, six input variables"""
-    total_liquid = liquid + rain
-    total_solid = ice + snow + graupel
-    return moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
-
-
-@function
-def moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64, moist_q: Bool = False):
-    total_liquid = liquid + rain
-    total_solid = ice + snow + graupel
-    total_condensates = total_liquid + total_solid
-    con_r8 = Float64(ONE_R8 - (vapor + total_condensates))
-    if moist_q:
-        cvm = moist_heat_capacity_4(con_r8, vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
-    else:
-        cvm = moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
-    return Float64(RGRAV * cvm * C_AIR * t * dp)
-
+    with computation(PARALLEL), interval(...):
+        total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = calc_mhc_lhc(
+            t=t,
+            vapor=vapor,
+            ice=ice,
+            liquid=liquid,
+            graupel=graupel,
+            rain=rain,
+            snow=snow,
+            C1_VAP=C1_VAP,
+            C1_LIQ=C1_LIQ,
+            C1_ICE=C1_ICE,
+            D1_ICE=D1_ICE,
+            D1_VAP=D1_VAP,
+            LI00=LI00,
+            LI20=LI20,
+            LV00=LV00,
+            T_WFR=T_WFR,
+        )
 
 @function
 def calc_mhc_lhc(
@@ -150,6 +156,40 @@ def calc_mhc_lhc(
     tcp3 = lcpk + icpk * min(1.0, max(TICE - t, 0.0) / (TICE - T_WFR))
 
     return total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3
+
+
+@function
+def moist_heat_capacity_3(vapor: Float, total_liquid: Float, total_solid: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
+    """moist heat capacity, three input variables"""
+    return Float64(ONE_R8 + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
+
+
+@function
+def moist_heat_capacity_4(dry: Float64, vapor: Float, total_liquid: Float, total_solid: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
+    """moist heat capacity, four input variables"""
+    return Float64(dry + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
+
+
+@function
+def moist_heat_capacity_6(vapor: Float, ice: Float, liquid: Float, graupel: Float, rain: Float, snow: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
+    """moist heat capacity, six input variables"""
+    total_liquid = liquid + rain
+    total_solid = ice + snow + graupel
+    return moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
+
+
+@function
+def moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64, moist_q: Bool = False):
+    total_liquid = liquid + rain
+    total_solid = ice + snow + graupel
+    total_condensates = total_liquid + total_solid
+    con_r8 = Float64(ONE_R8 - (vapor + total_condensates))
+    if moist_q:
+        cvm = moist_heat_capacity_4(con_r8, vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
+    else:
+        cvm = moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
+    return Float64(RGRAV * cvm * C_AIR * t * dp)
+
 
 
 @function

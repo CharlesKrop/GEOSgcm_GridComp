@@ -13,49 +13,9 @@ from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConf
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mass_weighted_terminal_velocity, calc_mhc_lhc, moist_total_energy
+from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mass_weighted_terminal_velocity, calc_mhc_lhc_wrapper, moist_total_energy
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
-
-
-def calc_mhc_lhc_wrapper(
-    t: FloatField,
-    vapor: FloatField,
-    ice: FloatField,
-    liquid: FloatField,
-    graupel: FloatField,
-    rain: FloatField,
-    snow: FloatField,
-    total_liquid: FloatField,
-    total_solid: FloatField,
-    cvm: FloatField,
-    total_energy: FloatField,
-    lcpk: FloatField,
-    icpk: FloatField,
-    tcpk: FloatField,
-    tcp3: FloatField,
-):
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, D1_ICE, D1_VAP, LI00, LI20, LV00, T_WFR
-
-    with computation(PARALLEL), interval(...):
-        total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = calc_mhc_lhc(
-            t=t,
-            vapor=vapor,
-            ice=ice,
-            liquid=liquid,
-            graupel=graupel,
-            rain=rain,
-            snow=snow,
-            C1_VAP=C1_VAP,
-            C1_LIQ=C1_LIQ,
-            C1_ICE=C1_ICE,
-            D1_ICE=D1_ICE,
-            D1_VAP=D1_VAP,
-            LI00=LI00,
-            LI20=LI20,
-            LV00=LV00,
-            T_WFR=T_WFR,
-        )
 
 
 def terminal_velocity_ice(
