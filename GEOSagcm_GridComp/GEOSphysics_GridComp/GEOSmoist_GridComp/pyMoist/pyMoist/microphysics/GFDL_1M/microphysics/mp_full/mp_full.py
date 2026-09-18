@@ -196,7 +196,7 @@ class MPFull:
             externals={"CONV_FACTOR": CONV_FACTOR},
         )
         self._warm_rain = WarmRain(stencil_factory, mp_config, mp_namelist, CONV_FACTOR)
-        self._ice_cloud = IceCloud(stencil_factory, mp_config, mp_namelist)
+        self._ice_cloud = IceCloud(stencil_factory, quantity_factory, mp_config, mp_namelist, CONV_FACTOR)
         self._subgrid_processes = SubgridProcesses(stencil_factory, mp_config, mp_namelist)
 
         # initialize MPFull locals
@@ -250,4 +250,3 @@ class MPFull:
             # --------------------------------------------------
             if self._mp_namelist.DO_SUBGRID_PROC:
                 self._subgrid_processes()
-

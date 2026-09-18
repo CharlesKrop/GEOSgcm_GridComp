@@ -1,7 +1,8 @@
 from ndsl.dsl.gt4py import function
 from ndsl.dsl.typing import Float, Int
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
+
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import RDELT, RDGAS, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, ZVIR
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
 
 
 @function
@@ -44,7 +45,7 @@ def saturation_specific_humidity_no_density(t: Float, p: Float, vapor: Float, ta
         dtable (GFDLMPV3SaturationTable): derivative of the saturation table
     """
 
-    density = p / (RDGAS * t * (1. + ZVIR * vapor))
+    density = p / (RDGAS * t * (1.0 + ZVIR * vapor))
     return saturation_specific_humidity(t, density, table, dtable)
 
 

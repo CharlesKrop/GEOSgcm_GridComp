@@ -1,10 +1,11 @@
 from mpi4py import MPI
 from ndsl import QuantityFactory, StencilFactory, SubtileGridSizer, ndsl_log
-from ndsl.dsl.gt4py import FORWARD, K, computation, exp, interval, log, log10, GlobalTable
-from ndsl.dsl.typing import Bool, Float32, FloatField, FloatField64, FloatFieldIJ, Int, Float
+from ndsl.dsl.gt4py import FORWARD, GlobalTable, K, computation, exp, interval, log, log10
+from ndsl.dsl.typing import Bool, Float, Float32, FloatField, FloatField64, FloatFieldIJ, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import D2_ICE, DC_VAP, DELT, E00, LI2, LV0, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, TICE
 from pyMoist.shared.cloud_processes import ice_fraction
+
 
 GFDLMPV3SaturationTable = GlobalTable[(Float, (int(SATURATION_TABLE_LENGTH)))]
 

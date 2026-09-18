@@ -1,15 +1,16 @@
 from ndsl import StencilFactory
-from ndsl.dsl.typing import FloatField, FloatField64, FloatFieldIJ, Float
-from ndsl.dsl.gt4py import PARALLEL, interval, computation, FORWARD, exp, log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log
+from ndsl.dsl.typing import Float, FloatField, FloatField64, FloatFieldIJ
 
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig, GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL20
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, QPMIN, RHOW
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     accretion_2d,
     accretion_3d,
@@ -21,10 +22,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     update_hydrometeors,
     update_hydrometeors_and_temperature,
 )
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, QPMIN, RHOW
-from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL5, GFDLMPV3TableL20, GFDLMPV3TableL3xL10
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
+from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
 
 def evaporation(
@@ -82,8 +80,8 @@ def evaporation(
         LV00,
         MUR,
         RHC_REVAP,
-        TAU_REVP,
         T_WFR,
+        TAU_REVP,
         USE_ENHANCED_DRY_EVAP,
         USE_RHC_REVAP,
     )
