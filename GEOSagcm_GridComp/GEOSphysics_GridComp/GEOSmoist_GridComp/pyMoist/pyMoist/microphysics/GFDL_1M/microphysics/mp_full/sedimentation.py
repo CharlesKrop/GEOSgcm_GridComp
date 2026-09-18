@@ -527,22 +527,29 @@ class Sedimentation:
         self._set_value_2d = stencil_factory.from_dims_halo(
             func=set_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"CONV_FACTOR": CONV_FACTOR},
         )
         self._set_value = stencil_factory.from_dims_halo(
             func=set_value,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"CONV_FACTOR": CONV_FACTOR},
         )
         self._calc_mhc_lhc_wrapper = stencil_factory.from_dims_halo(
             func=calc_mhc_lhc_wrapper,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"CONV_FACTOR": CONV_FACTOR},
+            externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
+                "D1_ICE": mp_config.D1_ICE,
+                "D1_VAP": mp_config.D1_VAP,
+                "LI00": mp_config.LI00,
+                "LI20": mp_config.LI20,
+                "LV00": mp_config.LV00,
+                "T_WFR": mp_config.T_WFR,
+            },
         )
         self._terminal_velocity_graupel_rain_snow = stencil_factory.from_dims_halo(
             func=terminal_velocity_graupel_rain_snow,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DT": gfdl_1m_config.DT_MOIST},
         )
         self._terminal_velocity_ice = stencil_factory.from_dims_halo(
             func=terminal_velocity_ice,
