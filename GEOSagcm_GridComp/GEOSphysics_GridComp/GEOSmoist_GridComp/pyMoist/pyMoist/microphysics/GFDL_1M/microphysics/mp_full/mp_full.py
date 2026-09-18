@@ -210,7 +210,7 @@ class MPFull:
             # --------------------------------------------------
             # sedimentation of cloud ice, snow, graupel or hail, and rain
             # --------------------------------------------------
-            self._sedimentation(state, gfdl_1m_locals, gfdl_mp_v3_locals, self._mp_full_locals)
+            self._sedimentation(gfdl_mp_v3_locals, self._mp_full_locals)
 
             self._update_precip_fluxes(
                 surface_precip_ice=state.precipitation_at_surface.ice,

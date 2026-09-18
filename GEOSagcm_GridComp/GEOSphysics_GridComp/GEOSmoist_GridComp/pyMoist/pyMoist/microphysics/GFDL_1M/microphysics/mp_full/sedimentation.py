@@ -598,7 +598,7 @@ class Sedimentation:
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
 
-    def __call__(self, state: GFDL1MState, gfdl_1m_locals: GFDL1MLocals, gfdl_mp_v3_locals: GFDLMPV3Locals, mp_full_locals: MPFullLocals):
+    def __call__(self, gfdl_mp_v3_locals: GFDLMPV3Locals, mp_full_locals: MPFullLocals):
 
         # reset locals
         self._set_value_2d(mp_full_locals.surface_precip.ice, Float(0.0))
