@@ -1,8 +1,8 @@
 from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log, sqrt, FORWARD, K
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int
 
-from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3, GFDLMPV3TableL5
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE
+from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL4
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE, C_LIQ
 from pyMoist.shared.cloud_processes import ice_fraction
 
 
@@ -28,7 +28,8 @@ def accretion_3d(
     c: Float,
     acc1: Float,
     acc2: Float,
-    acco: GFDLMPV3TableL3,
+    acco: GFDLMPV3TableL3xL10,
+    acco_column: Int,
     VDIFFFLAG: Int,
 ):
     """accretion function, Lin et al. (1983)"""
@@ -48,7 +49,7 @@ def accretion_3d(
     tmp = 0
     i = 0
     while i <= 2:
-        tmp = tmp + acco.A[i] * exp((6 + acc1 - i + 1) * log(t1)) * exp((acc2 + i) * log(t2))
+        tmp = tmp + acco.A[i, acco_column] * exp((6 + acc1 - i + 1) * log(t1)) * exp((acc2 + i) * log(t2))
         i += 1
 
     return accretion * tmp
@@ -323,7 +324,28 @@ def new_liquid_condensate(
 
 
 @function
-def p_sub(
+def p_melt(
+    t: Float,
+    dcondensate: Float,
+    condensate_x_density: Float,
+    pxacw: Float,
+    pxacr: Float,
+    density: Float,
+    density_factor: Float,
+    blin: Float,
+    mu: Float,
+    lcpk: Float,
+    icpk: Float,
+    cvm: Float64,
+    c: GFDLMPV3TableL4,
+):
+    return (c.A[0] / (icpk * cvm) * t / density - c.A[1] * lcpk / icpk * dcondensate) * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density)) * vent_coeff(
+        density_factor, condensate_x_density, c.A[2], c.A[3], blin, mu
+    ) + C_LIQ / (icpk * cvm) * t * (pxacw + pxacr)
+
+
+@function
+def p_sublimation(
     t_squared: Float,
     dcondensate: Float,
     condensate_x_density: Float,

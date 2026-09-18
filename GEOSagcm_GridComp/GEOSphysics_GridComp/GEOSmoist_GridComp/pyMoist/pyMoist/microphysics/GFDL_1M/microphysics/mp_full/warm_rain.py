@@ -20,7 +20,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     calc_particle_concentration,
     linear_prof,
     moist_heat_capacity_3,
-    p_sub,
+    p_sublimation,
     update_hydrometeors,
     update_hydrometeors_and_temperature,
 )
@@ -145,7 +145,7 @@ def evaporation(
                     dcondensate = 0.25 * (sat_spec_humidity - q_minus) ** 2 / dqh
                 condensate_x_density = rain * density
                 t_squared = t_in * t_in
-                sink = p_sub(
+                sink = p_sublimation(
                     t_squared,
                     dcondensate,
                     condensate_x_density,
@@ -170,7 +170,7 @@ def evaporation(
                     # True scale-aware target RH based on subgrid moisture variance
                     rh_rain = max(0.70, 1.0 - h_var)
                     # Calculate total mass NEEDED to hit the target RH threshold (Units: kg/kg)
-                    tmp = max((rh_rain * saturation_specific_humidity - vapor), 0.0) / (1.0 + lcpk * sat_spec_humidity)
+                    tmp = max((rh_rain * sat_spec_humidity - vapor), 0.0) / (1.0 + lcpk * sat_spec_humidity)
                     # Apply the dimensionless timescale factor so it doesn't evaporate instantly
                     # (Units: dimensionless * kg/kg = kg/kg)
                     tmp = fac_revp * tmp
@@ -181,7 +181,7 @@ def evaporation(
 
                 # use RH cap for rain evaporation
                 if USE_RHC_REVAP:
-                    rh_tem = precipitation / saturation_specific_humidity
+                    rh_tem = precipitation / sat_spec_humidity
                     if rh_tem >= RHC_REVAP:
                         sink = 0.0
 
@@ -262,24 +262,25 @@ def accretion(
             condensate_x_density = rain * density
             if DO_3D_ACC_CLIQ:
                 sink = DT * accretion_3d(
-                    terminal_fall_rain,
-                    terminal_fall_liquid,
-                    liquid,
-                    rain,
-                    density,
-                    CRACW,
-                    ACC.A[8],
-                    ACC.A[9],
-                    ACCO,
-                    VDIFFFLAG,
+                    v1=terminal_fall_rain,
+                    v2=terminal_fall_liquid,
+                    condensate_1=liquid,
+                    condensate_2=rain,
+                    density=density,
+                    c=CRACW,
+                    acc1=ACC.A[8],
+                    acc2=ACC.A[9],
+                    acco=ACCO,
+                    acco_column=4,
+                    VDIFFFLAG=VDIFFFLAG,
                 )
             else:
                 sink = DT * accretion_2d(
-                    condensate_x_density,
-                    density_factor,
-                    CRACW,
-                    BLINR,
-                    MUR,
+                    condensate_x_density=condensate_x_density,
+                    density_factor=density_factor,
+                    c=CRACW,
+                    blin=BLINR,
+                    mu=MUR,
                 )
                 sink = sink / (1.0 + sink) * liquid
             mppxr = mppxr + sink * dry_dp * CONV_FACTOR
