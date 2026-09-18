@@ -53,44 +53,28 @@ def accretion_3d(
     return accretion * tmp
 
 
-def calc_mhc_lhc_wrapper(
-    t: FloatField,
-    vapor: FloatField,
-    ice: FloatField,
-    liquid: FloatField,
-    graupel: FloatField,
-    rain: FloatField,
-    snow: FloatField,
-    total_liquid: FloatField,
-    total_solid: FloatField,
-    cvm: FloatField,
-    total_energy: FloatField,
-    lcpk: FloatField,
-    icpk: FloatField,
-    tcpk: FloatField,
-    tcp3: FloatField,
+@function
+def calc_effective_diameter(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    eda: Float64,
+    edb: Float64,
 ):
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, D1_ICE, D1_VAP, LI00, LI20, LV00, T_WFR
+    return eda / edb * exp(1.0 / (mu + 3) * log(6 * density * condensate))
 
-    with computation(PARALLEL), interval(...):
-        total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = calc_mhc_lhc(
-            t=t,
-            vapor=vapor,
-            ice=ice,
-            liquid=liquid,
-            graupel=graupel,
-            rain=rain,
-            snow=snow,
-            C1_VAP=C1_VAP,
-            C1_LIQ=C1_LIQ,
-            C1_ICE=C1_ICE,
-            D1_ICE=D1_ICE,
-            D1_VAP=D1_VAP,
-            LI00=LI00,
-            LI20=LI20,
-            LV00=LV00,
-            T_WFR=T_WFR,
-        )
+
+@function
+def calc_mass_weighted_terminal_velocity(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    tva: Float64,
+    tvb: Float64,
+    blin: Float,
+):
+    return tva / tvb * exp(blin / (mu + 3) * log(6 * density * condensate))
+
 
 @function
 def calc_mhc_lhc(
@@ -158,6 +142,132 @@ def calc_mhc_lhc(
     return total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3
 
 
+def calc_mhc_lhc_wrapper(
+    t: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    total_liquid: FloatField,
+    total_solid: FloatField,
+    cvm: FloatField,
+    total_energy: FloatField,
+    lcpk: FloatField,
+    icpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+):
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, D1_ICE, D1_VAP, LI00, LI20, LV00, T_WFR
+
+    with computation(PARALLEL), interval(...):
+        total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = calc_mhc_lhc(
+            t=t,
+            vapor=vapor,
+            ice=ice,
+            liquid=liquid,
+            graupel=graupel,
+            rain=rain,
+            snow=snow,
+            C1_VAP=C1_VAP,
+            C1_LIQ=C1_LIQ,
+            C1_ICE=C1_ICE,
+            D1_ICE=D1_ICE,
+            D1_VAP=D1_VAP,
+            LI00=LI00,
+            LI20=LI20,
+            LV00=LV00,
+            T_WFR=T_WFR,
+        )
+
+
+@function
+def calc_optical_extinction(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    oea: Float64,
+    oeb: Float64,
+):
+    return oea / oeb * exp((mu + 2) / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def calc_particle_concentration(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    pca: Float64,
+    pcb: Float64,
+):
+    return pca / pcb * exp(mu / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def calc_reflectivity_factor(
+    condensate: Float,
+    density: Float,
+    mu: Float,
+    rra: Float64,
+    rrb: Float64,
+):
+    return rra / rrb * exp((mu + 6) / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def linear_prof(
+    top_level: Int,
+    precipitate: FloatField,
+    h_var: FloatField,
+    z_var: Bool,
+):
+    """vertical subgrid variability used for cloud ice and cloud water autoconversion
+    edges: qe == qbar + / - dm
+
+    Note that this funciton must be called from within a interval(0,1) statement for the k-indexing to work properly
+
+    Args:
+        top_level (Int)
+        precipitate (FloatField)
+        h_var (FloatField)
+        z_var (Bool)
+    """
+    if z_var:
+        level = 1
+        while level <= top_level:
+            dprecipitate = 0.5 * (precipitate[0, 0, level] - precipitate[0, 0, level - 1])
+            level += 1
+
+        dm[0, 0, 1] = 0.0
+
+        # use twice the strength of the positive definiteness limiter (Lin et al. 1994)
+        level = 1
+        while level <= top_level - 1:
+            dm = 0.5 * min(abs(dprecipitate + dprecipitate[0, 0, level + 1]), 0.5 * precipitate)
+            if dprecipitate * dprecipitate[0, 0, level + 1] <= 0.0:
+                if dprecipitate > 0.0:
+                    dm = min(dm, dprecipitate, -dprecipitate[0, 0, level + 1])
+                else:
+                    dm = 0.0
+            level += 1
+
+        dm[0, 0, top_level] = 0.0
+
+        # impose a presumed background horizontal variability that is proportional to the value itself
+        level = 0
+        while level <= top_level:
+            dm = max(dm, 0.0, h_var * precipitate)
+            level += 1
+    else:
+        level = 0
+        while level <= top_level:
+            dm = max(0.0, h_var * precipitate)
+            level += 1
+
+    return dm
+
+
 @function
 def moist_heat_capacity_3(vapor: Float, total_liquid: Float, total_solid: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
     """moist heat capacity, three input variables"""
@@ -190,6 +300,47 @@ def moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR: Fl
         cvm = moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
     return Float64(RGRAV * cvm * C_AIR * t * dp)
 
+
+@function
+def p_sub(
+    t_squared: Float,
+    dcondensate: Float,
+    condensate_x_density: Float,
+    saturation_specific_humidity: Float,
+    density: Float,
+    density_factor: Float,
+    blin: Float,
+    mu: Float,
+    cpk: Float,
+    cvm: Float,
+    c: GFDLMPV3TableL5,
+):
+    """sublimation or deposition function, Lin et al. (1983)
+
+    Args:
+        t_squared (Float)
+        dcondensate (Float)
+        condensate_x_density (Float)
+        saturation_specific_humidity (Float)
+        density (Float)
+        density_factor (Float)
+        blin (Float)
+        mu (Float)
+        cpk (Float)
+        cvm (Float)
+        c (GFDLMPV3TableL5)
+
+    Returns:
+        (Float): sublimation or deposition rate
+    """
+    return (
+        c.A[0]
+        * t_squared
+        * dcondensate
+        * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density))
+        * vent_coeff(condensate_x_density, c.A[1], c.A[2], density_factor, blin, mu)
+        / (c.A[3] * t_squared + c.A[4] * (cpk * cvm) ** 2 * saturation_specific_humidity * density)
+    )
 
 
 @function
@@ -280,157 +431,6 @@ def update_hydrometeors_and_temperature(
     tcp3 = lcpk + icpk * min(1.0, max((TICE - t), 0.0) / (TICE - T_WFR))
 
     return t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3
-
-
-@function
-def calc_particle_concentration(
-    condensate: Float,
-    density: Float,
-    mu: Float,
-    pca: Float64,
-    pcb: Float64,
-):
-    return pca / pcb * exp(mu / (mu + 3) * log(6 * density * condensate))
-
-
-@function
-def calc_effective_diameter(
-    condensate: Float,
-    density: Float,
-    mu: Float,
-    eda: Float64,
-    edb: Float64,
-):
-    return eda / edb * exp(1.0 / (mu + 3) * log(6 * density * condensate))
-
-
-@function
-def calc_optical_extinction(
-    condensate: Float,
-    density: Float,
-    mu: Float,
-    oea: Float64,
-    oeb: Float64,
-):
-    return oea / oeb * exp((mu + 2) / (mu + 3) * log(6 * density * condensate))
-
-
-@function
-def calc_reflectivity_factor(
-    condensate: Float,
-    density: Float,
-    mu: Float,
-    rra: Float64,
-    rrb: Float64,
-):
-    return rra / rrb * exp((mu + 6) / (mu + 3) * log(6 * density * condensate))
-
-
-@function
-def calc_mass_weighted_terminal_velocity(
-    condensate: Float,
-    density: Float,
-    mu: Float,
-    tva: Float64,
-    tvb: Float64,
-    blin: Float,
-):
-    return tva / tvb * exp(blin / (mu + 3) * log(6 * density * condensate))
-
-
-@function
-def linear_prof(
-    top_level: Int,
-    precipitate: FloatField,
-    h_var: FloatField,
-    z_var: Bool,
-):
-    """vertical subgrid variability used for cloud ice and cloud water autoconversion
-    edges: qe == qbar + / - dm
-
-    Note that this funciton must be called from within a interval(0,1) statement for the k-indexing to work properly
-
-    Args:
-        top_level (Int)
-        precipitate (FloatField)
-        h_var (FloatField)
-        z_var (Bool)
-    """
-    if z_var:
-        level = 1
-        while level <= top_level:
-            dprecipitate = 0.5 * (precipitate[0, 0, level] - precipitate[0, 0, level - 1])
-            level += 1
-
-        dm[0, 0, 1] = 0.0
-
-        # use twice the strength of the positive definiteness limiter (Lin et al. 1994)
-        level = 1
-        while level <= top_level - 1:
-            dm = 0.5 * min(abs(dprecipitate + dprecipitate[0, 0, level + 1]), 0.5 * precipitate)
-            if dprecipitate * dprecipitate[0, 0, level + 1] <= 0.0:
-                if dprecipitate > 0.0:
-                    dm = min(dm, dprecipitate, -dprecipitate[0, 0, level + 1])
-                else:
-                    dm = 0.0
-            level += 1
-
-        dm[0, 0, top_level] = 0.0
-
-        # impose a presumed background horizontal variability that is proportional to the value itself
-        level = 0
-        while level <= top_level:
-            dm = max(dm, 0.0, h_var * precipitate)
-            level += 1
-    else:
-        level = 0
-        while level <= top_level:
-            dm = max(0.0, h_var * precipitate)
-            level += 1
-
-    return dm
-
-
-@function
-def p_sub(
-    t_squared: Float,
-    dcondensate: Float,
-    condensate_x_density: Float,
-    saturation_specific_humidity: Float,
-    density: Float,
-    density_factor: Float,
-    blin: Float,
-    mu: Float,
-    cpk: Float,
-    cvm: Float,
-    c: GFDLMPV3TableL5,
-):
-    """sublimation or deposition function, Lin et al. (1983)
-
-    Args:
-        t_squared (Float)
-        dcondensate (Float)
-        condensate_x_density (Float)
-        saturation_specific_humidity (Float)
-        density (Float)
-        density_factor (Float)
-        blin (Float)
-        mu (Float)
-        cpk (Float)
-        cvm (Float)
-        c (GFDLMPV3TableL5)
-
-    Returns:
-        (Float): sublimation or deposition rate
-    """
-    return (
-        c.A[0]
-        * t_squared
-        * dcondensate
-        * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density))
-        * vent_coeff(condensate_x_density, c.A[1], c.A[2], density_factor, blin, mu)
-        / (c.A[3] * t_squared + c.A[4] * (cpk * cvm) ** 2 * saturation_specific_humidity * density)
-    )
 
 
 @function
