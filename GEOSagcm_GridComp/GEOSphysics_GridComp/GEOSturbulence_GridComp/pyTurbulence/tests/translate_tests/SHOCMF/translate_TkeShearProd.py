@@ -55,10 +55,8 @@ class TranslateTkeShearProd(TranslateFortranData2Py):
 
         # Outputs
         def2 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        rdtn = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
    
         _tke_shear_prod(
-            rdtn=rdtn,
             def2=def2,
             adzi=adzi,
             u=u,

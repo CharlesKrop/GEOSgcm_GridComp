@@ -2,12 +2,16 @@ import dace
 from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, int32, int64, interval, isnan, log, sqrt, tanh
-from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ
+from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ, Int
 
 from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
 #from pyTurbulence.SHOCMF.locals import SHOCMFLocals
 #from pyTurbulence.SHOCMF.state import SHOCMFState
 import pyTurbulence.constants as constants
+from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
+from pyMoist.saturation_tables.tables.ice_exact import ice_exact
+from pyMoist.saturation_tables.formulation import SaturationFormulation
+from pyMoist.saturation_tables.tables.constants import IceExactConstants, LiquidExactConstants
 
 
 def invert_interface_vars(
@@ -137,7 +141,6 @@ def define_vertical_grid_increments(
         adzl = adzi
 
 def tke_shear_prod(
-    rdtn: FloatField,
     def2: FloatField,
     adzi: FloatField,
     u: FloatField,
@@ -149,7 +152,6 @@ def tke_shear_prod(
     from __externals__ import dtn
 
     with computation(PARALLEL), interval(...):
-        rdtn = 1.0 / dtn
         def2 = 0.0
 
     with computation(FORWARD), interval(0,1):
@@ -247,6 +249,7 @@ def eddy_length2(
     brunt: FloatField,
     brunt2: FloatField,
     brunt_edge: FloatField,
+    formulation: Int,
 ):
     from __externals__ import k_end
 
@@ -270,13 +273,64 @@ def eddy_length2(
         wrk = qcl + qci
         omn = qcl / (wrk+1.e-20)
         lstarn = constants.fac_cond + (1.-omn)*constants.fac_fus
-        qsatt = omn  * MAPL_EQsat(tabs,prsl,dtqw) + (1.-omn) * MAPL_EQsat(tabs,prsl,dtqi,OverIce=True)
+        #qsatt = omn  * liquid_exact_no_stencil(tabs,prsl,SaturationFormulation.Staars, dtqw) + (1.-omn) * ice_exact_no_stencil(tabs,prsl,SaturationFormulation.Staars,dtqi)
+        qsatt, _ = liquid_exact(
+            tabs,
+            formulation,
+            LiquidExactConstants.B6,
+            LiquidExactConstants.B5,
+            LiquidExactConstants.B4,
+            LiquidExactConstants.B3,
+            LiquidExactConstants.B2,
+            LiquidExactConstants.B1,
+            LiquidExactConstants.B0,
+            IceExactConstants.BI6,
+            IceExactConstants.BI5,
+            IceExactConstants.BI4,
+            IceExactConstants.BI3,
+            IceExactConstants.BI2,
+            IceExactConstants.BI1,
+            IceExactConstants.BI0,
+            IceExactConstants.S16,
+            IceExactConstants.S15,
+            IceExactConstants.S14,
+            IceExactConstants.S13,
+            IceExactConstants.S12,
+            IceExactConstants.S11,
+            IceExactConstants.S10,
+            IceExactConstants.S26,
+            IceExactConstants.S25,
+            IceExactConstants.S24,
+            IceExactConstants.S23,
+            IceExactConstants.S22,
+            IceExactConstants.S21,
+            IceExactConstants.S20,
+            LiquidExactConstants.DL_0,
+            LiquidExactConstants.DL_1,
+            LiquidExactConstants.DL_2,
+            LiquidExactConstants.DL_3,
+            LiquidExactConstants.DL_4,
+            LiquidExactConstants.DL_5,
+            LiquidExactConstants.TS,
+            LiquidExactConstants.LOGPS,
+            LiquidExactConstants.CL_0,
+            LiquidExactConstants.CL_1,
+            LiquidExactConstants.CL_2,
+            LiquidExactConstants.CL_3,
+            LiquidExactConstants.CL_4,
+            LiquidExactConstants.CL_5,
+            LiquidExactConstants.CL_6,
+            LiquidExactConstants.CL_7,
+            LiquidExactConstants.CL_8,
+            LiquidExactConstants.CL_9,
+            prsl,
+        )
         #dqsat =  omn * dtqw + (1.-omn) * dtqi
         #bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
+        brunt=qsatt
 
-    with computation(PARALLEL), interval(...):
+    #with computation(PARALLEL), interval(...):
         #brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
-        brunt = qsatt # This is test code
     # with computation(PARALLEL), interval(1,None):
     #     bbb = 0.5*(bbb + (1. + constants.epsv*qsatt-wrk-qpl[0,0,-1]-qpi[0,0,-1] + 1.61*tabs[0,0,-1]*dqsat) / (1.+lstarn*dqsat) )
     #     brunt_edge = 0.5*(cld_sgs+cld_sgs[0,0,-1])*betdz*(bbb*(hl-hl[0,0,-1]) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water-total_water[0,0,-1]) + (bbb*fac_cond - (1.+fac_cond*dqsat)*tabs)*(qpl-qpl[0,0,-1]) + (bbb*fac_sub  - (1.+fac_sub*dqsat)*tabs)*(qpi-qpi[0,0,-1]) )
@@ -497,6 +551,39 @@ def environmental_tke(
         isotropy = isotropy[0,0,1]
 
 
+def flip_and_export(
+    tkh_inv: FloatField,
+    tkm_inv: FloatField,
+    isotropy_inv: FloatField,
+    tke_inv: FloatField,
+    tkesbdiss: FloatField,
+    tkh: FloatField,
+    prnum: FloatField,
+    isotropy: FloatField,
+    tke: FloatField,
+    tkesbdiss_inv: FloatField,
+):
+    from __externals__ import k_end
+
+    with computation(PARALLEL), interval(...):
+        kinv = k_end-K
+        tkh_inv = tkh.at(K=kinv)
+        tkm_inv = min(constants.tkhmax,tkh.at(K=kinv)*prnum.at(K=kinv))
+        isotropy_inv = isotropy.at(K=kinv)
+        tke_inv = tke.at(K=kinv)
+        tkesbdiss_inv = tkesbdiss.at(K=kinv)
+
+
+def flip_output(
+    input: FloatField,
+    output: FloatField,
+):
+    from __externals__ import k_end
+
+    with computation(PARALLEL), interval(...):
+        kinv = k_end - K
+        output = input.at(K=kinv)
+
 class RUN_SHOC(NDSLRuntime):
     def __init__(
         self,
@@ -571,6 +658,25 @@ class RUN_SHOC(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"LENOPT":config.LENOPT, "LENFAC1":config.LENFAC1, "LENFAC2":config.LENFAC2,"LENFAC3":config.LENFAC3}
         )
+
+        self._solve_tke = self.stencil_factory.from_dims_halo(
+            func=solve_tke,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"max_tke":config.max_tke,"min_tke":config.min_tke,"nitr":config.nitr,"BUOYOPT":config.BUOYOPT, "Ce":config.Ce, "Ces":config.Ces, "dtn":config.dtn}
+        )
+
+        self._environmental_tke = self.stencil_factory.from_dims_halo(
+            func=environmental_tke,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"shoc_lambda":config.shoc_lambda, "ck": config.ck}
+        )
+
+        self._flip_and_export = self.stencil_factory.from_dims_halo(
+            func=flip_and_export,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+
 
 
 
@@ -709,7 +815,40 @@ class RUN_SHOC(NDSLRuntime):
         #     tscale1=,
         # )
 
+        #self._environmental_tke()
         
+        #self._flip_and_export()
+
+        # Flip optional exports only if requested
+        # if tkesbbuoy_inv is not None:
+        #     self._flip_output()
+        
+        # if tkesbshear_inv is not None:
+        #     self._flip_output()
+
+        # if smixt_inv is not None:
+        #     self._flip_output()
+        
+        # if smixt1_inv is not None:
+        #     self._flip_output()
+        
+        # if smixt2_inv is not None:
+        #     self._flip_output()
+
+        # if smixt3_inv is not None:
+        #     self._flip_output()
+
+        # if bruntmst_inv is not None:
+        #     self._flip_output()
+        
+        # if prnum_inv is not None:
+        #     self._flip_output()
+
+        # if ri_inv is not None:
+        #     self._flip_output()
+
+        
+
 
 
 

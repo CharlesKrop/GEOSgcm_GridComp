@@ -10,6 +10,8 @@ from .SHOCMF.translate_EddyLength3 import TranslateEddyLength3
 from .SHOCMF.translate_SetupDerivedInputs import TranslateSetupDerivedInputs
 from .SHOCMF.translate_SolveTke import TranslateSolveTke
 from .SHOCMF.translate_EnvironmentalTke import TranslateEnvironmentalTke
+from .SHOCMF.translate_FlipAndExport import TranslateFlipAndExport
+from .SHOCMF.translate_Diagnostics import TranslateDiagnostics
 
 __all__ = [
     "TranslateInvertInterfaceVars",

@@ -7,6 +7,8 @@ from ndsl.utils import safe_assign_array
 
 from pyTurbulence.SHOCMF.shoc import eddy_length2
 from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
+from pyMoist.saturation_tables.formulation import SaturationFormulation
+from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ, Int
 
 
 class TranslateEddyLength2(TranslateFortranData2Py):
@@ -101,8 +103,9 @@ class TranslateEddyLength2(TranslateFortranData2Py):
 
         # Outputs
         brunt = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        brunt2 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         brunt_edge = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
+
+        formulation = Int(1)
 
    
         _eddy_length2(
@@ -122,6 +125,7 @@ class TranslateEddyLength2(TranslateFortranData2Py):
             brunt=brunt,
             brunt2=brunt2,
             brunt_edge=brunt_edge,
+            formulation=formulation,
         )
 
         return {
