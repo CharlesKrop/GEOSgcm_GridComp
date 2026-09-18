@@ -23,47 +23,7 @@ from ndsl.dsl.gt4py import (
 )
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 
-from pyMoist.constants import (
-    ABETA,
-    BX,
-    DIFFU,
-    EPSILON,
-    ICE_RADII_PARAM,
-    K_COND,
-    LBE,
-    LBX,
-    LIQ_RADII_PARAM,
-    MAPL_ALHF,
-    MAPL_ALHL,
-    MAPL_ALHS,
-    MAPL_CP,
-    MAPL_CPDRY,
-    MAPL_CPVAP,
-    MAPL_PI,
-    MAPL_RGAS,
-    MAPL_RVAP,
-    MAPL_TICE,
-    R13BBETA,
-    R_AIR,
-    RHO_I,
-    RHO_W,
-    TAUFRZ,
-    TAUMLT,
-    JaT_ICE_ALL,
-    JaT_ICE_MAX,
-    aICEFRPWR,
-    aT_ICE_ALL,
-    aT_ICE_MAX,
-    iICEFRPWR,
-    iT_ICE_ALL,
-    iT_ICE_MAX,
-    lICEFRPWR,
-    lT_ICE_ALL,
-    lT_ICE_MAX,
-    oICEFRPWR,
-    oT_ICE_ALL,
-    oT_ICE_MAX,
-)
+from pyMoist.constants import MAPL_ALHF, MAPL_ALHL, MAPL_ALHS, MAPL_CP, MAPL_CPDRY, MAPL_CPVAP, MAPL_PI, MAPL_RGAS, MAPL_RVAP, MAPL_TICE
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     saturation_specific_humidity,
@@ -71,92 +31,192 @@ from pyMoist.saturation_tables import (
     saturation_specific_humidity_liquid_surface,
 )
 from pyMoist.shared.atmos_recipes import air_density
-
-
-@function
-def ice_fraction_modis(
-    temp: Float,
-):
-    # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
-    tc = max(-46.0, min(temp - MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
-    ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc**2 + 0.0106 * tc**3 + 0.000339 * tc**4 + 0.00000395 * tc**5
-    ice_frct = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
-    return ice_frct
+from pyMoist.shared.constants import (
+    ALHLBCP,
+    ALHFBCP,
+    ALHSBCP,
+    ABETA,
+    AT_ICE_ALL,
+    AT_ICE_MAX,
+    AT_ICE_PWR,
+    BX,
+    DIFFU,
+    EPSILON,
+    ICE_FRACTION_POLYNOMIAL,
+    ICE_RADII_PARAM,
+    IT_ICE_ALL,
+    IT_ICE_MAX,
+    IT_ICE_PWR,
+    JASON_ICE_POLYNOMIAL,
+    JAT_ICE_ALL,
+    JAT_ICE_MAX,
+    JAT_ICE_PWR,
+    JIT_ICE_ALL,
+    JIT_ICE_MAX,
+    JIT_ICE_PWR,
+    JLT_ICE_ALL,
+    JLT_ICE_MAX,
+    JLT_ICE_PWR,
+    JOT_ICE_ALL,
+    JOT_ICE_MAX,
+    JOT_ICE_PWR,
+    K_COND,
+    LBE,
+    LBX,
+    LIQ_RADII_PARAM,
+    LIT_ICE_ALL,
+    LIT_ICE_MAX,
+    LIT_ICE_PWR,
+    LT_ICE_ALL,
+    LT_ICE_MAX,
+    LT_ICE_PWR,
+    OT_ICE_ALL,
+    OT_ICE_MAX,
+    OT_ICE_PWR,
+    R13BBETA,
+    R_AIR,
+    RAW_MODIS_POLYNOMIAL,
+    RHO_I,
+    RHO_W,
+    SRF_TYPE_ICE,
+    SRF_TYPE_LAND,
+    SRF_TYPE_LANDICE,
+    SRF_TYPE_OCEAN,
+    SRF_TYPE_SNOW,
+    ST_ICE_ALL,
+    ST_ICE_MAX,
+    ST_ICE_PWR,
+    TAUFRZ,
+    TAUMLT,
+    V12_ICE_POLYNOMIAL,
+)
 
 
 @function
 def ice_fraction(
-    temp,
-    cnv_frc,
-    srf_type,
+    t: Float,
+    convection_fraction: Float,
+    surface_type: Float,
 ):
     """Determine the ice/liquid fraction.
 
     Args:
-        temp (Float): temperature (Kelvin)
-        cnv_frc (Float): convection fraction within the column
-        srf_type (Float): surface type
+        t (Float): temperature (Kelvin)
+        convection_fraction (Float): convection fraction within the column
+        surface_type (Float): surface type
 
     Returns:
-        Float: ice fraction
+        ice_fraction (Float): ice fraction
     """
-    # Anvil clouds
-    # Anvil-Convective sigmoidal function like figure 6(right)
-    # Sigmoidal functions Hu et al 2010, doi:10.1029/2009JD012384
-    if ICE_RADII_PARAM == 1:
-        # Jason formula
-        if temp <= JaT_ICE_ALL:
-            icefrct_c = 1.000
-        elif temp > JaT_ICE_ALL and temp <= JaT_ICE_MAX:
-            icefrct_c = sin(0.5 * MAPL_PI * (1.00 - (temp - JaT_ICE_ALL) / (JaT_ICE_MAX - JaT_ICE_ALL)))
-        else:
-            icefrct_c = 0.00
-    else:
-        # Default formula
-        if temp <= aT_ICE_ALL:
-            icefrct_c = 1.000
-        elif temp > aT_ICE_ALL and temp <= aT_ICE_MAX:
-            icefrct_c = sin(0.5 * MAPL_PI * (1.00 - (temp - aT_ICE_ALL) / (aT_ICE_MAX - aT_ICE_ALL)))
-        else:
-            icefrct_c = 0.00
-    icefrct_c = max(min(icefrct_c, 1.00), 0.00) ** aICEFRPWR
+    if ICE_FRACTION_POLYNOMIAL == RAW_MODIS_POLYNOMIAL:
+        # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
+        tc = max(-46.0, min(t - MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
+        ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc**2 + 0.0106 * tc**3 + 0.000339 * tc**4 + 0.00000395 * tc**5
+        ice_fraction = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
 
-    # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-    srf_type_int = round(srf_type)
+    elif ICE_FRACTION_POLYNOMIAL == JASON_ICE_POLYNOMIAL:
+        # ------------------------------------------------------------------
+        # 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
+        # ------------------------------------------------------------------
+        ice_fraction_c = 0.00
+        if t <= JAT_ICE_ALL:
+            ice_fraction_c = 1.000
+        elif (t > JAT_ICE_ALL) and (t <= JAT_ICE_MAX):
+            ice_fraction_c = sin(0.5 * MAPL_PI * (1.00 - (t - JAT_ICE_ALL) / (JAT_ICE_MAX - JAT_ICE_ALL)))
+        ice_fraction_c = min(ice_fraction_c, 1.00)
+        ice_fraction_c = max(ice_fraction_c, 0.00)
+        ice_fraction_c = ice_fraction_c**JAT_ICE_PWR
 
-    if srf_type_int == 2 or srf_type_int == 3 or srf_type_int == 4:  # 2 = snow, 3 = ice, 4 = landice
-        if temp <= iT_ICE_ALL:
-            icefrct_m = 1.000
-        elif temp > iT_ICE_ALL and temp <= iT_ICE_MAX:
-            icefrct_m = sin(0.5 * MAPL_PI * (1.00 - (temp - iT_ICE_ALL) / (iT_ICE_MAX - iT_ICE_ALL)))
-        else:
-            icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** iICEFRPWR
+        # ---------------------------------`---------------------------------
+        # 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
+        # ------------------------------------------------------------------
+        # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+        if Int(surface_type) == SRF_TYPE_SNOW or Int(surface_type) == SRF_TYPE_ICE or Int(surface_type) == SRF_TYPE_LANDICE:
+            # Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE >= 3.0)
+            ice_fraction_m = 0.00
+            if t <= JIT_ICE_ALL:
+                ice_fraction_m = 1.000
+            elif (t > JIT_ICE_ALL) and (t <= JIT_ICE_MAX):
+                ice_fraction_m = sin(0.5 * MAPL_PI * (1.00 - (t - JIT_ICE_ALL) / (JIT_ICE_MAX - JIT_ICE_ALL)))
+            ice_fraction_m = min(ice_fraction_m, 1.00)
+            ice_fraction_m = max(ice_fraction_m, 0.00)
+            ice_fraction_m = ice_fraction_m**JIT_ICE_PWR
+        if Int(surface_type) == SRF_TYPE_LAND:
+            # Over Land (SRF_TYPE == 1)
+            ice_fraction_m = 0.00
+            if t <= JLT_ICE_ALL:
+                ice_fraction_m = 1.000
+            elif (t > JLT_ICE_ALL) and (t <= JLT_ICE_MAX):
+                ice_fraction_m = sin(0.5 * MAPL_PI * (1.00 - (t - JLT_ICE_ALL) / (JLT_ICE_MAX - JLT_ICE_ALL)))
+            ice_fraction_m = min(ice_fraction_m, 1.00)
+            ice_fraction_m = max(ice_fraction_m, 0.00)
+            ice_fraction_m = ice_fraction_m**JLT_ICE_PWR
+        elif Int(surface_type) == SRF_TYPE_OCEAN:
+            # Over Oceans (SRF_TYPE == 0)
+            ice_fraction_m = 0.00
+            if t <= JOT_ICE_ALL:
+                ice_fraction_m = 1.000
+            elif (t > JOT_ICE_ALL) and (t <= JOT_ICE_MAX):
+                ice_fraction_m = sin(0.5 * MAPL_PI * (1.00 - (t - JOT_ICE_ALL) / (JOT_ICE_MAX - JOT_ICE_ALL)))
+            ice_fraction_m = min(ice_fraction_m, 1.00)
+            ice_fraction_m = max(ice_fraction_m, 0.00)
+            ice_fraction_m = ice_fraction_m**JOT_ICE_PWR
 
-    elif srf_type_int == 1:  # land
-        if temp <= lT_ICE_ALL:
-            icefrct_m = 1.000
-        elif temp > lT_ICE_ALL and temp <= lT_ICE_MAX:
-            icefrct_m = sin(0.5 * MAPL_PI * (1.00 - (temp - lT_ICE_ALL) / (lT_ICE_MAX - lT_ICE_ALL)))
-        else:
-            icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** lICEFRPWR
+        # Combine the Convective and Mesh functions
+        ice_fraction = ice_fraction_m * (1.0 - convection_fraction) + ice_fraction_c * (convection_fraction)
 
-    elif srf_type_int == 0:  # ocean
-        if temp <= oT_ICE_ALL:
-            icefrct_m = 1.000
-        elif temp > oT_ICE_ALL and temp <= oT_ICE_MAX:
-            icefrct_m = sin(0.5 * MAPL_PI * (1.00 - (temp - oT_ICE_ALL) / (oT_ICE_MAX - oT_ICE_ALL)))
-        else:
-            icefrct_m = 0.00
-        icefrct_m = max(min(icefrct_m, 1.00), 0.00) ** oICEFRPWR
+    elif ICE_FRACTION_POLYNOMIAL == V12_ICE_POLYNOMIAL:
+        # ------------------------------------------------------------------
+        # 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
+        # ------------------------------------------------------------------
+        ice_fraction_c = 0.00
+        if t <= AT_ICE_ALL:
+            ice_fraction_c = 1.000
+        elif t <= AT_ICE_MAX:
+            ice_fraction_c = sin(0.5 * MAPL_PI * (1.00 - (t - AT_ICE_ALL) / (AT_ICE_MAX - AT_ICE_ALL)))
+        ice_fraction_c = max(0.00, min(1.00, ice_fraction_c)) ** AT_ICE_PWR
 
-    else:
-        # unknown surface type detected - you should not be here
-        icefrct_m = -999
+        # ------------------------------------------------------------------
+        # 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
+        # ------------------------------------------------------------------
+        # Select the correct constants based on surface type
+        if surface_type == SRF_TYPE_LANDICE:
+            t_all_loc = LIT_ICE_ALL
+            t_max_loc = LIT_ICE_MAX
+            pwr_loc = LIT_ICE_PWR
+        if surface_type == SRF_TYPE_ICE:
+            t_all_loc = IT_ICE_ALL
+            t_max_loc = IT_ICE_MAX
+            pwr_loc = IT_ICE_PWR
+        if surface_type == SRF_TYPE_SNOW:
+            t_all_loc = ST_ICE_ALL
+            t_max_loc = ST_ICE_MAX
+            pwr_loc = ST_ICE_PWR
+        if surface_type == SRF_TYPE_LAND:
+            t_all_loc = LT_ICE_ALL
+            t_max_loc = LT_ICE_MAX
+            pwr_loc = LT_ICE_PWR
+        if surface_type == SRF_TYPE_OCEAN:
+            t_all_loc = OT_ICE_ALL
+            t_max_loc = OT_ICE_MAX
+            pwr_loc = OT_ICE_PWR
 
-    ice_frac = icefrct_m * (1.0 - cnv_frc) + icefrct_c * cnv_frc
-    return ice_frac
+        # Calculate ICEFRCT_M
+        # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
+        ice_fraction_m = 0.00
+        if t <= t_all_loc:
+            ice_fraction_m = 1.000
+        elif t <= t_max_loc:
+            ice_fraction_m = sin(0.5 * MAPL_PI * (1.00 - (t - t_all_loc) / (t_max_loc - t_all_loc)))
+        ice_fraction_m = max(0.00, min(1.00, ice_fraction_m)) ** pwr_loc
+
+        # Combine the Convective and Mesh functions
+        ice_fraction = ice_fraction_m * (1.0 - convection_fraction) + ice_fraction_c * (convection_fraction)
+
+    # Final bounds check
+    ice_fraction = min(1.0, max(0.0, ice_fraction))
+
+    return ice_fraction
 
 
 @function
@@ -179,65 +239,67 @@ def cloud_effective_radius_liquid(
         radius (Float): drop radius
     """
     # Calculate liquid water content
-    wc = 1.0e3 * air_density(pressure, temperature) * liquid_mixing_ratio  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
-    # Calculate cloud drop number concentration from the aerosol model + ....
+    rho = 1.0e3 * air_density(pressure, temperature) * liquid_mixing_ratio  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+
+    # liquid water content
+    wc = 1.0e3 * rho * liquid_mixing_ratio  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+    # cloud drop number concentration
+    # from the aerosol model + ....
     nnx = max(liquid_concentration * 1.0e-6, 10.0)
-    # Calculate Radius in meters [m]
+    # radius in meters
     if LIQ_RADII_PARAM == 1:
         # Jason Version
-        radius = min(
-            60.0e-6,
-            max(
-                2.5e-6,
-                1.0e-6 * BX * (wc / nnx) ** R13BBETA * ABETA * 6.92,
-            ),
-        )
+        radius = min(60.0e-6, max(2.5e-6, 1.0e-6 * BX * (wc / nnx) ** R13BBETA * ABETA * 6.92))
     else:
         # [liu&daum, 2000 and 2005. liu et al 2008]
-        radius = min(
-            60.0e-6,
-            max(2.5e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE),
-        )
+        radius = min(60.0e-6, max(2.5e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE))
+
     return radius
 
 
 @function
 def cloud_effective_radius_ice(
-    pressure: Float,
-    temperature: Float,
+    p: Float,
+    t: Float,
     ice_mixing_ratio: Float,
 ) -> Float:
     """
     Calculate the effective radius of ice particles in clouds
 
     Arguments:
-        pressure (in): pressure (millibars)
-        temperature (in): temperature (Kelvin)
+        p (in): pressure (millibars)
+        t (in): temperature (Kelvin)
         ice_mixing_ratio (in): liquid mixing ratio (kg/kg)
 
     Returns:
         radius (Float): ice particle radius
     """
-    # Calculate ice water content
-    wc = 1.0e3 * air_density(pressure, temperature) * ice_mixing_ratio  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
-    # Calculate radius in meters [m]
+
+    # air density (kg/m^3)
+    rho = air_density(p, t)
+
+    # ice water content
+    wc = 1.0e3 * rho * ice_mixing_ratio  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
+    # radius in meters
     if ICE_RADII_PARAM == 1:
-        # Ice cloud effective radius -- [klaus wyser, 1998]
-        if temperature > MAPL_TICE or ice_mixing_ratio <= 0.0:
+        # ------ice cloud effective radius ----- [klaus wyser, 1998]
+        if t > MAPL_TICE or ice_mixing_ratio < 1.0e-9:
             bb = -2.0
         else:
-            bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (MAPL_TICE - temperature) ** 1.5)
-        bb = min(max(bb, -6.0), -2.0)
+            bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (MAPL_TICE - t) ** 1.5)
+        bb = min((max(bb, -6.0)), -2.0)
         radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
-        radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
     else:
-        # Ice cloud effective radius ----- [Sun, 2001]
-        tc = temperature - MAPL_TICE
-        zfsr = 1.2351 + 0.0105 * tc
+        # ------ice cloud effective radius ----- [Sun, 2001]
+        # https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2022GL102521
+        tc = t - MAPL_TICE
         aa = 45.8966 * (wc**0.2214)
-        bb = 0.79570 * (wc**0.2535)
-        radius = zfsr * (aa + bb * (temperature - 83.15))
-        radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius * 0.64952))
+        bb = 0.79570 * (wc**0.2535) * (t - 83.15)
+        radius = min(155.0, max(30.0, (1.2351 + 0.0105 * tc) * (aa + bb)))
+        radius = 0.64952 * radius
+
+    radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
+
     return radius
 
 
@@ -279,7 +341,7 @@ def fix_up_clouds(
             # remove all cloud quantities above the lid level
             if K < lid_level:
                 vapor = vapor + type_one_ice + type_one_liquid + type_two_ice + type_two_liquid
-                t = t - (MAPL_ALHL / MAPL_CP) * (type_one_liquid + type_two_liquid) - (MAPL_ALHS / MAPL_CP) * (type_one_ice + type_two_ice)
+                t = t - ALHLBCP * (type_one_liquid + type_two_liquid) - ALHSBCP * (type_one_ice + type_two_ice)
                 type_one_ice = 0.0
                 type_one_liquid = 0.0
                 type_one_cloud_fraction = 0.0
@@ -299,7 +361,7 @@ def fix_up_clouds(
             # fix if type one cloud fraction too small
             if type_one_cloud_fraction < MIN_CLOUD_FRACTION:
                 vapor = vapor + type_one_liquid + type_two_liquid
-                t = t - (MAPL_ALHL / MAPL_CP) * type_one_liquid - (MAPL_ALHS / MAPL_CP) * type_two_liquid
+                t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_two_liquid
                 type_one_ice = 0.0
                 type_one_liquid = 0.0
                 type_one_cloud_fraction = 0.0
@@ -307,7 +369,7 @@ def fix_up_clouds(
             # fix if type two cloud fraction too small
             if type_two_cloud_fraction < MIN_CLOUD_FRACTION:
                 vapor = vapor + type_two_liquid + type_two_ice
-                t = t - (MAPL_ALHL / MAPL_CP) * type_two_liquid - (MAPL_ALHS / MAPL_CP) * type_two_ice
+                t = t - ALHLBCP * type_two_liquid - ALHSBCP * type_two_ice
                 type_two_ice = 0.0
                 type_two_liquid = 0.0
                 type_two_cloud_fraction = 0.0
@@ -315,31 +377,31 @@ def fix_up_clouds(
             # fix if type one liquid is too small
             if type_one_liquid < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_one_liquid
-                t = t - (MAPL_ALHL / MAPL_CP) * type_one_liquid
+                t = t - ALHLBCP * type_one_liquid
                 type_one_liquid = 0.0
 
             # fix if type one ice is too small
             if type_one_ice < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_one_ice
-                t = t - (MAPL_ALHS / MAPL_CP) * type_one_ice
+                t = t - ALHSBCP * type_one_ice
                 type_one_ice = 0.0
 
             # fix if type two liquid is too small
             if type_two_liquid < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_two_liquid
-                t = t - (MAPL_ALHL / MAPL_CP) * type_two_liquid
+                t = t - ALHLBCP * type_two_liquid
                 type_two_liquid = 0.0
 
             # fix if type two ice is too small
             if type_two_ice < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_two_ice
-                t = t - (MAPL_ALHS / MAPL_CP) * type_two_ice
+                t = t - ALHSBCP * type_two_ice
                 type_two_ice = 0.0
 
             # fix all type one quantities if liquid + ice is too small
             if (type_one_liquid + type_two_liquid) < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_one_liquid + type_two_liquid
-                t = t - (MAPL_ALHL / MAPL_CP) * type_one_liquid - (MAPL_ALHS / MAPL_CP) * type_two_liquid
+                t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_two_liquid
                 type_two_ice = 0.0
                 type_one_liquid = 0.0
                 type_one_cloud_fraction = 0.0
@@ -347,222 +409,222 @@ def fix_up_clouds(
             # fix all type two quantities if liquid + ice is too small
             if (type_two_liquid + type_two_ice) < MIN_CLOUD_QUANTITY:
                 vapor = vapor + type_two_liquid + type_two_ice
-                t = t - (MAPL_ALHL / MAPL_CP) * type_two_liquid - (MAPL_ALHS / MAPL_CP) * type_two_ice
+                t = t - ALHLBCP * type_two_liquid - ALHSBCP * type_two_ice
                 type_two_cloud_fraction = 0.0
                 type_two_liquid = 0.0
                 type_two_ice = 0.0
 
 
-# able of lookup values of radiative effective radius of ice crystals as a function of temperature from
-# -94C to 0C for make_ice_number. Taken from WRF RRTMG radiation code where it is attributed to
-# Jon Egill Kristjansson and coauthors. This must be built into a custom shape off-grid quantity,
-# passed into the stencil which calls make_ice_number with a custom field type (defined below), then
-# passed into the function make_ice_number and accessed with .A[index] to function properly
-RADIATIVE_EFFECTIVE_RADIUS = [
-    5.92779,
-    6.26422,
-    6.61973,
-    6.99539,
-    7.39234,
-    7.81177,
-    8.25496,
-    8.72323,
-    9.21800,
-    9.74075,
-    10.2930,
-    10.8765,
-    11.4929,
-    12.1440,
-    12.8317,
-    13.5581,
-    14.2319,
-    15.0351,
-    15.8799,
-    16.7674,
-    17.6986,
-    18.6744,
-    19.6955,
-    20.7623,
-    21.8757,
-    23.0364,
-    24.2452,
-    25.5034,
-    26.8125,
-    27.7895,
-    28.6450,
-    29.4167,
-    30.1088,
-    30.7306,
-    31.2943,
-    31.8151,
-    32.3077,
-    32.7870,
-    33.2657,
-    33.7540,
-    34.2601,
-    34.7892,
-    35.3442,
-    35.9255,
-    36.5316,
-    37.1602,
-    37.8078,
-    38.4720,
-    39.1508,
-    39.8442,
-    40.5552,
-    41.2912,
-    42.0635,
-    42.8876,
-    43.7863,
-    44.7853,
-    45.9170,
-    47.2165,
-    48.7221,
-    50.4710,
-    52.4980,
-    54.8315,
-    57.4898,
-    60.4785,
-    63.7898,
-    65.5604,
-    71.2885,
-    75.4113,
-    79.7368,
-    84.2351,
-    88.8833,
-    93.6658,
-    98.5739,
-    103.603,
-    108.752,
-    114.025,
-    119.424,
-    124.954,
-    130.630,
-    136.457,
-    142.446,
-    148.608,
-    154.956,
-    161.503,
-    168.262,
-    175.248,
-    182.473,
-    189.952,
-    197.699,
-    205.728,
-    214.055,
-    222.694,
-    231.661,
-    240.971,
-    250.639,
-]
-RADIATIVE_EFFECTIVE_RADIUS_Table_Type = GlobalTable[(Float, len(RADIATIVE_EFFECTIVE_RADIUS))]
+# # able of lookup values of radiative effective radius of ice crystals as a function of temperature from
+# # -94C to 0C for make_ice_number. Taken from WRF RRTMG radiation code where it is attributed to
+# # Jon Egill Kristjansson and coauthors. This must be built into a custom shape off-grid quantity,
+# # passed into the stencil which calls make_ice_number with a custom field type (defined below), then
+# # passed into the function make_ice_number and accessed with .A[index] to function properly
+# RADIATIVE_EFFECTIVE_RADIUS = [
+#     5.92779,
+#     6.26422,
+#     6.61973,
+#     6.99539,
+#     7.39234,
+#     7.81177,
+#     8.25496,
+#     8.72323,
+#     9.21800,
+#     9.74075,
+#     10.2930,
+#     10.8765,
+#     11.4929,
+#     12.1440,
+#     12.8317,
+#     13.5581,
+#     14.2319,
+#     15.0351,
+#     15.8799,
+#     16.7674,
+#     17.6986,
+#     18.6744,
+#     19.6955,
+#     20.7623,
+#     21.8757,
+#     23.0364,
+#     24.2452,
+#     25.5034,
+#     26.8125,
+#     27.7895,
+#     28.6450,
+#     29.4167,
+#     30.1088,
+#     30.7306,
+#     31.2943,
+#     31.8151,
+#     32.3077,
+#     32.7870,
+#     33.2657,
+#     33.7540,
+#     34.2601,
+#     34.7892,
+#     35.3442,
+#     35.9255,
+#     36.5316,
+#     37.1602,
+#     37.8078,
+#     38.4720,
+#     39.1508,
+#     39.8442,
+#     40.5552,
+#     41.2912,
+#     42.0635,
+#     42.8876,
+#     43.7863,
+#     44.7853,
+#     45.9170,
+#     47.2165,
+#     48.7221,
+#     50.4710,
+#     52.4980,
+#     54.8315,
+#     57.4898,
+#     60.4785,
+#     63.7898,
+#     65.5604,
+#     71.2885,
+#     75.4113,
+#     79.7368,
+#     84.2351,
+#     88.8833,
+#     93.6658,
+#     98.5739,
+#     103.603,
+#     108.752,
+#     114.025,
+#     119.424,
+#     124.954,
+#     130.630,
+#     136.457,
+#     142.446,
+#     148.608,
+#     154.956,
+#     161.503,
+#     168.262,
+#     175.248,
+#     182.473,
+#     189.952,
+#     197.699,
+#     205.728,
+#     214.055,
+#     222.694,
+#     231.661,
+#     240.971,
+#     250.639,
+# ]
+# RADIATIVE_EFFECTIVE_RADIUS_Table_Type = GlobalTable[(Float, len(RADIATIVE_EFFECTIVE_RADIUS))]
 
 
-@function
-def make_ice_number(
-    cloud_ice_mixing_ratio,
-    t,
-    RADIATIVE_EFFECTIVE_RADIUS,
-):
-    """
-    Get the ice crystal number given cloud ice mixing ratio and temperature.
-    Returns the number of droplets per kg per m3.
+# @function
+# def make_ice_number(
+#     cloud_ice_mixing_ratio,
+#     t,
+#     RADIATIVE_EFFECTIVE_RADIUS,
+# ):
+#     """
+#     Get the ice crystal number given cloud ice mixing ratio and temperature.
+#     Returns the number of droplets per kg per m3.
 
-    Args:
-        cloud_ice_mixing_ratio (in): units kg/m3
-        t (in): units K
-        RADIATIVE_EFFECTIVE_RADIUS: table used for calculations
+#     Args:
+#         cloud_ice_mixing_ratio (in): units kg/m3
+#         t (in): units K
+#         RADIATIVE_EFFECTIVE_RADIUS: table used for calculations
 
-    Returns:
-        crystal_number: units number/(kg*m3)
+#     Returns:
+#         crystal_number: units number/(kg*m3)
 
-    Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
-    """
+#     Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
+#     """
 
-    # DEBUG
-    crystal_number = 0.0
-    # internal constant
-    ice_density = 890.0
+#     # DEBUG
+#     crystal_number = 0.0
+#     # internal constant
+#     ice_density = 890.0
 
-    if cloud_ice_mixing_ratio == 0.0:
-        crystal_number = 0.0
+#     if cloud_ice_mixing_ratio == 0.0:
+#         crystal_number = 0.0
 
-    else:
-        # From the model 3D temperature field, subtract 180K for which
-        # index value of RADIATIVE_EFFECTIVE_RADIUS as a start.  Value of corr is for
-        # interpolating between neighboring values in the table.
+#     else:
+#         # From the model 3D temperature field, subtract 180K for which
+#         # index value of RADIATIVE_EFFECTIVE_RADIUS as a start.  Value of corr is for
+#         # interpolating between neighboring values in the table.
 
-        idx_rei = int(t - 180.0)
-        idx_rei = min(max(idx_rei, 0), 93)
-        corr = t - floor(t)
-        reice = RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei] * (1.0 - corr) + RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei + 1] * corr
-        deice = 2.0 * reice * 1.0e-6
+#         idx_rei = int(t - 180.0)
+#         idx_rei = min(max(idx_rei, 0), 93)
+#         corr = t - floor(t)
+#         reice = RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei] * (1.0 - corr) + RADIATIVE_EFFECTIVE_RADIUS.A[idx_rei + 1] * corr
+#         deice = 2.0 * reice * 1.0e-6
 
-        internal_lambda = float64(3.0 / deice)
+#         internal_lambda = float64(3.0 / deice)
 
-        # value of the dispersion parameter according to Heymsfield et al 2002, Table3.
-        t_celcius = t - 273.15
+#         # value of the dispersion parameter according to Heymsfield et al 2002, Table3.
+#         t_celcius = t - 273.15
 
-        t_celcius = min(max(t_celcius, -70.0), -15.0)
+#         t_celcius = min(max(t_celcius, -70.0), -15.0)
 
-        if t_celcius > -27.0:
-            lambdai = 6.8 * exp(-0.096 * t_celcius)
-        else:
-            lambdai = 24.8 * exp(-0.049 * t_celcius)
+#         if t_celcius > -27.0:
+#             lambdai = 6.8 * exp(-0.096 * t_celcius)
+#         else:
+#             lambdai = 24.8 * exp(-0.049 * t_celcius)
 
-        mui = (0.13 * (lambdai**0.64)) - 2.0
+#         mui = (0.13 * (lambdai**0.64)) - 2.0
 
-        k = (mui + 3) * (mui * 3) / (mui + 2) / (mui + 1)
+#         k = (mui + 3) * (mui * 3) / (mui + 2) / (mui + 1)
 
-        crystal_number = k * cloud_ice_mixing_ratio * internal_lambda * internal_lambda * internal_lambda / (MAPL_PI * ice_density)
+#         crystal_number = k * cloud_ice_mixing_ratio * internal_lambda * internal_lambda * internal_lambda / (MAPL_PI * ice_density)
 
-    return crystal_number
-
-
-# table of constants for make_droplet_number, this must be built into a custom shape off-grid quantity,
-# passed into the stencil which calls make_droplet_number with a custom field type (defined below), then
-# passed into the function make_droplet_number and accessed with .A[index] to function properly
-G_RATIO = [24, 60, 120, 210, 336, 504, 720, 990, 1320, 1716, 2184, 2730, 3360, 4080, 4896]
-G_RATIO_Table_Type = GlobalTable[(Float, len(G_RATIO))]
+#     return crystal_number
 
 
-@function
-def make_droplet_number(
-    cloud_water_mixing_ratio,
-    num_water_friendly_aerosols,
-    G_RATIO,
-):
-    """
-    Get the droplet number given cloud water mixing ratio and number of water-friendly aerosols.
-    Returns the number of droplets per kg per m3.
+# # table of constants for make_droplet_number, this must be built into a custom shape off-grid quantity,
+# # passed into the stencil which calls make_droplet_number with a custom field type (defined below), then
+# # passed into the function make_droplet_number and accessed with .A[index] to function properly
+# G_RATIO = [24, 60, 120, 210, 336, 504, 720, 990, 1320, 1716, 2184, 2730, 3360, 4080, 4896]
+# G_RATIO_Table_Type = GlobalTable[(Float, len(G_RATIO))]
 
-    Args:
-        cloud_water_mixing_ratio (in): units kg/m3
-        num_water_friendly_aerosols (in): units number/kg
-        G_RATIO: table used for calculations
 
-    Returns:
-        droplet_number: units number/(kg*m3)
+# @function
+# def make_droplet_number(
+#     cloud_water_mixing_ratio,
+#     num_water_friendly_aerosols,
+#     G_RATIO,
+# ):
+#     """
+#     Get the droplet number given cloud water mixing ratio and number of water-friendly aerosols.
+#     Returns the number of droplets per kg per m3.
 
-    Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
-    """
-    am_r = MAPL_PI * 1000.0 / 6.0
+#     Args:
+#         cloud_water_mixing_ratio (in): units kg/m3
+#         num_water_friendly_aerosols (in): units number/kg
+#         G_RATIO: table used for calculations
 
-    if cloud_water_mixing_ratio <= 0.0:
-        droplet_number = 0.0
-    else:
-        internal_num_water_friendly_aerosols = max(99.0e6, min(num_water_friendly_aerosols, 5.0e10))
-        nu_c = max(2, min(round_away_from_zero(2.5e10 / internal_num_water_friendly_aerosols), 15))
+#     Returns:
+#         droplet_number: units number/(kg*m3)
 
-        x1 = max(1.0, min(internal_num_water_friendly_aerosols * 1.0e-9, 10.0)) - 1.0
-        xDc = (30.0 - x1 * 20.0 / 9.0) * 1.0e-6
+#     Developed by H. Barnes @ NOAA/OAR/ESRL/GSL Earth Prediction Advancement Division
+#     """
+#     am_r = MAPL_PI * 1000.0 / 6.0
 
-        internal_lambda = (float64(4.0) + nu_c) / xDc
+#     if cloud_water_mixing_ratio <= 0.0:
+#         droplet_number = 0.0
+#     else:
+#         internal_num_water_friendly_aerosols = max(99.0e6, min(num_water_friendly_aerosols, 5.0e10))
+#         nu_c = max(2, min(round_away_from_zero(2.5e10 / internal_num_water_friendly_aerosols), 15))
 
-        qnc = cloud_water_mixing_ratio / G_RATIO.A[int(nu_c - 1)] * internal_lambda * internal_lambda * internal_lambda / am_r
-        droplet_number = float32(qnc)
+#         x1 = max(1.0, min(internal_num_water_friendly_aerosols * 1.0e-9, 10.0)) - 1.0
+#         xDc = (30.0 - x1 * 20.0 / 9.0) * 1.0e-6
 
-    return droplet_number
+#         internal_lambda = (float64(4.0) + nu_c) / xDc
+
+#         qnc = cloud_water_mixing_ratio / G_RATIO.A[int(nu_c - 1)] * internal_lambda * internal_lambda * internal_lambda / am_r
+#         droplet_number = float32(qnc)
+
+#     return droplet_number
 
 
 @function
@@ -1061,7 +1123,7 @@ def hydrostatic_pdf(
                 )
 
             # relax the condensate update to prevent oscillation during iteration
-            latent_heeat_factor = (1.0 - fraction_ice) * (MAPL_ALHL / MAPL_CP) + fraction_ice * (MAPL_ALHS / MAPL_CP)
+            latent_heeat_factor = (1.0 - fraction_ice) * ALHLBCP + fraction_ice * ALHSBCP
             if PDFSHAPE == 1:
                 large_scale_condensate_internal = large_scale_condensate_internal_old + (large_scale_condensate_internal - large_scale_condensate_internal_old) / (
                     1.0 - (large_scale_cloud_fraction_internal * (alpha - 1.0) - (large_scale_condensate_internal / qsat)) * dqsat * latent_heeat_factor
@@ -1081,11 +1143,8 @@ def hydrostatic_pdf(
                 # use fixed-point iteration
                 t_internal = (
                     t_internal_old
-                    + (1.0 - fraction_ice)
-                    * (MAPL_ALHL / MAPL_CP)
-                    * (large_scale_condensate_internal - large_scale_condensate_internal_old)
-                    * (1.0 - large_scale_cloud_fraction)
-                    + fraction_ice * (MAPL_ALHS / MAPL_CP) * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
+                    + (1.0 - fraction_ice) * ALHLBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
+                    + fraction_ice * ALHSBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
                 )
 
                 PDFITERS = count
@@ -1096,11 +1155,8 @@ def hydrostatic_pdf(
                 # secant method
                 f_t_internal = (
                     t_internal_old
-                    + (1.0 - fraction_ice)
-                    * (MAPL_ALHL / MAPL_CP)
-                    * (large_scale_condensate_internal - large_scale_condensate_internal_old)
-                    * (1.0 - large_scale_cloud_fraction)
-                    + fraction_ice * (MAPL_ALHS / MAPL_CP) * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
+                    + (1.0 - fraction_ice) * ALHLBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
+                    + fraction_ice * ALHSBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
                 )
 
                 PDFITERS = count
@@ -1158,7 +1214,7 @@ def hydrostatic_pdf(
         vapor = vapor - (dice + dliquid)
 
         # final temperature update (applies latent heat of vaporization and fusion)
-        t = t + (MAPL_ALHL / MAPL_CP) * (dice + dliquid) + MAPL_ALHF / MAPL_CP * (dice)
+        t = t + ALHLBCP * (dice + dliquid) + ALHFBCP * (dice)
 
 
 def melt_freeze(
@@ -1286,8 +1342,9 @@ def sublimate(
 
         rh_limited = min(vapor / saturation_specific_humidity, 1.00)
 
-        # NOTE MAPL_ALHS is MAPL_ALHL in the fortran. this is a bug. has been fixed in the NDSL
-        # but IS STILL WRONG IN THE FORTRAN. this will lead to numerical differences
+        # NOTE MAPL_ALHS is MAPL_ALHL in the fortran. this is a bug
+        # it has been fixed in a newer version of the Fortran,
+        # so it is being fixed in the python right now
         k1 = (MAPL_ALHS**2) * RHO_I / (K_COND * MAPL_RVAP * (t**2))
 
         # DIFFU is given for 1000 mb, so 1000.0/p_mb accounts for increased diffusivity at lower pressure

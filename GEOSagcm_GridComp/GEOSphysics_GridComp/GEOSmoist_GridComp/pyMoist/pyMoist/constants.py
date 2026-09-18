@@ -70,66 +70,7 @@ MAPL_CP = MAPL_RGAS / MAPL_KAPPA  # J/(kg K) (DEPRECATED)
 MAPL_VIREPS = Float(1.0) / MAPL_EPSILON - Float(1.0)  # (DEPRECATED)
 MAPL_P00 = Float(100000.0)  # Pa
 
-EPSILON = MAPL_H2OMW / MAPL_AIRMW  # --
 MAPL_CELSIUS_TO_KELVIN = Float(273.15)  # K
-
-
-# ice_fraction constants
-# In anvil/convective clouds
-aT_ICE_ALL = Float(252.16)
-aT_ICE_MAX = Float(268.16)
-aICEFRPWR = Float(2.0)
-# Over snow/ice SRF_TYPE = 2
-iT_ICE_ALL = Float(236.16)
-iT_ICE_MAX = Float(261.16)
-iICEFRPWR = Float(6.0)
-# Over Land     SRF_TYPE = 1
-lT_ICE_ALL = Float(239.16)
-lT_ICE_MAX = Float(261.16)
-lICEFRPWR = Float(2.0)
-# Over Oceans   SRF_TYPE = 0
-oT_ICE_ALL = Float(238.16)
-oT_ICE_MAX = Float(263.16)
-oICEFRPWR = Float(4.0)
-# Jason method constants (translator note: I have no clue who jason is)
-# In anvil/convective clouds
-JaT_ICE_ALL = Float(245.16)
-JaT_ICE_MAX = Float(261.16)
-JaICEFRPWR = Float(2.0)
-# Over snow/ice
-JiT_ICE_ALL = Float(MAPL_TICE - 40.0)
-JiT_ICE_MAX = Float(MAPL_TICE)
-JiICEFRPWR = Float(4.0)
-
-# Other miscellaneous parameters
-TAUFRZ = Float(600.0)  # timescale for freezing
-TAUMLT = Float(300.0)  # timescale for melting
-K_COND = Float(2.4e-2)  # J m**-1 s**-1 K**-1
-DIFFU = Float(2.2e-5)  # m**2 s**-1
-dQCMAX = Float(1.0e-4)
-
-# cloud radius Constants based on DOI 10.1088/1748-9326/3/4/045021
-RHO_I = Float(890.0)  # Density of ice crystal in kg/m^3
-RHO_W = Float(1000.0)  # Density of liquid water in kg/m^3
-# cloud radius eqs are in cgs units
-
-# Constants for _fix_up_clouds_stencil
-ALHLBCP = MAPL_ALHL / MAPL_CP
-ALHSBCP = MAPL_ALHS / MAPL_CP
-
-# Constants for cloud_effective_radius_liquid and cloud_effective_radius_ice
-LIQ_RADII_PARAM = Int(2)
-ICE_RADII_PARAM = Int(1)
-BX = Float(100.0) * (Float(3.0) / (Float(4.0) * MAPL_PI)) ** (Float(1.0) / Float(3.0))
-R13BBETA = Float(1.0) / Float(3.0) - Float(0.14)
-ABETA = Float(0.07)
-LDISS = Float(0.07)
-LK = Float(0.75)
-LBX = LDISS * Float(1.0e3) * (Float(3.0) / (Float(4.0) * MAPL_PI * LK * RHO_W * Float(1.0e-3))) ** (Float(1.0) / Float(3.0))
-LBE = Float(1.0) / Float(3.0) - Float(0.14)
-
-# Aer Activation constants
-R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1, also used in GFDL_1M, but defined in aer
 
 
 # Python equivalent of Fortran's tiny(X)
