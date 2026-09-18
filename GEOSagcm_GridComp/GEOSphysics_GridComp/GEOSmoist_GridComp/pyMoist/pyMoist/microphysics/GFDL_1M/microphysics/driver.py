@@ -10,6 +10,7 @@ from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import GRAV, ONE_R8, RC, RDGAS, RGRAV, ZVIR
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     calc_mhc_lhc,
     moist_heat_capacity_3,
@@ -467,6 +468,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
+        saturation_tables: GFDLMPV3Tables,
         gfdl_1m_config: GFDL1MConfig,
         mp_namelist: GFDLMPV3NamelistConfig,
         mp_config: GFDLMPV3CloudMPConfig,

@@ -613,12 +613,12 @@ class GFDLMPV3NamelistConfig:
 
 # types for tables in GFDLMPV3CloudMPConfig
 # types must be declared here for all possible tables sizes
-GlobalTableL2 = GlobalTable[(Float, (2))]
-GlobalTableL3 = GlobalTable[(Float, (3))]
-GlobalTableL4 = GlobalTable[(Float, (4))]
-GlobalTableL5 = GlobalTable[(Float, (5))]
-GlobalTableL20 = GlobalTable[(Float, (20))]
-GlobalTableL3x10 = GlobalTable[(Float, (3, 10))]
+GFDLMPV3TableL2 = GlobalTable[(Float, (2))]
+GFDLMPV3TableL3 = GlobalTable[(Float, (3))]
+GFDLMPV3TableL4 = GlobalTable[(Float, (4))]
+GFDLMPV3TableL5 = GlobalTable[(Float, (5))]
+GFDLMPV3TableL20 = GlobalTable[(Float, (20))]
+GFDLMPV3TableL3xL10 = GlobalTable[(Float, (3, 10))]
 
 
 @dataclasses.dataclass

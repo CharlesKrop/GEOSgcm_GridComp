@@ -50,7 +50,7 @@ class GFDLMPV3(NDSLRuntime):
         self._setup_cloud_mp_config(quantity_factory, gfdl_1m_config, self._mp_namelist, self._mp_config)
 
         # initialize saturation tables
-        self._saturation_tables = get_saturation_vapor_pressure_tables(stencil_factory=stencil_factory)
+        _saturation_tables = get_saturation_vapor_pressure_tables(stencil_factory=stencil_factory)
 
         # construct stencil
         self._set_value_k_interface = stencil_factory.from_dims_halo(
@@ -72,6 +72,7 @@ class GFDLMPV3(NDSLRuntime):
         self._driver = GFDLMPV3Driver(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
+            saturation_tables=_saturation_tables,
             gfdl_1m_config=self._gfdl_1m_config,
             mp_namelist=self._mp_namelist,
             mp_config=self._mp_config,

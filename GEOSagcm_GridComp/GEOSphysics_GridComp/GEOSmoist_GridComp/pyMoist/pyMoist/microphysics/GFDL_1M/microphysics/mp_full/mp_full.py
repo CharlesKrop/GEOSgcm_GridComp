@@ -12,6 +12,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.ice_cloud import IceCloud
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.sedimentation import Sedimentation
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.subgrid_processes import SubgridProcesses
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.warm_rain import WarmRain
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
 
@@ -181,6 +182,7 @@ class MPFull:
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
+        saturation_tables: GFDLMPV3Tables,
         mp_config: GFDLMPV3CloudMPConfig,
         mp_namelist: GFDLMPV3NamelistConfig,
         CONV_FACTOR: Float,
@@ -193,7 +195,7 @@ class MPFull:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"CONV_FACTOR": CONV_FACTOR},
         )
-        self._warm_rain = WarmRain(stencil_factory, mp_config, mp_namelist)
+        self._warm_rain = WarmRain(stencil_factory, mp_config, mp_namelist, CONV_FACTOR)
         self._ice_cloud = IceCloud(stencil_factory, mp_config, mp_namelist)
         self._subgrid_processes = SubgridProcesses(stencil_factory, mp_config, mp_namelist)
 
@@ -205,7 +207,9 @@ class MPFull:
 
     def __call__(self, state: GFDL1MState, gfdl_1m_locals: GFDL1MLocals, gfdl_mp_v3_locals: GFDLMPV3Locals):
         for f in self._mp_namelist.NTIMES:
+            # --------------------------------------------------
             # sedimentation of cloud ice, snow, graupel or hail, and rain
+            # --------------------------------------------------
             self._sedimentation(state, gfdl_1m_locals, gfdl_mp_v3_locals, self._mp_full_locals)
 
             self._update_precip_fluxes(
@@ -230,3 +234,20 @@ class MPFull:
                 non_anvil_large_scale_rain_precip_flux=state.non_anvil_large_scale.rain_precip_flux,
                 non_anvil_large_scale_snow_precip_flux=state.non_anvil_large_scale.snow_precip_flux,
             )
+
+            # --------------------------------------------------
+            # warm rain cloud microphysics
+            # --------------------------------------------------
+            self._warm_rain(state, gfdl_mp_v3_locals, self._mp_full_locals)
+
+            # --------------------------------------------------
+            # ice cloud microphysics
+            # --------------------------------------------------
+            self._ice_cloud()
+
+            # --------------------------------------------------
+            # temperature sensitive high vertical resolution processes
+            # --------------------------------------------------
+            if self._mp_namelist.DO_SUBGRID_PROC:
+                self._subgrid_processes()
+

@@ -1,7 +1,56 @@
-from ndsl.dsl.gt4py import exp, function, log
+from ndsl.dsl.gt4py import exp, function, log, sqrt
 from ndsl.dsl.typing import Bool, Float, Float64
 
+from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL5, GFDLMPV3TableL3
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE
+
+
+@function
+def accretion_2d(
+    condensate_x_density: Float,
+    density_factor: Float,
+    c: Float,
+    blin: Float,
+    mu: Float,
+):
+    """accretion function, Lin et al. (1983)"""
+    return density_factor * c * exp((2 + mu + blin) / (mu + 3) * log(6 * condensate_x_density))
+
+
+@function
+def accretion_3d(
+    v1: Float,
+    v2: Float,
+    condensate_1: Float,
+    condensate_2: Float,
+    density: Float,
+    c: Float,
+    acc1: Float,
+    acc2: Float,
+    acco: GFDLMPV3TableL3,
+    VDIFFFLAG: Int,
+):
+    """accretion function, Lin et al. (1983)"""
+
+    t1 = exp(1.0 / (acc1 + 3) * log(6 * condensate_1 * density))
+    t2 = exp(1.0 / (acc2 + 3) * log(6 * condensate_2 * density))
+
+    if VDIFFFLAG == 1:
+        vdiff = abs(v1 - v2)
+    if VDIFFFLAG == 2:
+        vdiff = sqrt((1.20 * v1 - 0.95 * v2) ** 2.0 + 0.08 * v1 * v2)
+    if VDIFFFLAG == 3:
+        vdiff = sqrt((1.00 * v1 - 1.00 * v2) ** 2.0 + 0.04 * v1 * v2)
+
+    accretion = c * vdiff / density
+
+    tmp = 0
+    i = 0
+    while i <= 2:
+        tmp = tmp + acco.A[i] * exp((6 + acc1 - i + 1) * log(t1)) * exp((acc2 + i) * log(t2))
+        i += 1
+
+    return accretion * tmp
 
 
 @function
@@ -57,6 +106,36 @@ def calc_mhc_lhc(
     LV00: Float64,
     T_WFR: Float,
 ):
+    """Calculate moist heat capacities and latent heat coefficients at 0 C
+
+    Args:
+        t (Float64)
+        vapor (Float)
+        ice (Float)
+        liquid (Float)
+        graupel (Float)
+        rain (Float)
+        snow (Float)
+        C1_VAP (Float64)
+        C1_LIQ (Float64)
+        C1_ICE (Float64)
+        D1_ICE (Float64)
+        D1_VAP (Float64)
+        LI00 (Float64)
+        LI20 (Float64)
+        LV00 (Float64)
+        T_WFR (Float)
+
+    Returns:
+        total_liquid (Float): total liquid water content (liquid + rain)
+        total_solid (Float): total solid water content (ice + snow + graupel)
+        cvm (Float64): moist heat capacity
+        total_energy (Float64): total energy
+        lcpk (Float64): latent heat coefficient for liquid
+        icpk (Float64): latent heat coefficient for ice
+        tcpk (Float64): combined ice + vapor latent heat coefficient
+        tcp3 (Float64): combined ice + liquid latent heat coefficient
+    """
     # ensure 64 bit
     cvm: Float64 = 0.0
     total_energy: Float64 = 0.0
@@ -217,3 +296,125 @@ def calc_mass_weighted_terminal_velocity(
     blin: Float,
 ):
     return tva / tvb * exp(blin / (mu + 3) * log(6 * density * condensate))
+
+
+@function
+def linear_prof(
+    top_level: Int,
+    precipitate: FloatField,
+    h_var: FloatField,
+    z_var: Bool,
+):
+    """vertical subgrid variability used for cloud ice and cloud water autoconversion
+    edges: qe == qbar + / - dm
+
+    Note that this funciton must be called from within a interval(0,1) statement for the k-indexing to work properly
+
+    Args:
+        top_level (Int)
+        precipitate (FloatField)
+        h_var (FloatField)
+        z_var (Bool)
+    """
+    if z_var:
+        level = 1
+        while level <= top_level:
+            dprecipitate = 0.5 * (precipitate[0, 0, level] - precipitate[0, 0, level - 1])
+            level += 1
+
+        dm[0, 0, 1] = 0.0
+
+        # use twice the strength of the positive definiteness limiter (Lin et al. 1994)
+        level = 1
+        while level <= top_level - 1:
+            dm = 0.5 * min(abs(dprecipitate + dprecipitate[0, 0, level + 1]), 0.5 * precipitate)
+            if dprecipitate * dprecipitate[0, 0, level + 1] <= 0.0:
+                if dprecipitate > 0.0:
+                    dm = min(dm, dprecipitate, -dprecipitate[0, 0, level + 1])
+                else:
+                    dm = 0.0
+            level += 1
+
+        dm[0, 0, top_level] = 0.0
+
+        # impose a presumed background horizontal variability that is proportional to the value itself
+        level = 0
+        while level <= top_level:
+            dm = max(dm, 0.0, h_var * precipitate)
+            level += 1
+    else:
+        level = 0
+        while level <= top_level:
+            dm = max(0.0, h_var * precipitate)
+            level += 1
+
+    return dm
+
+
+@function
+def p_sub(
+    t_squared: Float,
+    dcondensate: Float,
+    condensate_x_density: Float,
+    saturation_specific_humidity: Float,
+    density: Float,
+    density_factor: Float,
+    blin: Float,
+    mu: Float,
+    cpk: Float,
+    cvm: Float,
+    c: GFDLMPV3TableL5,
+):
+    """sublimation or deposition function, Lin et al. (1983)
+
+    Args:
+        t_squared (Float)
+        dcondensate (Float)
+        condensate_x_density (Float)
+        saturation_specific_humidity (Float)
+        density (Float)
+        density_factor (Float)
+        blin (Float)
+        mu (Float)
+        cpk (Float)
+        cvm (Float)
+        c (GFDLMPV3TableL5)
+
+    Returns:
+        (Float): sublimation or deposition rate
+    """
+    return (
+        c.A[0]
+        * t_squared
+        * dcondensate
+        * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density))
+        * vent_coeff(condensate_x_density, c.A[1], c.A[2], density_factor, blin, mu)
+        / (c.A[3] * t_squared + c.A[4] * (cpk * cvm) ** 2 * saturation_specific_humidity * density)
+    )
+
+
+@function
+def vent_coeff(
+    density_factor: Float,
+    condensate_x_density: Float,
+    c1: Float,
+    c2: Float,
+    blin: Float,
+    mu: Float,
+):
+    """ventilation coefficient, Lin et al. (1983)
+
+    Args:
+        density_factor (Float)
+        condensate_x_density (Float)
+        c1 (Float)
+        c2 (Float)
+        blin (Float)
+        mu (Float)
+
+    Returns:
+        (Float): ventilation coefficient
+    """
+    return c1 + c2 * exp((3 + 2 * mu + blin) / (mu + 3) / 2 * log(6 * condensate_x_density)) * sqrt(density_factor) / exp(
+        (1 + mu) / (mu + 3) * log(6 * condensate_x_density)
+    )

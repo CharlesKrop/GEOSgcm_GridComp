@@ -3,7 +3,7 @@ import dataclasses
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, log10, max
-from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64, Int
+from ndsl.dsl.typing import BoolFieldIJ, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64, Int, Bool
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 
