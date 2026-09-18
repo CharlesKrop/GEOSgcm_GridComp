@@ -1,8 +1,9 @@
-from ndsl.dsl.gt4py import exp, function, log, sqrt, computation, PARALLEL, interval
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log, sqrt
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int
 
-from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL5, GFDLMPV3TableL3
+from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3, GFDLMPV3TableL5
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE
+from pyMoist.shared.cloud_processes import ice_fraction
 
 
 @function
@@ -299,6 +300,31 @@ def moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR: Fl
     else:
         cvm = moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
     return Float64(RGRAV * cvm * C_AIR * t * dp)
+
+@function
+def new_ice_condensate(
+    t: Float,
+    liquid: Float,
+    ice: Float,
+    convection_fraction: Float,
+    surface_type: Float,
+):
+    ifrac = ice_fraction(t, convection_fraction, surface_type)
+    new_ice_condensate = min(max(0.0,ifrac*(liquid+ice) - ice),liquid)
+    return new_ice_condensate
+
+
+@function
+def new_liquid_condensate(
+    t: Float,
+    liquid: Float,
+    ice: Float,
+    convection_fraction: Float,
+    surface_type: Float,
+):
+    ifrac = ice_fraction(t, convection_fraction, surface_type)
+    new_liq_condensate = min(max(0.0,(1.0-ifrac)*(liquid+ice) - liquid),ice)
+    return new_liq_condensate
 
 
 @function
