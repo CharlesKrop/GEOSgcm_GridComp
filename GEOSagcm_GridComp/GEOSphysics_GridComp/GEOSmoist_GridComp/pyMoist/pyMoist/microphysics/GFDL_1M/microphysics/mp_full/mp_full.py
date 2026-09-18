@@ -195,7 +195,7 @@ class MPFull:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"CONV_FACTOR": CONV_FACTOR},
         )
-        self._warm_rain = WarmRain(stencil_factory, mp_config, mp_namelist, CONV_FACTOR)
+        self._warm_rain = WarmRain(stencil_factory, quantity_factory, mp_config, mp_namelist, CONV_FACTOR)
         self._ice_cloud = IceCloud(stencil_factory, quantity_factory, mp_config, mp_namelist, CONV_FACTOR)
         self._subgrid_processes = SubgridProcesses(stencil_factory, mp_config, mp_namelist)
 

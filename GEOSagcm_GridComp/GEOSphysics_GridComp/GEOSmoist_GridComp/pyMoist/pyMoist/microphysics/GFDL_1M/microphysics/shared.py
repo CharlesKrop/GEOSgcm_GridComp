@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log, sqrt
+from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log, sqrt, FORWARD, K
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3, GFDLMPV3TableL5
@@ -216,57 +216,51 @@ def calc_reflectivity_factor(
     return rra / rrb * exp((mu + 6) / (mu + 3) * log(6 * density * condensate))
 
 
-@function
 def linear_prof(
-    top_level: Int,
     precipitate: FloatField,
+    dm: FloatField,
     h_var: FloatField,
-    z_var: Bool,
 ):
     """vertical subgrid variability used for cloud ice and cloud water autoconversion
     edges: qe == qbar + / - dm
 
-    Note that this funciton must be called from within a interval(0,1) statement for the k-indexing to work properly
-
     Args:
-        top_level (Int)
         precipitate (FloatField)
+        dm (FloatField)
         h_var (FloatField)
-        z_var (Bool)
     """
-    if z_var:
-        level = 1
-        while level <= top_level:
-            dprecipitate = 0.5 * (precipitate[0, 0, level] - precipitate[0, 0, level - 1])
-            level += 1
+    from __externals__ import IRAIN_F, Z_SLOPE, k_end
 
-        dm[0, 0, 1] = 0.0
+    with computation(FORWARD), interval(...):
+        if IRAIN_F == 0 and Z_SLOPE and K >= 1:
+            dprecipitate = 0.5 * (precipitate - precipitate[0, 0, -1])
 
-        # use twice the strength of the positive definiteness limiter (Lin et al. 1994)
-        level = 1
-        while level <= top_level - 1:
-            dm = 0.5 * min(abs(dprecipitate + dprecipitate[0, 0, level + 1]), 0.5 * precipitate)
-            if dprecipitate * dprecipitate[0, 0, level + 1] <= 0.0:
+    with computation(FORWARD), interval(0, 1):
+        if IRAIN_F == 0 and Z_SLOPE:
+            dm = 0.0
+
+    with computation(FORWARD), interval(...):
+        if IRAIN_F == 0 and Z_SLOPE:
+            # use twice the strength of the positive definiteness limiter (Lin et al. 1994)
+            dm = 0.5 * min(abs(dprecipitate + dprecipitate[0, 0, 1]), 0.5 * precipitate)
+            if dprecipitate * dprecipitate[0, 0, 1] <= 0.0:
                 if dprecipitate > 0.0:
-                    dm = min(dm, dprecipitate, -dprecipitate[0, 0, level + 1])
+                    dm = min(dm, dprecipitate, -dprecipitate[0, 0, 1])
                 else:
                     dm = 0.0
-            level += 1
 
-        dm[0, 0, top_level] = 0.0
+    with computation(FORWARD), interval(-1, None):
+        if IRAIN_F == 0 and Z_SLOPE:
+            dm = 0.0
 
-        # impose a presumed background horizontal variability that is proportional to the value itself
-        level = 0
-        while level <= top_level:
+    with computation(FORWARD), interval(...):
+        if IRAIN_F == 0 and Z_SLOPE:
+            # impose a presumed background horizontal variability that is proportional to the value itself
             dm = max(dm, 0.0, h_var * precipitate)
-            level += 1
-    else:
-        level = 0
-        while level <= top_level:
-            dm = max(0.0, h_var * precipitate)
-            level += 1
 
-    return dm
+    with computation(FORWARD), interval(...):
+        if not (IRAIN_F == 0 and Z_SLOPE):
+            dm = max(0.0, h_var * precipitate)
 
 
 @function
@@ -301,6 +295,7 @@ def moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR: Fl
         cvm = moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
     return Float64(RGRAV * cvm * C_AIR * t * dp)
 
+
 @function
 def new_ice_condensate(
     t: Float,
@@ -310,7 +305,7 @@ def new_ice_condensate(
     surface_type: Float,
 ):
     ifrac = ice_fraction(t, convection_fraction, surface_type)
-    new_ice_condensate = min(max(0.0,ifrac*(liquid+ice) - ice),liquid)
+    new_ice_condensate = min(max(0.0, ifrac * (liquid + ice) - ice), liquid)
     return new_ice_condensate
 
 
@@ -323,7 +318,7 @@ def new_liquid_condensate(
     surface_type: Float,
 ):
     ifrac = ice_fraction(t, convection_fraction, surface_type)
-    new_liq_condensate = min(max(0.0,(1.0-ifrac)*(liquid+ice) - liquid),ice)
+    new_liq_condensate = min(max(0.0, (1.0 - ifrac) * (liquid + ice) - liquid), ice)
     return new_liq_condensate
 
 

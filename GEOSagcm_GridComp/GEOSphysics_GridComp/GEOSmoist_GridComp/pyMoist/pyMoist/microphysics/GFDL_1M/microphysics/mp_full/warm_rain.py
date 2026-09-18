@@ -1,4 +1,6 @@
-from ndsl import StencilFactory
+import dataclasses
+
+from ndsl import StencilFactory, Local, LocalState, QuantityFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log
 from ndsl.dsl.typing import Float, FloatField, FloatField64, FloatFieldIJ
@@ -300,7 +302,26 @@ def accretion(
             )
 
 
-def autoconversion(
+def autoconversion_part_1(
+    liquid: FloatField,
+    liquid_internal: FloatField,
+    cloud_fraction: FloatField,
+    cloud_fraction_internal: FloatField,
+):
+    from __externals__ import IN_CLOUD_LIQ
+
+    with computation(PARALLEL), interval(...):
+        # Use In-Cloud condensates with scale-aware blending
+        if IN_CLOUD_LIQ:
+            # Enforce minimum bound to prevent vanishing values
+            cloud_fraction_internal = max(cloud_fraction, CFMIN)
+        else:
+            cloud_fraction_internal = 1.0
+
+        liquid_internal = liquid / cloud_fraction_internal
+
+
+def autoconversion_part_2(
     t: FloatField64,
     dry_dp: FloatField,
     density: FloatField,
@@ -311,6 +332,8 @@ def autoconversion(
     rain: FloatField,
     snow: FloatField,
     cloud_fraction: FloatField,
+    liquid_internal: FloatField,
+    cloud_fraction_internal: FloatField,
     h_var: FloatField,
     ccn: FloatField,
     mppar: FloatFieldIJ,
@@ -336,7 +359,7 @@ def autoconversion(
         cpaut (FloatFieldIJ)
         factor_rc (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, DO_PSD_WATER_NUM, DO_QA, DT, IN_CLOUD_LIQ, IRAIN_F, MUW, PCAW, PCBW, QL0_MAX, T_WFR, Z_SLOPE_LIQ, k_end
+    from __externals__ import CONV_FACTOR, DO_PSD_WATER_NUM, DO_QA, DT, IRAIN_F, MUW, PCAW, PCBW, QL0_MAX, T_WFR
 
     with computation(FORWARD), interval(0, 1):
         # internal constants
@@ -346,27 +369,6 @@ def autoconversion(
     with computation(PARALLEL), interval(...):
         # initialize internal temporary
         dliquid = 0.0
-
-    with computation(PARALLEL), interval(...):
-        # Use In-Cloud condensates with scale-aware blending
-        if IN_CLOUD_LIQ:
-            # Enforce minimum bound to prevent vanishing values
-            cloud_fraction_bounded = max(cloud_fraction, CFMIN)
-        else:
-            cloud_fraction_bounded = 1.0
-
-        liquid_internal = liquid / cloud_fraction_bounded
-
-    with computation(FORWARD), interval(0, 1):
-        # linear_prof must be called from within a interval(0, 1) so that the manual k loops work correctly
-        if IRAIN_F == 0:
-
-            dliquid = linear_prof(
-                k_end,
-                liquid_internal,
-                h_var,
-                Z_SLOPE_LIQ,
-            )
 
     with computation(PARALLEL), interval(...):
         if IRAIN_F == 0:
@@ -385,7 +387,7 @@ def autoconversion(
 
                     c_praut = cpaut * exp(so1 * log(ccn * RHOW))
                     sink = min(1.0, dcondensate / dliquid) * DT * c_praut * density * exp(so3 * log(liquid_internal))
-                    sink = min(QL0_MAX / cloud_fraction_bounded, min(liquid_internal, sink)) * cloud_fraction_bounded
+                    sink = min(QL0_MAX / cloud_fraction_internal, min(liquid_internal, sink)) * cloud_fraction_internal
                     mppar = mppar + sink * dry_dp * CONV_FACTOR
 
                     vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
@@ -419,7 +421,7 @@ def autoconversion(
                 if dcondensate > 0.0:
                     c_praut = cpaut * exp(so1 * log(ccn * RHOW))
                     sink = min(dcondensate, DT * c_praut * density * exp(so3 * log(liquid_internal)))
-                    sink = min(QL0_MAX / cloud_fraction_bounded, liquid_internal, sink) * cloud_fraction_bounded
+                    sink = min(QL0_MAX / cloud_fraction_internal, liquid_internal, sink) * cloud_fraction_internal
                     mppar = mppar + sink * dry_dp * CONV_FACTOR
 
                     vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
@@ -440,10 +442,36 @@ def autoconversion(
                     )
 
 
+@dataclasses.dataclass
+class WarmRainLocals(LocalState):
+    cloud_fraction_internal: Local = dataclasses.field(
+        metadata={
+            "name": "cloud_fraction_internal",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    dliquid_internal: Local = dataclasses.field(
+        metadata={
+            "name": "dliquid_internal",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+    liquid_internal: Local = dataclasses.field(
+        metadata={
+            "name": "liquid_internal",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "dtype": Float,
+        }
+    )
+
+
 class WarmRain:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        quantity_factory: QuantityFactory,
         saturation_tables: GFDLMPV3Tables,
         gfdl_1m_config: GFDL1MConfig,
         mp_config: GFDLMPV3CloudMPConfig,
@@ -453,6 +481,9 @@ class WarmRain:
         # make config and tables visible at runtime
         self._mp_config = mp_config
         self._saturation_tables = saturation_tables
+
+        # initialize locals for warm rain
+        self._warm_rain_locals = WarmRainLocals.make_locals(quantity_factory)
 
         # construct stencils
         self._evaporation = stencil_factory.from_dims_halo(
@@ -494,8 +525,18 @@ class WarmRain:
                 "VDIFFFLAG": mp_namelist.VDIFFFLAG,
             },
         )
-        self._autoconversion = stencil_factory.from_dims_halo(
-            func=autoconversion,
+        self._autoconversion_part_1 = stencil_factory.from_dims_halo(
+            func=autoconversion_part_1,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"IN_CLOUD_LIQ": mp_namelist.IN_CLOUD_LIQ},
+        )
+        self._linear_prof = stencil_factory.from_dims_halo(
+            func=linear_prof,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"IRAIN_F": mp_namelist.IRAIN_F, "Z_SLOPE": mp_namelist.Z_SLOPE_LIQ},
+        )
+        self._autoconversion_part_2 = stencil_factory.from_dims_halo(
+            func=autoconversion_part_2,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONV_FACTOR": CONV_FACTOR,
@@ -509,11 +550,13 @@ class WarmRain:
                 "PCBW": mp_config.PCBW,
                 "QL0_MAX": mp_namelist.QL0_MAX,
                 "T_WFR": mp_config.T_WFR,
-                "Z_SLOPE_LIQ": mp_namelist.Z_SLOPE_LIQ,
             },
         )
 
     def __call__(self, state: GFDL1MState, gfdl_mp_v3_locals: GFDLMPV3Locals, mp_full_locals: MPFullLocals):
+        # -----------------------------------------------------------------------
+        # rain evaporation to form water vapor
+        # -----------------------------------------------------------------------
         self._evaporation(
             t=gfdl_mp_v3_locals.t,
             dry_dp=gfdl_mp_v3_locals.dry_dp,
@@ -535,6 +578,9 @@ class WarmRain:
             dtable_0=self._saturation_tables.dtable_0,
         )
 
+        # -----------------------------------------------------------------------
+        # rain accretion with cloud water
+        # -----------------------------------------------------------------------
         self._accretion(
             t=gfdl_mp_v3_locals.t,
             dry_dp=gfdl_mp_v3_locals.dry_dp,
@@ -555,7 +601,23 @@ class WarmRain:
             ACCO=self._mp_config.ACCO,
         )
 
-        self._autoconversion(
+        # -----------------------------------------------------------------------
+        # cloud water to rain autoconversion
+        # -----------------------------------------------------------------------
+        self._autoconversion_part_1(
+            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+            liquid_internal=self._warm_rain_locals.liquid_internal,
+            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+            cloud_fraction_internal=self._warm_rain_locals.cloud_fraction_internal,
+        )
+
+        self._linear_prof(
+            precipitate=self._warm_rain_locals.liquid_internal,
+            dm=self._warm_rain_locals.dliquid_internal,
+            h_var=gfdl_mp_v3_locals.h_var,
+        )
+
+        self._autoconversion_part_2(
             t=gfdl_mp_v3_locals.t,
             dry_dp=gfdl_mp_v3_locals.dry_dp,
             density=gfdl_mp_v3_locals.density,
