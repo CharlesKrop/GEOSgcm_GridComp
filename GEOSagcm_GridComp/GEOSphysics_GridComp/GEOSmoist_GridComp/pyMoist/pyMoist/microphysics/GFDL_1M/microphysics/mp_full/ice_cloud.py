@@ -24,6 +24,199 @@ from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
 
 
+def p_graupel_melt(
+    t: FloatField64,
+    dry_dp: FloatField,
+    density: FloatField,
+    density_factor: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    cvm: FloatField64,
+    icpk: FloatField,
+    lcpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+    total_energy: FloatField64,
+    terminal_velocity_graupel: FloatField,
+    terminal_velocity_liquid: FloatField,
+    terminal_velocity_rain: FloatField,
+    mppmg: FloatField,
+    one_minus_sigma: FloatFieldIJ,
+    ACC: GFDLMPV3TableL20,
+    ACCO: GFDLMPV3TableL3xL10,
+    CGMLT: GFDLMPV3TableL4,
+    table_2: GFDLMPV3SaturationTable,
+    dtable_2: GFDLMPV3SaturationTable,
+):
+    """graupel melting (includes graupel accretion with cloud water and rain) to form rain Lin et al. (1983)
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        density (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        cvm (FloatField64)
+        icpk (FloatField)
+        lcpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+        total_energy (FloatField64)
+        terminal_velocity_graupel (FloatField)
+        terminal_velocity_liquid (FloatField)
+        terminal_velocity_rain (FloatField)
+        mppmg (FloatField)
+        one_minus_sigma (FloatFieldIJ)
+        ACC (GFDLMPV3TableL20)
+        ACCO (GFDLMPV3TableL3xL10)
+        CGMLT (GFDLMPV3TableL4)
+        table_2 (GFDLMPV3SaturationTable)
+        dtable_2 (GFDLMPV3SaturationTable)
+    """
+
+    from __externals__ import BLINH, BLING, CGACR, CGACW, CONV_FACTOR, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_HAIL, DO_QA, DT, MUH, MUG, LI00, LI20, LV00, T_WFR, VDIFFFLAG
+
+    with computation(FORWARD), interval(0, 1):
+        scaled_CGACW = CGACW * (1.0e-2 * (1.0 - one_minus_sigma) + one_minus_sigma)
+
+    with computation(PARALLEL), interval(...):
+        if t >= TICE and graupel > QPMIN:
+            tc = t - TICE
+
+            pgacw = 0.0
+            graupel_x_density = graupel * density
+            if liquid > QCMIN:
+                if DO_3D_ACC_CLIQ:
+                    pgacw = accretion_3d(
+                        v1=terminal_velocity_graupel,
+                        v2=terminal_velocity_liquid,
+                        condensate_1=liquid,
+                        condensate_2=graupel,
+                        density=density,
+                        c=scaled_CGACW,
+                        acc1=ACC.A[16],
+                        acc2=ACC.A[17],
+                        acco=ACCO,
+                        acco_column=8,
+                        VDIFFFLAG=VDIFFFLAG,
+                    )
+                else:
+                    if DO_HAIL:
+                        factor = accretion_2d(
+                            condensate_x_density=graupel_x_density,
+                            density_factor=density_factor,
+                            c=scaled_CGACW,
+                            blin=BLINH,
+                            mu=MUH,
+                        )
+                    else:
+                        factor = accretion_2d(
+                            condensate_x_density=graupel_x_density,
+                            density_factor=density_factor,
+                            c=scaled_CGACW,
+                            blin=BLING,
+                            mu=MUG,
+                        )
+                    pgacw = factor / (1.0 + DT * factor) * liquid
+
+            pgacr = 0.0
+            if rain > QPMIN:
+                pgacr = min(
+                    accretion_3d(
+                        v1=terminal_velocity_graupel,
+                        v2=terminal_velocity_rain,
+                        condensate_1=rain,
+                        condensate_2=graupel,
+                        density=density,
+                        c=CGACR,
+                        acc1=ACC.A[4],
+                        acc2=ACC.A[5],
+                        acco=ACCO,
+                        acco_column=2,
+                        VDIFFFLAG=VDIFFFLAG,
+                    ),
+                    rain / DT,
+                )
+
+            t_in = t
+            sat_spec_humidity, dsat_spec_humiditydt = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+            dq = sat_spec_humidity - vapor
+            if DO_HAIL:
+                sink = max(
+                    0.0,
+                    p_melt(
+                        t=t,
+                        dcondensate=dq,
+                        condensate_x_density=graupel_x_density,
+                        pxacw=pgacw,
+                        pxacr=pgacr,
+                        density=density,
+                        density_factor=density_factor,
+                        blin=BLINH,
+                        mu=MUH,
+                        lcpk=lcpk,
+                        icpk=icpk,
+                        cvm=cvm,
+                        c=CGMLT,
+                    ),
+                )
+            else:
+                sink = max(
+                    0.0,
+                    p_melt(
+                        t=t,
+                        dcondensate=dq,
+                        condensate_x_density=graupel_x_density,
+                        pxacw=pgacw,
+                        pxacr=pgacr,
+                        density=density,
+                        density_factor=density_factor,
+                        blin=BLING,
+                        mu=MUG,
+                        lcpk=lcpk,
+                        icpk=icpk,
+                        cvm=cvm,
+                        c=CGMLT,
+                    ),
+                )
+
+            sink = min(graupel, sink * DT, tc / icpk)
+            mppmg = mppmg + sink * dry_dp * CONV_FACTOR
+
+            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=0.0,
+                dice=0.0,
+                dliquid=0.0,
+                dgraupel=-sink,
+                drain=sink,
+                dsnow=0.0,
+                DO_QA=DO_QA,
+                D1_VAP=D1_VAP,
+                D1_ICE=D1_ICE,
+                LI00=LI00,
+                LI20=LI20,
+                LV00=LV00,
+                T_WFR=T_WFR,
+            )
+
+
 def p_ice_melt_freeze(
     t: FloatField64,
     dry_dp: FloatField,
@@ -84,9 +277,7 @@ def p_ice_melt_freeze(
         fac_frez: FloatFieldIJ = 1.0 - exp(-DT / TAU_FREZ)
 
     with computation(PARALLEL), interval(...):
-
         if t > TICE and ice > QCMIN:
-
             # Use In-Cloud condensates with scale-aware blending
             if IN_CLOUD_ICE:
                 # Enforce minimum bound to prevent vanishing values
@@ -129,7 +320,6 @@ def p_ice_melt_freeze(
             )
 
         elif t <= TICE and liquid > QCMIN:
-
             # Use In-Cloud condensates with scale-aware blending
             if IN_CLOUD_ICE:
                 # Enforce minimum bound to prevent vanishing values
@@ -254,7 +444,7 @@ def p_snow_melt(
                         acc2=ACC.A[13],
                         acco=ACCO,
                         acco_column=6,
-                        VDIFFLAG=VDIFFFLAG,
+                        VDIFFFLAG=VDIFFFLAG,
                     )
                 else:
                     factor = accretion_2d(
@@ -300,7 +490,7 @@ def p_snow_melt(
                 )
 
             t_in = t
-            sat_spec_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+            sat_spec_humidity, _ = saturation_specific_humidity(t_in, density, table_2, dtable_2)
             dq = sat_spec_humidity - vapor
             sink = max(
                 0.0,
@@ -451,6 +641,30 @@ class IceCloud:
                 "T_WFR": mp_config.T_WFR,
             },
         )
+        self._p_graupel_melt = stencil_factory.from_dims_halo(
+            func=p_graupel_melt,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "BLINH": mp_namelist.BLINH,
+                "BLING": mp_namelist.BLING,
+                "CGACR": mp_config.CGACR,
+                "CGACW": mp_config.CGACW,
+                "CONV_FACTOR": CONV_FACTOR,
+                "D1_ICE": mp_config.D1_ICE,
+                "D1_VAP": mp_config.D1_VAP,
+                "DO_3D_ACC_CLIQ": mp_namelist.DO_3D_ACC_CLIQ,
+                "DO_HAIL": mp_namelist.DO_HAIL,
+                "DO_QA": mp_namelist.DO_QA,
+                "DT": gfdl_1m_config.DT_MOIST,
+                "MUH": mp_namelist.MUH,
+                "MUG": mp_namelist.MUG,
+                "LI00": mp_config.LI00,
+                "LI20": mp_config.LI20,
+                "LV00": mp_config.LV00,
+                "T_WFR": mp_config.T_WFR,
+                "VDIFFFLAG": mp_namelist.VDIFFFLAG,
+            },
+        )
         self._p_ice_melt_freeze = stencil_factory.from_dims_halo(
             func=p_ice_melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -480,23 +694,23 @@ class IceCloud:
             func=p_snow_melt,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                BLINS: mp_namelist.BLINS,
-                CONV_FACTOR: CONV_FACTOR,
-                CRACS: mp_namelist.CRACS,
-                CSACR: mp_namelist.CSACR,
-                CSACW: mp_namelist.CSACW,
-                D1_ICE: mp_config.D1_ICE,
-                D1_VAP: mp_config.D1_VAP,
-                DO_3D_ACC_CLIQ: mp_namelist.DO_3D_ACC_CLIQ,
-                DO_QA: mp_namelist.DO_QA,
-                DT: gfdl_1m_config.DT_MOIST,
-                LI00: mp_config.LI00,
-                LI20: mp_config.LI20,
-                LV00: mp_config.LV00,
-                MUS: mp_namelist.MUS,
-                QS_MLT: mp_namelist.QS_MLT,
-                T_WFR: mp_config.T_WFR,
-                VDIFFFLAG: mp_namelist.VDIFFFLAG,
+                "BLINS": mp_namelist.BLINS,
+                "CONV_FACTOR": CONV_FACTOR,
+                "CRACS": mp_config.CRACS,
+                "CSACR": mp_config.CSACR,
+                "CSACW": mp_config.CSACW,
+                "D1_ICE": mp_config.D1_ICE,
+                "D1_VAP": mp_config.D1_VAP,
+                "DO_3D_ACC_CLIQ": mp_namelist.DO_3D_ACC_CLIQ,
+                "DO_QA": mp_namelist.DO_QA,
+                "DT": gfdl_1m_config.DT_MOIST,
+                "LI00": mp_config.LI00,
+                "LI20": mp_config.LI20,
+                "LV00": mp_config.LV00,
+                "MUS": mp_namelist.MUS,
+                "QS_MLT": mp_namelist.QS_MLT,
+                "T_WFR": mp_config.T_WFR,
+                "VDIFFFLAG": mp_namelist.VDIFFFLAG,
             },
         )
 
@@ -595,3 +809,32 @@ class IceCloud:
             # -----------------------------------------------------------------------
             # graupel melting (includes graupel accretion with cloud water and rain) to form rain
             # -----------------------------------------------------------------------
+            self._p_graupel_melt(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                density=gfdl_mp_v3_locals.density,
+                density_factor=gfdl_mp_v3_locals.density_factor,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                cvm=self._ice_cloud_locals.cvm,
+                icpk=self._ice_cloud_locals.icpk,
+                lcpk=self._ice_cloud_locals.lcpk,
+                tcpk=self._ice_cloud_locals.tcpk,
+                tcp3=self._ice_cloud_locals.tcp3,
+                total_energy=self._ice_cloud_locals.total_energy,
+                terminal_velocity_graupel=mp_full_locals.terminal_velocity.graupel,
+                terminal_velocity_liquid=mp_full_locals.terminal_velocity.liquid,
+                terminal_velocity_rain=mp_full_locals.terminal_velocity.rain,
+                mppmg=gfdl_mp_v3_locals.mppmg,
+                one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
+                ACC=self._mp_config.ACC,
+                ACCO=self._mp_config.ACCO,
+                CGMLT=self._mp_config.CGMLT,
+                table_2=self._saturation_tables.table_2,
+                dtable_2=self._saturation_tables.dtable_2,
+            )
