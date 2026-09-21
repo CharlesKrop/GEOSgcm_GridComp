@@ -243,7 +243,7 @@ class MPFull:
             # --------------------------------------------------
             # ice cloud microphysics
             # --------------------------------------------------
-            self._ice_cloud()
+            self._ice_cloud(gfdl_mp_v3_locals, self._mp_full_locals)
 
             # --------------------------------------------------
             # temperature sensitive high vertical resolution processes
