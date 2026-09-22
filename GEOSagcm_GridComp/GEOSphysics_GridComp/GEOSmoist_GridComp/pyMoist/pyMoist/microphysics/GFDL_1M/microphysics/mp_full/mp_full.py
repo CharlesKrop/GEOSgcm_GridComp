@@ -207,7 +207,7 @@ class MPFull:
         # make namelist visible at runtime
         self._mp_namelist = mp_namelist
 
-    def __call__(self, state: GFDL1MState, gfdl_1m_locals: GFDL1MLocals, gfdl_mp_v3_locals: GFDLMPV3Locals):
+    def __call__(self, state: GFDL1MState, gfdl_mp_v3_locals: GFDLMPV3Locals):
         for f in self._mp_namelist.NTIMES:
             # --------------------------------------------------
             # sedimentation of cloud ice, snow, graupel or hail, and rain
