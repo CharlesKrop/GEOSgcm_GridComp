@@ -39,7 +39,6 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
             "qv": self.grid.compute_dict(),
             "thv": self.grid.compute_dict(),
             "total_water": self.grid.compute_dict(),
-            "w": self.grid.compute_dict(),
         }
 
     def compute(self, inputs):
@@ -74,7 +73,6 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
         qpl = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qv = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         total_water = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        w = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         thv = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
     
         _setup_derived_inputs(
@@ -86,7 +84,6 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
             tabs=tabs,
             qcl=qcl,
             qci=qci,
-            w=w,
             omega=omega,
             qpl=qpl,
             qpi=qpi,
@@ -104,6 +101,5 @@ class TranslateSetupDerivedInputs(TranslateFortranData2Py):
             "qpl": qpl.view[:],
             "qv": qv.view[:],
             "total_water": total_water.view[:],
-            "w": w.view[:],
             "thv": thv.view[:],
         }

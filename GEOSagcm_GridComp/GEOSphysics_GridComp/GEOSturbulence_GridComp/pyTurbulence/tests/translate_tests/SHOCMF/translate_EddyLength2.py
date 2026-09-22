@@ -42,6 +42,7 @@ class TranslateEddyLength2(TranslateFortranData2Py):
             "zl": {},
             "dtqw": {},
             "dtqi": {},
+            "qv": {},
         }
 
         # FloatField Outputs
@@ -99,6 +100,8 @@ class TranslateEddyLength2(TranslateFortranData2Py):
         safe_assign_array(dtqw.view[:, :, :], inputs["dtqw"])
         dtqi = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(dtqi.view[:, :, :], inputs["dtqi"])
+        qv = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        safe_assign_array(qv.view[:, :, :], inputs["qv"])
           
 
         # Outputs
@@ -125,6 +128,9 @@ class TranslateEddyLength2(TranslateFortranData2Py):
             brunt=brunt,
             brunt2=brunt2,
             brunt_edge=brunt_edge,
+            qv=qv,
+            zl=zl,
+            dryzpbl=dryzpbl,
             formulation=formulation,
         )
 

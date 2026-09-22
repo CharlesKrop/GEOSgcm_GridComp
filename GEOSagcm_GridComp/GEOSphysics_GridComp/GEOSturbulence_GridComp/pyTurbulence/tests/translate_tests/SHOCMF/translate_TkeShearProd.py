@@ -42,7 +42,6 @@ class TranslateTkeShearProd(TranslateFortranData2Py):
         _tke_shear_prod = self.stencil_factory.from_dims_halo(
             func=tke_shear_prod,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"dtn": config.dtn}
         )
 
         # Inputs

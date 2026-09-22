@@ -68,7 +68,7 @@ class TranslateCalcNumbers(TranslateFortranData2Py):
             v=v,
             adzi=adzi,
             RI=RI,
-            PRNUM=PRNUM,
+            prnum=PRNUM,
             thv=thv,
             tke_mf=tke_mf,
         )
