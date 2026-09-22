@@ -1101,6 +1101,7 @@ def terminal_velocity_graupel_rain_snow(
     const_v: Bool,
 ):
     """terminal velocity for rain, snow, and graupel, Lin et al. (1983) - function form
+    """terminal velocity for rain, snow, and graupel, Lin et al. (1983) - function form
 
     Args:
         condensate (FloatField)
