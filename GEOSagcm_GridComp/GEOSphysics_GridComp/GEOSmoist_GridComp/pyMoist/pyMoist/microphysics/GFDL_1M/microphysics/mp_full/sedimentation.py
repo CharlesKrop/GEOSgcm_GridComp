@@ -3,18 +3,16 @@ import dataclasses
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, log10, max
-from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64, Int
+from ndsl.dsl.typing import BoolFieldIJ, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64, Int
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mass_weighted_terminal_velocity, calc_mhc_lhc_wrapper, moist_total_energy
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc_wrapper, moist_total_energy, terminal_velocity_graupel_rain_snow
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
 
 
@@ -76,30 +74,6 @@ def terminal_velocity_ice(
             # 3. Apply user multiplier and safety caps
             terminal_velocity_ice = VI_FAC * terminal_velocity_ice
             terminal_velocity_ice = min(VI_MAX, max(VI_MIN, terminal_velocity_ice))
-
-
-def terminal_velocity_graupel_rain_snow(
-    condensate: FloatField,
-    density: FloatField,
-    density_factor: FloatField,
-    terminal_velocity: FloatField,
-    tva: Float64,
-    tvb: Float64,
-    blin: Float,
-    mu: Float,
-    v_min: Float,
-    v_max: Float,
-    v_fac: Float,
-    const_v: Bool,
-):
-    with computation(PARALLEL), interval(...):
-        if const_v:
-            terminal_velocity = 0.5 * (v_min + v_max)
-        else:
-            if condensate < QFMIN:
-                terminal_velocity = calc_mass_weighted_terminal_velocity(condensate, density, mu, tva, tvb, blin)
-                terminal_velocity = v_fac * terminal_velocity * density_factor
-                terminal_velocity = min(v_max, max(v_min, terminal_velocity))
 
 
 def set_heights(

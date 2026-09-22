@@ -2,7 +2,7 @@ from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log, 
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL4
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, ONE_R8, QCMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
 from pyMoist.shared.cloud_processes import ice_fraction
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
@@ -1065,6 +1065,46 @@ def p_wbf(
                     LV00=LV00,
                     T_WFR=T_WFR,
                 )
+
+
+def terminal_velocity_graupel_rain_snow(
+    condensate: FloatField,
+    density: FloatField,
+    density_factor: FloatField,
+    terminal_velocity: FloatField,
+    tva: Float64,
+    tvb: Float64,
+    blin: Float,
+    mu: Float,
+    v_min: Float,
+    v_max: Float,
+    v_fac: Float,
+    const_v: Bool,
+):
+    """terminal velocity for rain, snow, and graupel, Lin et al. (1983)
+
+    Args:
+        condensate (FloatField)
+        density (FloatField)
+        density_factor (FloatField)
+        terminal_velocity (FloatField)
+        tva (Float64)
+        tvb (Float64)
+        blin (Float)
+        mu (Float)
+        v_min (Float)
+        v_max (Float)
+        v_fac (Float)
+        const_v (Bool)
+    """
+    with computation(PARALLEL), interval(...):
+        if const_v:
+            terminal_velocity = 0.5 * (v_min + v_max)
+        else:
+            if condensate < QFMIN:
+                terminal_velocity = calc_mass_weighted_terminal_velocity(condensate, density, mu, tva, tvb, blin)
+                terminal_velocity = v_fac * terminal_velocity * density_factor
+                terminal_velocity = min(v_max, max(v_min, terminal_velocity))
 
 
 @function
