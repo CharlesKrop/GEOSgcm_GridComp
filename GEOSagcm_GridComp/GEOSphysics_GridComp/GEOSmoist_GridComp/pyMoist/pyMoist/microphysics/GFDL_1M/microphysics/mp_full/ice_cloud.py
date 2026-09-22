@@ -1503,12 +1503,12 @@ class IceCloud:
         # --------------------------------------------------
         self._calc_mhc_lhc_wrapper(
             t=gfdl_mp_v3_locals.t,
-            vapor=gfdl_mp_v3_locals.vapor,
-            ice=gfdl_mp_v3_locals.ice,
-            liquid=gfdl_mp_v3_locals.liquid,
-            graupel=gfdl_mp_v3_locals.graupel,
-            rain=gfdl_mp_v3_locals.rain,
-            snow=gfdl_mp_v3_locals.snow,
+            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
             total_liquid=self._ice_cloud_locals.total_liquid,
             total_solid=self._ice_cloud_locals.total_solid,
             cvm=self._ice_cloud_locals.cvm,
