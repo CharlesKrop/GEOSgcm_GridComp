@@ -44,6 +44,26 @@ def cloud_fraction(
     dtable_0: GFDLMPV3SaturationTable,
     dtable_2: GFDLMPV3SaturationTable,
 ):
+    """cloud fraction diagnostic
+
+    Args:
+        t (FloatField64)
+        p (FloatField)
+        density (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        area (FloatFieldIJ)
+        h_var (FloatField)
+        table_0 (GFDLMPV3SaturationTable)
+        table_2 (GFDLMPV3SaturationTable)
+        dtable_0 (GFDLMPV3SaturationTable)
+        dtable_2 (GFDLMPV3SaturationTable)
+    """
     from __externals__ import (
         C1_ICE,
         C1_LIQ,
