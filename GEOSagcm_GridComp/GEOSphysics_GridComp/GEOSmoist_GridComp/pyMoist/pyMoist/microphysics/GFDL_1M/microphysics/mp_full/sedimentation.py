@@ -12,7 +12,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConf
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc_wrapper, moist_total_energy, terminal_velocity_graupel_rain_snow
+from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc_wrapper, moist_total_energy, terminal_velocity_graupel_rain_snow_wrapper
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
 
 
@@ -490,8 +490,8 @@ class Sedimentation:
                 "T_WFR": mp_config.T_WFR,
             },
         )
-        self._terminal_velocity_graupel_rain_snow = stencil_factory.from_dims_halo(
-            func=terminal_velocity_graupel_rain_snow,
+        self._terminal_velocity_graupel_rain_snow_wrapper = stencil_factory.from_dims_halo(
+            func=terminal_velocity_graupel_rain_snow_wrapper,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._terminal_velocity_ice = stencil_factory.from_dims_halo(
@@ -594,7 +594,7 @@ class Sedimentation:
         # terminal fall and melting of falling cloud ice into rain
         # --------------------------------------------------
         if self._mp_namelist.DO_PSD_ICE_FALL:
-            self._terminal_velocity_graupel_rain_snow(
+            self._terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.ice,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -663,7 +663,7 @@ class Sedimentation:
         # --------------------------------------------------
         # terminal fall and melting of falling snow into rain
         # --------------------------------------------------
-        self._terminal_velocity_graupel_rain_snow(
+        self._terminal_velocity_graupel_rain_snow_wrapper(
             condensate=gfdl_mp_v3_locals.snow,
             density=gfdl_mp_v3_locals.density,
             density_factor=gfdl_mp_v3_locals.density_factor,
@@ -725,7 +725,7 @@ class Sedimentation:
         # terminal fall and melting of falling graupel into rain
         # --------------------------------------------------
         if self._mp_namelist.DO_HAIL:
-            self._terminal_velocity_graupel_rain_snow(
+            self._terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.graupel,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -740,7 +740,7 @@ class Sedimentation:
                 const_v=self._mp_namelist.CONST_VG,
             )
         else:
-            self._terminal_velocity_graupel_rain_snow(
+            self._terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.graupel,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -802,7 +802,7 @@ class Sedimentation:
         # terminal fall of cloud water
         # --------------------------------------------------
         if self._mp_namelist.DO_PSD_WATER_FALL:
-            self._terminal_velocity_graupel_rain_snow(
+            self._terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.liquid,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -853,7 +853,7 @@ class Sedimentation:
         # --------------------------------------------------
         # terminal fall of rain
         # --------------------------------------------------
-        self._terminal_velocity_graupel_rain_snow(
+        self._terminal_velocity_graupel_rain_snow_wrapper(
             condensate=gfdl_mp_v3_locals.rain,
             density=gfdl_mp_v3_locals.density,
             density_factor=gfdl_mp_v3_locals.density_factor,

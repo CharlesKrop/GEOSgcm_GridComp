@@ -100,7 +100,7 @@ def calc_mhc_lhc(
     LV00: Float64,
     T_WFR: Float,
 ):
-    """Calculate moist heat capacities and latent heat coefficients at 0 C
+    """Calculate moist heat capacities and latent heat coefficients at 0 C - function form
 
     Args:
         t (Float64)
@@ -163,6 +163,25 @@ def calc_mhc_lhc_wrapper(
     tcpk: FloatField,
     tcp3: FloatField,
 ):
+    """Calculate moist heat capacities and latent heat coefficients at 0 C - stencil form
+
+    Args:
+        t (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        total_liquid (FloatField)
+        total_solid (FloatField)
+        cvm (FloatField)
+        total_energy (FloatField)
+        lcpk (FloatField)
+        icpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+    """
     from __externals__ import C1_ICE, C1_LIQ, C1_VAP, D1_ICE, D1_VAP, LI00, LI20, LV00, T_WFR
 
     with computation(PARALLEL), interval(...):
@@ -1067,7 +1086,49 @@ def p_wbf(
                 )
 
 
+@function
 def terminal_velocity_graupel_rain_snow(
+    condensate: Float,
+    density: Float,
+    density_factor: Float,
+    terminal_velocity: Float,
+    tva: Float64,
+    tvb: Float64,
+    blin: Float,
+    mu: Float,
+    v_min: Float,
+    v_max: Float,
+    v_fac: Float,
+    const_v: Bool,
+):
+    """terminal velocity for rain, snow, and graupel, Lin et al. (1983) - function form
+
+    Args:
+        condensate (FloatField)
+        density (FloatField)
+        density_factor (FloatField)
+        terminal_velocity (FloatField)
+        tva (Float64)
+        tvb (Float64)
+        blin (Float)
+        mu (Float)
+        v_min (Float)
+        v_max (Float)
+        v_fac (Float)
+        const_v (Bool)
+    """
+    if const_v:
+        terminal_velocity = 0.5 * (v_min + v_max)
+    else:
+        if condensate < QFMIN:
+            terminal_velocity = calc_mass_weighted_terminal_velocity(condensate, density, mu, tva, tvb, blin)
+            terminal_velocity = v_fac * terminal_velocity * density_factor
+            terminal_velocity = min(v_max, max(v_min, terminal_velocity))
+
+    return terminal_velocity
+
+
+def terminal_velocity_graupel_rain_snow_wrapper(
     condensate: FloatField,
     density: FloatField,
     density_factor: FloatField,
@@ -1081,7 +1142,7 @@ def terminal_velocity_graupel_rain_snow(
     v_fac: Float,
     const_v: Bool,
 ):
-    """terminal velocity for rain, snow, and graupel, Lin et al. (1983)
+    """terminal velocity for rain, snow, and graupel, Lin et al. (1983) - stencil form
 
     Args:
         condensate (FloatField)
@@ -1098,13 +1159,20 @@ def terminal_velocity_graupel_rain_snow(
         const_v (Bool)
     """
     with computation(PARALLEL), interval(...):
-        if const_v:
-            terminal_velocity = 0.5 * (v_min + v_max)
-        else:
-            if condensate < QFMIN:
-                terminal_velocity = calc_mass_weighted_terminal_velocity(condensate, density, mu, tva, tvb, blin)
-                terminal_velocity = v_fac * terminal_velocity * density_factor
-                terminal_velocity = min(v_max, max(v_min, terminal_velocity))
+        terminal_velocity = terminal_velocity_graupel_rain_snow(
+            condensate,
+            density,
+            density_factor,
+            terminal_velocity,
+            tva,
+            tvb,
+            blin,
+            mu,
+            v_min,
+            v_max,
+            v_fac,
+            const_v,
+        )
 
 
 @function
