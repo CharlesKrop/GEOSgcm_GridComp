@@ -23,6 +23,15 @@ def terminal_velocity_ice(
     terminal_velocity_ice: FloatField,
     convection_fraction: FloatFieldIJ,
 ):
+    """terminal velocity for cloud ice
+
+    Args:
+        t (FloatField64)
+        ice (FloatField)
+        density (FloatField)
+        terminal_velocity_ice (FloatField)
+        convection_fraction (FloatFieldIJ)
+    """
     from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
 
     with computation(PARALLEL), interval(...):
