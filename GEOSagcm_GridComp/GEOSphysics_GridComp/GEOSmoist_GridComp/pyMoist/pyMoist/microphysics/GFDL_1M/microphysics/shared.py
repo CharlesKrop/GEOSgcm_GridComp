@@ -1,9 +1,11 @@
 from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log, sqrt, FORWARD, K
-from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int
+from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL4
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import ONE_R8, QCMIN, RGRAV, TICE, C_LIQ
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, ONE_R8, QCMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
 from pyMoist.shared.cloud_processes import ice_fraction
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
 
 
 @function
@@ -323,6 +325,451 @@ def new_liquid_condensate(
     return new_liq_condensate
 
 
+def p_bigg(
+    t: FloatField64,
+    dry_dp: FloatField,
+    density: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    ccn: FloatField,
+    cvm: FloatField64,
+    icpk: FloatField,
+    lcpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+    total_energy: FloatField64,
+    mppfw: FloatFieldIJ,
+):
+    """Bigg freezing mechanism, Bigg (1953)
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        density (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        ccn (FloatField)
+        cvm (FloatField64)
+        icpk (FloatField)
+        lcpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+        total_energy (FloatField64)
+        mppfw (FloatFieldIJ)
+    """
+    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_BIGG, DO_PSD_WATER_NUM, DO_QA, DT, LI00, LI20, LV00, MUW, PCAW, PCBW, T_WFR
+
+    with computation(PARALLEL), interval(...):
+        if DO_BIGG:
+            tc = TICE - t
+
+            if tc > 0 and liquid > QCMIN:
+                if DO_PSD_WATER_NUM:
+                    ccn = calc_particle_concentration(liquid, density, MUW, PCAW, PCBW)
+                    ccn = ccn / density
+
+                # Homogeneous freezing limit applied here
+                if tc >= 40.0:
+                    # Colder than -40C: ALL cloud liquid freezes instantaneously.
+                    sink = liquid
+                else:
+                    # Warmer than -40C: Calculate probabilistic Bigg freezing normally
+                    sink = 100.0 / (RHOW * ccn) * DT * (exp(0.66 * tc) - 1.0) * liquid**2
+
+                sink = min(liquid, sink, tc / icpk)
+                mppfw = mppfw + sink * dry_dp * CONV_FACTOR
+
+                t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                    cloud_fraction=cloud_fraction,
+                    vapor=vapor,
+                    ice=ice,
+                    liquid=liquid,
+                    graupel=graupel,
+                    rain=rain,
+                    snow=snow,
+                    dvapor=0.0,
+                    dice=sink,
+                    dliquid=-sink,
+                    dgraupel=0.0,
+                    drain=0.0,
+                    dsnow=0.0,
+                    DO_QA=DO_QA,
+                    D1_VAP=D1_VAP,
+                    D1_ICE=D1_ICE,
+                    LI00=LI00,
+                    LI20=LI20,
+                    LV00=LV00,
+                    T_WFR=T_WFR,
+                )
+
+
+def p_complete_freezing(
+    t: FloatField64,
+    dry_dp: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    cvm: FloatField64,
+    icpk: FloatField,
+    lcpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+    total_energy: FloatField64,
+    mppfw: FloatFieldIJ,
+):
+    """enforce complete freezing below t_wfr, Lin et al. (1983)
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        cvm (FloatField64)
+        icpk (FloatField)
+        lcpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+        total_energy (FloatField64)
+        mppfw (FloatFieldIJ)
+    """
+    from __externals__ import (
+        CONV_FACTOR,
+        D1_ICE,
+        D1_VAP,
+        DO_QA,
+        LI00,
+        LI20,
+        LV00,
+        T_WFR,
+    )
+
+    with computation(PARALLEL), interval(...):
+        tc = T_WFR - t
+
+        if tc > 0.0 and liquid > QCMIN:
+            sink = liquid * tc / DT_FR
+            sink = min(liquid, sink, tc / icpk)
+            mppfw = mppfw + sink * dry_dp * CONV_FACTOR
+
+            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=0.0,
+                dice=sink,
+                dliquid=-sink,
+                dgraupel=0.0,
+                drain=0.0,
+                dsnow=0.0,
+                DO_QA=DO_QA,
+                D1_VAP=D1_VAP,
+                D1_ICE=D1_ICE,
+                LI00=LI00,
+                LI20=LI20,
+                LV00=LV00,
+                T_WFR=T_WFR,
+            )
+
+
+def p_graupel_deposition_and_sublimation(
+    t: FloatField64,
+    dry_dp: FloatField,
+    density: FloatField,
+    density_factor: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    cvm: FloatField64,
+    icpk: FloatField,
+    lcpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+    total_energy: FloatField64,
+    mppdg: FloatFieldIJ,
+    mppsg: FloatFieldIJ,
+    # tables
+    CGSUB: GFDLMPV3TableL5,
+    table_2: GFDLMPV3SaturationTable,
+    dtable_2: GFDLMPV3SaturationTable,
+):
+    """graupel deposition and sublimation, Lin et al. (1983)
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        density (FloatField)
+        density_factor (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        cvm (FloatField64)
+        icpk (FloatField)
+        lcpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+        total_energy (FloatField64)
+        mppdg (FloatFieldIJ)
+        mppsg (FloatFieldIJ)
+        CGSUB (GFDLMPV3TableL5)
+        table_2 (GFDLMPV3SaturationTable)
+        dtable_2 (GFDLMPV3SaturationTable)
+    """
+    from __externals__ import BLING, BLINH, CONV_FACTOR, D1_ICE, D1_VAP, DO_HAIL, DO_QA, DT, GS_FAC, LI00, LI20, LV00, MUG, MUH, T_SUB, T_WFR
+
+    with computation(PARALLEL), interval(...):
+        if graupel > QPMIN:
+            t_in = t
+            ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+            graupel_x_density = graupel * density
+            t_squared = t * t
+            dq = ice_saturation_humidity - vapor
+            if DO_HAIL:
+                pgsub = p_sublimation(
+                    t_squared,
+                    dq,
+                    graupel_x_density,
+                    ice_saturation_humidity,
+                    density,
+                    density_factor,
+                    BLINH,
+                    MUH,
+                    tcpk,
+                    cvm,
+                    CGSUB,
+                )
+            else:
+                pgsub = p_sublimation(
+                    t_squared,
+                    dq,
+                    graupel_x_density,
+                    ice_saturation_humidity,
+                    density,
+                    density_factor,
+                    BLING,
+                    MUG,
+                    tcpk,
+                    cvm,
+                    CGSUB,
+                )
+
+            pgsub = DT * pgsub
+            dq = dq / (1.0 + tcpk * dice_saturation_humidity)
+            if pgsub > 0.0:
+                sink = min(pgsub * min(1.0, max(t - T_SUB, 0.0) * GS_FAC), qg)
+                mppsg = mppsg + sink * dry_dp * CONV_FACTOR
+            else:
+                sink = 0.0
+                if t <= TICE:
+                    sink = max(pgsub, dq, (t - TICE) / tcpk)
+                mppdg = mppdg - sink * dry_dp * CONV_FACTOR
+
+            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=sink,
+                dice=0.0,
+                dliquid=0.0,
+                dgraupel=-sink,
+                drain=0.0,
+                dsnow=0.0,
+                DO_QA=DO_QA,
+                D1_VAP=D1_VAP,
+                D1_ICE=D1_ICE,
+                LI00=LI00,
+                LI20=LI20,
+                LV00=LV00,
+                T_WFR=T_WFR,
+            )
+
+
+def p_ice_deposition_and_sublimation(
+    t: FloatField64,
+    dry_dp: FloatField,
+    density: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    cin: FloatField,
+    rsubl: FloatField,
+    cvm: FloatField64,
+    icpk: FloatField,
+    lcpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+    total_energy: FloatField64,
+    one_minus_sigma: FloatFieldIJ,
+    mppdi: FloatFieldIJ,
+    mppsi: FloatFieldIJ,
+    # tables
+    table_2: GFDLMPV3SaturationTable,
+    dtable_2: GFDLMPV3SaturationTable,
+):
+    """cloud ice deposition and sublimation, Hong et al. (2004)
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        density (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        cin (FloatField)
+        rsubl (FloatField)
+        cvm (FloatField64)
+        icpk (FloatField)
+        lcpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+        total_energy (FloatField64)
+        one_minus_sigma (FloatFieldIJ)
+        mppdi (FloatFieldIJ)
+        mppsi (FloatFieldIJ)
+        table_2 (GFDLMPV3SaturationTable)
+        dtable_2 (GFDLMPV3SaturationTable)
+    """
+    from __externals__ import (
+        CONV_FACTOR,
+        D1_ICE,
+        D1_VAP,
+        DO_PSD_ICE_NUM,
+        DO_QA,
+        DT,
+        IGFLAG,
+        INFLAG,
+        IS_FAC,
+        LI00,
+        LI20,
+        LV00,
+        MUI,
+        PCAI,
+        PCBI,
+        PROG_CIN,
+        QI_LIM,
+        T_SUB,
+        T_WFR,
+    )
+
+    with computation(PARALLEL), interval(...):
+        if t < TICE:
+            pidep = 0.0
+            t_in = t
+            ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+            dq = vapor - ice_saturation_humidity
+            tmp = min(ice, dq / (1.0 + tcpk * dice_saturation_humidity))
+
+            if ice > QCMIN:
+                if DO_PSD_ICE_NUM:
+                    cin = calc_particle_concentration(liquid, density, MUI, PCAI, PCBI)
+                    cin = cin / density
+                elif not PROG_CIN:
+                    if INFLAG == 1:
+                        cin = 5.38e7 * exp(0.75 * log(ice * density))
+                    if INFLAG == 2:
+                        cin = exp(-2.80 + 0.262 * (TICE - t)) * 1000.0
+                    if INFLAG == 3:
+                        cin = exp(-0.639 + 12.96 * (vapor / ice_saturation_humidity - 1.0)) * 1000.0
+                    if INFLAG == 4:
+                        cin = 5.0e-3 * exp(0.304 * (TICE - t)) * 1000.0
+                    if INFLAG == 5:
+                        cin = 1.0e-5 * exp(0.5 * (TICE - t)) * 1000.0
+                pidep = (
+                    DT
+                    * dq
+                    * 4.0
+                    * 11.9
+                    * exp(0.5 * log(ice * density * cin))
+                    / (ice_saturation_humidity * density * (tcpk * cvm) ** 2 / (TCOND * RVGAS * t**2) + 1.0 / VDIFU)
+                )
+
+            if dq > 0.0:
+                tc = TICE - t
+                qi_gen = 4.92e-11 * exp(1.33 * log(1.0e3 * exp(0.1 * tc)))
+                if IGFLAG == 1:
+                    qi_crt = qi_gen / density
+                if IGFLAG == 2:
+                    qi_crt = qi_gen * min(QI_LIM, 0.1 * tc) / density
+                if IGFLAG == 3:
+                    qi_crt = 1.82e-6 * min(QI_LIM, 0.1 * tc) / density
+                if IGFLAG == 4:
+                    qi_crt = max(qi_gen, 1.82e-6) * min(QI_LIM, 0.1 * tc) / density
+                sink = min(tmp, max(qi_crt - ice, pidep), tc / tcpk)
+                mppdi = mppdi + sink * dry_dp * CONV_FACTOR
+            else:
+                pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
+                sink = max(pidep, tmp, -ice)
+                sink = sink * one_minus_sigma  # resolution dependent subl 0:1 coarse:fine
+                mppsi = mppsi - sink * dry_dp * CONV_FACTOR
+                # 3D ice sublimation export
+                rsubl = rsubl - sink * dry_dp * CONV_FACTOR
+
+            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=-sink,
+                dice=sink,
+                dliquid=0.0,
+                dgraupel=0.0,
+                drain=0.0,
+                dsnow=0.0,
+                DO_QA=DO_QA,
+                D1_VAP=D1_VAP,
+                D1_ICE=D1_ICE,
+                LI00=LI00,
+                LI20=LI20,
+                LV00=LV00,
+                T_WFR=T_WFR,
+            )
+
+
 @function
 def p_melt(
     t: Float,
@@ -342,6 +789,114 @@ def p_melt(
     return (c.A[0] / (icpk * cvm) * t / density - c.A[1] * lcpk / icpk * dcondensate) * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density)) * vent_coeff(
         density_factor, condensate_x_density, c.A[2], c.A[3], blin, mu
     ) + C_LIQ / (icpk * cvm) * t * (pxacw + pxacr)
+
+
+def p_snow_deposition_and_sublimation(
+    t: FloatField64,
+    dry_dp: FloatField,
+    density: FloatField,
+    density_factor: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    cvm: FloatField64,
+    icpk: FloatField,
+    lcpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+    total_energy: FloatField64,
+    mppds: FloatFieldIJ,
+    mppss: FloatFieldIJ,
+    # tables
+    CSSUB: GFDLMPV3TableL5,
+    table_2: GFDLMPV3SaturationTable,
+    dtable_2: GFDLMPV3SaturationTable,
+):
+    """snow deposition and sublimation, Lin et al. (1983)
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        density (FloatField)
+        density_factor (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        cvm (FloatField64)
+        icpk (FloatField)
+        lcpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+        total_energy (FloatField64)
+        mppds (FloatFieldIJ)
+        mppss (FloatFieldIJ)
+        CSSUB (GFDLMPV3TableL5)
+        table_2 (GFDLMPV3SaturationTable)
+        dtable_2 (GFDLMPV3SaturationTable)
+    """
+    from __externals__ import BLINS, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUS, SS_FAC, T_SUB, T_WFR
+
+    with computation(PARALLEL), interval(...):
+        if snow > QPMIN:
+            t_in = t
+            ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+            snow_x_density = snow * density
+            t_squared = t * t
+            dq = ice_saturation_humidity - vapor
+            pssub = p_sublimation(
+                t_squared,
+                dq,
+                snow_x_density,
+                ice_saturation_humidity,
+                density,
+                density_factor,
+                BLINS,
+                MUS,
+                tcpk,
+                cvm,
+                CSSUB,
+            )
+            pssub = DT * pssub
+            dq = dq / (1.0 + tcpk * dice_saturation_humidity)
+            if pssub > 0.0:
+                sink = min(pssub * min(1.0, max(t, T_SUB) * SS_FAC), snow)
+                mppss = mppss + sink * dry_dp * CONV_FACTOR
+            else:
+                sink = 0.0
+                if t <= TICE:
+                    sink = max(pssub, dq, (t - TICE) / tcpk)
+                mppds = mppds - sink * dry_dp * CONV_FACTOR
+
+            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=sink,
+                dice=0.0,
+                dliquid=0.0,
+                dgraupel=0.0,
+                drain=0.0,
+                dsnow=-sink,
+                DO_QA=DO_QA,
+                D1_VAP=D1_VAP,
+                D1_ICE=D1_ICE,
+                LI00=LI00,
+                LI20=LI20,
+                LV00=LV00,
+                T_WFR=T_WFR,
+            )
 
 
 @function
@@ -384,6 +939,132 @@ def p_sublimation(
         * vent_coeff(condensate_x_density, c.A[1], c.A[2], density_factor, blin, mu)
         / (c.A[3] * t_squared + c.A[4] * (cpk * cvm) ** 2 * saturation_specific_humidity * density)
     )
+
+
+def p_wbf(
+    t: FloatField64,
+    dry_dp: FloatField,
+    density: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    cvm: FloatField64,
+    icpk: FloatField,
+    lcpk: FloatField,
+    tcpk: FloatField,
+    tcp3: FloatField,
+    total_energy: FloatField64,
+    one_minus_sigma: FloatFieldIJ,
+    mppfw: FloatFieldIJ,
+    # tables
+    table_0: GFDLMPV3SaturationTable,
+    table_2: GFDLMPV3SaturationTable,
+    dtable_0: GFDLMPV3SaturationTable,
+    dtable_2: GFDLMPV3SaturationTable,
+):
+    """Wegener Bergeron Findeisen process, Storelvmo and Tan (2015)
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        density (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        cvm (FloatField64)
+        icpk (FloatField)
+        lcpk (FloatField)
+        tcpk (FloatField)
+        tcp3 (FloatField)
+        total_energy (FloatField64)
+        one_minus_sigma (FloatFieldIJ)
+        mppfw (FloatFieldIJ)
+        table_0 (GFDLMPV3SaturationTable)
+        table_2 (GFDLMPV3SaturationTable)
+        dtable_0 (GFDLMPV3SaturationTable)
+        dtable_2 (GFDLMPV3SaturationTable)
+    """
+    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_WBF, DO_QA, DT, LI00, LI20, LV00, PWBF_QI_CRT, TAU_WBF, T_WFR
+
+    with computation(FORWARD), interval(0, 1):
+        if DO_WBF:
+            # internal parameters
+            wbf_coarse_mult = 10.0  # how much slower WBF is at 50km vs 2km
+
+    with computation(FORWARD), interval(0, 1):
+        if DO_WBF:
+            # -------------------------------------------------------------------
+            # Scale tau_wbf:
+            # If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf
+            # If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * wbf_coarse_mult
+            # -------------------------------------------------------------------
+            tau_wbf_eff = TAU_WBF * (wbf_coarse_mult * (1.0 - one_minus_sigma) + one_minus_sigma)
+
+            # Calculate the time-step fraction using the effective timescale
+            fac_wbf = 1.0 - exp(-DT / tau_wbf_eff)
+
+    with computation(PARALLEL), interval(...):
+        if DO_WBF:
+            tc = TICE - t
+
+            t_in = t
+            liquid_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_0, dtable_0)
+            ice_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+
+            # heterogeneity and allow WBF to operate in large-scale updrafts
+            # when the environment is supersaturated with respect to ice (qv > qsi)
+            # and there is both liquid and ice present
+            # Bypassed qi > qcmin constraint for colder temperatures to ensure initiation
+            if tc > 0.0 and liquid > QCMIN and (ice > QCMIN or tc > 15.0) and vapor > ice_saturation_humidity:
+                # 1. Homogeneous Freezing Limit (-40 C)
+                if tc >= 40.0:
+                    sink = liquid
+                    tmp = 0.0  # All frozen liquid instantly becomes snow
+                else:
+                    # Normal WBF probabilistic freezing
+                    sink = min(fac_wbf * liquid, tc / icpk)
+
+                    # 2. Temperature-Dependent Snow Boost
+                    # Scales from 1.0 (at 0 C) down to 0.0 (at -40 C)
+                    # As tc gets larger (colder), the multiplier shrinks,
+                    # reducing qim and forcing more mass to spill over into qs.
+                    snow_boost_mult = max(0.0, 1.0 - (tc / 40.0))
+
+                    qim = (PWBF_QI_CRT * snow_boost_mult) / density
+                    tmp = min(sink, max(qim - ice, 0.0))
+
+                mppfw = mppfw + sink * dry_dp * CONV_FACTOR
+
+                t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                    cloud_fraction=cloud_fraction,
+                    vapor=vapor,
+                    ice=ice,
+                    liquid=liquid,
+                    graupel=graupel,
+                    rain=rain,
+                    snow=snow,
+                    dvapor=0.0,
+                    dice=tmp,
+                    dliquid=-sink,
+                    dgraupel=0.0,
+                    drain=0.0,
+                    dsnow=sink - tmp,
+                    DO_QA=DO_QA,
+                    D1_VAP=D1_VAP,
+                    D1_ICE=D1_ICE,
+                    LI00=LI00,
+                    LI20=LI20,
+                    LV00=LV00,
+                    T_WFR=T_WFR,
+                )
 
 
 @function

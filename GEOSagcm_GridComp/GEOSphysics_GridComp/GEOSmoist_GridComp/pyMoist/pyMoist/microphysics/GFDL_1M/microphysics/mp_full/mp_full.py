@@ -14,6 +14,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.subgrid_processes import 
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.warm_rain import WarmRain
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 
 
 def update_precip_fluxes(
@@ -183,6 +184,7 @@ class MPFull:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         saturation_tables: GFDLMPV3Tables,
+        gfdl_1m_config: GFDL1MConfig,
         mp_config: GFDLMPV3CloudMPConfig,
         mp_namelist: GFDLMPV3NamelistConfig,
         CONV_FACTOR: Float,
@@ -195,9 +197,9 @@ class MPFull:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"CONV_FACTOR": CONV_FACTOR},
         )
-        self._warm_rain = WarmRain(stencil_factory, quantity_factory, mp_config, mp_namelist, CONV_FACTOR)
-        self._ice_cloud = IceCloud(stencil_factory, quantity_factory, mp_config, mp_namelist, CONV_FACTOR)
-        self._subgrid_processes = SubgridProcesses(stencil_factory, mp_config, mp_namelist)
+        self._warm_rain = WarmRain(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
+        self._ice_cloud = IceCloud(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
+        self._subgrid_processes = SubgridProcesses(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
 
         # initialize MPFull locals
         self._mp_full_locals = MPFullLocals.make_locals(quantity_factory)
@@ -249,4 +251,4 @@ class MPFull:
             # temperature sensitive high vertical resolution processes
             # --------------------------------------------------
             if self._mp_namelist.DO_SUBGRID_PROC:
-                self._subgrid_processes()
+                self._subgrid_processes(state, gfdl_mp_v3_locals)
