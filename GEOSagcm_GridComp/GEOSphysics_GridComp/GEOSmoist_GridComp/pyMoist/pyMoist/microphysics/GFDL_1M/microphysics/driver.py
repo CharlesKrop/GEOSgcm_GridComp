@@ -21,6 +21,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
 )
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, sigma
+from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFull
 
 
 def set_value_64_bit(field: FloatField64, value: Float64) -> None:
@@ -487,36 +488,17 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._gfdl_mp_v3_locals = GFDLMPV3Locals.make_locals(quantity_factory)
 
         # make config visible at runtime
-        self._mp_namelist = mp_namelist
         self._mp_config = mp_config
+        self._mp_namelist = mp_namelist
+
+        # initialize subcomponents
+        self._mp_full = MPFull(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
 
         # construct stencils
-        self._set_value = stencil_factory.from_dims_halo(
-            func=set_value,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-        self._set_value_64_bit = stencil_factory.from_dims_halo(
-            func=set_value_64_bit,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-        self._copy_2d = stencil_factory.from_dims_halo(
-            func=copy_2d,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
         self._compute_one_minus_sigma = stencil_factory.from_dims_halo(
             func=compute_one_minus_sigma,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DO_SCALE_DEP": mp_namelist.DO_SCALE_DEP},
-        )
-        self._eis_factor_and_rates = stencil_factory.from_dims_halo(
-            func=eis_factor_and_rates,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"CPAUT0": mp_config.CPAUT0},
-        )
-        self._convert_temperature = stencil_factory.from_dims_halo(
-            func=convert_temperature,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DO_INLINE_MP": mp_config.DO_INLINE_MP},
         )
         self._compute_total_energy = stencil_factory.from_dims_halo(
             func=compute_total_energy,
@@ -530,33 +512,19 @@ class GFDLMPV3Driver(NDSLRuntime):
                 "C1_ICE": mp_config.C1_ICE,
             },
         )
-        self._total_energy_and_water = stencil_factory.from_dims_halo(
-            func=total_energy_and_water,
+        self._convert_temperature = stencil_factory.from_dims_halo(
+            func=convert_temperature,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={
-                "DT": gfdl_1m_config.DT_MOIST,
-                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
-                "LI00": mp_config.LI00,
-                "LV00": mp_config.LV00,
-                "C_AIR": mp_config.C_AIR,
-            },
+            externals={"DO_INLINE_MP": mp_config.DO_INLINE_MP},
         )
-        self._pressure_derived_fields_mixing_ratio_conversion_copy_state = stencil_factory.from_dims_halo(
-            func=pressure_derived_fields_mixing_ratio_conversion_copy_state,
+        self._copy_2d = stencil_factory.from_dims_halo(
+            func=copy_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={
-                "DO_INLINE_MP": mp_config.DO_INLINE_MP,
-                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
-            },
         )
-        self._generate_particle_nuclei = stencil_factory.from_dims_halo(
-            func=generate_particle_nuclei,
+        self._eis_factor_and_rates = stencil_factory.from_dims_halo(
+            func=eis_factor_and_rates,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"PROG_CCN": mp_namelist.PROG_CCN, "PROG_CIN": mp_namelist.PROG_CIN, "CCN_L": mp_namelist.CCN_L, "CCN_O": mp_namelist.CCN_O},
-        )
-        self._horizontal_subgrid_variation = stencil_factory.from_dims_halo(
-            func=horizontal_subgrid_variation,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"CPAUT0": mp_config.CPAUT0},
         )
         self._fix_negative_water_species = stencil_factory.from_dims_halo(
             func=fix_negative_water_species,
@@ -575,6 +543,42 @@ class GFDLMPV3Driver(NDSLRuntime):
                 "T_WFR": mp_config.T_WFR,
             },
         )
+        self._generate_particle_nuclei = stencil_factory.from_dims_halo(
+            func=generate_particle_nuclei,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"PROG_CCN": mp_namelist.PROG_CCN, "PROG_CIN": mp_namelist.PROG_CIN, "CCN_L": mp_namelist.CCN_L, "CCN_O": mp_namelist.CCN_O},
+        )
+        self._horizontal_subgrid_variation = stencil_factory.from_dims_halo(
+            func=horizontal_subgrid_variation,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+        self._pressure_derived_fields_mixing_ratio_conversion_copy_state = stencil_factory.from_dims_halo(
+            func=pressure_derived_fields_mixing_ratio_conversion_copy_state,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "DO_INLINE_MP": mp_config.DO_INLINE_MP,
+                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+            },
+        )
+        self._set_value = stencil_factory.from_dims_halo(
+            func=set_value,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+        self._set_value_64_bit = stencil_factory.from_dims_halo(
+            func=set_value_64_bit,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+        self._total_energy_and_water = stencil_factory.from_dims_halo(
+            func=total_energy_and_water,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "DT": gfdl_1m_config.DT_MOIST,
+                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+                "LI00": mp_config.LI00,
+                "LV00": mp_config.LV00,
+                "C_AIR": mp_config.C_AIR,
+            },
+        )
 
         # dummy fields that are used as placeholders for optional inputs to stencils that are not called
         # they exist only as a thing to pass to stencils, since all inputs must always be supplied,
@@ -583,7 +587,9 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._all_zeros_no_write_3d = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], units="NOWRITE", dtype=Float)
 
     def __call__(self, state: GFDL1MState, gfdl_1m_locals: GFDL1MLocals):
+        # -----------------------------------------------------------------------
         # reset mp locals to zero
+        # -----------------------------------------------------------------------
         self._set_value(field=self._gfdl_mp_v3_locals.mppcw, value=Float(0.0))
         self._set_value(field=self._gfdl_mp_v3_locals.mppew, value=Float(0.0))
         self._set_value(field=self._gfdl_mp_v3_locals.mppe1, value=Float(0.0))
@@ -613,18 +619,26 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._set_value(field=self._gfdl_mp_v3_locals.mppm2, value=Float(0.0))
         self._set_value(field=self._gfdl_mp_v3_locals.mppm3, value=Float(0.0))
 
+        # -----------------------------------------------------------------------
         # initialization of total energy difference
+        # -----------------------------------------------------------------------
         self._set_value_64_bit(field=self._gfdl_mp_v3_locals.total_energy.delta, value=Float64(0.0))
         self._set_value(field=self._gfdl_mp_v3_locals.tracer_dilution_adjustment, value=Float(1.0))
 
+        # -----------------------------------------------------------------------
         # copy convection fraction and surface type, work with copy instead of the original
+        # -----------------------------------------------------------------------
         self._copy_2d(input=state.convection_fraction, output=self._gfdl_mp_v3_locals.convection_fraction)
         self._copy_2d(input=state.surface_type, output=self._gfdl_mp_v3_locals.surface_type)
 
+        # -----------------------------------------------------------------------
         # one minus sigma used to control resoluton sensitive parameters
+        # -----------------------------------------------------------------------
         self._compute_one_minus_sigma(one_minus_sigma=self._gfdl_mp_v3_locals.one_minus_sigma, area=state.area)
 
+        # -----------------------------------------------------------------------
         # Use estimated inversion strength to determine stable vs unstable areas
+        # -----------------------------------------------------------------------
         self._eis_factor_and_rates(
             estimated_inversion_strength=state.estimated_inversion_strength,
             convection_fraction=self._gfdl_mp_v3_locals.convection_fraction,
@@ -633,7 +647,9 @@ class GFDLMPV3Driver(NDSLRuntime):
             cpaut=self._gfdl_mp_v3_locals.cpaut,
         )
 
+        # -----------------------------------------------------------------------
         # conversion of temperature
+        # -----------------------------------------------------------------------
         self._convert_temperature(
             t_state=state.t,
             t_local=self._gfdl_mp_v3_locals.t,
@@ -645,7 +661,9 @@ class GFDLMPV3Driver(NDSLRuntime):
             snow=state.radiation_field.snow,
         )
 
+        # -----------------------------------------------------------------------
         # calculate base total energy
+        # -----------------------------------------------------------------------
         self._compute_total_energy(
             total_energy=self._gfdl_mp_v3_locals.total_energy.magnitude,
             t_local=self._gfdl_mp_v3_locals.t,
@@ -658,7 +676,9 @@ class GFDLMPV3Driver(NDSLRuntime):
             rain=state.radiation_field.rain,
         )
 
+        # -----------------------------------------------------------------------
         # total_energy_checker
+        # -----------------------------------------------------------------------
         if self._mp_namelist.CONSV_CHECKER:
             self._total_energy_and_water(
                 t_local=self._gfdl_mp_v3_locals.t_local,
@@ -690,10 +710,14 @@ class GFDLMPV3Driver(NDSLRuntime):
                 total_energy_loss=self._dummy_field_no_read_no_write_2d_64_bit,
             )
 
+        # -----------------------------------------------------------------------
         # initialize radar reflectivity
+        # -----------------------------------------------------------------------
         self._set_value(field=self._gfdl_mp_v3_locals.reflectivity, value=Float(-30.0))
 
+        # -----------------------------------------------------------------------
         # setup the local state - to be used throughout the rest of microphyscis
+        # -----------------------------------------------------------------------
         self._pressure_derived_fields_mixing_ratio_conversion_copy_state(
             vapor=state.radiation_field.vapor,
             ice=state.radiation_field.ice,
@@ -726,7 +750,9 @@ class GFDLMPV3Driver(NDSLRuntime):
             local_w=self._gfdl_mp_v3_locals.w,
         )
 
+        # -----------------------------------------------------------------------
         # total_energy_checker
+        # -----------------------------------------------------------------------
         if self._mp_namelist.CONSV_CHECKER:
             self._total_energy_and_water(
                 t_local=self._gfdl_mp_v3_locals.t,
@@ -758,7 +784,9 @@ class GFDLMPV3Driver(NDSLRuntime):
                 total_energy_loss=self._dummy_field_no_read_no_write_2d_64_bit,
             )
 
+        # -----------------------------------------------------------------------
         # generate cloud condensation nuclei (CCN), cloud ice nuclei (CIN)
+        # -----------------------------------------------------------------------
         self._generate_particle_nuclei(
             ccn=self._gfdl_mp_v3_locals.ccn,
             cin=self._gfdl_mp_v3_locals.cin,
@@ -768,9 +796,16 @@ class GFDLMPV3Driver(NDSLRuntime):
             surface_geopotential_height=state.surface_geopotential_height,
         )
 
+        # -----------------------------------------------------------------------
+        # import horizontal subgrid variability with pressure dependence
+        # total water subgrid deviation in horizontal direction
+        # default area dependent form: use dx ~ 100 km as the base
+        # -----------------------------------------------------------------------
         self._horizontal_subgrid_variation(h_var=self._gfdl_mp_v3_locals.h_var, critical_relative_humidity_for_pdf=state.critical_relative_humidity_for_pdf)
 
+        # -----------------------------------------------------------------------
         # fix negative water species from outside
+        # -----------------------------------------------------------------------
         if self._mp_namelist.FIX_NEGATIVE:
             self._fix_negative_water_species(
                 t=self._gfdl_mp_v3_locals.t,
@@ -786,7 +821,9 @@ class GFDLMPV3Driver(NDSLRuntime):
                 mppfr=self._gfdl_mp_v3_locals.mppfr,
             )
 
+        # -----------------------------------------------------------------------
         # fast microphysics loop
+        # -----------------------------------------------------------------------
         if self._mp_config.DO_MP_FAST:
             ndsl_log.error(
                 "[GFDL1M Microphysics]: NDSL version of DO_MP_FAST option has not been implemented, please use DO_MP_FAST instead. "
@@ -797,5 +834,13 @@ class GFDLMPV3Driver(NDSLRuntime):
                 "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
             )
 
+        # -----------------------------------------------------------------------
         # full microphysics loop
-        # if self._mp_config.DO_MP_FULL:
+        # -----------------------------------------------------------------------
+        if self._mp_config.DO_MP_FULL:
+            self._mp_full(state, self._gfdl_mp_v3_locals)
+
+
+        # -----------------------------------------------------------------------
+        # cloud fraction diagnostic
+        # -----------------------------------------------------------------------
