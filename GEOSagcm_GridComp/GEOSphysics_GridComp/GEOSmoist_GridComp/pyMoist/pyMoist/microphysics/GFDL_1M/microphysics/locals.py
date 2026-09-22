@@ -343,7 +343,7 @@ class GFDLMPV3Locals(LocalState):
             "dtype": Float,
         }
     )
-    p_thickness: Local = dataclasses.field(
+    p: Local = dataclasses.field(
         metadata={
             "name": "p_thickness",
             "dims": [I_DIM, J_DIM, K_DIM],

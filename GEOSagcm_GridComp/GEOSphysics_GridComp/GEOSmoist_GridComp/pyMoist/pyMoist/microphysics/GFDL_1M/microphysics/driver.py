@@ -1,6 +1,6 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt, exp, log, log10
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import copy_2d
@@ -8,9 +8,10 @@ from ndsl.stencils.basic_operations_2d import copy_2d
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import GRAV, ONE_R8, RC, RDGAS, RGRAV, ZVIR
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import GRAV, ONE_R8, QCMIN, RC, RDGAS, RGRAV, TICE, ZVIR
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables, GFDLMPV3SaturationTable
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     calc_mhc_lhc,
     moist_heat_capacity_3,
@@ -24,16 +25,216 @@ from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_fa
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFull
 
 
-def set_value_64_bit(field: FloatField64, value: Float64) -> None:
-    """
-    Sets every element of a field to a single value.
+def cloud_fraction(
+    t: FloatField,
+    p: FloatField,
+    density: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    area: FloatFieldIJ,
+    h_var: FloatField,
+    # tables
+    table_0: GFDLMPV3SaturationTable,
+    table_2: GFDLMPV3SaturationTable,
+    dtable_0: GFDLMPV3SaturationTable,
+    dtable_2: GFDLMPV3SaturationTable,
+):
+    from __externals__ import (
+        C1_ICE,
+        C1_LIQ,
+        C1_VAP,
+        CFFLAG,
+        CLD_MIN,
+        D1_ICE,
+        D1_VAP,
+        DO_CLD_ADJ,
+        F_DQ_M,
+        F_DQ_P,
+        ICLOUD_F,
+        LI00,
+        LI20,
+        LV00,
+        RAD_GRAUPEL,
+        RAD_RAIN,
+        RAD_SNOW,
+        RH_THRES,
+        T_WFR,
+        XR_A,
+        XR_B,
+        XR_C,
+    )
 
-    Args:
-        field: output field
-        value: value of Float type
-    """
+    with computation(FORWARD), interval(0, 1):
+        grid_size = sqrt(area)
+
     with computation(PARALLEL), interval(...):
-        field = value
+        # initialize 64 bit internals
+        cvm: FloatField64 = 0.0
+        total_energy: FloatField64 = 0.0
+
+    with computation(PARALLEL), interval(...):
+        # calculate moist heat capacity and latent heat coefficients
+        total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = calc_mhc_lhc(
+            t=t,
+            vapor=vapor,
+            ice=ice,
+            liquid=liquid,
+            graupel=graupel,
+            rain=rain,
+            snow=snow,
+            C1_VAP=C1_VAP,
+            C1_LIQ=C1_LIQ,
+            C1_ICE=C1_ICE,
+            D1_ICE=D1_ICE,
+            D1_VAP=D1_VAP,
+            LI00=LI00,
+            LI20=LI20,
+            LV00=LV00,
+            T_WFR=T_WFR,
+        )
+
+        # combine water species
+
+        ice_internal = total_solid
+        total_solid = ice
+        if RAD_SNOW:
+            total_solid = ice + snow
+            if RAD_GRAUPEL:
+                total_solid = ice + snow + graupel
+
+        liquid_internal = total_liquid
+        total_liquid = liquid
+        if RAD_RAIN:
+            total_liquid = liquid + rain
+
+        total_condensate = total_solid + total_liquid
+        total_water = vapor + total_condensate
+
+        # use the "liquid - frozen water temperature" (tin) to compute saturated specific humidity
+
+        ice_internal = ice_internal - total_solid
+        liquid_internal = liquid_internal - total_liquid
+        t_in = (total_energy - LV00 * total_water + LI00 * ice) / moist_heat_capacity_3(total_water, liquid_internal, ice, C1_VAP, C1_LIQ, C1_ICE)
+
+        # calculate saturated specific humidity
+
+        if t_in <= T_WFR:
+            sat_spec_humidity, dsaturation_specific_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+        elif t_in >= TICE:
+            sat_spec_humidity, dsaturation_specific_humidity = saturation_specific_humidity(t_in, density, table_0, dtable_0)
+        else:
+            ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+            liquid_saturation_humidity, dliquid_saturation_humidity = saturation_specific_humidity(t_in, density, table_0, dtable_0)
+            if total_condensate > QCMIN:
+                ratio_ice = total_solid / total_condensate
+            else:
+                ratio_ice = (TICE - t_in) / (TICE - T_WFR)
+
+            sat_spec_humidity = ratio_ice * ice_saturation_humidity + (1.0 - ratio_ice) * liquid_saturation_humidity
+
+        # cloud schemes
+
+        rh = total_water / sat_spec_humidity
+
+        if CFFLAG == 1:
+            if rh > RH_THRES and total_water > QCMIN:
+                dq = h_var * total_water
+                if DO_CLD_ADJ:
+                    water_plus = total_water + dq * F_DQ_P * min(1.0, max(0.0, (p - 200.0e2) / (1000.0e2 - 200.0e2)))
+                else:
+                    water_plus = total_water + dq * F_DQ_P
+
+                water_minus = total_water - dq * F_DQ_M
+
+                if ICLOUD_F == 2:
+                    if sat_spec_humidity < total_water:
+                        cloud_fraction = 1.0
+                    else:
+                        cloud_fraction = 0.0
+                elif ICLOUD_F == 3:
+                    if sat_spec_humidity < total_water:
+                        cloud_fraction = 1.0
+                    else:
+                        if sat_spec_humidity < water_plus:
+                            cloud_fraction = (water_plus - sat_spec_humidity) / (dq * F_DQ_P)
+                        else:
+                            cloud_fraction = 0.0
+
+                        if total_condensate > QCMIN:
+                            cloud_fraction = max(CLD_MIN, cloud_fraction)
+
+                        cloud_fraction = min(1.0, cloud_fraction)
+                else:
+                    if sat_spec_humidity < water_minus:
+                        cloud_fraction = 1.0
+                    else:
+                        if sat_spec_humidity < water_plus:
+                            if ICLOUD_F == 0:
+                                cloud_fraction = (water_plus - sat_spec_humidity) / (dq * F_DQ_P + dq * F_DQ_M)
+                            else:
+                                cloud_fraction = (water_plus - sat_spec_humidity) / ((dq * F_DQ_P + dq * F_DQ_M) * (1.0 - total_condensate))
+                        else:
+                            cloud_fraction = 0.0
+
+                        if total_condensate > QCMIN:
+                            cloud_fraction = max(CLD_MIN, cloud_fraction)
+
+                        cloud_fraction = min(1.0, cloud_fraction)
+            else:
+                cloud_fraction = 0.0
+
+        if CFFLAG == 2:
+            if rh >= 1.0:
+                cloud_fraction = 1.0
+            elif rh > RH_THRES and total_condensate > QCMIN:
+                cloud_fraction = exp(XR_A * log(rh)) * (
+                    1.0 - exp(-XR_B * max(0.0, total_condensate) / max(1.0e-5, exp(XR_C * log(max(1.0e-10, 1.0 - rh) * sat_spec_humidity))))
+                )
+                cloud_fraction = max(0.0, min(1.0, cloud_fraction))
+            else:
+                cloud_fraction = 0.0
+
+        if CFFLAG == 3:
+            if total_condensate > QCMIN:
+                cloud_fraction = (
+                    1.0
+                    / 50.0
+                    * (
+                        5.77 * (100.0 - grid_size / 1000.0) * exp(1.07 * log(max(QCMIN * 1000.0, total_condensate * 1000.0)))
+                        + 4.82 * (grid_size / 1000.0 - 50.0) * exp(0.94 * log(max(QCMIN * 1000.0, total_condensate * 1000.0)))
+                    )
+                )
+                cloud_fraction = cloud_fraction * (0.92 / 0.96 * total_liquid / total_condensate + 1.0 / 0.96 * total_solid / total_condensate)
+                cloud_fraction = max(0.0, min(1.0, cloud_fraction))
+            else:
+                cloud_fraction = 0.0
+
+        if CFFLAG == 4:
+            sigma = 0.28 + exp(0.49 * log(max(QCMIN * 1000.0, total_condensate * 1000.0)))
+            gam = max(0.0, total_condensate * 1000.0) / sigma
+            if gam < 0.18:
+                qa10 = 0.0
+            elif gam > 2.0:
+                qa10 = 1.0
+            else:
+                qa10 = -0.1754 + 0.9811 * gam - 0.2223 * gam**2 + 0.0104 * gam**3
+                qa10 = max(0.0, min(1.0, qa10))
+
+            if gam < 0.12:
+                qa100 = 0.0
+            elif gam > 1.85:
+                qa100 = 1.0
+            else:
+                qa100 = -0.0913 + 0.7213 * gam + 0.1060 * gam**2 - 0.0946 * gam**3
+                qa100 = max(0.0, min(1.0, qa100))
+
+            cloud_fraction = qa10 + (log10(grid_size / 1000.0) - 1) * (qa100 - qa10)
+            cloud_fraction = max(0.0, min(1.0, cloud_fraction))
 
 
 def compute_one_minus_sigma(one_minus_sigma: FloatFieldIJ, area: FloatFieldIJ):
@@ -44,31 +245,6 @@ def compute_one_minus_sigma(one_minus_sigma: FloatFieldIJ, area: FloatFieldIJ):
             one_minus_sigma = sigma(sqrt(area))
         else:
             one_minus_sigma = 1.0
-
-
-def eis_factor_and_rates(
-    estimated_inversion_strength: FloatFieldIJ,
-    convection_fraction: FloatFieldIJ,
-    factor_eis: FloatFieldIJ,
-    factor_rc: FloatFieldIJ,
-    cpaut: FloatFieldIJ,
-) -> FloatField:
-    from __externals__ import CPAUT0, RTHRESHS, RTHRESHU
-
-    with computation(FORWARD), interval(0, 1):
-        # Use estimated inversion strength to determine stable vs unstable areas
-        factor_eis = compute_estimated_inversion_strength_factor(estimated_inversion_strength)
-
-        # Adjust autoconversion rates and thresholds using decoupled regimes
-        # 1. Rate scaling based on Boundary Layer Stability (EIS)
-        # High inversion (fac_eis=1.0) -> reduced to 0.5 * cpaut0
-        # Low inversion (fac_eis=0.0)  -> stays at 1.0 * cpaut0
-        cpaut = CPAUT0 * (0.5 * factor_eis + 1.0 * (1.0 - factor_eis))
-        # 2. Threshold scaling based on Deep Instability (CAPE / cnv_fraction)
-        # convective (cnv_fraction=1) -> RTHRESHU
-        # stratiform (cnv_fraction=0) -> RTHRESHS
-        # NOTE: Consider raising RTHRESHU from 7.0e-6 to 8.0e-6 or 8.5e-6 to help suppress ITCZ over-precipitation
-        factor_rc = RC * (RTHRESHU * convection_fraction + RTHRESHS * (1.0 - convection_fraction)) ** 3
 
 
 def convert_temperature(
@@ -113,182 +289,29 @@ def compute_total_energy(
                 total_energy = -moist_total_energy(t_local, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, True) * GRAV
 
 
-def total_energy_and_water(
-    t_local: FloatField64,
-    total_energy: FloatField64,
-    dtotal_energy: FloatFieldIJ64,
-    total_water: FloatField64,
-    total_energy_b: FloatFieldIJ64,
-    total_water_b: FloatFieldIJ64,
-    u: FloatField,
-    v: FloatField,
-    w: FloatField,
-    dp: FloatField,
-    cloud_vapor: FloatField,
-    cloud_ice: FloatField,
-    cloud_liquid: FloatField,
-    cloud_rain: FloatField,
-    cloud_snow: FloatField,
-    cloud_graupel: FloatField,
-    precip_vapor: FloatFieldIJ,
-    precip_ice: FloatFieldIJ,
-    precip_liquid: FloatFieldIJ,
-    precip_rain: FloatFieldIJ,
-    precip_snow: FloatFieldIJ,
-    precip_graupel: FloatFieldIJ,
-    sen: FloatFieldIJ,
-    stress: FloatFieldIJ,
-    moist_q: Bool,
-    save_te_loss: Bool,
-    total_energy_loss: FloatFieldIJ64,
-):
-    from __externals__ import C_AIR, DT, HYDROSTATIC, LI00, LV00
-
-    # initialize 64 bit internal fields
-    with computation(PARALLEL), interval(...):
-        cvm: FloatField64 = 0.0
-
-    with computation(PARALLEL), interval(...):
-        total_liquid = cloud_liquid + precip_rain
-        total_solid = cloud_ice + cloud_snow + cloud_graupel
-        total_condensate = total_liquid + total_solid
-        con_r8 = ONE_R8 - (cloud_vapor + total_condensate)
-        if moist_q:
-            cvm = moist_heat_capacity_4(con_r8, cloud_vapor, total_liquid, total_solid)
-        else:
-            cvm = moist_heat_capacity_3(cloud_vapor, total_liquid, total_solid)
-
-        total_energy = (cvm * t_local + LV00 * cloud_vapor - LI00 * total_solid) * C_AIR
-        if HYDROSTATIC:
-            total_energy = total_energy + 0.5 * (u**2 + v**2)
-        else:
-            total_energy = total_energy + 0.5 * (u**2 + v**2 + w**2)
-        total_energy = RGRAV * total_energy * dp
-        total_water = RGRAV * (cloud_vapor + total_condensate) * dp
-
-    with computation(FORWARD), interval(...):
-        total_energy_b = dtotal_energy + (LV00 * C_AIR * precip_vapor - LI00 * C_AIR * (precip_ice + precip_snow + precip_graupel)) * DT / 86400 + sen * DT + stress * DT
-        total_water_b = (precip_vapor + precip_liquid + precip_rain + precip_ice + precip_snow + precip_graupel) * DT / 86400
-
-    if save_te_loss:
-        # total energy change due to sedimentation and its heating
-        total_energy_loss = dtotal_energy
-
-
-def pressure_derived_fields_mixing_ratio_conversion_copy_state(
-    vapor: FloatField,
-    ice: FloatField,
-    liquid: FloatField,
-    graupel: FloatField,
-    rain: FloatField,
-    snow: FloatField,
-    cloud_fraction: FloatField,
-    local_vapor: FloatField,
-    local_ice: FloatField,
-    local_liquid: FloatField,
-    local_graupel: FloatField,
-    local_rain: FloatField,
-    local_snow: FloatField,
-    local_cloud_fraction: FloatField,
-    local_t: FloatField64,
-    dp: FloatField,
-    local_dp: FloatField,
-    local_dry_dp: FloatField,
-    dz: FloatField,
-    local_dz: FloatField,
-    local_density: FloatField,
-    local_density_factor: FloatField,
-    local_p_thickness: FloatField,
-    u: FloatField,
-    local_u: FloatField,
-    v: FloatField,
-    local_v: FloatField,
-    w: FloatField,
-    local_w: FloatField,
-):
-    from __externals__ import DO_INLINE_MP, HYDROSTATIC
-
-    # initialize 64 bit internal field
-    with computation(PARALLEL), interval(...):
-        con_r8 = Float64(0.0)
-
-    with computation(PARALLEL), interval(...):
-        local_vapor = vapor
-        local_ice = ice
-        local_liquid = liquid
-        local_graupel = graupel
-        local_rain = rain
-        local_snow = snow
-        local_cloud_fraction = cloud_fraction
-
-        # determine the dry air fraction based on DO_INLINE_MP setting
-        if DO_INLINE_MP:
-            total_condensate = local_liquid + local_rain + local_ice + local_snow + local_graupel
-            con_r8 = ONE_R8 - (local_vapor + total_condensate)
-        else:
-            con_r8 = ONE_R8 - local_vapor
-
-        # store original moist pressure thickness
-        local_dp = dp
-
-        # convert total pressure thickness (dp) to dry air pressure thickness (dry_dp)
-        local_dry_dp = local_dp * con_r8
-
-        # calculate factor to go from specific humidity to dry mixing ratio
-        con_r8 = ONE_R8 / con_r8
-
-        # convert all species to dry mixing ratios
-        local_vapor = local_vapor * con_r8
-        local_ice = local_ice * con_r8
-        local_liquid = local_liquid * con_r8
-        local_graupel = local_graupel * con_r8
-        local_rain = local_rain * con_r8
-        local_snow = local_snow * con_r8
-
-        # dry air density and layer-mean pressure thickness
-        local_dz = dz
-        local_density = -local_dp / (GRAV * local_dz)
-        local_p_thickness = local_density * RDGAS * local_t
-
-        # for sedi_momentum transport
-
-        local_u = u
-        local_v = v
-        if not HYDROSTATIC:
-            local_w = w
-
-
-def generate_particle_nuclei(
-    ccn: FloatField,
-    cin: FloatField,
-    concentration_liquid: FloatField,
-    concentration_ice: FloatField,
-    density: FloatField,
-    surface_geopotential_height: FloatFieldIJ,
-):
-    from __externals__ import CCN_L, CCN_O, PROG_CCN, PROG_CIN
+def eis_factor_and_rates(
+    estimated_inversion_strength: FloatFieldIJ,
+    convection_fraction: FloatFieldIJ,
+    factor_eis: FloatFieldIJ,
+    factor_rc: FloatFieldIJ,
+    cpaut: FloatFieldIJ,
+) -> FloatField:
+    from __externals__ import CPAUT0, RTHRESHS, RTHRESHU
 
     with computation(FORWARD), interval(0, 1):
-        ccn0: FloatFieldIJ = (
-            CCN_L * min(1.0, abs(surface_geopotential_height) / (10.0 * GRAV)) + CCN_O * (1.0 - min(1.0, abs(surface_geopotential_height) / (10.0 * GRAV)))
-        ) * 1.0e6
-        cin0: FloatFieldIJ = 0.0
+        # Use estimated inversion strength to determine stable vs unstable areas
+        factor_eis = compute_estimated_inversion_strength_factor(estimated_inversion_strength)
 
-    with computation(PARALLEL), interval(...):
-        if PROG_CCN:
-            ccn = concentration_liquid / density
-        else:
-            ccn = ccn0 / density
-
-        if PROG_CIN:
-            cin = concentration_ice / density
-        else:
-            cin = cin0 / density
-
-
-def horizontal_subgrid_variation(h_var: FloatField, critical_relative_humidity_for_pdf: FloatField):
-    with computation(PARALLEL), interval(...):
-        h_var = min(0.30, 1.0 - critical_relative_humidity_for_pdf)
+        # Adjust autoconversion rates and thresholds using decoupled regimes
+        # 1. Rate scaling based on Boundary Layer Stability (EIS)
+        # High inversion (fac_eis=1.0) -> reduced to 0.5 * cpaut0
+        # Low inversion (fac_eis=0.0)  -> stays at 1.0 * cpaut0
+        cpaut = CPAUT0 * (0.5 * factor_eis + 1.0 * (1.0 - factor_eis))
+        # 2. Threshold scaling based on Deep Instability (CAPE / cnv_fraction)
+        # convective (cnv_fraction=1) -> RTHRESHU
+        # stratiform (cnv_fraction=0) -> RTHRESHS
+        # NOTE: Consider raising RTHRESHU from 7.0e-6 to 8.0e-6 or 8.5e-6 to help suppress ITCZ over-precipitation
+        factor_rc = RC * (RTHRESHU * convection_fraction + RTHRESHS * (1.0 - convection_fraction)) ** 3
 
 
 def fix_negative_water_species(
@@ -464,6 +487,196 @@ def fix_negative_water_species(
             vapor = vapor + dq / dry_dp
 
 
+def generate_particle_nuclei(
+    ccn: FloatField,
+    cin: FloatField,
+    concentration_liquid: FloatField,
+    concentration_ice: FloatField,
+    density: FloatField,
+    surface_geopotential_height: FloatFieldIJ,
+):
+    from __externals__ import CCN_L, CCN_O, PROG_CCN, PROG_CIN
+
+    with computation(FORWARD), interval(0, 1):
+        ccn0: FloatFieldIJ = (
+            CCN_L * min(1.0, abs(surface_geopotential_height) / (10.0 * GRAV)) + CCN_O * (1.0 - min(1.0, abs(surface_geopotential_height) / (10.0 * GRAV)))
+        ) * 1.0e6
+        cin0: FloatFieldIJ = 0.0
+
+    with computation(PARALLEL), interval(...):
+        if PROG_CCN:
+            ccn = concentration_liquid / density
+        else:
+            ccn = ccn0 / density
+
+        if PROG_CIN:
+            cin = concentration_ice / density
+        else:
+            cin = cin0 / density
+
+
+def horizontal_subgrid_variation(h_var: FloatField, critical_relative_humidity_for_pdf: FloatField):
+    with computation(PARALLEL), interval(...):
+        h_var = min(0.30, 1.0 - critical_relative_humidity_for_pdf)
+
+
+def pressure_derived_fields_mixing_ratio_conversion_copy_state(
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    local_vapor: FloatField,
+    local_ice: FloatField,
+    local_liquid: FloatField,
+    local_graupel: FloatField,
+    local_rain: FloatField,
+    local_snow: FloatField,
+    local_cloud_fraction: FloatField,
+    local_t: FloatField64,
+    dp: FloatField,
+    local_dp: FloatField,
+    local_dry_dp: FloatField,
+    dz: FloatField,
+    local_dz: FloatField,
+    local_density: FloatField,
+    local_density_factor: FloatField,
+    local_p: FloatField,
+    u: FloatField,
+    local_u: FloatField,
+    v: FloatField,
+    local_v: FloatField,
+    w: FloatField,
+    local_w: FloatField,
+):
+    from __externals__ import DO_INLINE_MP, HYDROSTATIC
+
+    # initialize 64 bit internal field
+    with computation(PARALLEL), interval(...):
+        con_r8 = Float64(0.0)
+
+    with computation(PARALLEL), interval(...):
+        local_vapor = vapor
+        local_ice = ice
+        local_liquid = liquid
+        local_graupel = graupel
+        local_rain = rain
+        local_snow = snow
+        local_cloud_fraction = cloud_fraction
+
+        # determine the dry air fraction based on DO_INLINE_MP setting
+        if DO_INLINE_MP:
+            total_condensate = local_liquid + local_rain + local_ice + local_snow + local_graupel
+            con_r8 = ONE_R8 - (local_vapor + total_condensate)
+        else:
+            con_r8 = ONE_R8 - local_vapor
+
+        # store original moist pressure thickness
+        local_dp = dp
+
+        # convert total pressure thickness (dp) to dry air pressure thickness (dry_dp)
+        local_dry_dp = local_dp * con_r8
+
+        # calculate factor to go from specific humidity to dry mixing ratio
+        con_r8 = ONE_R8 / con_r8
+
+        # convert all species to dry mixing ratios
+        local_vapor = local_vapor * con_r8
+        local_ice = local_ice * con_r8
+        local_liquid = local_liquid * con_r8
+        local_graupel = local_graupel * con_r8
+        local_rain = local_rain * con_r8
+        local_snow = local_snow * con_r8
+
+        # dry air density and layer-mean pressure thickness
+        local_dz = dz
+        local_density = -local_dp / (GRAV * local_dz)
+        local_p = local_density * RDGAS * local_t
+
+        # for sedi_momentum transport
+
+        local_u = u
+        local_v = v
+        if not HYDROSTATIC:
+            local_w = w
+
+
+def set_value_64_bit(field: FloatField64, value: Float64) -> None:
+    """
+    Sets every element of a field to a single value.
+
+    Args:
+        field: output field
+        value: value of Float type
+    """
+    with computation(PARALLEL), interval(...):
+        field = value
+
+
+def total_energy_and_water(
+    t_local: FloatField64,
+    total_energy: FloatField64,
+    dtotal_energy: FloatFieldIJ64,
+    total_water: FloatField64,
+    total_energy_b: FloatFieldIJ64,
+    total_water_b: FloatFieldIJ64,
+    u: FloatField,
+    v: FloatField,
+    w: FloatField,
+    dp: FloatField,
+    cloud_vapor: FloatField,
+    cloud_ice: FloatField,
+    cloud_liquid: FloatField,
+    cloud_rain: FloatField,
+    cloud_snow: FloatField,
+    cloud_graupel: FloatField,
+    precip_vapor: FloatFieldIJ,
+    precip_ice: FloatFieldIJ,
+    precip_liquid: FloatFieldIJ,
+    precip_rain: FloatFieldIJ,
+    precip_snow: FloatFieldIJ,
+    precip_graupel: FloatFieldIJ,
+    sen: FloatFieldIJ,
+    stress: FloatFieldIJ,
+    moist_q: Bool,
+    save_te_loss: Bool,
+    total_energy_loss: FloatFieldIJ64,
+):
+    from __externals__ import C_AIR, DT, HYDROSTATIC, LI00, LV00
+
+    # initialize 64 bit internal fields
+    with computation(PARALLEL), interval(...):
+        cvm: FloatField64 = 0.0
+
+    with computation(PARALLEL), interval(...):
+        total_liquid = cloud_liquid + precip_rain
+        total_solid = cloud_ice + cloud_snow + cloud_graupel
+        total_condensate = total_liquid + total_solid
+        con_r8 = ONE_R8 - (cloud_vapor + total_condensate)
+        if moist_q:
+            cvm = moist_heat_capacity_4(con_r8, cloud_vapor, total_liquid, total_solid)
+        else:
+            cvm = moist_heat_capacity_3(cloud_vapor, total_liquid, total_solid)
+
+        total_energy = (cvm * t_local + LV00 * cloud_vapor - LI00 * total_solid) * C_AIR
+        if HYDROSTATIC:
+            total_energy = total_energy + 0.5 * (u**2 + v**2)
+        else:
+            total_energy = total_energy + 0.5 * (u**2 + v**2 + w**2)
+        total_energy = RGRAV * total_energy * dp
+        total_water = RGRAV * (cloud_vapor + total_condensate) * dp
+
+    with computation(FORWARD), interval(...):
+        total_energy_b = dtotal_energy + (LV00 * C_AIR * precip_vapor - LI00 * C_AIR * (precip_ice + precip_snow + precip_graupel)) * DT / 86400 + sen * DT + stress * DT
+        total_water_b = (precip_vapor + precip_liquid + precip_rain + precip_ice + precip_snow + precip_graupel) * DT / 86400
+
+    if save_te_loss:
+        # total energy change due to sedimentation and its heating
+        total_energy_loss = dtotal_energy
+
+
 class GFDLMPV3Driver(NDSLRuntime):
     def __init__(
         self,
@@ -490,11 +703,40 @@ class GFDLMPV3Driver(NDSLRuntime):
         # make config visible at runtime
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
+        self._saturation_tables = saturation_tables
 
         # initialize subcomponents
         self._mp_full = MPFull(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
 
         # construct stencils
+        self._cloud_fraction = stencil_factory.from_dims_halo(
+            func=cloud_fraction,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
+                "CFFLAG": mp_namelist.CFFLAG,
+                "CLD_MIN": mp_namelist.CLD_MIN,
+                "D1_ICE": mp_config.D1_ICE,
+                "D1_VAP": mp_config.D1_VAP,
+                "DO_CLD_ADJ": mp_namelist.DO_CLD_ADJ,
+                "F_DQ_M": mp_namelist.F_DQ_M,
+                "F_DQ_P": mp_namelist.F_DQ_P,
+                "ICLOUD_F": mp_namelist.ICLOUD_F,
+                "LI00": mp_config.LI00,
+                "LI20": mp_config.LI20,
+                "LV00": mp_config.LV00,
+                "RAD_GRAUPEL": mp_namelist.RAD_GRAUPEL,
+                "RAD_RAIN": mp_namelist.RAD_RAIN,
+                "RAD_SNOW": mp_namelist.RAD_SNOW,
+                "RH_THRES": mp_namelist.RH_THRES,
+                "T_WFR": mp_config.T_WFR,
+                "XR_A": mp_namelist.XR_A,
+                "XR_B": mp_namelist.XR_B,
+                "XR_C": mp_namelist.XR_C,
+            },
+        )
         self._compute_one_minus_sigma = stencil_factory.from_dims_halo(
             func=compute_one_minus_sigma,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -741,7 +983,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             local_dz=self._gfdl_mp_v3_locals.dz,
             local_density=self._gfdl_mp_v3_locals.density,
             local_density_factor=self._gfdl_mp_v3_locals.density_factor,
-            local_p_thickness=self._gfdl_mp_v3_locals.p_thickness,
+            local_p=self._gfdl_mp_v3_locals.p,
             u=state.u,
             local_u=self._gfdl_mp_v3_locals.u,
             v=state.v,
@@ -840,7 +1082,25 @@ class GFDLMPV3Driver(NDSLRuntime):
         if self._mp_config.DO_MP_FULL:
             self._mp_full(state, self._gfdl_mp_v3_locals)
 
-
         # -----------------------------------------------------------------------
         # cloud fraction diagnostic
         # -----------------------------------------------------------------------
+        if self._mp_namelist.DO_QA and self._mp_config.LAST_STEP:
+            self._cloud_fraction(
+                t=self._gfdl_mp_v3_locals.t,
+                p=self._gfdl_mp_v3_locals.p,
+                density=self._gfdl_mp_v3_locals.density,
+                vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=self._gfdl_mp_v3_locals.cloud_fraction,
+                area=self._gfdl_mp_v3_locals.area,
+                h_var=self._gfdl_mp_v3_locals.h_var,
+                table_0=self._saturation_tables.table_0,
+                table_2=self._saturation_tables.table_2,
+                dtable_0=self._saturation_tables.dtable_0,
+                dtable_2=self._saturation_tables.dtable_2,
+            )
