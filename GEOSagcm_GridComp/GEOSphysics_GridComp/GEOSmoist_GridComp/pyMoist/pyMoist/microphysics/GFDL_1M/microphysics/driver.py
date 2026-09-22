@@ -26,7 +26,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFull
 
 
 def cloud_fraction(
-    t: FloatField,
+    t: FloatField64,
     p: FloatField,
     density: FloatField,
     vapor: FloatField,
