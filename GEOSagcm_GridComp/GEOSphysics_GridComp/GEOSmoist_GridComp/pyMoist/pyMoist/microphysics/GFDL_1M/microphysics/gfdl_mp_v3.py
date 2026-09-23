@@ -834,7 +834,7 @@ class GFDLMPV3(NDSLRuntime):
         self._set_value_2d(field=state.precipitation_at_surface.graupel, value=Float(0.0))
 
         # reset gfdl locals to zero
-        self._set_value_2d(field=locals.dcondensatedt, value=Float(0.0))
+        self._set_value_2d(field=locals.dcloud_fractiondt, value=Float(0.0))
         self._set_value(field=state.non_anvil_large_scale.evaporation, value=Float(0.0))
         self._set_value(field=state.non_anvil_large_scale.sublimation, value=Float(0.0))
 

@@ -4,19 +4,23 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt, exp, 
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import copy_2d
+from ndsl.stencils.basic_operations import copy
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import GRAV, ONE_R8, QCMIN, RC, RDGAS, RGRAV, TICE, ZVIR
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import GRAV, ONE_R8, QCMIN, QPMIN, RC, RDGAS, RGRAV, RHOG, RHOH, RHOI, RHOR, RHOS, TICE, ZVIR
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables, GFDLMPV3SaturationTable
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     calc_mhc_lhc,
+    calc_reflectivity_factor,
     moist_heat_capacity_3,
     moist_heat_capacity_4,
+    moist_heat_capacity_6,
     moist_total_energy,
+    terminal_velocity_graupel_rain_snow,
     update_hydrometeors,
     update_hydrometeors_and_temperature,
 )
@@ -557,7 +561,7 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
     local_cloud_fraction: FloatField,
     local_t: FloatField64,
     dp: FloatField,
-    local_dp: FloatField,
+    local_moist_dp_original: FloatField,
     local_dry_dp: FloatField,
     dz: FloatField,
     local_dz: FloatField,
@@ -575,7 +579,7 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
 
     # initialize 64 bit internal field
     with computation(PARALLEL), interval(...):
-        con_r8 = Float64(0.0)
+        con_r8: FloatField64 = 0.0
 
     with computation(PARALLEL), interval(...):
         local_vapor = vapor
@@ -594,10 +598,10 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
             con_r8 = ONE_R8 - local_vapor
 
         # store original moist pressure thickness
-        local_dp = dp
+        local_moist_dp_original = dp
 
         # convert total pressure thickness (dp) to dry air pressure thickness (dry_dp)
-        local_dry_dp = local_dp * con_r8
+        local_dry_dp = local_moist_dp_original * con_r8
 
         # calculate factor to go from specific humidity to dry mixing ratio
         con_r8 = ONE_R8 / con_r8
@@ -612,7 +616,7 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
 
         # dry air density and layer-mean pressure thickness
         local_dz = dz
-        local_density = -local_dp / (GRAV * local_dz)
+        local_density = -local_moist_dp_original / (GRAV * local_dz)
         local_p = local_density * RDGAS * local_t
 
         # for sedi_momentum transport
@@ -621,6 +625,431 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
         local_v = v
         if not HYDROSTATIC:
             local_w = w
+
+
+def radar_reflectivity(
+    t: FloatField64,
+    density: FloatField,
+    density_factor: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    dbz: FloatField,
+):
+    """compute radar reflectivity
+
+    Args:
+        t (FloatField64)
+        density (FloatField)
+        density_factor (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        dbz (FloatField)
+    """
+    from __externals__ import (
+        BLINH,
+        BLING,
+        BLINR,
+        BLINS,
+        CONST_VG,
+        CONST_VR,
+        CONST_VS,
+        DO_HAIL,
+        MUH,
+        MUG,
+        MUR,
+        MUS,
+        RADG_FLAG,
+        RADR_FLAG,
+        RADS_FLAG,
+        RRAH,
+        RRAG,
+        RRAR,
+        RRAS,
+        RRBH,
+        RRBG,
+        RRBR,
+        RRBS,
+        TVAH,
+        TVAG,
+        TVAR,
+        TVAS,
+        TVBH,
+        TVBG,
+        TVBR,
+        TVBS,
+        VH_FAC,
+        VH_MAX,
+        VH_MIN,
+        VG_FAC,
+        VG_MAX,
+        VG_MIN,
+        VR_FAC,
+        VR_MAX,
+        VR_MIN,
+        VS_FAC,
+        VS_MAX,
+        VS_MIN,
+    )
+
+    with computation(PARALLEL), interval(...):
+        # initialize 64 bit internals
+        z_e: FloatField64 = 0.0
+
+    with computation(FORWARD), interval(0, 1):
+        # initialize internal constants
+        alpha: FloatFieldIJ = 0.176 / 0.930
+        mp_const: FloatFieldIJ = 200 * exp(1.6 * log(3.6e6))
+
+    with computation(PARALLEL), interval(...):
+        # init output
+        dbz = -20.0
+
+    with computation(PARALLEL), interval(...):
+        # fall speed
+        if RADR_FLAG == 3:
+            terminal_velocity_rain = terminal_velocity_graupel_rain_snow(
+                rain,
+                density,
+                density_factor,
+                TVAR,
+                TVBR,
+                BLINR,
+                MUR,
+                VR_MIN,
+                VR_MAX,
+                VR_FAC,
+                CONST_VR,
+            )
+            terminal_velocity_rain = terminal_velocity_rain / RHOR
+
+        if RADS_FLAG == 3:
+            terminal_velocity_snow = terminal_velocity_graupel_rain_snow(
+                snow,
+                density,
+                density_factor,
+                TVAS,
+                TVBS,
+                BLINS,
+                MUS,
+                VS_MIN,
+                VS_MAX,
+                VS_FAC,
+                CONST_VS,
+            )
+            terminal_velocity_snow = terminal_velocity_snow / RHOS
+
+        if RADG_FLAG == 3:
+            if DO_HAIL:
+                terminal_velocity_graupel = terminal_velocity_graupel_rain_snow(
+                    graupel,
+                    density,
+                    density_factor,
+                    TVAH,
+                    TVBH,
+                    BLINH,
+                    MUH,
+                    VH_MIN,
+                    VH_MAX,
+                    VH_FAC,
+                    CONST_VG,
+                )
+                terminal_velocity_graupel = terminal_velocity_graupel / RHOH
+            else:
+                terminal_velocity_graupel = terminal_velocity_graupel_rain_snow(
+                    graupel,
+                    density,
+                    density_factor,
+                    TVAG,
+                    TVBG,
+                    BLING,
+                    MUG,
+                    VG_MIN,
+                    VG_MAX,
+                    VG_FAC,
+                    CONST_VG,
+                )
+                terminal_velocity_graupel = terminal_velocity_graupel / RHOG
+
+    with computation(PARALLEL), interval(...):
+        # radar reflectivity
+        z_e = 0.0
+
+        qden = density * rain
+        if rain > QPMIN:
+            fac_r = calc_reflectivity_factor(rain, density, MUR, RRAR, RRBR)
+        else:
+            fac_r = 0.0
+
+        if RADR_FLAG == 1 or RADR_FLAG == 2:
+            z_e = z_e + fac_r * 1.0e18
+
+        if RADR_FLAG == 3:
+            z_e = z_e + mp_const * exp(1.6 * log(qden * terminal_velocity_rain))
+
+        qden = density * snow
+        if snow > QPMIN:
+            fac_s = calc_reflectivity_factor(snow, density, MUS, RRAS, RRBS)
+        else:
+            fac_s = 0.0
+
+        if RADS_FLAG == 1:
+            if t < TICE:
+                z_e = z_e + fac_s * 1.0e18 * alpha * (RHOS / RHOI) ** 2
+            else:
+                z_e = z_e + fac_s * 1.0e18 * alpha * (RHOS / RHOI) ** 2 / alpha
+
+        if RADS_FLAG == 2:
+            if t < TICE:
+                z_e = z_e + fac_s * 1.0e18 * alpha * (RHOS / RHOI) ** 2
+            else:
+                z_e = z_e + fac_s * 1.0e18
+
+        if RADS_FLAG == 3:
+            z_e = z_e + mp_const * exp(1.6 * log(qden * terminal_velocity_snow))
+
+        qden = density * graupel
+        if DO_HAIL:
+            if graupel > QPMIN:
+                fac_g = calc_reflectivity_factor(graupel, density, MUH, RRAH, RRBH)
+            else:
+                fac_g = 0.0
+
+            if RADG_FLAG == 1:
+                if t < TICE:
+                    z_e = z_e + fac_g * 1.0e18 * alpha * (RHOH / RHOI) ** 2
+                else:
+                    z_e = z_e + fac_g * 1.0e18 * alpha * (RHOH / RHOI) ** 2 / alpha
+
+            if RADG_FLAG == 2:
+                if t < TICE:
+                    z_e = z_e + fac_g * 1.0e18 * alpha * (RHOH / RHOI) ** 2
+                else:
+                    z_e = z_e + (fac_g * 1.0e18) ** 0.95
+        else:
+            if graupel > QPMIN:
+                fac_g = calc_reflectivity_factor(graupel, density, MUG, RRAG, RRBG)
+            else:
+                fac_g = 0.0
+
+            if RADG_FLAG == 1:
+                if t < TICE:
+                    z_e = z_e + fac_g * 1.0e18 * alpha * (RHOG / RHOI) ** 2
+                else:
+                    z_e = z_e + fac_g * 1.0e18 * alpha * (RHOG / RHOI) ** 2 / alpha
+
+            if RADG_FLAG == 2:
+                if t < TICE:
+                    z_e = z_e + fac_g * 1.0e18 * alpha * (RHOG / RHOI) ** 2
+                else:
+                    z_e = z_e + (fac_g * 1.0e18) ** 0.95
+
+        if RADG_FLAG == 3:
+            z_e = z_e + mp_const * exp(1.6 * log(qden * terminal_velocity_graupel))
+
+        dbz = 10.0 * log10(max(0.01, z_e))
+
+
+def restore_and_update_humidities(
+    t: FloatField64,
+    dry_dp: FloatField,
+    moist_dp_end: FloatField,
+    moist_dp_original: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    cloud_fraction: FloatField,
+    local_vapor: FloatField,
+    local_ice: FloatField,
+    local_liquid: FloatField,
+    local_graupel: FloatField,
+    local_rain: FloatField,
+    local_snow: FloatField,
+    local_cloud_fraction: FloatField,
+    output_reflectivity: FloatField,
+    local_reflectivity: FloatField,
+    dcloud_fraction_dt: FloatField,
+    local_condensate: FloatField,
+    local_kappa: FloatField,
+):
+    """Use dry_dp (dry mass) and moist_dp_original (initial total mass) to return safely to specific humidities consistent with the host model's current timestep.
+
+    Args:
+        t (FloatField64)
+        dry_dp (FloatField)
+        moist_dp_end (FloatField)
+        moist_dp_original (FloatField)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        cloud_fraction (FloatField)
+        local_vapor (FloatField)
+        local_ice (FloatField)
+        local_liquid (FloatField)
+        local_graupel (FloatField)
+        local_rain (FloatField)
+        local_snow (FloatField)
+        local_cloud_fraction (FloatField)
+        output_reflectivity (FloatField)
+        local_reflectivity (FloatField)
+        dcloud_fraction_dt (FloatField)
+        local_condensate (FloatField)
+        local_kappa (FloatField)
+    """
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, DO_INLINE_MP, DO_QA, DT_INVERSE, MOIST_KAPPA, USE_COND
+
+    with computation(PARALLEL), interval(...):
+        # initialize 64 bit internals
+        con_r8: FloatField64 = 0.0
+        c8: FloatField64 = 0.0
+
+    with computation(PARALLEL), interval(...):
+        # 1. Calculate the NEW total-to-dry mass ratio
+        if DO_INLINE_MP:
+            # If inline MP is used, total mass includes vapor and all condensates.
+            # If not, total mass is just dry air + vapor (condensates are "massless").
+            internal_condensate = local_liquid + local_rain + local_ice + local_snow + local_graupel
+            con_r8 = ONE_R8 + local_vapor + internal_condensate
+        else:
+            con_r8 = ONE_R8 + local_vapor
+
+        # 2. Reconstruct the new moist pressure thickness
+        # dry_dp currently holds the DRY pressure thickness.
+        # set moist_dp_end represent the NEW total moist pressure thickness.
+        moist_dp_end = dry_dp * con_r8
+
+        # 3. Convert water species back to specific humidities
+        # Calculate the reciprocal: (Dry Mass / New Total Mass)
+        con_r8 = ONE_R8 / con_r8
+
+        local_vapor = local_vapor * con_r8
+        local_ice = local_ice * con_r8
+        local_liquid = local_liquid * con_r8
+        local_graupel = local_graupel * con_r8
+        local_rain = local_rain * con_r8
+        local_snow = local_snow * con_r8
+
+        # 4. Calculate the Tracer Dilution Adjustment
+        # Instead of the complex q1/q2 algebraic formula, we use the exact
+        # physical definition of tracer dilution: Old Mass / New Mass.
+        # moist_dp_original is the old total mass, and moist_dp_end is the new total mass.
+        tracer_dilution_adjustment = moist_dp_original / moist_dp_end
+
+        # update the relfectivity field which passed in from the overarching model
+        output_reflectivity = local_reflectivity
+
+        # return cloud fraction tendencies for GEOS
+        if not DO_QA:
+            dcloud_fraction_dt = DT_INVERSE * (cloud_fraction * sqrt(max(local_ice + local_liquid, QCMIN) / max(ice + liquid, QCMIN)) - cloud_fraction)
+        else:
+            cloud_fraction = local_cloud_fraction
+            dcloud_fraction_dt = 0.0
+
+        # update state mixing ratios
+        vapor = local_vapor
+        ice = local_ice
+        liquid = local_liquid
+        graupel = local_graupel
+        rain = local_rain
+        snow = local_snow
+
+        # calculate some more variables needed outside
+        total_liquid = local_liquid + local_rain
+        total_solid = local_ice + local_snow + local_graupel
+        total_condensate = total_liquid + total_solid
+        con_r8 = ONE_R8 - (local_vapor + total_condensate)
+        c8 = moist_heat_capacity_4(con_r8, local_vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
+
+        if USE_COND:
+            local_condensate = total_condensate
+        if MOIST_KAPPA:
+            tmp = RDGAS * (1.0 + ZVIR * local_vapor)
+            local_kappa = tmp / (tmp + c8)
+
+
+def sedi_momentum_part_1(
+    t: FloatField64,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    u: FloatField,
+    local_u: FloatField,
+    v: FloatField,
+    local_v: FloatField,
+):
+    """update t based on u and v from sedimentation
+
+    Args:
+        t (FloatField64)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        u (FloatField)
+        local_u (FloatField)
+        v (FloatField)
+        local_v (FloatField)
+    """
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR
+
+    with computation(PARALLEL), interval(...):
+        # initialize 64 bit internals
+        c: FloatField64 = 0.0
+        t_uv: FloatField64 = 0.0
+
+    with computation(PARALLEL), interval(...):
+        c = moist_heat_capacity_6(vapor, ice, liquid, graupel, rain, snow, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
+        t_uv = 0.5 * (u**2 + v**2 - (local_u**2 + local_v**2)) / c
+        t = t + t_uv
+
+
+def sedi_momentum_part_2(
+    t: FloatField64,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    w: FloatField,
+    local_w: FloatField,
+):
+    """update t based on w from sedimentation
+
+    Args:
+        t (FloatField64)
+        vapor (FloatField)
+        ice (FloatField)
+        liquid (FloatField)
+        graupel (FloatField)
+        rain (FloatField)
+        snow (FloatField)
+        w (FloatField)
+        local_w (FloatField)
+    """
+    from __externals__ import C_AIR, C1_ICE, C1_LIQ, C1_VAP
+
+    with computation(PARALLEL), interval(...):
+        # initialize 64 bit internals
+        c: FloatField64 = 0.0
+        t_w: FloatField64 = 0.0
+
+    with computation(PARALLEL), interval(...):
+        c = moist_heat_capacity_6(vapor, ice, liquid, graupel, rain, snow, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
+        t_w = 0.5 * (w**2 - local_w**2) / c
+        t = t + t_w
 
 
 def set_value_64_bit(field: FloatField64, value: Float64) -> None:
@@ -669,6 +1098,7 @@ def total_energy_and_water(
     # initialize 64 bit internal fields
     with computation(PARALLEL), interval(...):
         cvm: FloatField64 = 0.0
+        con_r8: FloatField64 = 0.0
 
     with computation(PARALLEL), interval(...):
         total_liquid = cloud_liquid + precip_rain
@@ -712,8 +1142,8 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         # compute driver specific constants
         # timesteps
-        driver_dt = gfdl_1m_config.DT_MOIST / mp_namelist.NTIMES
-        dt_inverse = 1 / gfdl_1m_config.DT_MOIST
+        DRIVER_DT = gfdl_1m_config.DT_MOIST / mp_namelist.NTIMES
+        DT_INVERSE = 1 / gfdl_1m_config.DT_MOIST
         # conversion factor to mm/day
         CONV_FACTOR = 86400.0 * RGRAV / gfdl_1m_config.DT_MOIST
 
@@ -726,7 +1156,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._saturation_tables = saturation_tables
 
         # initialize subcomponents
-        self._mp_full = MPFull(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
+        self._mp_full = MPFull(stencil_factory, quantity_factory, saturation_tables, mp_config, mp_namelist, CONV_FACTOR, DRIVER_DT)
 
         # construct stencils
         self._cloud_fraction = stencil_factory.from_dims_halo(
@@ -779,6 +1209,10 @@ class GFDLMPV3Driver(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DO_INLINE_MP": mp_config.DO_INLINE_MP},
         )
+        self._copy = stencil_factory.from_dims_halo(
+            func=copy,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
         self._copy_2d = stencil_factory.from_dims_halo(
             func=copy_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -820,6 +1254,90 @@ class GFDLMPV3Driver(NDSLRuntime):
             externals={
                 "DO_INLINE_MP": mp_config.DO_INLINE_MP,
                 "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+            },
+        )
+        self._radar_reflectivity = stencil_factory.from_dims_halo(
+            func=radar_reflectivity,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "BLINH": mp_namelist.BLINH,
+                "BLING": mp_namelist.BLING,
+                "BLINR": mp_namelist.BLINR,
+                "BLINS": mp_namelist.BLINS,
+                "CONST_VG": mp_namelist.CONST_VG,
+                "CONST_VR": mp_namelist.CONST_VR,
+                "CONST_VS": mp_namelist.CONST_VS,
+                "DO_HAIL": mp_namelist.DO_HAIL,
+                "MUH": mp_namelist.MUH,
+                "MUG": mp_namelist.MUG,
+                "MUR": mp_namelist.MUR,
+                "MUS": mp_namelist.MUS,
+                "RADG_FLAG": mp_namelist.RADG_FLAG,
+                "RADR_FLAG": mp_namelist.RADR_FLAG,
+                "RADS_FLAG": mp_namelist.RADS_FLAG,
+                "RRAH": mp_config.RRAH,
+                "RRAG": mp_config.RRAG,
+                "RRAR": mp_config.RRAR,
+                "RRAS": mp_config.RRAS,
+                "RRBH": mp_config.RRBH,
+                "RRBG": mp_config.RRBG,
+                "RRBR": mp_config.RRBR,
+                "RRBS": mp_config.RRBS,
+                "TVAH": mp_config.TVAH,
+                "TVAG": mp_config.TVAG,
+                "TVAR": mp_config.TVAR,
+                "TVAS": mp_config.TVAS,
+                "TVBH": mp_config.TVBH,
+                "TVBG": mp_config.TVBG,
+                "TVBR": mp_config.TVBR,
+                "TVBS": mp_config.TVBS,
+                "VH_FAC": mp_namelist.VH_FAC,
+                "VH_MAX": mp_namelist.VH_MAX,
+                "VH_MIN": mp_namelist.VH_MIN,
+                "VG_FAC": mp_namelist.VG_FAC,
+                "VG_MAX": mp_namelist.VG_MAX,
+                "VG_MIN": mp_namelist.VG_MIN,
+                "VR_FAC": mp_namelist.VR_FAC,
+                "VR_MAX": mp_namelist.VR_MAX,
+                "VR_MIN": mp_namelist.VR_MIN,
+                "VS_FAC": mp_namelist.VS_FAC,
+                "VS_MAX": mp_namelist.VS_MAX,
+                "VS_MIN": mp_namelist.VS_MIN,
+            },
+        )
+        self._restore_and_update_humidities = stencil_factory.from_dims_halo(
+            func=restore_and_update_humidities,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
+                "C_AIR": mp_config.C_AIR,
+                "DO_INLINE_MP": mp_config.DO_INLINE_MP,
+                "DO_QA": mp_namelist.DO_QA,
+                "DT_INVERSE": DT_INVERSE,
+                "MOIST_KAPPA": mp_config.MOIST_KAPPA,
+                "USE_COND": mp_config.USE_COND,
+            },
+        )
+        self._sedi_momentum_part_1 = stencil_factory.from_dims_halo(
+            func=sedi_momentum_part_1,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
+                "C_AIR": mp_config.C_AIR,
+            },
+        )
+        self._sedi_momentum_part_2 = stencil_factory.from_dims_halo(
+            func=sedi_momentum_part_2,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
+                "C_AIR": mp_config.C_AIR,
             },
         )
         self._set_value = stencil_factory.from_dims_halo(
@@ -945,7 +1463,6 @@ class GFDLMPV3Driver(NDSLRuntime):
             self._total_energy_and_water(
                 t_local=self._gfdl_mp_v3_locals.t_local,
                 total_energy=self._gfdl_mp_v3_locals.total_energy_beg_m,
-                dtotal_energy=self._gfdl_mp_v3_locals.total_energy.delta,
                 total_water=self._gfdl_mp_v3_locals.total_water_beg_m,
                 total_energy_b=self._gfdl_mp_v3_locals.total_energy_b_beg_m,
                 total_water_b=self._gfdl_mp_v3_locals.total_water_b_beg_m,
@@ -965,6 +1482,7 @@ class GFDLMPV3Driver(NDSLRuntime):
                 precip_rain=state.precipitation_at_surface.rain,
                 precip_snow=state.precipitation_at_surface.snow,
                 precip_graupel=state.precipitation_at_surface.graupel,
+                dtotal_energy=self._gfdl_mp_v3_locals.total_energy.delta,
                 sen=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
                 stress=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
                 moist_q=True,
@@ -997,7 +1515,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             local_cloud_fraction=self._gfdl_mp_v3_locals.cloud_fraction,
             local_t=self._gfdl_mp_v3_locals.t,
             dp=gfdl_1m_locals.dp,
-            local_dp=self._gfdl_mp_v3_locals.dp,
+            local_moist_dp_original=self._gfdl_mp_v3_locals.moist_dp_original,
             local_dry_dp=self._gfdl_mp_v3_locals.dry_dp,
             dz=gfdl_1m_locals.layer_thickness_negative,
             local_dz=self._gfdl_mp_v3_locals.dz,
@@ -1066,7 +1584,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._horizontal_subgrid_variation(h_var=self._gfdl_mp_v3_locals.h_var, critical_relative_humidity_for_pdf=state.critical_relative_humidity_for_pdf)
 
         # -----------------------------------------------------------------------
-        # fix negative water species from outside
+        # fix negative water species
         # -----------------------------------------------------------------------
         if self._mp_namelist.FIX_NEGATIVE:
             self._fix_negative_water_species(
@@ -1088,12 +1606,12 @@ class GFDLMPV3Driver(NDSLRuntime):
         # -----------------------------------------------------------------------
         if self._mp_config.DO_MP_FAST:
             ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of DO_MP_FAST option has not been implemented, please use DO_MP_FAST instead. "
-                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 fast microphysics with DO_MP_FAST = True has not been implemented, use DO_MP_FULL = True instead. "
+                "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
             raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of DO_MP_FAST option has not been implemented, please use DO_MP_FAST instead. "
-                "This should have been caught by the configuration checker - this error should never be triggered. There are multiple problems."
+                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 fast microphysics with DO_MP_FAST = True has not been implemented, use DO_MP_FULL = True instead. "
+                "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
 
         # -----------------------------------------------------------------------
@@ -1123,4 +1641,187 @@ class GFDLMPV3Driver(NDSLRuntime):
                 table_2=self._saturation_tables.table_2,
                 dtable_0=self._saturation_tables.dtable_0,
                 dtable_2=self._saturation_tables.dtable_2,
+            )
+
+        # -----------------------------------------------------------------------
+        # radar reflectivity diagnostic
+        # -----------------------------------------------------------------------
+        if self._mp_namelist.DO_REF and self._mp_config.LAST_STEP:
+            self._radar_reflectivity(
+                t=self._gfdl_mp_v3_locals.t,
+                density=self._gfdl_mp_v3_locals.density,
+                density_factor=self._gfdl_mp_v3_locals.density_factor,
+                graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                dbz=self._gfdl_mp_v3_locals.reflectivity,
+            )
+
+        # =======================================================================
+        # calculation of particle concentration (pc), effective diameter (ed),
+        # optical extinction (oe), radar reflectivity factor (rr), and
+        # mass-weighted terminal velocity (tv)
+        # =======================================================================
+        if self._mp_namelist.DO_MP_DIAG:
+            ndsl_log.error(
+                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_MP_DIAG = True option has not been implemented. "
+                "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
+            )
+            raise ValueError(
+                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_MP_DIAG = True option has not been implemented. "
+                "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
+            )
+
+        # -----------------------------------------------------------------------
+        # momentum transportation during sedimentation
+        # update temperature before delp and q update
+        # -----------------------------------------------------------------------
+        if self._mp_namelist.DO_SEDI_UV and self._mp_namelist.DO_SEDI_HEAT:
+            self._sedi_momentum_part_1(
+                t=self._gfdl_mp_v3_locals.t,
+                vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                u=state.u,
+                local_u=self._gfdl_mp_v3_locals.u,
+                v=state.v,
+                local_v=self._gfdl_mp_v3_locals.v,
+            )
+            self._sedi_momentum_part_2(
+                t=self._gfdl_mp_v3_locals.t,
+                vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                w=state.w,
+                local_w=self._gfdl_mp_v3_locals.w,
+            )
+
+        # -----------------------------------------------------------------------
+        # total_energy_checker
+        # -----------------------------------------------------------------------
+        if self._mp_namelist.CONSV_CHECKER:
+            self._total_energy_and_water(
+                t_local=self._gfdl_mp_v3_locals.t,
+                total_energy=self._gfdl_mp_v3_locals.total_energy.end_d,
+                total_water=self._gfdl_mp_v3_locals.total_water.end_d,
+                total_energy_b=self._gfdl_mp_v3_locals.total_energy.b_end_d,
+                total_water_b=self._gfdl_mp_v3_locals.total_water.b_end_d,
+                u=self._gfdl_mp_v3_locals.u,
+                v=self._gfdl_mp_v3_locals.v,
+                w=self._gfdl_mp_v3_locals.w,
+                dp=self._gfdl_mp_v3_locals.dry_dp,
+                cloud_vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                cloud_ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                cloud_liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                cloud_rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                cloud_snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                vapor=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
+                precip_ice=state.precipitation_at_surface.ice,
+                precip_liquid=state.precipitation_at_surface.water,
+                precip_rain=state.precipitation_at_surface.rain,
+                precip_snow=state.precipitation_at_surface.snow,
+                precip_graupel=state.precipitation_at_surface.graupel,
+                dtotal_energy=self._gfdl_mp_v3_locals.total_energy.delta,
+                sen=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
+                stress=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
+                moist_q=False,
+                save_te_loss=True,
+                total_energy_loss=self._gfdl_mp_v3_locals.total_energy.loss,
+            )
+
+
+        # -----------------------------------------------------------------------
+        # fix negative water species
+        # -----------------------------------------------------------------------
+        if self._mp_namelist.FIX_NEGATIVE:
+            self._fix_negative_water_species(
+                t=self._gfdl_mp_v3_locals.t,
+                dry_dp=self._gfdl_mp_v3_locals.dry_dp,
+                vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=self._gfdl_mp_v3_locals.cloud_fraction,
+                mppcw=self._gfdl_mp_v3_locals.mppcw,
+                mppfr=self._gfdl_mp_v3_locals.mppfr,
+            )
+
+        # -----------------------------------------------------------------------
+        # update state fields
+        # -----------------------------------------------------------------------
+        self._restore_and_update_humidities(
+            t=self._gfdl_mp_v3_locals.t,
+            dry_dp=self._gfdl_mp_v3_locals.dry_dp,
+            moist_dp_end=self._gfdl_mp_v3_locals.moist_dp_end,
+            moist_dp_original=self._gfdl_mp_v3_locals.moist_dp_original,
+            vapor=state.radiation_field.vapor,
+            ice=state.radiation_field.ice,
+            liquid=state.radiation_field.liquid,
+            graupel=state.radiation_field.graupel,
+            rain=state.radiation_field.rain,
+            snow=state.radiation_field.snow,
+            cloud_fraction=state.radiation_field.cloud_fraction,
+            local_vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+            local_ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+            local_liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+            local_graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+            local_rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+            local_snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+            local_cloud_fraction=self._gfdl_mp_v3_locals.cloud_fraction,
+            output_reflectivity=gfdl_1m_locals.reflectivity,
+            local_reflectivity=self._gfdl_mp_v3_locals.reflectivity,
+            dcloud_fraction_dt=gfdl_1m_locals.dcloud_fraction_dt,
+            local_condensate=self._gfdl_mp_v3_locals.condensate,
+            local_kappa=self._gfdl_mp_v3_locals.kappa,
+        )
+
+        if self._mp_namelist.DO_SEDI_UV:
+            self._copy(input=self._gfdl_mp_v3_locals.u, output=state.u)
+            self._copy(input=self._gfdl_mp_v3_locals.v, output=state.v)
+
+        if self._mp_namelist.DO_SEDI_W:
+            self._copy(input=self._gfdl_mp_v3_locals.w, output=state.w)
+
+
+        # -----------------------------------------------------------------------
+        # total_energy_checker
+        # -----------------------------------------------------------------------
+        if self._mp_namelist.CONSV_CHECKER:
+            self._total_energy_and_water(
+                t_local=self._gfdl_mp_v3_locals.t,
+                total_energy=self._gfdl_mp_v3_locals.total_energy.end_m,
+                total_water=self._gfdl_mp_v3_locals.total_water.end_m,
+                total_energy_b=self._gfdl_mp_v3_locals.total_energy.b_end_m,
+                total_water_b=self._gfdl_mp_v3_locals.total_water.b_end_m,
+                u=self._gfdl_mp_v3_locals.u,
+                v=self._gfdl_mp_v3_locals.v,
+                w=self._gfdl_mp_v3_locals.w,
+                dp=self._gfdl_mp_v3_locals.moist_dp_end,
+                cloud_vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+                cloud_ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+                cloud_liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+                cloud_rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+                cloud_snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+                vapor=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
+                precip_ice=state.precipitation_at_surface.ice,
+                precip_liquid=state.precipitation_at_surface.water,
+                precip_rain=state.precipitation_at_surface.rain,
+                precip_snow=state.precipitation_at_surface.snow,
+                precip_graupel=state.precipitation_at_surface.graupel,
+                dtotal_energy=self._gfdl_mp_v3_locals.total_energy.delta,
+                sen=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
+                stress=self._all_zeros_no_write_3d,  # NOTE this may break, since the same field is being passed multiple times
+                moist_q=True,
+                save_te_loss=False,
+                total_energy_loss=self._dummy_field_no_read_no_write_2d_64_bit,
             )

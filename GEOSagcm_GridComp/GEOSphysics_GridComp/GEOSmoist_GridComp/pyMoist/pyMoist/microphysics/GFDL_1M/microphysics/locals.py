@@ -31,6 +31,14 @@ class GFDLMPV3Locals(LocalState):
             "dtype": Float,
         }
     )
+    condensate: Local = dataclasses.field(
+        metadata={
+            "name": "condensate",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
     convection_fraction: Local = dataclasses.field(
         metadata={
             "name": "convection_fraction",
@@ -98,6 +106,14 @@ class GFDLMPV3Locals(LocalState):
     h_var: Local = dataclasses.field(
         metadata={
             "name": "h_var",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    kappa: Local = dataclasses.field(
+        metadata={
+            "name": "kappa",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "dtype": Float,

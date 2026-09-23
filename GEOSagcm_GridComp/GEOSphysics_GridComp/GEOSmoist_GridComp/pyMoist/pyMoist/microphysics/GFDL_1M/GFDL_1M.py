@@ -160,7 +160,7 @@ class GFDL1M(NDSLRuntime):
         self._flip_sign(input=self._locals.layer_thickness, output=self._locals.layer_thickness_negative)
 
         # zero out GFDLMPV3 outputs
-        self._set_value(field=self._locals.dcondensatedt, value=Float(0.0))
+        self._set_value(field=self._locals.dcloud_fractiondt, value=Float(0.0))
         self._set_value_k_interface(fleid=state.non_anvil_large_scale.ice_precip_flux, value=Float(0.0))
         self._set_value_k_interface(fleid=state.non_anvil_large_scale.liquid_precip_flux, value=Float(0.0))
 
