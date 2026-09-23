@@ -63,14 +63,6 @@ class GFDLMPV3Locals(LocalState):
             "dtype": Float,
         }
     )
-    dp: Local = dataclasses.field(
-        metadata={
-            "name": "dp",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "dtype": Float,
-        }
-    )
     dry_dp: Local = dataclasses.field(
         metadata={
             "name": "dry_dp",
@@ -106,6 +98,22 @@ class GFDLMPV3Locals(LocalState):
     h_var: Local = dataclasses.field(
         metadata={
             "name": "h_var",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    moist_dp_original: Local = dataclasses.field(
+        metadata={
+            "name": "moist_dp_original",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    moist_dp_end: Local = dataclasses.field(
+        metadata={
+            "name": "moist_dp_end",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
             "dtype": Float,
