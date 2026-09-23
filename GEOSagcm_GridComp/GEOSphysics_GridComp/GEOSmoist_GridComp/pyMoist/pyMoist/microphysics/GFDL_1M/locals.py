@@ -7,27 +7,27 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclasses.dataclass
 class GFDL1MLocals(LocalState):
-    reflectivity: Local = dataclasses.field(
+    dcloud_fraction_dt: Local = dataclasses.field(
         metadata={
-            "name": "reflectivity",
-            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
-            "units": "dBZ",
-            "dtype": Float,
-        }
-    )
-    p_interface_mb: Local = dataclasses.field(
-        metadata={
-            "name": "p_interface_mb",
-            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
-            "units": "millibars",
-            "dtype": Float,
-        }
-    )
-    p_mb: Local = dataclasses.field(
-        metadata={
-            "name": "p_mb",
+            "name": "dcloud_fraction_dt",
             "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "millibars",
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    dp: Local = dataclasses.field(
+        metadata={
+            "name": "dp",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "Pa",
+            "dtype": Float,
+        }
+    )
+    dsaturation_specific_humidity: Local = dataclasses.field(
+        metadata={
+            "name": "dsaturation_specific_humidity",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -63,14 +63,15 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
-    dp: Local = dataclasses.field(
+    lcl_level: Local = dataclasses.field(
         metadata={
-            "name": "dp",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "Pa",
-            "dtype": Float,
+            "name": "lcl_level",
+            "dims": [I_DIM, J_DIM],
+            "units": "?",
+            "dtype": Int,
         }
     )
+    lid_level: Int = -999
     mass: Local = dataclasses.field(
         metadata={
             "name": "mass",
@@ -84,6 +85,46 @@ class GFDL1MLocals(LocalState):
             "name": "mass_inverse",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "kg m-2",
+            "dtype": Float,
+        }
+    )
+    p_interface_mb: Local = dataclasses.field(
+        metadata={
+            "name": "p_interface_mb",
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "millibars",
+            "dtype": Float,
+        }
+    )
+    p_mb: Local = dataclasses.field(
+        metadata={
+            "name": "p_mb",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "millibars",
+            "dtype": Float,
+        }
+    )
+    reflectivity: Local = dataclasses.field(
+        metadata={
+            "name": "reflectivity",
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "dBZ",
+            "dtype": Float,
+        }
+    )
+    saturation_specific_humidity: Local = dataclasses.field(
+        metadata={
+            "name": "saturation_specific_humidity",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    temporary_3d: Local = dataclasses.field(
+        metadata={
+            "name": "temporary_3d",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "N/A",
             "dtype": Float,
         }
     )
@@ -103,44 +144,3 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
-    saturation_specific_humidity: Local = dataclasses.field(
-        metadata={
-            "name": "saturation_specific_humidity",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "dtype": Float,
-        }
-    )
-    dsaturation_specific_humidity: Local = dataclasses.field(
-        metadata={
-            "name": "dsaturation_specific_humidity",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "dtype": Float,
-        }
-    )
-    dcondensatedt: Local = dataclasses.field(
-        metadata={
-            "name": "dcondensate_dt",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "dtype": Float,
-        }
-    )
-    temporary_3d: Local = dataclasses.field(
-        metadata={
-            "name": "temporary_3d",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "N/A",
-            "dtype": Float,
-        }
-    )
-    lcl_level: Local = dataclasses.field(
-        metadata={
-            "name": "lcl_level",
-            "dims": [I_DIM, J_DIM],
-            "units": "?",
-            "dtype": Int,
-        }
-    )
-    lid_level: Int = -999
