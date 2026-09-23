@@ -812,6 +812,7 @@ class GFDLMPV3(NDSLRuntime):
         check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QG", namelist.DO_SEDI_MELT_QG, False)
         check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QI", namelist.DO_SEDI_MELT_QI, False)
         check_param("GFDLMPV3NamelistConfig.DO_SEDI_MELT_QS", namelist.DO_SEDI_MELT_QS, False)
+        check_param("GFDLMPV3NamelistConfig.DO_MP_DIAG", namelist.DO_MP_DIAG, False)
         check_param("GFDLMPV3NamelistConfig.DO_HAIL", namelist.DO_HAIL, False)
         check_param_in("GFDLMPV3NamelistConfig.IFFLAG", namelist.IFFLAG, [1, 2, 3, 4])
         check_param_in("GFDLMPV3NamelistConfig.SEDFLAG", namelist.SEDFLAG, [1, 2, 3, 4], implemented=[1])

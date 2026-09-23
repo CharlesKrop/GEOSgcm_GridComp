@@ -399,6 +399,22 @@ class GFDLMPV3Locals(LocalState):
             "dtype": Float64,
         }
     )
+    total_liquid: Local = dataclasses.field(
+        metadata={
+            "name": "total_liquid",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    total_solid: Local = dataclasses.field(
+        metadata={
+            "name": "total_solid",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
     tracer_dilution_adjustment: Local = dataclasses.field(
         metadata={
             "name": "tracer_dilution_adjustment",
@@ -570,7 +586,7 @@ class GFDLMPV3Locals(LocalState):
                 "name": "magnitude",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
-                "dtype": Float64,
+                "dtype": Float,
             }
         )
 

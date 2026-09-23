@@ -9,7 +9,26 @@ from ndsl.stencils.basic_operations import copy
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import GRAV, ONE_R8, QCMIN, QPMIN, RC, RDGAS, RGRAV, RHOG, RHOH, RHOI, RHOR, RHOS, TICE, ZVIR
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import (
+    C_ICE,
+    C_LIQ,
+    CP_AIR,
+    CP_VAP,
+    GRAV,
+    ONE_R8,
+    QCMIN,
+    QPMIN,
+    RC,
+    RDGAS,
+    RGRAV,
+    RHOG,
+    RHOH,
+    RHOI,
+    RHOR,
+    RHOS,
+    TICE,
+    ZVIR,
+)
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables, GFDLMPV3SaturationTable
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
@@ -27,6 +46,49 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, sigma
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFull
+
+
+def calculate_base_total_energy(
+    t: FloatField64,
+    dp: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    total_energy: FloatField,
+):
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, CONSV_TE, HYDROSTATIC
+
+    with computation(PARALLEL), interval(...):
+        if CONSV_TE:
+            if HYDROSTATIC:
+                total_energy = -C_AIR * t * dp
+
+            else:
+                total_energy = -moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, True) * GRAV
+
+
+def calculate_total_energy_change(
+    t: FloatField64,
+    dp: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    total_energy: FloatField,
+):
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, CONSV_TE, HYDROSTATIC
+
+    with computation(PARALLEL), interval(...):
+        if CONSV_TE:
+            if HYDROSTATIC:
+                total_energy = total_energy + C_AIR * t * dp
+            else:
+                total_energy = total_energy + moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, True) * GRAV
 
 
 def cloud_fraction(
@@ -271,7 +333,7 @@ def compute_one_minus_sigma(one_minus_sigma: FloatFieldIJ, area: FloatFieldIJ):
             one_minus_sigma = 1.0
 
 
-def convert_temperature(
+def convert_temperature_start(
     t_state: FloatField,
     t_local: FloatField64,
     vapor: FloatField,
@@ -291,7 +353,48 @@ def convert_temperature(
             t_local = t_state
 
 
-def compute_total_energy(
+def convert_temperature_end(
+    t_state: FloatField,
+    t_local: FloatField,
+    vapor: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    total_liquid: FloatField,
+    total_solid: FloatField,
+):
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, CP_HEATING, DO_INLINE_MP
+
+    with computation(PARALLEL), interval(...):
+        # initialize 64 bit internals
+        c8: FloatField64 = 0.0
+        cp8: FloatField64 = 0.0
+        con_r8: FloatField64 = 0.0
+
+    with computation(PARALLEL), interval(...):
+        if DO_INLINE_MP:
+            total_condensate = liquid + rain + ice + snow + graupel
+            if CP_HEATING:
+                con_r8 = ONE_R8 - (vapor + total_condensate)
+                c8 = moist_heat_capacity_4(con_r8, vapor, total_liquid, total_solid) * C_AIR
+                cp8 = con_r8 * CP_AIR + vapor * CP_VAP + total_liquid * C_LIQ + total_solid * C_ICE
+                dz = dz / t_state
+                t_state = t_state + (t_local * ((1.0 + ZVIR * vapor) * (1.0 - total_condensate)) - t_state) * c8 / cp8
+                dz = dz * t_state
+            else:
+                t_state = t_local * ((1.0 + ZVIR * vapor) * (1.0 - total_condensate))
+        else:
+            total_liquid = liquid + rain
+            total_solid = ice + snow + graupel
+            total_condensate = total_liquid + total_solid
+            con_r8 = ONE_R8 - (vapor + total_condensate)
+            c8 = moist_heat_capacity_4(con_r8, vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
+            t_state = t_state + (t_local - t_state) * c8 / CP_AIR
+
+
+def compute_total_energy_change(
     total_energy: FloatField,
     t_local: FloatField,
     dp: FloatField,
@@ -875,6 +978,8 @@ def restore_and_update_humidities(
     dcloud_fraction_dt: FloatField,
     local_condensate: FloatField,
     local_kappa: FloatField,
+    local_total_liquid: FloatField,
+    local_total_solid: FloatField,
 ):
     """Use dry_dp (dry mass) and moist_dp_original (initial total mass) to return safely to specific humidities consistent with the host model's current timestep.
 
@@ -902,6 +1007,8 @@ def restore_and_update_humidities(
         dcloud_fraction_dt (FloatField)
         local_condensate (FloatField)
         local_kappa (FloatField)
+        local_total_liquid (FloatField)
+        local_total_solid (FloatField)
     """
     from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, DO_INLINE_MP, DO_QA, DT_INVERSE, MOIST_KAPPA, USE_COND
 
@@ -961,11 +1068,11 @@ def restore_and_update_humidities(
         snow = local_snow
 
         # calculate some more variables needed outside
-        total_liquid = local_liquid + local_rain
-        total_solid = local_ice + local_snow + local_graupel
-        total_condensate = total_liquid + total_solid
+        local_total_liquid = local_liquid + local_rain
+        local_total_solid = local_ice + local_snow + local_graupel
+        total_condensate = local_total_liquid + local_total_solid
         con_r8 = ONE_R8 - (local_vapor + total_condensate)
-        c8 = moist_heat_capacity_4(con_r8, local_vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
+        c8 = moist_heat_capacity_4(con_r8, local_vapor, local_total_liquid, local_total_solid, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
 
         if USE_COND:
             local_condensate = total_condensate
@@ -1192,8 +1299,8 @@ class GFDLMPV3Driver(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DO_SCALE_DEP": mp_namelist.DO_SCALE_DEP},
         )
-        self._compute_total_energy = stencil_factory.from_dims_halo(
-            func=compute_total_energy,
+        self._calculate_base_total_energy = stencil_factory.from_dims_halo(
+            func=calculate_base_total_energy,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONSV_TE": mp_config.CONSV_TE,
@@ -1204,10 +1311,34 @@ class GFDLMPV3Driver(NDSLRuntime):
                 "C1_ICE": mp_config.C1_ICE,
             },
         )
-        self._convert_temperature = stencil_factory.from_dims_halo(
-            func=convert_temperature,
+        self._calculate_total_energy_change = stencil_factory.from_dims_halo(
+            func=calculate_total_energy_change,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "CONSV_TE": mp_config.CONSV_TE,
+                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+                "C_AIR": mp_config.C_AIR,
+                "C1_VAP": mp_config.C1_VAP,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_ICE": mp_config.C1_ICE,
+            },
+        )
+        self._convert_temperature_start = stencil_factory.from_dims_halo(
+            func=convert_temperature_start,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DO_INLINE_MP": mp_config.DO_INLINE_MP},
+        )
+        self._convert_temperature_end = stencil_factory.from_dims_halo(
+            func=convert_temperature_end,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
+                "C_AIR": mp_config.C_AIR,
+                "CP_HEATING": mp_namelist.CP_HEATING,
+                "DO_INLINE_MP": mp_config.DO_INLINE_MP,
+            },
         )
         self._copy = stencil_factory.from_dims_halo(
             func=copy,
@@ -1430,7 +1561,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         # -----------------------------------------------------------------------
         # conversion of temperature
         # -----------------------------------------------------------------------
-        self._convert_temperature(
+        self._convert_temperature_start(
             t_state=state.t,
             t_local=self._gfdl_mp_v3_locals.t,
             vapor=state.radiation_field.vapor,
@@ -1444,16 +1575,16 @@ class GFDLMPV3Driver(NDSLRuntime):
         # -----------------------------------------------------------------------
         # calculate base total energy
         # -----------------------------------------------------------------------
-        self._compute_total_energy(
-            total_energy=self._gfdl_mp_v3_locals.total_energy.magnitude,
-            t_local=self._gfdl_mp_v3_locals.t,
+        self._calculate_base_total_energy(
+            t=self._gfdl_mp_v3_locals.t,
             dp=gfdl_1m_locals.dp,
             vapor=state.radiation_field.vapor,
             ice=state.radiation_field.ice,
             liquid=state.radiation_field.liquid,
             graupel=state.radiation_field.graupel,
-            snow=state.radiation_field.snow,
             rain=state.radiation_field.rain,
+            snow=state.radiation_field.snow,
+            total_energy=self._gfdl_mp_v3_locals.total_energy.magnitude,
         )
 
         # -----------------------------------------------------------------------
@@ -1736,7 +1867,6 @@ class GFDLMPV3Driver(NDSLRuntime):
                 total_energy_loss=self._gfdl_mp_v3_locals.total_energy.loss,
             )
 
-
         # -----------------------------------------------------------------------
         # fix negative water species
         # -----------------------------------------------------------------------
@@ -1782,6 +1912,8 @@ class GFDLMPV3Driver(NDSLRuntime):
             dcloud_fraction_dt=gfdl_1m_locals.dcloud_fraction_dt,
             local_condensate=self._gfdl_mp_v3_locals.condensate,
             local_kappa=self._gfdl_mp_v3_locals.kappa,
+            local_total_liquid=self._gfdl_mp_v3_locals.total_liquid,
+            local_total_solid=self._gfdl_mp_v3_locals.total_solid,
         )
 
         if self._mp_namelist.DO_SEDI_UV:
@@ -1790,7 +1922,6 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         if self._mp_namelist.DO_SEDI_W:
             self._copy(input=self._gfdl_mp_v3_locals.w, output=state.w)
-
 
         # -----------------------------------------------------------------------
         # total_energy_checker
@@ -1824,4 +1955,45 @@ class GFDLMPV3Driver(NDSLRuntime):
                 moist_q=True,
                 save_te_loss=False,
                 total_energy_loss=self._dummy_field_no_read_no_write_2d_64_bit,
+            )
+
+        # -----------------------------------------------------------------------
+        # calculate total energy loss or gain
+        # -----------------------------------------------------------------------
+        self._calculate_total_energy_change(
+            t=self._gfdl_mp_v3_locals.t,
+            dp=self._gfdl_mp_v3_locals.moist_dp_end,
+            vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+            total_energy=self._gfdl_mp_v3_locals.total_energy.magnitude,
+        )
+
+        # -----------------------------------------------------------------------
+        # conversion of temperature
+        # -----------------------------------------------------------------------
+        self._convert_temperature_end(
+            t_state=state.t,
+            t_local=self._gfdl_mp_v3_locals.t,
+            vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
+            total_liquid=self._gfdl_mp_v3_locals.total_liquid,
+            total_solid=self._gfdl_mp_v3_locals.total_solid,
+        )
+
+        # -----------------------------------------------------------------------
+        # total energy checker
+        # -----------------------------------------------------------------------
+        if self._mp_namelist.CONSV_CHECKER:
+            ndsl_log.debug(
+                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with CONSV_CHECKER = True has a series of prints at the end of GFDLMPV3Driver (mpdrv in Fortran) "
+                "which have not been ported. NDSL has other debug tools which should replace this, but it can also be recreated using DaCe orchestration of "
+                "standard Python code. Contact the DSL support team for assistance."
             )
