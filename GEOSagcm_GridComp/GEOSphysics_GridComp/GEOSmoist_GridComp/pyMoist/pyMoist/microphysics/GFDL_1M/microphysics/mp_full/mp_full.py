@@ -183,10 +183,10 @@ class MPFull:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         saturation_tables: GFDLMPV3Tables,
-        gfdl_1m_config: GFDL1MConfig,
         mp_config: GFDLMPV3CloudMPConfig,
         mp_namelist: GFDLMPV3NamelistConfig,
         CONV_FACTOR: Float,
+        DRIVER_DT: Float,
     ):
 
         # initialize subcomponents
@@ -196,9 +196,9 @@ class MPFull:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"CONV_FACTOR": CONV_FACTOR},
         )
-        self._warm_rain = WarmRain(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
-        self._ice_cloud = IceCloud(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
-        self._subgrid_processes = SubgridProcesses(stencil_factory, quantity_factory, saturation_tables, gfdl_1m_config, mp_config, mp_namelist, CONV_FACTOR)
+        self._warm_rain = WarmRain(stencil_factory, quantity_factory, saturation_tables, mp_config, mp_namelist, CONV_FACTOR, DRIVER_DT)
+        self._ice_cloud = IceCloud(stencil_factory, quantity_factory, saturation_tables, mp_config, mp_namelist, CONV_FACTOR, DRIVER_DT)
+        self._subgrid_processes = SubgridProcesses(stencil_factory, quantity_factory, saturation_tables, mp_config, mp_namelist, CONV_FACTOR, DRIVER_DT)
 
         # initialize MPFull locals
         self._mp_full_locals = MPFullLocals.make_locals(quantity_factory)
