@@ -474,10 +474,10 @@ class WarmRain:
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         saturation_tables: GFDLMPV3Tables,
-        gfdl_1m_config: GFDL1MConfig,
         mp_config: GFDLMPV3CloudMPConfig,
         mp_namelist: GFDLMPV3NamelistConfig,
         CONV_FACTOR: Float,
+        DRIVER_DT: Float,
     ):
         # make config and tables visible at runtime
         self._mp_config = mp_config
@@ -499,7 +499,7 @@ class WarmRain:
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
                 "DO_QA": mp_namelist.DO_QA,
-                "DT": gfdl_1m_config.DT_MOIST,
+                "DT": DRIVER_DT,
                 "LI00": mp_config.LI00,
                 "LI20": mp_config.LI20,
                 "LV00": mp_config.LV00,
@@ -520,7 +520,7 @@ class WarmRain:
                 "CRACW": mp_config.CRACW,
                 "DO_3D_ACC_CLIQ": mp_namelist.DO_3D_ACC_CLIQ,
                 "DO_QA": mp_namelist.DO_QA,
-                "DT": gfdl_1m_config.DT_MOIST,
+                "DT": DRIVER_DT,
                 "MUR": mp_namelist.MUR,
                 "T_WFR": mp_config.T_WFR,
                 "VDIFFFLAG": mp_namelist.VDIFFFLAG,
@@ -543,7 +543,7 @@ class WarmRain:
                 "CONV_FACTOR": CONV_FACTOR,
                 "DO_PSD_WATER_NUM": mp_namelist.DO_PSD_WATER_NUM,
                 "DO_QA": mp_namelist.DO_QA,
-                "DT": gfdl_1m_config.DT_MOIST,
+                "DT": DRIVER_DT,
                 "IN_CLOUD_LIQ": mp_namelist.IN_CLOUD_LIQ,
                 "IRAIN_F": mp_namelist.IRAIN_F,
                 "MUW": mp_namelist.MUW,
