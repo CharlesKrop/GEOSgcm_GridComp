@@ -10,6 +10,7 @@ from pyTurbulence.SHOCMF.state import SHOCMFState
 import pyTurbulence.constants as constants
 from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
 from pyMoist.saturation_tables.tables.ice_exact import ice_exact
+from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity_frozen_surface
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import IceExactConstants, LiquidExactConstants
 
@@ -363,39 +364,41 @@ def eddy_length2(
             IceExactConstants.BI2,
             IceExactConstants.BI1,
             IceExactConstants.BI0,
+            prsl
         )
+        brunt = qsatt_ice
         qsatt = omn  * qsatt_liq + (1.-omn) * qsatt_ice
         dqsat =  omn * dtqw + (1.-omn) * dtqi
         bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
 
-    with computation(PARALLEL), interval(...):
-        brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
+    # with computation(PARALLEL), interval(...):
+    #     brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
     
-    with computation(PARALLEL), interval(1,None):
-        bbb = 0.5*(bbb + (1. + constants.epsv*qsatt-wrk-qpl[0,0,-1]-qpi[0,0,-1] + 1.61*tabs[0,0,-1]*dqsat) / (1.+lstarn*dqsat) )
-        brunt_edge = 0.5*(cld_sgs+cld_sgs[0,0,-1])*betdz*(bbb*(hl-hl[0,0,-1]) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi-qpi[0,0,-1]) )
+    # with computation(PARALLEL), interval(1,None):
+    #     bbb = 0.5*(bbb + (1. + constants.epsv*qsatt-wrk-qpl[0,0,-1]-qpi[0,0,-1] + 1.61*tabs[0,0,-1]*dqsat) / (1.+lstarn*dqsat) )
+    #     brunt_edge = 0.5*(cld_sgs+cld_sgs[0,0,-1])*betdz*(bbb*(hl-hl[0,0,-1]) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi-qpi[0,0,-1]) )
 
-    with computation(PARALLEL), interval(...):
-        bbb = 1. + constants.epsv*qv - qpl - qpi
-        brunt = brunt + (1.-cld_sgs)*betdz*( bbb*(hl.at(K=kc)-hl.at(K=kb)) + constants.epsv*tabs*(total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond-tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub -tabs)*(qpi.at(K=kc)-qpi.at(K=kb)) )
+    # with computation(PARALLEL), interval(...):
+    #     bbb = 1. + constants.epsv*qv - qpl - qpi
+    #     brunt = brunt + (1.-cld_sgs)*betdz*( bbb*(hl.at(K=kc)-hl.at(K=kb)) + constants.epsv*tabs*(total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond-tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub -tabs)*(qpi.at(K=kc)-qpi.at(K=kb)) )
 
-    with computation(PARALLEL), interval(1,None):
-        bbb = 0.5*(bbb + 1. + constants.epsv*qv[0,0,-1] - qpl[0,0,-1] - qpi[0,0,-1])
-        brunt_edge = brunt_edge + (1.-0.5*(cld_sgs+cld_sgs[0,0,-1]))*betdz*( bbb*(hl-hl[0,0,-1]) + constants.epsv*tabs*(total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond-tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub -tabs)*(qpi-qpi[0,0,-1]) )
+    # with computation(PARALLEL), interval(1,None):
+    #     bbb = 0.5*(bbb + 1. + constants.epsv*qv[0,0,-1] - qpl[0,0,-1] - qpi[0,0,-1])
+    #     brunt_edge = brunt_edge + (1.-0.5*(cld_sgs+cld_sgs[0,0,-1]))*betdz*( bbb*(hl-hl[0,0,-1]) + constants.epsv*tabs*(total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond-tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub -tabs)*(qpi-qpi[0,0,-1]) )
 
-    with computation(PARALLEL), interval(...):
-        if (brunt < 1e-5 or zl < 0.75*dryzpbl):
-            brunt2 = constants.bruntmin
-        else:
-            brunt2 = brunt
+    # with computation(PARALLEL), interval(...):
+    #     if (brunt < 1e-5 or zl < 0.75*dryzpbl):
+    #         brunt2 = constants.bruntmin
+    #     else:
+    #         brunt2 = brunt
 
-    with computation(FORWARD), interval(0,1):
-        brunt_edge = brunt_edge[0,0,1]
-        brunt2 = brunt2[0,0,1]
+    # with computation(FORWARD), interval(0,1):
+    #     brunt_edge = brunt_edge[0,0,1]
+    #     brunt2 = brunt2[0,0,1]
 
-    with computation(FORWARD), interval(-1,None):
-        brunt_edge = brunt_edge.at(K=k_end-1)
-        brunt2 = brunt2.at(K=k_end-1)
+    # with computation(FORWARD), interval(-1,None):
+    #     brunt_edge = brunt_edge.at(K=k_end-1)
+    #     brunt2 = brunt2.at(K=k_end-1)
 
 
 def eddy_length3(

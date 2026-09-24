@@ -13,6 +13,7 @@ from .SHOCMF.translate_EnvironmentalTke import TranslateEnvironmentalTke
 from .SHOCMF.translate_FlipAndExport import TranslateFlipAndExport
 from .SHOCMF.translate_Diagnostics import TranslateDiagnostics
 from .SHOCMF.translate_RUN_SHOC import TranslateRUN_SHOC
+from .SHOCMF.translate_SetupInputs import TranslateSetupInputs
 
 __all__ = [
     "TranslateInvertInterfaceVars",

@@ -19,3 +19,7 @@ class SHOCMFConfiguration:
     nitr: Int
     shoc_lambda: Float
     ck: Float
+    # ET: Int
+    # L0: Float
+    # L0fac: Float
+    # NUP: Int
