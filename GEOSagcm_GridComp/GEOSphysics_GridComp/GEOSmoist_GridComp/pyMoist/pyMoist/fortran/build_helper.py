@@ -64,7 +64,7 @@ class StencilBackendCompilerOverride:
             ndsl_log.info(f"Stencil backend compiles on {self.comm.Get_rank()}")
         else:
             ndsl_log.info(f"Stencil backend waits on {self.comm.Get_rank()}")
-            self.comm.Barrier()
+            # self.comm.Barrier()
             ndsl_log.info(f"Stencil backend released on {self.comm.Get_rank()}")
 
     def __exit__(self, type, value, traceback):
@@ -75,5 +75,5 @@ class StencilBackendCompilerOverride:
         else:
             ndsl_log.info(f"Stencil backend was compiled on {self.comm.Get_rank()} \
                     now waiting for other ranks")
-            self.comm.Barrier()
+            # self.comm.Barrier()
         ndsl_log.info(f"Rank {self.comm.Get_rank()} ready for execution")
