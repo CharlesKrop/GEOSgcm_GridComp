@@ -7,7 +7,6 @@ from ndsl.dsl.typing import Float, FloatField
 from pyMoist.microphysics.GFDL_1M.driver.constants import constants
 from pyMoist.shared.incloud_processes import ice_fraction
 
-
 # Workaround to create a 1d off-grid axis that can be written to
 GlobalTable_driver_qsat = GlobalTable[(Float, (int(constants.LENGTH)))]
 
@@ -214,8 +213,8 @@ class GFDL_driver_tables:
         # Cancel multi-node compile for tables
         # TODO: this should come for free with the rewrite of the gt:X stencils
         #       compilation mode
-        if not stencil_factory.config.dace_config.do_compile:
-            MPI.COMM_WORLD.Barrier()
+        # if not stencil_factory.config.dace_config.do_compile:
+        # MPI.COMM_WORLD.Barrier()
 
         compute_qs_table_1 = stencil_factory.from_origin_domain(
             func=qs_table_1,
@@ -258,8 +257,8 @@ class GFDL_driver_tables:
             self._table4,
         )
 
-        if stencil_factory.config.dace_config.do_compile:
-            MPI.COMM_WORLD.Barrier()
+        # if stencil_factory.config.dace_config.do_compile:
+        # MPI.COMM_WORLD.Barrier()
 
         self.table1 = self._table1.view[0, 0, :]
         self.table2 = self._table2.view[0, 0, :]
