@@ -57,7 +57,7 @@ class NDSLPhysicsStack:
         single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
         comm = MPIComm()
         if single_rank_override >= 0:
-            comm = LocalComm(rank=single_rank_override, total_ranks=6, buffer_dict={})
+            comm = LocalComm(rank=single_rank_override, total_ranks=54, buffer_dict={})
 
         self.backend = Backend(flags.backend)
         self.flags = flags
@@ -66,7 +66,7 @@ class NDSLPhysicsStack:
         # Make a custom performance collector for the GEOS wrapper
         self.perf_collector = PerformanceCollector("GEOS Moist", comm)
 
-        if flags.single_column:
+        if True: # flags.single_column:
             partitioner = TilePartitioner(layout)
             self.communicator = TileCommunicator(
                 comm,
