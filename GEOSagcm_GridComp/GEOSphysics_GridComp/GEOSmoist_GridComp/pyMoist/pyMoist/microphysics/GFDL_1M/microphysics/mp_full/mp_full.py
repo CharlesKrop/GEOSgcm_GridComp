@@ -5,6 +5,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 
+from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.ice_cloud import IceCloud
@@ -13,7 +14,6 @@ from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.subgrid_processes import 
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.warm_rain import WarmRain
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 
 
 def update_precip_fluxes(

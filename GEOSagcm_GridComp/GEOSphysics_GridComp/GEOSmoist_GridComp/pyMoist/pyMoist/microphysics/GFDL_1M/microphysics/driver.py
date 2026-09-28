@@ -1,10 +1,9 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt, exp, log, log10
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, log10, sqrt
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64
-from ndsl.stencils.basic_operations import set_value
+from ndsl.stencils.basic_operations import copy, set_value
 from ndsl.stencils.basic_operations_2d import copy_2d
-from ndsl.stencils.basic_operations import copy
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
@@ -30,8 +29,9 @@ from pyMoist.microphysics.GFDL_1M.microphysics.constants import (
     ZVIR,
 )
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3Tables, GFDLMPV3SaturationTable
+from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFull
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     calc_mhc_lhc,
     calc_reflectivity_factor,
@@ -45,7 +45,6 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
 )
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, sigma
-from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFull
 
 
 def calculate_base_total_energy(
@@ -751,43 +750,43 @@ def radar_reflectivity(
         dbz (FloatField)
     """
     from __externals__ import (
-        BLINH,
         BLING,
+        BLINH,
         BLINR,
         BLINS,
         CONST_VG,
         CONST_VR,
         CONST_VS,
         DO_HAIL,
-        MUH,
         MUG,
+        MUH,
         MUR,
         MUS,
         RADG_FLAG,
         RADR_FLAG,
         RADS_FLAG,
-        RRAH,
         RRAG,
+        RRAH,
         RRAR,
         RRAS,
-        RRBH,
         RRBG,
+        RRBH,
         RRBR,
         RRBS,
-        TVAH,
         TVAG,
+        TVAH,
         TVAR,
         TVAS,
-        TVBH,
         TVBG,
+        TVBH,
         TVBR,
         TVBS,
-        VH_FAC,
-        VH_MAX,
-        VH_MIN,
         VG_FAC,
         VG_MAX,
         VG_MIN,
+        VH_FAC,
+        VH_MAX,
+        VH_MIN,
         VR_FAC,
         VR_MAX,
         VR_MIN,
@@ -1146,7 +1145,7 @@ def sedi_momentum_part_2(
         w (FloatField)
         local_w (FloatField)
     """
-    from __externals__ import C_AIR, C1_ICE, C1_LIQ, C1_VAP
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals

@@ -1,11 +1,11 @@
-from ndsl.dsl.gt4py import PARALLEL, computation, exp, function, interval, log, sqrt, FORWARD, K
-from ndsl.dsl.typing import Bool, Float, Float64, FloatField, Int, FloatField64, FloatFieldIJ
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, function, interval, log, sqrt
+from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, Int
 
-from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL4
+from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL4, GFDLMPV3TableL5
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
-from pyMoist.shared.cloud_processes import ice_fraction
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
+from pyMoist.shared.cloud_processes import ice_fraction
 
 
 @function
@@ -470,16 +470,7 @@ def p_complete_freezing(
         total_energy (FloatField64)
         mppfw (FloatFieldIJ)
     """
-    from __externals__ import (
-        CONV_FACTOR,
-        D1_ICE,
-        D1_VAP,
-        DO_QA,
-        LI00,
-        LI20,
-        LV00,
-        T_WFR,
-    )
+    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, LI00, LI20, LV00, T_WFR
 
     with computation(PARALLEL), interval(...):
         tc = T_WFR - t
@@ -1011,7 +1002,7 @@ def p_wbf(
         dtable_0 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_WBF, DO_QA, DT, LI00, LI20, LV00, PWBF_QI_CRT, TAU_WBF, T_WFR
+    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DO_WBF, DT, LI00, LI20, LV00, PWBF_QI_CRT, T_WFR, TAU_WBF
 
     with computation(FORWARD), interval(0, 1):
         if DO_WBF:

@@ -9,14 +9,16 @@ from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.config import (
     GFDLMPV3CloudMPConfig,
     GFDLMPV3NamelistConfig,
-    GFDLMPV3TableL3xL10,
-    GFDLMPV3TableL20,
-    GFDLMPV3TableL4,
     GFDLMPV3TableL2,
+    GFDLMPV3TableL3xL10,
+    GFDLMPV3TableL4,
+    GFDLMPV3TableL20,
 )
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, TICE, QPMIN
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, QPMIN, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     accretion_2d,
     accretion_3d,
@@ -28,8 +30,6 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     update_hydrometeors,
     update_hydrometeors_and_temperature,
 )
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
 
 
 def p_graupel_accretion_to_cloud_water_and_rain(
@@ -58,7 +58,7 @@ def p_graupel_accretion_to_cloud_water_and_rain(
     ACC: GFDLMPV3TableL20,
     ACCO: GFDLMPV3TableL3xL10,
 ):
-    from __externals__ import BLINH, BLING, CGACR, CGACW, CONV_FACTOR, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_HAIL, DO_QA, DT, MUH, MUG, LI00, LI20, LV00, T_WFR, VDIFFFLAG
+    from __externals__ import BLING, BLINH, CGACR, CGACW, CONV_FACTOR, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_HAIL, DO_QA, DT, LI00, LI20, LV00, MUG, MUH, T_WFR, VDIFFFLAG
 
     with computation(FORWARD), interval(0, 1):
         scaled_CGACW = CGACW * (1.0e-2 * (1.0 - one_minus_sigma) + one_minus_sigma)
@@ -208,7 +208,7 @@ def p_graupel_accretion_to_ice(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import BLINH, BLING, CGACI, CONV_FACTOR, DO_3D_ACC_CICE, DO_HAIL, DT, FI2G_FAC, MUH, MUG, VDIFFFLAG
+    from __externals__ import BLING, BLINH, CGACI, CONV_FACTOR, DO_3D_ACC_CICE, DO_HAIL, DT, FI2G_FAC, MUG, MUH, VDIFFFLAG
 
     with computation(PARALLEL), interval(...):
         if t < TICE and ice > QCMIN:
@@ -406,7 +406,7 @@ def p_graupel_melt(
         dtable_2 (GFDLMPV3SaturationTable)
     """
 
-    from __externals__ import BLINH, BLING, CGACR, CGACW, CONV_FACTOR, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_HAIL, DO_QA, DT, MUH, MUG, LI00, LI20, LV00, T_WFR, VDIFFFLAG
+    from __externals__ import BLING, BLINH, CGACR, CGACW, CONV_FACTOR, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_HAIL, DO_QA, DT, LI00, LI20, LV00, MUG, MUH, T_WFR, VDIFFFLAG
 
     with computation(FORWARD), interval(0, 1):
         scaled_CGACW: FloatFieldIJ = CGACW * (1.0e-2 * (1.0 - one_minus_sigma) + one_minus_sigma)
@@ -913,7 +913,7 @@ def p_snow_accretion_to_rain_and_graupel(
         ACCO (GFDLMPV3TableL3xL10)
         CGFR (GFDLMPV3TableL2)
     """
-    from __externals__ import CONV_FACTOR, CSACR, D1_ICE, D1_VAP, DO_QA, DT, MUR, LI00, LI20, LV00, T_WFR, VDIFFFLAG
+    from __externals__ import CONV_FACTOR, CSACR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUR, T_WFR, VDIFFFLAG
 
     with computation(PARALLEL), interval(...):
         if t < TICE and rain > QPMIN:

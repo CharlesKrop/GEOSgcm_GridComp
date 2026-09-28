@@ -1,5 +1,7 @@
-from ndsl.dsl.typing import Float, Int, Bool
-from pyMoist.constants import MAPL_AIRMW, MAPL_ALHF, MAPL_ALHL, MAPL_ALHS, MAPL_H2OMW, MAPL_CP, MAPL_GRAV, MAPL_PI
+from ndsl.dsl.typing import Bool, Float, Int
+
+from pyMoist.constants import MAPL_AIRMW, MAPL_ALHF, MAPL_ALHL, MAPL_ALHS, MAPL_CP, MAPL_GRAV, MAPL_H2OMW, MAPL_PI
+
 
 # surface type constants
 SRF_TYPE_OCEAN = Int(0)
@@ -157,8 +159,8 @@ AM_G = MAPL_PI * RHO_G / Float(6.0)
 BM_G = Float(3.0)
 AM_I = MAPL_PI * RHO_I / Float(6.0)
 BM_I = Float(3.0)
-AM_S_R001 = (Float(0.176) / Float(0.93)) * (Float(6.0) / MAPL_PI) * (Float(6.0) / MAPL_PI) * (am_s / Float(900.0)) ** Int(2)
-AM_G_R001 = (Float(0.176) / Float(0.93)) * (Float(6.0) / MAPL_PI) * (Float(6.0) / MAPL_PI) * (am_g / Float(900.0)) ** Int(2)
+AM_S_R001 = (Float(0.176) / Float(0.93)) * (Float(6.0) / MAPL_PI) * (Float(6.0) / MAPL_PI) * (AM_S / Float(900.0)) ** Int(2)
+AM_G_R001 = (Float(0.176) / Float(0.93)) * (Float(6.0) / MAPL_PI) * (Float(6.0) / MAPL_PI) * (AM_G / Float(900.0)) ** Int(2)
 # Fallspeed power laws relations:  v = (av*D**bv)*exp(-fv*D)
 #  Rain from Ferrier (1994), ice, snow, and graupel from
 #  Thompson et al (2008). Coefficient fv is zero for graupel/ice.

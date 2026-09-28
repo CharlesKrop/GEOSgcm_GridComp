@@ -1,6 +1,6 @@
 import dataclasses
 
-from ndsl import StencilFactory, Local, LocalState, QuantityFactory
+from ndsl import Local, LocalState, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log
 from ndsl.dsl.typing import Float, FloatField, FloatField64, FloatFieldIJ
