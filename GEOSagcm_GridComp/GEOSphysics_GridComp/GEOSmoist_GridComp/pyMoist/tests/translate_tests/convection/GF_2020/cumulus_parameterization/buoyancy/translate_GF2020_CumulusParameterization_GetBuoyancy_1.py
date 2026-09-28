@@ -68,15 +68,15 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.lcl_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        locals.cloud_moist_static_energy_forced.data[:] = inputs["local_cloud_moist_static_energy_forced"]
-        locals.environment_moist_static_energy_cloud_levels_forced.data[:] = inputs["local_env_moist_static_energy_cloud_levels_forced"]
-        locals.environment_saturation_moist_static_energy_cloud_levels_forced.data[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels_forced"]
-        locals.d_buoyancy_forced.data[:] = inputs["local_d_buoyancy_forced"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.lcl_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["lcl_level"] - 1
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        locals.cloud_moist_static_energy_forced[:] = inputs["local_cloud_moist_static_energy_forced"]
+        locals.environment_moist_static_energy_cloud_levels_forced[:] = inputs["local_env_moist_static_energy_cloud_levels_forced"]
+        locals.environment_saturation_moist_static_energy_cloud_levels_forced[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels_forced"]
+        locals.d_buoyancy_forced[:] = inputs["local_d_buoyancy_forced"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(
@@ -130,7 +130,7 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_1_shallow(TranslateFor
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 0, **inputs)
 
         return outputs
 
@@ -151,7 +151,7 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_1_mid(TranslateFortran
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 1, **inputs)
 
         return outputs
 
@@ -172,6 +172,6 @@ class TranslateGF2020_CumulusParameterization_GetBuoyancy_1_deep(TranslateFortra
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, 2, **inputs)
 
         return outputs

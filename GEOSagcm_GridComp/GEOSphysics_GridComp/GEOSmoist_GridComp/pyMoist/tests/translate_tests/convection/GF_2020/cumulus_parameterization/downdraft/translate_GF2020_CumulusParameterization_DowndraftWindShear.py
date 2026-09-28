@@ -6,7 +6,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.downdraft import DowndraftWindShear
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -48,7 +48,7 @@ class TestCore:
 
         out_vars.update(in_vars["data_vars"])
 
-    def __call__(self, constants: dict, cu_param_constants: dict, plume: str, **inputs):
+    def __call__(self, constants: dict, cu_param_constants: dict, plume: int, **inputs):
         # initialize constants
         config = GF2020Config(**constants)
         cumulus_parameterization_config = GF2020CumulusParameterizationConfig(**cu_param_constants)
@@ -76,32 +76,30 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.input_output.geopotential_height_forced.data[:] = inputs["geopotential_height_forced"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        state.input_output.u.data[:] = inputs["u"]
-        state.input_output.v.data[:] = inputs["v"]
-        state.input_output.ccn.data[:] = inputs["ccn"]
-        state.output.total_normalized_integrated_condensate_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs[
-            "total_normalized_integrated_condensate_forced"
-        ]
-        locals.total_normalized_integrated_evaporate_forced.data[:,] = inputs["local_total_normalized_integrated_evaporate_forced"]
-        locals.psum.data[:] = inputs["local_psum"]
-        locals.psumh.data[:] = inputs["local_psumh"]
-        locals.scale_dependence_factor_downdraft.data[:] = inputs["local_scale_dependence_factor_downdraft"]
-        locals.epsilon.data[:] = inputs["local_epsilon"]
-        locals.epsilon_min.data[:] = inputs["local_epsilon_min"]
-        locals.epsilon_max.data[:] = inputs["local_epsilon_max"]
+        state.output.error_code[:, :, plume] = inputs["error_code"]
+        state.output.updraft_lfc_level[:, :, plume] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level[:, :, plume] = inputs["cloud_top_level"] - 1
+        state.input_output.geopotential_height_forced[:] = inputs["geopotential_height_forced"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        state.input_output.u[:] = inputs["u"]
+        state.input_output.v[:] = inputs["v"]
+        state.input_output.ccn[:] = inputs["ccn"]
+        state.output.total_normalized_integrated_condensate_forced[:, :, plume] = inputs["total_normalized_integrated_condensate_forced"]
+        locals.total_normalized_integrated_evaporate_forced[:,] = inputs["local_total_normalized_integrated_evaporate_forced"]
+        locals.psum[:] = inputs["local_psum"]
+        locals.psumh[:] = inputs["local_psumh"]
+        locals.scale_dependence_factor_downdraft[:] = inputs["local_scale_dependence_factor_downdraft"]
+        locals.epsilon[:] = inputs["local_epsilon"]
+        locals.epsilon_min[:] = inputs["local_epsilon_min"]
+        locals.epsilon_max[:] = inputs["local_epsilon_max"]
         size_epsilon_computed = len(inputs["local_epsilon_computed"].shape)
         if size_epsilon_computed == 2:
             import numpy as np
 
-            locals.epsilon_computed.data[:] = inputs["local_epsilon_computed"][:, :, np.newaxis]
+            locals.epsilon_computed[:] = inputs["local_epsilon_computed"][:, :, np.newaxis]
         else:
-            locals.epsilon_computed.data[:] = inputs["local_epsilon_computed"]
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
+            locals.epsilon_computed[:] = inputs["local_epsilon_computed"]
+        state.output.epsilon_forced[:, :, plume] = inputs["epsilon_forced"]
 
         # initialize test code
         code = DowndraftWindShear(
@@ -131,7 +129,7 @@ class TestCore:
                 epsilon_max=locals.epsilon_max,
                 epsilon_computed=locals.epsilon_computed,
                 epsilon_forced=state.output.epsilon_forced,
-                plume_dependent_constants=plume_dependent_constants,
+                plume=plume,
             )
 
         # write output
@@ -177,7 +175,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindShear_shallow(Transla
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -198,7 +196,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindShear_mid(TranslateFo
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -219,6 +217,6 @@ class TranslateGF2020_CumulusParameterization_DowndraftWindShear_deep(TranslateF
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

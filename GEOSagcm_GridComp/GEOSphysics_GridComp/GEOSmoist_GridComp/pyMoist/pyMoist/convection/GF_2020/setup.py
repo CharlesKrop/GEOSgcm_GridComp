@@ -386,55 +386,55 @@ def prefill_cumulus_parameterization_state(
     from __externals__ import APPLY_SUBSIDENCE_MICROPHYSICS, NUMBER_OF_PLUMES, NUMBER_OF_TRACERS
 
     with computation(FORWARD), interval(0, 1):
-        plume = 0
-        while plume < NUMBER_OF_PLUMES:
-            error_code[0, 0][plume] = 0
-            downdraft_origin_level[0, 0][plume] = 0
-            lcl_level[0, 0][plume] = 0
-            updraft_origin_level[0, 0][plume] = 0
-            updraft_lfc_level[0, 0][plume] = 0
-            cloud_top_level[0, 0][plume] = 0
-            kstabi[0, 0][plume] = 0
-            kstabm[0, 0][plume] = 0
-            precip[0, 0][plume] = 0.0
-            cloud_base_mass_flux_modified[0, 0][plume] = 0.0
-            epsilon_forced[0, 0][plume] = 0.0
-            total_normalized_integrated_condensate_forced[0, 0][plume] = 0.0
-            scale_dependence_factor[0, 0][plume] = 0.0
-            plume += 1
+        loop_plume = 0
+        while loop_plume < NUMBER_OF_PLUMES:
+            error_code[0, 0][loop_plume] = 0
+            downdraft_origin_level[0, 0][loop_plume] = 0
+            lcl_level[0, 0][loop_plume] = 0
+            updraft_origin_level[0, 0][loop_plume] = 0
+            updraft_lfc_level[0, 0][loop_plume] = 0
+            cloud_top_level[0, 0][loop_plume] = 0
+            kstabi[0, 0][loop_plume] = 0
+            kstabm[0, 0][loop_plume] = 0
+            precip[0, 0][loop_plume] = 0.0
+            cloud_base_mass_flux_modified[0, 0][loop_plume] = 0.0
+            epsilon_forced[0, 0][loop_plume] = 0.0
+            total_normalized_integrated_condensate_forced[0, 0][loop_plume] = 0.0
+            scale_dependence_factor[0, 0][loop_plume] = 0.0
+            loop_plume += 1
 
     with computation(PARALLEL), interval(...):
-        plume = 0
-        while plume < NUMBER_OF_PLUMES:
-            p_cloud_levels_forced[0, 0, 0][plume] = 0.0
-            entrainment_rate[0, 0, 0][plume] = 0.0
-            mass_entrainment_updraft_forced[0, 0, 0][plume] = 0.0
-            mass_entrainment_downdraft_forced[0, 0, 0][plume] = 0.0
-            mass_detrainment_updraft_forced[0, 0, 0][plume] = 0.0
-            mass_detrainment_downdraft_forced[0, 0, 0][plume] = 0.0
-            normalized_massflux_updraft_forced[0, 0, 0][plume] = 0.0
-            normalized_massflux_downdraft_forced[0, 0, 0][plume] = 0.0
-            condensate_to_fall_forced[0, 0, 0][plume] = 0.0
-            evaporate_in_downdraft_forced[0, 0, 0][plume] = 0.0
-            cloud_liquid_after_rain_forced[0, 0, 0][plume] = 0.0
-            t_updraft[0, 0, 0][plume] = 0.0
-            convective_cloud_fraction_output[0, 0, 0][plume] = 0.0
+        loop_plume = 0
+        while loop_plume < NUMBER_OF_PLUMES:
+            p_cloud_levels_forced[0, 0, 0][loop_plume] = 0.0
+            entrainment_rate[0, 0, 0][loop_plume] = 0.0
+            mass_entrainment_updraft_forced[0, 0, 0][loop_plume] = 0.0
+            mass_entrainment_downdraft_forced[0, 0, 0][loop_plume] = 0.0
+            mass_detrainment_updraft_forced[0, 0, 0][loop_plume] = 0.0
+            mass_detrainment_downdraft_forced[0, 0, 0][loop_plume] = 0.0
+            normalized_massflux_updraft_forced[0, 0, 0][loop_plume] = 0.0
+            normalized_massflux_downdraft_forced[0, 0, 0][loop_plume] = 0.0
+            condensate_to_fall_forced[0, 0, 0][loop_plume] = 0.0
+            evaporate_in_downdraft_forced[0, 0, 0][loop_plume] = 0.0
+            cloud_liquid_after_rain_forced[0, 0, 0][loop_plume] = 0.0
+            t_updraft[0, 0, 0][loop_plume] = 0.0
+            convective_cloud_fraction_output[0, 0, 0][loop_plume] = 0.0
 
-            dtdt[0, 0, 0][plume] = 0.0
-            dudt[0, 0, 0][plume] = 0.0
-            dvdt[0, 0, 0][plume] = 0.0
-            dvapordt[0, 0, 0][plume] = 0.0
-            dcloudicedt[0, 0, 0][plume] = 0.0
-            dnicedt[0, 0, 0][plume] = 0.0
-            dnliquiddt[0, 0, 0][plume] = 0.0
-            dbuoyancydt[0, 0, 0][plume] = 0.0
+            dtdt[0, 0, 0][loop_plume] = 0.0
+            dudt[0, 0, 0][loop_plume] = 0.0
+            dvdt[0, 0, 0][loop_plume] = 0.0
+            dvapordt[0, 0, 0][loop_plume] = 0.0
+            dcloudicedt[0, 0, 0][loop_plume] = 0.0
+            dnicedt[0, 0, 0][loop_plume] = 0.0
+            dnliquiddt[0, 0, 0][loop_plume] = 0.0
+            dbuoyancydt[0, 0, 0][loop_plume] = 0.0
 
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
-                chemistry_tracers_output[0, 0, 0][plume, tracer] = 0.0
+                chemistry_tracers_output[0, 0, 0][loop_plume, tracer] = 0.0
                 tracer += 1
 
-            plume += 1
+            loop_plume += 1
 
         evaporation_sublimation_tendency = 0.0
         convective_precip_flux = 0.0
@@ -1115,7 +1115,10 @@ def prepare_cumulus_paramaterization_state(
         if USE_TRACER_TRANSPORT == 1:
             tracer = 0
             while tracer < NUMBER_OF_TRACERS:
-                chemistry_tracers[0, 0, 0][tracer] = max(convection_tracers.at(K=k_end - K, ddim=[tracer]), constants.FLOAT_TINY)
+                chemistry_tracers[0, 0, 0][tracer] = max(
+                    convection_tracers.at(K=k_end - K, ddim=[tracer]),
+                    constants.FLOAT_TINY,
+                )
                 tracer += 1
 
     with computation(FORWARD), interval(0, 1):
@@ -1292,7 +1295,7 @@ class GF2020Setup(NDSLRuntime):
         locals: GF2020Locals,
         cumulus_parameterization_state: GF2020CumulusParameterizationState,
         convection_tracers: ConvectionTracers,
-    ):
+    ) -> None:
         """
         Perform setup calculations
 
@@ -1447,13 +1450,15 @@ class GF2020Setup(NDSLRuntime):
         )
 
         # workaround because max of full field cannot be determined inside a stencil
-        t_2m_max = Float(state.t_2m.field.max().item())
+        # t_2m_max = Float(state.t_2m.field.max().item())
+        # TODO: Charles this is a workaround
+        t_2m_max = Float(0)
 
-        # # if surface temperature is not yet set in single column mode, stop the entire convection scheme
-        if self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM]) == (1, 1) and t_2m_max < 1.0e-6:
-            # NOTE this value goes into scm_stop - needs to be made a part of the LocalState, but currently
-            # LocalStates cannot support scalars
-            return True
+        # # # if surface temperature is not yet set in single column mode, stop the entire convection scheme
+        # if self.stencil_factory.grid_indexing.get_shape([I_DIM, J_DIM]) == (1, 1) and t_2m_max < 1.0e-6:
+        #     # NOTE this value goes into scm_stop - needs to be made a part of the LocalState, but currently
+        #     # LocalStates cannot support scalars
+        #     return True
 
         self._set_2d_fields(
             aot500=locals.aot500,
@@ -1542,8 +1547,11 @@ class GF2020Setup(NDSLRuntime):
             saturation_water_vapor=locals.saturation_water_vapor,
         )
 
-        if self.config.ADV_TRIGGER == 2:
-            raise NotImplementedError("option not implemented, should have been caught at initialization")
+        # TODO: Charles this is a workaround
+        # if self.config.ADV_TRIGGER == 2:
+        #     raise NotImplementedError(
+        #         "option not implemented, should have been caught at initialization"
+        #     )
 
         self._copy_into_cumulus_parameterization_state(
             grid_length_local=locals.grid_length,
@@ -1634,6 +1642,7 @@ class GF2020Setup(NDSLRuntime):
             vapor_excess=cumulus_parameterization_state.input.vapor_excess,
         )
 
+        # TODO: Charles this is a workaround
         # NOTE this value goes into scm_stop - needs to be made a part of the LocalState, but currently
         # LocalStates cannot support scalars
-        return False
+        # return False

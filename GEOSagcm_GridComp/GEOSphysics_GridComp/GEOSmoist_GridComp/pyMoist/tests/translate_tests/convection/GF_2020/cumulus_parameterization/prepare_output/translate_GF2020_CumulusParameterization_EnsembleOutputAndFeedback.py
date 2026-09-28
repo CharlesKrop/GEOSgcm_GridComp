@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.prepare_output import ensemble_output_and_feedback
@@ -99,46 +99,46 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        locals.error_code_2.data[:] = inputs["local_error_code_2"]
-        locals.error_code_3.data[:] = inputs["local_error_code_3"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        state.output.precip.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip"]
-        locals.effective_condensate_to_fall_forced.data[:] = inputs["local_effective_condensate_to_fall_forced"]
-        state.output.cloud_base_mass_flux_modified.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_base_mass_flux_modified"]
-        state.output.scale_dependence_factor.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["scale_dependence_factor"]
-        locals.ocean_fraction.data[:] = inputs["local_ocean_fraction"]
-        locals.f_dicycle_modified.data[:] = inputs["local_f_dicycle_modified"]
-        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble"]
-        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble"]
-        locals.del_t_cloud_ensemble.data[:] = inputs["local_del_t_cloud_ensemble"]
-        locals.del_vapor_cloud_ensemble.data[:] = inputs["local_del_vapor_cloud_ensemble"]
-        locals.del_cloud_liquid_cloud_ensemble.data[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
-        locals.del_buoyancy_cloud_ensemble.data[:] = inputs["local_del_buoyancy_cloud_ensemble"]
-        locals.del_convective_ice_cloud_ensemble.data[:] = inputs["local_del_convective_ice_cloud_ensemble"]
-        locals.del_large_scale_ice_cloud_ensemble.data[:] = inputs["local_del_large_scale_ice_cloud_ensemble"]
-        locals.del_convective_liquid_cloud_ensemble.data[:] = inputs["local_del_convective_liquid_cloud_ensemble"]
-        locals.del_large_scale_liquid_cloud_ensemble.data[:] = inputs["local_del_large_scale_liquid_cloud_ensemble"]
-        locals.del_convective_cloud_fraction_cloud_ensemble.data[:] = inputs["local_del_convective_cloud_fraction_cloud_ensemble"]
-        locals.del_large_scale_cloud_fraction_cloud_ensemble.data[:] = inputs["local_del_large_scale_cloud_fraction_cloud_ensemble"]
-        state.output.dtdt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dtdt"]
-        state.output.dvapordt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvapordt"]
-        state.output.dcloudicedt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dcloudicedt"]
-        state.output.dudt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dudt"]
-        state.output.dvdt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvdt"]
-        state.output.dbuoyancydt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dbuoyancydt"]
-        state.output.dconvectiveicedt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dconvectiveicedt"]
-        state.output.dlargescaleicedt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dlargescaleicedt"]
-        state.output.dconvectiveliquiddt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dconvectiveliquiddt"]
-        state.output.dlargescaleliquiddt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dlargescaleliquiddt"]
-        state.output.dconvectivecloudfractiondt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dconvectivecloudfractiondt"]
-        state.output.dlargescalecloudfractiondt.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dlargescalecloudfractiondt"]
-        locals.mass_flux_ensemble.data[:] = inputs["local_mass_flux_ensemble"][:, :, 0:16]
-        locals.precipitation_ensemble.data[:] = inputs["local_precipitation_ensemble"][:, :, 0:16]
-        locals.xff_mid.data[:] = inputs["local_xff_mid"][:, :, 0:16]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        locals.error_code_2[:] = inputs["local_error_code_2"]
+        locals.error_code_3[:] = inputs["local_error_code_3"]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        state.output.precip[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["precip"]
+        locals.effective_condensate_to_fall_forced[:] = inputs["local_effective_condensate_to_fall_forced"]
+        state.output.cloud_base_mass_flux_modified[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_base_mass_flux_modified"]
+        state.output.scale_dependence_factor[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["scale_dependence_factor"]
+        locals.ocean_fraction[:] = inputs["local_ocean_fraction"]
+        locals.f_dicycle_modified[:] = inputs["local_f_dicycle_modified"]
+        locals.del_u_cloud_ensemble[:] = inputs["local_del_u_cloud_ensemble"]
+        locals.del_v_cloud_ensemble[:] = inputs["local_del_v_cloud_ensemble"]
+        locals.del_t_cloud_ensemble[:] = inputs["local_del_t_cloud_ensemble"]
+        locals.del_vapor_cloud_ensemble[:] = inputs["local_del_vapor_cloud_ensemble"]
+        locals.del_cloud_liquid_cloud_ensemble[:] = inputs["local_del_cloud_liquid_cloud_ensemble"]
+        locals.del_buoyancy_cloud_ensemble[:] = inputs["local_del_buoyancy_cloud_ensemble"]
+        locals.del_convective_ice_cloud_ensemble[:] = inputs["local_del_convective_ice_cloud_ensemble"]
+        locals.del_large_scale_ice_cloud_ensemble[:] = inputs["local_del_large_scale_ice_cloud_ensemble"]
+        locals.del_convective_liquid_cloud_ensemble[:] = inputs["local_del_convective_liquid_cloud_ensemble"]
+        locals.del_large_scale_liquid_cloud_ensemble[:] = inputs["local_del_large_scale_liquid_cloud_ensemble"]
+        locals.del_convective_cloud_fraction_cloud_ensemble[:] = inputs["local_del_convective_cloud_fraction_cloud_ensemble"]
+        locals.del_large_scale_cloud_fraction_cloud_ensemble[:] = inputs["local_del_large_scale_cloud_fraction_cloud_ensemble"]
+        state.output.dtdt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dtdt"]
+        state.output.dvapordt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvapordt"]
+        state.output.dcloudicedt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dcloudicedt"]
+        state.output.dudt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dudt"]
+        state.output.dvdt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dvdt"]
+        state.output.dbuoyancydt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dbuoyancydt"]
+        state.output.dconvectiveicedt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dconvectiveicedt"]
+        state.output.dlargescaleicedt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dlargescaleicedt"]
+        state.output.dconvectiveliquiddt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dconvectiveliquiddt"]
+        state.output.dlargescaleliquiddt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dlargescaleliquiddt"]
+        state.output.dconvectivecloudfractiondt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dconvectivecloudfractiondt"]
+        state.output.dlargescalecloudfractiondt[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["dlargescalecloudfractiondt"]
+        locals.mass_flux_ensemble[:] = inputs["local_mass_flux_ensemble"][:, :, 0:16]
+        locals.precipitation_ensemble[:] = inputs["local_precipitation_ensemble"][:, :, 0:16]
+        locals.xff_mid[:] = inputs["local_xff_mid"][:, :, 0:16]
 
         code = self.stencil_factory.from_dims_halo(
             func=ensemble_output_and_feedback,
@@ -260,7 +260,7 @@ class TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_shallow(
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -281,7 +281,7 @@ class TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_mid(Tran
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -302,6 +302,6 @@ class TranslateGF2020_CumulusParameterization_EnsembleOutputAndFeedback_deep(Tra
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

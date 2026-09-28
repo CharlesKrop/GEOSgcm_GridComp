@@ -74,22 +74,22 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
-        locals.geopotential_height_cloud_levels_forced.data[:] = inputs["local_geopotential_height_cloud_levels_forced"]
-        locals.normalized_massflux_updraft.data[:] = inputs["local_normalized_massflux_updraft"]
-        state.output.normalized_massflux_updraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
-        locals.d_buoyancy.data[:] = inputs["local_d_buoyancy"]
-        locals.d_buoyancy_forced.data[:] = inputs["local_d_buoyancy_forced"]
-        locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels"]
-        locals.gamma_cloud_levels_forced.data[:] = inputs["local_gamma_cloud_levels_forced"]
-        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
-        locals.t_cloud_levels_forced.data[:] = inputs["local_t_cloud_levels_forced"]
-        locals.cloud_workfunction_0.data[:] = inputs["local_cloud_workfunction_0"]
-        locals.cloud_workfunction_1.data[:] = inputs["local_cloud_workfunction_1"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        locals.geopotential_height_cloud_levels[:] = inputs["local_geopotential_height_cloud_levels"]
+        locals.geopotential_height_cloud_levels_forced[:] = inputs["local_geopotential_height_cloud_levels_forced"]
+        locals.normalized_massflux_updraft[:] = inputs["local_normalized_massflux_updraft"]
+        state.output.normalized_massflux_updraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["normalized_massflux_updraft_forced"]
+        locals.d_buoyancy[:] = inputs["local_d_buoyancy"]
+        locals.d_buoyancy_forced[:] = inputs["local_d_buoyancy_forced"]
+        locals.gamma_cloud_levels[:] = inputs["local_gamma_cloud_levels"]
+        locals.gamma_cloud_levels_forced[:] = inputs["local_gamma_cloud_levels_forced"]
+        locals.t_cloud_levels[:] = inputs["local_t_cloud_levels"]
+        locals.t_cloud_levels_forced[:] = inputs["local_t_cloud_levels_forced"]
+        locals.cloud_workfunction_0[:] = inputs["local_cloud_workfunction_0"]
+        locals.cloud_workfunction_1[:] = inputs["local_cloud_workfunction_1"]
 
         # initialize test code
         code = UpdraftInitialWorkfunctions(

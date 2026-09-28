@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.kinetic_energy_to_heating import kinetic_energy_to_heating
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -67,14 +67,14 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
-        state.input_output.u.data[:] = inputs["u"]
-        state.input_output.v.data[:] = inputs["v"]
-        locals.del_u_cloud_ensemble.data[:] = inputs["local_del_u_cloud_ensemble"]
-        locals.del_v_cloud_ensemble.data[:] = inputs["local_del_v_cloud_ensemble"]
-        locals.del_t_cloud_ensemble.data[:] = inputs["local_del_t_cloud_ensemble"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.input_output.u[:] = inputs["u"]
+        state.input_output.v[:] = inputs["v"]
+        locals.del_u_cloud_ensemble[:] = inputs["local_del_u_cloud_ensemble"]
+        locals.del_v_cloud_ensemble[:] = inputs["local_del_v_cloud_ensemble"]
+        locals.del_t_cloud_ensemble[:] = inputs["local_del_t_cloud_ensemble"]
 
         code = self.stencil_factory.from_dims_halo(
             func=kinetic_energy_to_heating,
@@ -97,12 +97,12 @@ class TestCore:
         outputs = {
             "error_code": state.output.error_code.field[:, :, plume_dependent_constants.PLUME_INDEX],
             "cloud_top_level": state.output.cloud_top_level.field[:, :, plume_dependent_constants.PLUME_INDEX] + 1,
-            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX],
-            "u": state.input_output.u.data[:],
-            "v": state.input_output.v.data[:],
-            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.data[:],
-            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.data[:],
-            "local_del_t_cloud_ensemble": locals.del_t_cloud_ensemble.data[:],
+            "p_cloud_levels_forced": state.output.p_cloud_levels_forced.field[:, :, :, plume_dependent_constants.PLUME_INDEX],
+            "u": state.input_output.u.field[:],
+            "v": state.input_output.v.field[:],
+            "local_del_u_cloud_ensemble": locals.del_u_cloud_ensemble.field[:],
+            "local_del_v_cloud_ensemble": locals.del_v_cloud_ensemble.field[:],
+            "local_del_t_cloud_ensemble": locals.del_t_cloud_ensemble.field[:],
         }
 
         return outputs
@@ -124,7 +124,7 @@ class TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_shallow(Tra
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -145,7 +145,7 @@ class TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_mid(Transla
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -166,6 +166,6 @@ class TranslateGF2020_CumulusParameterization_KineticEnergyToHeating_deep(Transl
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

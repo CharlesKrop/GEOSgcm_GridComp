@@ -62,9 +62,9 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.input_output.convective_scale_velocity.data[:] = inputs["convective_scale_velocity"]
-        locals.cin_0.data[:] = inputs["local_cin_0"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.input_output.convective_scale_velocity[:] = inputs["convective_scale_velocity"]
+        locals.cin_0[:] = inputs["local_cin_0"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(

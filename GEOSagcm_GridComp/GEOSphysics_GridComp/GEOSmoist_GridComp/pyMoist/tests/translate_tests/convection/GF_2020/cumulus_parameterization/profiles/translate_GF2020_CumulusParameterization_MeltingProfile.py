@@ -65,17 +65,17 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
 
-        state.output.p_cloud_levels_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
+        state.output.p_cloud_levels_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["p_cloud_levels_forced"]
 
-        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
+        state.output.condensate_to_fall_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
 
-        locals.melting_layer.data[:] = inputs["local_melting_layer"]
+        locals.melting_layer[:] = inputs["local_melting_layer"]
 
-        locals.partition_liquid_ice.data[:] = inputs["local_partition_liquid_ice"]
+        locals.partition_liquid_ice[:] = inputs["local_partition_liquid_ice"]
 
-        locals.melting.data[:] = inputs["local_melting"]
+        locals.melting[:] = inputs["local_melting"]
 
         # initialize test code
         code = self.stencil_factory.from_dims_halo(

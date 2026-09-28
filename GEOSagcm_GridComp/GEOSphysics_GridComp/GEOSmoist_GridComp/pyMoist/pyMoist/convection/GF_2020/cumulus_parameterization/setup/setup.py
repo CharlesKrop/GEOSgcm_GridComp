@@ -5,8 +5,13 @@ from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 
 import pyMoist.convection.GF_2020.cumulus_parameterization.constants as cumulus_parameterization_constants
 from pyMoist.convection.GF_2020.config import GF2020Config
-from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3
+from pyMoist.convection.GF_2020.cumulus_parameterization.config import (
+    DeepSpecificConstants,
+    GF2020CumulusParameterizationConfig,
+    MidSpecificConstants,
+    ShallowSpecificConstants,
+)
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, PRESSURE_GRADIENT_CONSTANT
 from pyMoist.convection.GF_2020.cumulus_parameterization.field_types import FloatField_Plume, FloatFieldIJ_Ensemble, FloatFieldIJ_Plume, IntFieldIJ_Plume
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
 from pyMoist.convection.GF_2020.cumulus_parameterization.setup.set_constants import set_constants
@@ -381,6 +386,12 @@ class Setup(NDSLRuntime):
         self.config = config
         self.cu_param_config = cumulus_parameterization_config
 
+        # unfortunately we need to unroll this config here
+        self.shallow = ShallowSpecificConstants(cumulus_parameterization_config)
+        self.mid = MidSpecificConstants(cumulus_parameterization_config)
+        self.deep = DeepSpecificConstants(cumulus_parameterization_config)
+        # self.all_constants = [self.shallow, self.mid, self.deep]
+
         # construct stencils and functions
         self._set_plume_dependent_fields = stencil_factory.from_dims_halo(
             func=set_plume_dependent_fields,
@@ -489,20 +500,48 @@ class Setup(NDSLRuntime):
         entrainment_rate: Quantity,
         detrainment_function_updraft: Quantity,
         arbitrary_numerical_parameter: Quantity,
-        plume_dependent_constants: GF2020PlumeDependentConstants,
-        plume: str,
+        plume: int,
     ):
-        plume_dependent_constants = set_constants(self.cu_param_config, plume_dependent_constants, plume)
+        if plume == 0:
+            constant_enable_plume = self.shallow.ENABLE_PLUME
+            constant_use_excess = self.shallow.USE_EXCESS
+            constant_plume_idx = Int(self.shallow.PLUME_INDEX)
+            constant_cap_max_inc = self.shallow.CAP_MAX_INC
+            constant_entrainment_rate = self.shallow.ENTRAINMENT_RATE
+            constant_minimum_evap_fraction_ocean = self.shallow.MINIMUM_EVAP_FRACTION_OCEAN
+            constant_maximum_evap_fraction_ocean = self.shallow.MAXIMUM_EVAP_FRACTION_OCEAN
+            constant_minimum_evap_fraction_land = self.shallow.MINIMUM_EVAP_FRACTION_LAND
+            constant_maximum_evap_fraction_land = self.shallow.MAXIMUM_EVAP_FRACTION_LAND
+        elif plume == 1:
+            constant_enable_plume = self.mid.ENABLE_PLUME
+            constant_use_excess = self.mid.USE_EXCESS
+            constant_plume_idx = Int(self.mid.PLUME_INDEX)
+            constant_cap_max_inc = self.mid.CAP_MAX_INC
+            constant_entrainment_rate = self.mid.ENTRAINMENT_RATE
+            constant_minimum_evap_fraction_ocean = self.mid.MINIMUM_EVAP_FRACTION_OCEAN
+            constant_maximum_evap_fraction_ocean = self.mid.MAXIMUM_EVAP_FRACTION_OCEAN
+            constant_minimum_evap_fraction_land = self.mid.MINIMUM_EVAP_FRACTION_LAND
+            constant_maximum_evap_fraction_land = self.mid.MAXIMUM_EVAP_FRACTION_LAND
+        else:
+            constant_enable_plume = self.deep.ENABLE_PLUME
+            constant_use_excess = self.deep.USE_EXCESS
+            constant_plume_idx = Int(self.deep.PLUME_INDEX)
+            constant_cap_max_inc = self.deep.CAP_MAX_INC
+            constant_entrainment_rate = self.deep.ENTRAINMENT_RATE
+            constant_minimum_evap_fraction_ocean = self.deep.MINIMUM_EVAP_FRACTION_OCEAN
+            constant_maximum_evap_fraction_ocean = self.deep.MAXIMUM_EVAP_FRACTION_OCEAN
+            constant_minimum_evap_fraction_land = self.deep.MINIMUM_EVAP_FRACTION_LAND
+            constant_maximum_evap_fraction_land = self.deep.MAXIMUM_EVAP_FRACTION_LAND
 
-        if plume_dependent_constants.ENABLE_PLUME == 1:
-            # compute/prefill the last few fields needed for the rest of the scheme
+        if constant_enable_plume == 1:
+            #     # compute/prefill the last few fields needed for the rest of the scheme
             self._set_plume_dependent_fields(
                 t_excess=t_excess,
                 t_excess_local=t_excess_local,
                 vapor_excess=vapor_excess,
                 vapor_excess_local=vapor_excess_local,
                 ocean_fraction=ocean_fraction,
-                use_excess=plume_dependent_constants.USE_EXCESS,
+                use_excess=constant_use_excess,
                 t_old=t_old,
                 vapor_old=vapor_old,
                 grid_scale_forcing_t=grid_scale_forcing_t,
@@ -517,7 +556,7 @@ class Setup(NDSLRuntime):
             )
 
             self._prefill_internal_fields(
-                plume=plume_dependent_constants.PLUME_INDEX,
+                plume=constant_plume_idx,
                 maximum_updraft_origin_level=maximum_updraft_origin_level,
                 kstabm=kstabm,
                 ocean_fraction=ocean_fraction,
@@ -525,7 +564,7 @@ class Setup(NDSLRuntime):
                 cap_max=cap_max,
                 error_code_2=error_code_2,
                 error_code_3=error_code_3,
-                CAP_MAX_INC=plume_dependent_constants.CAP_MAX_INC,
+                CAP_MAX_INC=constant_cap_max_inc,
                 cap_max_increment=cap_max_increment,
                 geopotential_height=geopotential_height,
                 geopotential_height_local=geopotential_height_local,
@@ -562,24 +601,24 @@ class Setup(NDSLRuntime):
 
             # scale dependence factor (sig), version new
             self._compute_scale_dependence_factor(
-                plume=plume_dependent_constants.PLUME_INDEX,
+                plume=constant_plume_idx,
                 scale_dependence_factor=scale_dependence_factor,
                 seed_convection=seed_convection,
                 error_code=error_code,
                 grid_length=grid_length,
             )
 
-            # create a real random number in the interval [-use_random_num, +use_random_num]
+            #     # create a real random number in the interval [-use_random_num, +use_random_num]
             self._get_random_number(
-                plume=plume_dependent_constants.PLUME_INDEX,
+                plume=constant_plume_idx,
                 random_number=random_number,
             )
 
             # define entrainment/detrainment profiles for updrafts
             self._initial_entrainment_detrainment(
-                plume=plume_dependent_constants.PLUME_INDEX,
+                plume=constant_plume_idx,
                 lateral_entrainment_rate=lateral_entrainment_rate,
-                current_plume_rate=plume_dependent_constants.ENTRAINMENT_RATE,
+                current_plume_rate=constant_entrainment_rate,
                 entrainment_rate=entrainment_rate,
                 detrainment_function_updraft=detrainment_function_updraft,
             )
@@ -590,10 +629,10 @@ class Setup(NDSLRuntime):
                 ocean_fraction=ocean_fraction,
                 epsilon_min=epsilon_min,
                 epsilon_max=epsilon_max,
-                MINIMUM_EVAP_FRACTION_OCEAN=plume_dependent_constants.MINIMUM_EVAP_FRACTION_OCEAN,
-                MAXIMUM_EVAP_FRACTION_OCEAN=plume_dependent_constants.MAXIMUM_EVAP_FRACTION_OCEAN,
-                MINIMUM_EVAP_FRACTION_LAND=plume_dependent_constants.MINIMUM_EVAP_FRACTION_LAND,
-                MAXIMUM_EVAP_FRACTION_LAND=plume_dependent_constants.MAXIMUM_EVAP_FRACTION_LAND,
+                MINIMUM_EVAP_FRACTION_OCEAN=constant_minimum_evap_fraction_ocean,
+                MAXIMUM_EVAP_FRACTION_OCEAN=constant_maximum_evap_fraction_ocean,
+                MINIMUM_EVAP_FRACTION_LAND=constant_minimum_evap_fraction_land,
+                MAXIMUM_EVAP_FRACTION_LAND=constant_maximum_evap_fraction_land,
             )
 
             # calculate arbitrary numerical parameter

@@ -4,7 +4,7 @@ from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, max, sqrt
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ
-from ndsl.stencils import set_IJ_mask_value, set_value, set_value_2D
+from ndsl.stencils import set_boolean_value_2d, set_value, set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.driver.config_constants import GFDL1MDriverConfigDependentConstants
@@ -141,7 +141,10 @@ def revap_racc(
             qden = mixing_ratio_rain * density
             t2 = tin * tin
             evap = crevp_0 * t2 * dq * (crevp_1 * sqrt(qden) + crevp_2 * exp(0.725 * log(qden))) / (crevp_3 * t2 + crevp_4 * qsat * density)
-            evap = min(mixing_ratio_rain, min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)))
+            evap = min(
+                mixing_ratio_rain,
+                min(0.5 * dts * fac_revp * evap, dqv / (1.0 + lcpk * dqsdt)),
+            )
             mixing_ratio_rain = mixing_ratio_rain - evap
             mixing_ratio_vapor = mixing_ratio_vapor + evap
             q_liq = q_liq - evap
@@ -784,7 +787,7 @@ class GFDL1MWarmRain(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value_IJ = stencil_factory.from_dims_halo(
-            func=set_value_2D,
+            func=set_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._set_value = stencil_factory.from_dims_halo(
@@ -796,7 +799,7 @@ class GFDL1MWarmRain(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
         self._set_IJ_mask = stencil_factory.from_dims_halo(
-            func=set_IJ_mask_value,
+            func=set_boolean_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 

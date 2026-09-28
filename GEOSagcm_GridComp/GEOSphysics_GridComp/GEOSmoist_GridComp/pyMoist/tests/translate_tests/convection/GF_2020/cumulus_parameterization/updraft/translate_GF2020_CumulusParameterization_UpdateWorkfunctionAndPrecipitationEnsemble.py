@@ -73,26 +73,26 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.output.updraft_origin_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
-        state.output.updraft_lfc_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
-        state.output.cloud_top_level.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
-        locals.geopotential_height_cloud_levels_modified.data[:] = inputs["local_geopotential_height_cloud_levels_modified"]
-        locals.normalized_massflux_updraft_modified.data[:] = inputs["local_normalized_massflux_updraft_modified"]
-        locals.d_buoyancy_modified.data[:] = inputs["local_d_buoyancy_modified"]
-        locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels"]
-        locals.t_cloud_levels_modified.data[:] = inputs["local_t_cloud_levels_modified"]
-        locals.cloud_workfunction_0_modified.data[:] = inputs["local_cloud_workfunction_0_modified"]
-        state.output.condensate_to_fall_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
-        state.output.evaporate_in_downdraft_forced.data[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
-        state.output.epsilon_forced.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.output.updraft_origin_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_origin_level"] - 1
+        state.output.updraft_lfc_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["updraft_lfc_level"] - 1
+        state.output.cloud_top_level[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["cloud_top_level"] - 1
+        locals.geopotential_height_cloud_levels_modified[:] = inputs["local_geopotential_height_cloud_levels_modified"]
+        locals.normalized_massflux_updraft_modified[:] = inputs["local_normalized_massflux_updraft_modified"]
+        locals.d_buoyancy_modified[:] = inputs["local_d_buoyancy_modified"]
+        locals.gamma_cloud_levels[:] = inputs["local_gamma_cloud_levels"]
+        locals.t_cloud_levels_modified[:] = inputs["local_t_cloud_levels_modified"]
+        locals.cloud_workfunction_0_modified[:] = inputs["local_cloud_workfunction_0_modified"]
+        state.output.condensate_to_fall_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["condensate_to_fall_forced"]
+        state.output.evaporate_in_downdraft_forced[:, :, :, plume_dependent_constants.PLUME_INDEX] = inputs["evaporate_in_downdraft_forced"]
+        state.output.epsilon_forced[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["epsilon_forced"]
         if MAXENS1 * MAXENS2 * MAXENS3 != 16:
             raise NotImplementedError(
                 "Due to limitations in the translate test, the size of the ensemble"
                 "dimension must be set manually in the translate test. Please modify, then disable this error"
                 "manually to continue."
             )
-        locals.precipitation_ensemble.data[:] = inputs["local_precipitation_ensemble"][:, :, 0:16]
+        locals.precipitation_ensemble[:] = inputs["local_precipitation_ensemble"][:, :, 0:16]
 
         # initialize test code
         code = UpdateWorkfunctionAndPrecipitationEnsemble(

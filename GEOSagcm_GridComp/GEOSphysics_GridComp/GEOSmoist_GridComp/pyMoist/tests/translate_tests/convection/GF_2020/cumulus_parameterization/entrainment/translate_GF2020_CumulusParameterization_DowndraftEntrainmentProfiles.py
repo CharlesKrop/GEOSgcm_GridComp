@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.entrainment import downdraft_entrainment_profiles
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -63,10 +63,10 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.input.lateral_entrainment_rate.data[:] = inputs["lateral_entrainment_rate"]
-        locals.entrainment_rate_downdraft.data[:] = inputs["local_entrainment_rate_downdraft"]
-        locals.detrainment_function_downdraft.data[:] = inputs["local_detrainment_function_downdraft"]
-        locals.scale_dependence_factor_downdraft.data[:] = inputs["local_scale_dependence_factor_downdraft"]
+        state.input.lateral_entrainment_rate[:] = inputs["lateral_entrainment_rate"]
+        locals.entrainment_rate_downdraft[:] = inputs["local_entrainment_rate_downdraft"]
+        locals.detrainment_function_downdraft[:] = inputs["local_detrainment_function_downdraft"]
+        locals.scale_dependence_factor_downdraft[:] = inputs["local_scale_dependence_factor_downdraft"]
 
         code = self.stencil_factory.from_dims_halo(
             func=downdraft_entrainment_profiles,
@@ -109,7 +109,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_shall
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -130,7 +130,7 @@ class TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_mid(T
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -151,6 +151,6 @@ class TranslateGF2020_CumulusParameterization_DowndraftEntrainmentProfiles_deep(
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs

@@ -7,7 +7,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
 from pyMoist.convection.GF_2020.config import GF2020Config
 from pyMoist.convection.GF_2020.cumulus_parameterization.config import GF2020CumulusParameterizationConfig
-from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES
+from pyMoist.convection.GF_2020.cumulus_parameterization.constants import MAXENS1, MAXENS2, MAXENS3, NUMBER_OF_PLUMES, Plumes
 from pyMoist.convection.GF_2020.cumulus_parameterization.environment import environment_cloud_levels
 from pyMoist.convection.GF_2020.cumulus_parameterization.locals import GF2020CumulusParameterizationLocals
 from pyMoist.convection.GF_2020.cumulus_parameterization.plume_dependent_constants import GF2020PlumeDependentConstants
@@ -82,29 +82,29 @@ class TestCore:
         )
 
         # fill relevant parts of dataclasses
-        state.input_output.t_old.data[:] = inputs["t_old"]
-        locals.environment_saturation_mixing_ratio.data[:] = inputs["local_env_saturation_mixing_ratio"]
-        state.input_output.vapor_old.data[:] = inputs["vapor_old"]
-        locals.environment_moist_static_energy.data[:] = inputs["local_env_moist_static_energy"]
-        locals.environment_saturation_moist_static_energy.data[:] = inputs["local_env_saturation_moist_static_energy"]
-        locals.geopotential_height.data[:] = inputs["local_geopotential_height"]
-        state.input_output.p_forced.data[:] = inputs["p_forced"]
-        locals.environment_saturation_mixing_ratio_cloud_levels.data[:] = inputs["local_env_saturation_mixing_ratio_cloud_levels"]
-        locals.vapor_cloud_levels.data[:] = inputs["local_vapor_cloud_levels"]
-        locals.environment_moist_static_energy_cloud_levels.data[:] = inputs["local_env_moist_static_energy_cloud_levels"]
-        state.input_output.u.data[:] = inputs["u"]
-        state.input_output.v.data[:] = inputs["v"]
-        locals.u_cloud_levels.data[:] = inputs["local_u_cloud_levels"]
-        locals.v_cloud_levels.data[:] = inputs["local_v_cloud_levels"]
-        locals.environment_saturation_moist_static_energy_cloud_levels.data[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels"]
-        locals.geopotential_height_cloud_levels.data[:] = inputs["local_geopotential_height_cloud_levels"]
-        locals.p_cloud_levels.data[:] = inputs["local_p_cloud_levels"]
-        locals.gamma_cloud_levels.data[:] = inputs["local_gamma_cloud_levels"]
-        locals.t_cloud_levels.data[:] = inputs["local_t_cloud_levels"]
-        state.input_output.p_surface.data[:] = inputs["p_surface"]
-        state.input_output.t_surface.data[:] = inputs["t_surface"]
-        state.output.error_code.data[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
-        state.input_output.topography_height_no_negative.data[:] = inputs["topography_height_no_negative"]
+        state.input_output.t_old[:] = inputs["t_old"]
+        locals.environment_saturation_mixing_ratio[:] = inputs["local_env_saturation_mixing_ratio"]
+        state.input_output.vapor_old[:] = inputs["vapor_old"]
+        locals.environment_moist_static_energy[:] = inputs["local_env_moist_static_energy"]
+        locals.environment_saturation_moist_static_energy[:] = inputs["local_env_saturation_moist_static_energy"]
+        locals.geopotential_height[:] = inputs["local_geopotential_height"]
+        state.input_output.p_forced[:] = inputs["p_forced"]
+        locals.environment_saturation_mixing_ratio_cloud_levels[:] = inputs["local_env_saturation_mixing_ratio_cloud_levels"]
+        locals.vapor_cloud_levels[:] = inputs["local_vapor_cloud_levels"]
+        locals.environment_moist_static_energy_cloud_levels[:] = inputs["local_env_moist_static_energy_cloud_levels"]
+        state.input_output.u[:] = inputs["u"]
+        state.input_output.v[:] = inputs["v"]
+        locals.u_cloud_levels[:] = inputs["local_u_cloud_levels"]
+        locals.v_cloud_levels[:] = inputs["local_v_cloud_levels"]
+        locals.environment_saturation_moist_static_energy_cloud_levels[:] = inputs["local_env_saturation_moist_static_energy_cloud_levels"]
+        locals.geopotential_height_cloud_levels[:] = inputs["local_geopotential_height_cloud_levels"]
+        locals.p_cloud_levels[:] = inputs["local_p_cloud_levels"]
+        locals.gamma_cloud_levels[:] = inputs["local_gamma_cloud_levels"]
+        locals.t_cloud_levels[:] = inputs["local_t_cloud_levels"]
+        state.input_output.p_surface[:] = inputs["p_surface"]
+        state.input_output.t_surface[:] = inputs["t_surface"]
+        state.output.error_code[:, :, plume_dependent_constants.PLUME_INDEX] = inputs["error_code"]
+        state.input_output.topography_height_no_negative[:] = inputs["topography_height_no_negative"]
 
         code = self.stencil_factory.from_dims_halo(
             func=environment_cloud_levels,
@@ -185,7 +185,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_shallow(T
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "shallow", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.SHALLOW.value, **inputs)
 
         return outputs
 
@@ -206,7 +206,7 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_mid(Trans
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "mid", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.MID.value, **inputs)
 
         return outputs
 
@@ -227,6 +227,6 @@ class TranslateGF2020_CumulusParameterization_EnvironmentCloudLevels_1_deep(Tran
         self.cu_param_constants = data_loader.load("GF2020_CumulusParameterization-constants")
 
     def compute_func(self, **inputs):
-        outputs = self.test_core(self.constants, self.cu_param_constants, "deep", **inputs)
+        outputs = self.test_core(self.constants, self.cu_param_constants, Plumes.DEEP.value, **inputs)
 
         return outputs
