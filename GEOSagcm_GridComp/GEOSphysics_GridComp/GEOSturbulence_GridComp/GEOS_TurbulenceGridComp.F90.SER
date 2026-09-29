@@ -29,8 +29,6 @@ module GEOS_TurbulenceGridCompMod
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-  ! $ser verbatim integer :: timestep = 0
-
   public SetServices
 
 ! !DESCRIPTION:
@@ -2605,18 +2603,15 @@ end if
 ! Begin... 
 !---------
 
-! $ser verbatim integer :: comm, rank, mpierr 
-! $ser verbatim type(ESMF_VM) :: vm
-! $ser verbatim call ESMF_VMGetCurrent(vm,rc=status)
-! $ser verbatim call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
-! $ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
-! $ser init directory='./serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
-! $ser verbatim timestep = timestep + 1
-! $ser off
-! $ser verbatim if (timestep .eq. 4) then
-! $ser on
-! $ser verbatim endif
-
+!$ser verbatim integer :: comm, rank, mpierr 
+!$ser verbatim type(ESMF_VM) :: vm
+print *, "TURBULENCE BEFORE SER ON"
+!$ser verbatim call ESMF_VMGetCurrent(vm,rc=status)
+!$ser verbatim call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
+!$ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
+!$ser init directory='./serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
+!$ser on
+print *, "TURBULENCE AFTER SER ON"
 
 ! Get my name and set-up traceback handle
 ! ---------------------------------------
@@ -3934,11 +3929,6 @@ end if
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
 
-        ! $ser savepoint RUN_SHOC-In
-        ! $ser data SH=SH PLO=PLO ZL0=ZL0 Z=Z U=U V=V OMEGA=OMEGA T=T Q=Q
-        ! $ser data QI=QI QL=QL QPI=QPI QPL=QPL QA=QA WTHV2=WTHV2 BUOYF=BUOYF
-        ! $ser data MFTKE=MFTKE DRYCBLH=DRYCBLH TKESHOC=TKESHOC TKH=TKH(:,:,1:LM)
-
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==
                        SH(:,:),               &
@@ -3978,10 +3968,6 @@ end if
                        SHOCPRNUM,             &
                        !== Tuning params ==
                        SHOCPARAMS )
-
-         ! $ser savepoint RUN_SHOC-Out
-         ! $ser data TKESHOC=TKESHOC(:,:,1:LM) TKH=TKH(:,:,1:LM) KM=KM(:,:,1:LM) ISOTROPY=ISOTROPY(:,:,1:LM) TKEDISS=TKEDISS
-         ! $ser data BRUNTSHOC=BRUNTSHOC RI=RI
 
         if (associated(TKEDISSx)) TKEDISSx = TKEDISS
         KH(:,:,1:LM) = TKH(:,:,1:LM)
@@ -4575,14 +4561,14 @@ end if
 
       if (CALC_ZPBL10p) then
          ZPBL10p = MAPL_UNDEF
+
          do I = 1, IM
             do J = 1, JM
                temparray(1:LM+1) = KH(I,J,0:LM)
                do L = LM,2,-1
                   locmax = maxloc(temparray,1)
                   minlval = max(0.001,0.0001*maxval(temparray))
-                  ! This line is causing a crash (KMF 9/22/26)
-                  !if(temparray(locmax-1)<minlval.and.temparray(locmax+1)<minlval) temparray(locmax) = minlval
+                  if(temparray(locmax-1)<minlval.and.temparray(locmax+1)<minlval) temparray(locmax) = minlval
                enddo
                maxkh = temparray(LM)
                do L = LM-1,2,-1
