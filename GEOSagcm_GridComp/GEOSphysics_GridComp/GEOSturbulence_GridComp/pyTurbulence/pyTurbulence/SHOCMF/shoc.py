@@ -250,6 +250,8 @@ def eddy_length2(
     qv: FloatField,
     zl: FloatField,
     dryzpbl: FloatFieldIJ,
+    qsat_liq: FloatField, #Debug var
+    qsat_ice: FloatField, # Debug var
     formulation: Int,
 ):
     from __externals__ import k_end
@@ -274,7 +276,7 @@ def eddy_length2(
         wrk = qcl + qci
         omn = qcl / (wrk+1.e-20)
         lstarn = constants.fac_cond + (1.-omn)*constants.fac_fus
-        qsatt_liq, _ = liquid_exact(
+        qsat_liq, _ = liquid_exact(
             tabs,
             formulation,
             LiquidExactConstants.B6,
@@ -325,7 +327,7 @@ def eddy_length2(
             LiquidExactConstants.CL_9,
             prsl,
         )
-        qsatt_ice, _ = ice_exact(
+        qsat_ice, _ = ice_exact(
             tabs,
             formulation,
             IceExactConstants.TMINSTR,
@@ -366,10 +368,10 @@ def eddy_length2(
             IceExactConstants.BI0,
             prsl
         )
-        brunt = qsatt_ice
-        qsatt = omn  * qsatt_liq + (1.-omn) * qsatt_ice
-        dqsat =  omn * dtqw + (1.-omn) * dtqi
-        bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
+        #brunt = qsatt_ice
+        #qsatt = omn  * qsatt_liq + (1.-omn) * qsatt_ice
+        #dqsat =  omn * dtqw + (1.-omn) * dtqi
+        #bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
 
     # with computation(PARALLEL), interval(...):
     #     brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))

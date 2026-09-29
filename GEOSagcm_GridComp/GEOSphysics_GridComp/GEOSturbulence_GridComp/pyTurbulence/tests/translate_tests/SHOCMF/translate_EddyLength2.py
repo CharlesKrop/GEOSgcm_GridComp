@@ -48,9 +48,11 @@ class TranslateEddyLength2(TranslateFortranData2Py):
 
         # FloatField Outputs
         self.out_vars = {
-            "brunt": self.grid.compute_dict(),
-            "brunt2": self.grid.compute_dict(),
-            "brunt_edge": self.grid.compute_dict(),
+            #"brunt": self.grid.compute_dict(),
+            #"brunt2": self.grid.compute_dict(),
+            #"brunt_edge": self.grid.compute_dict(),
+            "qsat_liq": self.grid.compute_dict(),
+            "qsat_ice": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -109,10 +111,13 @@ class TranslateEddyLength2(TranslateFortranData2Py):
         brunt = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         brunt_edge = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
 
-        formulation = Int(1)
+        formulation = Int(1) # Fix this later
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.esw = saturation_vapor_pressure_table.esw
+
+        qsat_liq = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        qsat_ice = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
 
    
         _eddy_length2(
@@ -135,11 +140,15 @@ class TranslateEddyLength2(TranslateFortranData2Py):
             qv=qv,
             zl=zl,
             dryzpbl=dryzpbl,
+            qsat_liq=qsat_liq,
+            qsat_ice=qsat_ice,
             formulation=formulation,
         )
 
         return {
-            "brunt": brunt.view[:],
-            "brunt2": brunt2.view[:],
-            "brunt_edge": brunt_edge.view[:],
+            #"brunt": brunt.view[:],
+            #"brunt2": brunt2.view[:],
+            #"brunt_edge": brunt_edge.view[:],
+            "qsat_liq": qsat_liq.view[:],
+            "qsat_ice": qsat_ice.view[:],
         }
