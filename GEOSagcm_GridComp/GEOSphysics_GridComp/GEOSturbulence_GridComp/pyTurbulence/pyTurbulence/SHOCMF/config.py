@@ -7,19 +7,16 @@ from ndsl.dsl.typing import Float, Int
 class SHOCMFConfiguration:
     dtn: Float
     PRNUMBER: Float
-    min_tke: Float
-    max_tke: Float
     BUOYOPT: Int
     LENOPT: Int
     LENFAC1: Float
     LENFAC2: Float
     LENFAC3: Float
-    Ce: Float
-    Ces: Float
-    nitr: Int
+    CeFAC: Float
+    CesFAC: Float
+    Ck: Float
     shoc_lambda: Float
-    ck: Float
-    # ET: Int
-    # L0: Float
-    # L0fac: Float
-    # NUP: Int
+    #ET: Int
+    #L0_EDMF: Float
+    #L0fac: Float
+    #NUP: Int

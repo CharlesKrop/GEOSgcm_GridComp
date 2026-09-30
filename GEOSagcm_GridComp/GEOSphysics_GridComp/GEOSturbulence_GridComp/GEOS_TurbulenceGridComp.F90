@@ -330,6 +330,36 @@ contains
                                                         RC=STATUS  )
       VERIFY_(STATUS)
 
+      call MAPL_AddImportSpec(GC,                                 &
+         SHORT_NAME = 'DSL__BUOYF',                                       &
+         LONG_NAME  = 'DSL__BUOYF',                       &
+         UNITS      = '',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                 &
+         SHORT_NAME = 'DSL__MFTKE',                                       &
+         LONG_NAME  = 'DSL__MFTKE',                       &
+         UNITS      = '',                                         &
+         DIMS       =  MAPL_DimsHorzVert,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)
+
+      call MAPL_AddImportSpec(GC,                                 &
+         SHORT_NAME = 'DSL__DRYCBLH',                                       &
+         LONG_NAME  = 'DSL__DRYCBLH',                       &
+         UNITS      = '',                                         &
+         DIMS       =  MAPL_DimsHorzOnly,                          &
+         VLOCATION  =  MAPL_VLocationEdge,                         &
+         RESTART    = MAPL_RestartSkip,                           &
+                                                        RC=STATUS  )
+      VERIFY_(STATUS)
+
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'TH',                                        &
         LONG_NAME  = 'potential_temperature',                     &
@@ -3112,6 +3142,9 @@ end if
      real :: maxaero
      real :: eis_stable, kh_thresh
 
+     real, pointer, dimension(:,:,:) :: DSL__BUOYF, DSL__MFTKE
+     real, pointer, dimension(:,:) :: DSL__DRYCBLH
+
 #ifdef _CUDA
      type(dim3) :: Grid, Block
      integer :: blocksize_x, blocksize_y
@@ -3934,6 +3967,13 @@ end if
 
         call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
+
+        call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', RC=STATUS); VERIFY_(STATUS)
+        call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', RC=STATUS); VERIFY_(STATUS)
+        DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
+        DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
+        DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
 
         call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                        !== Inputs ==

@@ -14,6 +14,33 @@ from pyMoist.saturation_tables.saturation_specific_humidity_functions import sat
 from pyMoist.saturation_tables.formulation import SaturationFormulation
 from pyMoist.saturation_tables.tables.constants import IceExactConstants, LiquidExactConstants
 
+def setup_preliminary_inputs(
+    ZLE: FloatField,
+    ZL0: FloatField,
+    QLTOT: FloatField,
+    QRTOT: FloatField,
+    QL: FloatField,
+    QI:FloatField,
+    QITOT: FloatField,
+    QSTOT: FloatField,
+    QGTOT: FloatField,
+    QA: FloatField,
+    FCLD: FloatField,
+    Z: FloatField,
+    PLE: FloatField,
+    PLO: FloatField,
+):
+    from __externals__ import k_end
+
+    with computation(PARALLEL), interval(...):
+        ZL0 = ZLE - ZLE.at(K=k_end)
+
+    with computation(PARALLEL), interval(...): 
+        QL  = QLTOT+QRTOT
+        QI  = QITOT+QSTOT+QGTOT
+        QA  = FCLD
+        Z   = 0.5*(ZL0.at(K=k_end-1)+ZL0)
+        PLO = 0.5*(PLE.at(K=k_end-1)+PLE)
 
 def invert_interface_vars(
     zi: FloatField,
@@ -221,10 +248,9 @@ def reset_tke(
     tkesbshear: FloatField,
     tkesbbuoy: FloatField,
 ):
-    from __externals__ import min_tke
 
     with computation(PARALLEL), interval(...):
-        tke = max(min_tke,tke)
+        tke = max(constants.min_tke,tke)
         tkesbdiss = 0.
         tkesbshear = 0.
         tkesbbuoy  = 0.
@@ -250,8 +276,8 @@ def eddy_length2(
     qv: FloatField,
     zl: FloatField,
     dryzpbl: FloatFieldIJ,
-    qsat_liq: FloatField, #Debug var
-    qsat_ice: FloatField, # Debug var
+    #qsat_liq: FloatField, #Debug var
+    #qsat_ice: FloatField, # Debug var
     formulation: Int,
 ):
     from __externals__ import k_end
@@ -368,39 +394,38 @@ def eddy_length2(
             IceExactConstants.BI0,
             prsl
         )
-        #brunt = qsatt_ice
-        #qsatt = omn  * qsatt_liq + (1.-omn) * qsatt_ice
-        #dqsat =  omn * dtqw + (1.-omn) * dtqi
-        #bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
+        qsatt = omn  * qsat_liq + (1.-omn) * qsat_ice
+        dqsat =  omn * dtqw + (1.-omn) * dtqi
+        bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
 
-    # with computation(PARALLEL), interval(...):
-    #     brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
+    with computation(PARALLEL), interval(...):
+        brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
     
-    # with computation(PARALLEL), interval(1,None):
-    #     bbb = 0.5*(bbb + (1. + constants.epsv*qsatt-wrk-qpl[0,0,-1]-qpi[0,0,-1] + 1.61*tabs[0,0,-1]*dqsat) / (1.+lstarn*dqsat) )
-    #     brunt_edge = 0.5*(cld_sgs+cld_sgs[0,0,-1])*betdz*(bbb*(hl-hl[0,0,-1]) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi-qpi[0,0,-1]) )
+    with computation(PARALLEL), interval(1,None):
+        bbb = 0.5*(bbb + (1. + constants.epsv*qsatt-wrk-qpl[0,0,-1]-qpi[0,0,-1] + 1.61*tabs[0,0,-1]*dqsat) / (1.+lstarn*dqsat) )
+        brunt_edge = 0.5*(cld_sgs+cld_sgs[0,0,-1])*betdz*(bbb*(hl-hl[0,0,-1]) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi-qpi[0,0,-1]) )
 
-    # with computation(PARALLEL), interval(...):
-    #     bbb = 1. + constants.epsv*qv - qpl - qpi
-    #     brunt = brunt + (1.-cld_sgs)*betdz*( bbb*(hl.at(K=kc)-hl.at(K=kb)) + constants.epsv*tabs*(total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond-tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub -tabs)*(qpi.at(K=kc)-qpi.at(K=kb)) )
+    with computation(PARALLEL), interval(...):
+        bbb = 1. + constants.epsv*qv - qpl - qpi
+        brunt = brunt + (1.-cld_sgs)*betdz*( bbb*(hl.at(K=kc)-hl.at(K=kb)) + constants.epsv*tabs*(total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond-tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub -tabs)*(qpi.at(K=kc)-qpi.at(K=kb)) )
 
-    # with computation(PARALLEL), interval(1,None):
-    #     bbb = 0.5*(bbb + 1. + constants.epsv*qv[0,0,-1] - qpl[0,0,-1] - qpi[0,0,-1])
-    #     brunt_edge = brunt_edge + (1.-0.5*(cld_sgs+cld_sgs[0,0,-1]))*betdz*( bbb*(hl-hl[0,0,-1]) + constants.epsv*tabs*(total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond-tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub -tabs)*(qpi-qpi[0,0,-1]) )
+    with computation(PARALLEL), interval(1,None):
+        bbb = 0.5*(bbb + 1. + constants.epsv*qv[0,0,-1] - qpl[0,0,-1] - qpi[0,0,-1])
+        brunt_edge = brunt_edge + (1.-0.5*(cld_sgs+cld_sgs[0,0,-1]))*betdz*( bbb*(hl-hl[0,0,-1]) + constants.epsv*tabs*(total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond-tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub -tabs)*(qpi-qpi[0,0,-1]) )
 
-    # with computation(PARALLEL), interval(...):
-    #     if (brunt < 1e-5 or zl < 0.75*dryzpbl):
-    #         brunt2 = constants.bruntmin
-    #     else:
-    #         brunt2 = brunt
+    with computation(PARALLEL), interval(...):
+        if (brunt < 1e-5 or zl < 0.75*dryzpbl):
+            brunt2 = constants.bruntmin
+        else:
+            brunt2 = brunt
 
-    # with computation(FORWARD), interval(0,1):
-    #     brunt_edge = brunt_edge[0,0,1]
-    #     brunt2 = brunt2[0,0,1]
+    with computation(FORWARD), interval(0,1):
+        brunt_edge = brunt_edge[0,0,1]
+        brunt2 = brunt2[0,0,1]
 
-    # with computation(FORWARD), interval(-1,None):
-    #     brunt_edge = brunt_edge.at(K=k_end-1)
-    #     brunt2 = brunt2.at(K=k_end-1)
+    with computation(FORWARD), interval(-1,None):
+        brunt_edge = brunt_edge.at(K=k_end-1)
+        brunt2 = brunt2.at(K=k_end-1)
 
 
 def eddy_length3(
@@ -509,10 +534,12 @@ def solve_tke(
     tkesbdiss: FloatField,
     tscale1: FloatField,
 ):
-    from __externals__ import k_end, BUOYOPT, Ce, Ces, dtn, nitr, min_tke, max_tke
+    from __externals__ import k_end, BUOYOPT, dtn, CeFAC, CesFAC, Ck
 
     with computation(PARALLEL), interval(...):
+        Ce = CeFAC*Ck**3/constants.Cs**4 
         Cek = Ce/0.7
+        Ces = CesFAC*Ce  
 
         if K == 0:
             ku = 1
@@ -547,17 +574,17 @@ def solve_tke(
         wrk  = (dtn*Cee)/smixt
         wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
 
-        wrk2 = min_tke*(1.+9.*exp(-zl/100.))+0.5*(tke_mf+tke_mf)
+        wrk2 = constants.min_tke*(1.+9.*exp(-zl/100.))+0.5*(tke_mf+tke_mf)
         itr=1
-        while itr <= nitr:                    
-            wtke   = min(max(wrk2, wtke), max_tke)
+        while itr <= constants.nitr:                    
+            wtke   = min(max(wrk2, wtke), constants.max_tke)
             a_diss = wrk*sqrt(wtke)           
             wtke   = wrk1 / (1.+a_diss)
             wtke   = constants.tkef1*wtke + constants.tkef2*wtk2   
             wtk2   = wtke
             itr = itr + 1
 
-        tke = min(max(wrk2, wtke), max_tke)
+        tke = min(max(wrk2, wtke), constants.max_tke)
         tscale1 = (dtn+dtn) / a_diss        
         a_diss = (a_diss/dtn)*tke  
 
@@ -576,7 +603,7 @@ def environmental_tke(
     tkh: FloatField,
     isotropy: FloatField,
 ):
-    from __externals__ import shoc_lambda, ck
+    from __externals__ import shoc_lambda, Ck
 
     with computation(PARALLEL), interval(1,None):
         wrk = 0.5*(tscale1+tscale1[0,0,-1])
@@ -590,7 +617,7 @@ def environmental_tke(
         if tke < 2e-4: 
             isotropy = 30.
 
-        wrk1 = ck / prnum
+        wrk1 = Ck / prnum
         tkh = wrk1*isotropy*0.5*(tke+tke[0,0,-1]) 
         tkh = min(tkh,constants.tkhmax)
     
@@ -669,6 +696,10 @@ class RUN_SHOC(NDSLRuntime):
         self.stencil_factory = stencil_factory
         self.quantity_factory = quantity_factory
 
+        self._setup_preliminary_inputs = self.stencil_factory.from_dims_halo(
+            func=setup_preliminary_inputs,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
 
         self._invert_interface_vars = self.stencil_factory.from_dims_halo(
             func=invert_interface_vars,
@@ -704,7 +735,6 @@ class RUN_SHOC(NDSLRuntime):
         self._reset_tke = self.stencil_factory.from_dims_halo(
             func=reset_tke,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"min_tke": config.min_tke},
         )
 
         self._eddy_length2 = self.stencil_factory.from_dims_halo(
@@ -721,13 +751,13 @@ class RUN_SHOC(NDSLRuntime):
         self._solve_tke = self.stencil_factory.from_dims_halo(
             func=solve_tke,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"max_tke":config.max_tke,"min_tke":config.min_tke,"nitr":config.nitr,"BUOYOPT":config.BUOYOPT, "Ce":config.Ce, "Ces":config.Ces, "dtn":config.dtn}
+            externals={"BUOYOPT":config.BUOYOPT, "dtn":config.dtn,"CeFAC":config.CeFAC, "CesFAC":config.CesFAC, "Ck":config.Ck}
         )
 
         self._environmental_tke = self.stencil_factory.from_dims_halo(
             func=environmental_tke,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"shoc_lambda":config.shoc_lambda, "ck": config.ck}
+            externals={"shoc_lambda":config.shoc_lambda, "Ck": config.Ck}
         )
 
         self._flip_and_export = self.stencil_factory.from_dims_halo(
@@ -770,19 +800,36 @@ class RUN_SHOC(NDSLRuntime):
     
         # Reset locals
 
+        self._setup_preliminary_inputs(
+            ZLE=state.input.ZLE,
+            ZL0=self.locals.ZL0,
+            QLTOT=state.input.QLTOT,
+            QRTOT=state.input.QRTOT,
+            QL=self.locals.QL,
+            QI=self.locals.QI,
+            QITOT=state.input.QITOT,
+            QSTOT=state.input.QSTOT,
+            QGTOT=state.input.QGTOT,
+            QA=self.locals.QA,
+            FCLD=state.input.FCLD,
+            Z=self.locals.Z,
+            PLE=state.input.PLE,
+            PLO=self.locals.PLO,
+        )
+
         self._invert_interface_vars(
             zi=self.locals.zi,
-            phii_inv=state.input.ZL0,
+            phii_inv=self.locals.ZL0,
         )
 
         self._invert_inputs(
             zl=self.locals.zl,
-            phil_inv=state.input.Z,
-            phii_inv=state.input.ZL0,
+            phil_inv=self.locals.Z,
+            phii_inv=self.locals.ZL0,
             tkh=self.locals.tkh,
             tkh_inv=state.input_output.TKH,
             prsl=self.locals.prsl,
-            prsl_inv=state.input.PLO,
+            prsl_inv=self.locals.PLO,
             u=self.locals.u,
             v=self.locals.v,
             u_inv=state.input.U,
@@ -794,11 +841,11 @@ class RUN_SHOC(NDSLRuntime):
             qwv=self.locals.qwv,
             qwv_inv=state.input.Q,
             qcl=self.locals.qcl,
-            qc_inv=state.input.QL,
+            qc_inv=self.locals.QL,
             qci=self.locals.qci,
-            qi_inv=state.input.QI,
+            qi_inv=self.locals.QI,
             cld_sgs=self.locals.cld_sgs,
-            cld_sgs_inv=state.input.QA,
+            cld_sgs_inv=self.locals.QA,
             tke=self.locals.tke,
             tke_inv=state.input_output.TKESHOC,
             wthv_sec=self.locals.wthv_sec,

@@ -56,6 +56,81 @@ def setup_inputs(
 
         tmp = tmp/tmp2  
 
+def estimate_scale_height(
+
+):
+    from __externals__ import NUP, ET, L0_EDMF, L0fac, k_end
+
+    with computation(PARALLEL), interval(...):
+        stop_loop = False
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            nup2 = NUP
+            UPW=0.
+            UPTHL=0.
+            UPTHV=0.
+            UPQT=0.
+            UPA=0.
+            UPU=0.
+            UPV=0.
+            UPQI=0.
+            UPQL=0.
+            ENT=0.
+            QR = 0.
+            QS = 0.
+
+    #     if ET == 2:
+    #         pmid = 0.5*(pw3[0,0,-1]+pw3)
+    #         call calc_mf_depth(t3,zlo3(IH,JH,:)-zw3(IH,JH,kte),qv3(IH,JH,:),pmid,ztop,wthv,wqt)
+    #         wstar=max(0.1,(mapl_grav*wthv*1e3/t(kte))**(1./3.)) 
+    #         thstar=max(0.,wthv)/wstar
+
+    #         sigmaQT=2.0*qstar
+    #         sigmaTH=2.0*thstar
+
+    #         tep  = t3.at(K=k_end)+max(0.1,sigmaTH) 
+    #         qp   = qv3.at(K=k_end)+sigmaQT
+
+    #         t1   = t3.at(K=k_end)
+    #         z1   = zlo.at(K=k_end)
+    #         ztop = zlo.at(K=k_end)
+    #     else: 
+    #         L0 = L0_EDMF
+
+    # with computation(BACKWARD), interval(1,-1):
+    #     if ET == 2 and stop_loop == False:
+    #         z2 = zlo
+    #         t2 = t3
+    #         pp = pmid
+
+    #         tep   = tep - constants.MAPL_GRAV*( z2-z1 )/constants.MAPL_CP
+
+    #         qp    = qp  + (0.7/1000.)*(z2-z1)*(qv3-qp)  
+    #         tep   = tep + (0.7/1000.)*(z2-z1)*(t3-tep)
+
+    #         _, dqsp  = GEOS_DQSAT(tep , pp , qsat=qsp,  pascals=.true. )
+
+    #         dqp   = max( qp - qsp, 0. )/(1.+(MAPL_ALHL/MAPL_CP)*dqsp )
+    #         qp    = qp - dqp
+    #         tep   = tep  + MAPL_ALHL * dqp/MAPL_CP
+
+    #         if ( t2*(1.+MAPL_VIREPS*q(k)) .ge. tep*(1.+MAPL_VIREPS*qp)+0.2 ) then
+    #             ztop = 0.5*(z2+z1)
+    #             stop_loop = True
+
+    #         if stop_loop == False:
+    #             z1 = z2
+    #             t1 = t2
+
+    # with computation(PARALLEL), interval(...):
+    #     if ET == 2:
+    #         L0 = max(min(ztop,2500.),500.) / L0fac
+
+    #         #NOTE: Need to fix this
+    #         #if (associated(mfdepth)) mfdepth(IH,JH) = ztop
+    
+    
+
+
 
 
 class RUN_EDMF(NDSLRuntime):
@@ -87,6 +162,11 @@ class RUN_EDMF(NDSLRuntime):
 
         self._setup_inputs = self.stencil_factory.from_dims_halo(
             func=setup_inputs,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._estimate_scale_height = self.stencil_factory.from_dims_halo(
+            func=estimate_scale_height,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -123,3 +203,5 @@ class RUN_EDMF(NDSLRuntime):
         #     wthl=,
         #     wthv=,
         # )
+
+        #self._estimate_scale_height()

@@ -66,7 +66,7 @@ class TranslateSetupInputs(TranslateFortranData2Py):
         safe_assign_array(wthl2.view[:, :], inputs["wthl2"])
         zlo3 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(zlo3.view[:, :, :], inputs["zlo3"])
-        zw3 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        zw3 = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(zw3.view[:, :, :], inputs["zw3"])
 
 
