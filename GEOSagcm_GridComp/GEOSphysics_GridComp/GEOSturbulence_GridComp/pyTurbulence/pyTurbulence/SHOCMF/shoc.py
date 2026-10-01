@@ -32,15 +32,21 @@ def setup_preliminary_inputs(
 ):
     from __externals__ import k_end
 
-    with computation(PARALLEL), interval(...):
-        ZL0 = ZLE - ZLE.at(K=k_end)
+    with computation(FORWARD), interval(0,1):
+        ZL0 = ZLE - ZLE.at(K=k_end+1)
+
+    with computation(FORWARD), interval(...):
+        ZL0[0,0,1] = ZLE[0,0,1] - ZLE.at(K=k_end+1)
+
+    with computation(FORWARD), interval(-1,None):
+        ZL0[0,0,1] = ZLE - ZLE.at(K=k_end)
 
     with computation(PARALLEL), interval(...): 
         QL  = QLTOT+QRTOT
         QI  = QITOT+QSTOT+QGTOT
         QA  = FCLD
-        Z   = 0.5*(ZL0.at(K=k_end-1)+ZL0)
-        PLO = 0.5*(PLE.at(K=k_end-1)+PLE)
+        Z   = 0.5*(ZL0+ZL0[0,0,1])
+        PLO = 0.5*(PLE+PLE[0,0,1])
 
 def invert_interface_vars(
     zi: FloatField,
