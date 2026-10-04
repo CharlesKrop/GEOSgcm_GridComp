@@ -124,8 +124,6 @@ contains
     !$ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
     !$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
 
-    !$ser on
-
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
@@ -6138,9 +6136,7 @@ contains
        call MAPL_TimerOff(MAPL,"---MOIST_EPILOGUE")
 
        if (adjustl(CLDMICR_OPTION)=="BACM_1M") call BACM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-       !$ser off
        if (adjustl(CLDMICR_OPTION)=="GFDL_1M") call GFDL_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
-       !$ser on
        if (adjustl(CLDMICR_OPTION)=="THOM_1M") call THOM_1M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
        if (adjustl(CLDMICR_OPTION)=="MGB2_2M") call MGB2_2M_Run(GC, IMPORT, EXPORT, CLOCK, RC=STATUS) ; VERIFY_(STATUS)
 

@@ -363,6 +363,41 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 
+    !$ser savepoint GFDL1M_Config
+    !$ser data PHYS_HYDROSTATIC=LPHYS_HYDROSTATIC
+    !$ser data MELTFRZ_CLDMACRO=LMELTFRZ_CLDMACRO
+    !$ser data MELTFRZ_CLDMICRO=LMELTFRZ_CLDMICRO
+    !$ser data REPORT_GFDL_1M_NEGATIVES=REPORT_GFDL_1M_NEGATIVES
+    !$ser data GFDL_MP3=GFDL_MP3
+    !$ser data DO_GFDL_REFLECTIVITY=do_ref
+    !$ser data USE_PYMOIST_GFDL1M=USE_PYMOIST_GFDL1M
+    !$ser data SH_MD_DP=SH_MD_DP
+    !$ser data TURNRHCRIT=TURNRHCRIT_PARAM
+    !$ser data MAX_RH_CRIT=MAX_RH_CRIT
+    !$ser data MIN_RH_UNSTABLE=MIN_RH_UNSTABLE
+    !$ser data MIN_RH_STABLE=MIN_RH_STABLE
+    !$ser data PDFSHAPE=PDFSHAPE
+    !$ser data ICE_LSC_VFALL_PARAM=ICE_LSC_VFALL_PARAM
+    !$ser data ICE_CNV_VFALL_PARAM=ICE_CNV_VFALL_PARAM
+    !$ser data ANV_ICEFALL=ANV_ICEFALL
+    !$ser data LS_ICEFALL=LS_ICEFALL
+    !$ser data LIQ_RADII_PARAM=LIQ_RADII_PARAM
+    !$ser data ICE_RADII_PARAM=ICE_RADII_PARAM
+    !$ser data FAC_RI=FAC_RI
+    !$ser data MIN_RI=MIN_RI
+    !$ser data MAX_RI=MAX_RI
+    !$ser data FAC_RL=FAC_RL
+    !$ser data MIN_RL=MIN_RL
+    !$ser data MAX_RL=MAX_RL
+    !$ser data CCW_EVAP_EFF=CCW_EVAP_EFF
+    !$ser data CCI_EVAP_EFF=CCI_EVAP_EFF
+    !$ser data CNV_FRACTION_MIN=CNV_FRACTION_MIN
+    !$ser data CNV_FRACTION_MAX=CNV_FRACTION_MAX
+    !$ser data ICE_FRACTION_POLYNOMIAL=ICE_FRACTION_POLYNOMIAL
+    !$ser data USE_AEROSOL_NN=USE_AEROSOL_NN
+    !$ser data USE_BERGERON=USE_BERGERON
+    !$ser data GFDL_MP_KLID=GFDL_MP_KLID
+
 end subroutine GFDL_1M_Initialize
 
 subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
