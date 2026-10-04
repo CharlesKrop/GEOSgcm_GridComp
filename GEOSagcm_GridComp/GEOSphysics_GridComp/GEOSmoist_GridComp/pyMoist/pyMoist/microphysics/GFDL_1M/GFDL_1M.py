@@ -1,6 +1,6 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
-from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import PARALLEL, computation, interval
+from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
 from ndsl.dsl.typing import Float, FloatField
 from ndsl.stencils.basic_operations import add, copy, set_value
 
@@ -14,6 +14,16 @@ from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 
 
+def convert_mm_per_day_to_kg_per_m2_per_s(field: FloatField):
+    """Convert a field from mm day^-1 to kg m^-2 s^-1
+
+    Args:
+        field (FloatField)
+    """
+    with computation(PARALLEL), interval(...):
+        field = field * 1.0e-3 / 86400.0
+
+
 def flip_sign(input: FloatField, output: FloatField):
     with computation(PARALLEL), interval(...):
         output = -1.0 * input
@@ -22,6 +32,78 @@ def flip_sign(input: FloatField, output: FloatField):
 def min_with_one(field: FloatField):
     with computation(PARALLEL), interval(...):
         field = min(field, 1.0)
+
+
+def negative_adjustment(
+    graupel: FloatField,
+    ice: FloatField,
+    liquid: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    vapor: FloatField,
+):
+    with computation(FORWARD), interval(0, 1):
+        # initialize 2d internals
+        n_solid_fix = 0
+        n_liquid_fix = 0
+        n_vapor_col = 0
+
+    # 1. Local phase borrowing (GFDL neg_adj style)
+    with computation(PARALLEL), interval(...):
+        # Solid phase adjustments
+        if ice < 0.0 and snow > 0.0:
+            dq = min(-ice, snow)
+            ice = ice + dq
+            snow = snow - dq
+            n_solid_fix = n_solid_fix + 1
+
+        if snow < 0.0 and graupel > 0.0:
+            dq = min(-snow, graupel)
+            snow = snow + dq
+            graupel = graupel - dq
+            n_solid_fix = n_solid_fix + 1
+
+        if graupel < 0.0 and rain > 0.0:
+            dq = min(-graupel, rain)
+            graupel = graupel + dq
+            rain = rain - dq
+            n_solid_fix = n_solid_fix + 1
+
+        # Liquid phase adjustments
+        if rain < 0.0 and liquid > 0.0:
+            dq = min(-rain, liquid)
+            rain = rain + dq
+            liquid = liquid - dq
+            n_liquid_fix = n_liquid_fix + 1
+
+        if liquid < 0.0 and vapor > 0.0:
+            dq = min(-liquid, vapor)
+            liquid = liquid + dq
+            vapor = vapor - dq
+            n_liquid_fix = n_liquid_fix + 1
+
+    # 2. Column water vapor borrowing
+    with computation(FORWARD), interval(0, -1):
+        if vapor < 0.0:
+            vapor[0, 0, 1] = vapor[0, 0, 1] + vapor
+            vapor = 0.0
+            n_vapor_col = n_vapor_col + 1
+
+    with computation(FORWARD), interval(-1, None):
+        if vapor < 0.0 and vapor[0, 0, -1] > 0.0:
+            dq = min(-vapor, vapor[0, 0, -1])
+            vapor[0, 0, -1] = vapor[0, 0, -1] - dq
+            vapor = vapor + dq
+            n_vapor_col = n_vapor_col + 1
+
+    # Final safety clamp
+    with computation(PARALLEL), interval(...):
+        graupel = max(graupel, 0.0)
+        ice = max(ice, 0.0)
+        liquid = max(liquid, 0.0)
+        rain = max(rain, 0.0)
+        snow = max(snow, 0.0)
+        vapor = max(vapor, 1.0e-15)
 
 
 class GFDL1M(NDSLRuntime):
@@ -83,23 +165,23 @@ class GFDL1M(NDSLRuntime):
             saturation_tables=saturation_tables,
         )
 
-        self._copy = stencil_factory.from_dims_halo(
-            func=copy,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-
         self._add = stencil_factory.from_dims_halo(
             func=add,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._set_value = stencil_factory.from_dims_halo(
-            func=set_value,
+        self._convert_mm_per_day_to_kg_per_m2_per_s = stencil_factory.from_dims_halo(
+            func=convert_mm_per_day_to_kg_per_m2_per_s,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._set_value_k_interface = stencil_factory.from_dims_halo(
-            func=set_value,
+        self._convert_mm_per_day_to_kg_per_m2_per_s_interface = stencil_factory.from_dims_halo(
+            func=convert_mm_per_day_to_kg_per_m2_per_s,
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+        )
+
+        self._copy = stencil_factory.from_dims_halo(
+            func=copy,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -113,7 +195,22 @@ class GFDL1M(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._microphysics = GFDLMPV3()
+        self._negative_adjustment = stencil_factory.from_dims_halo(
+            func=negative_adjustment,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._set_value = stencil_factory.from_dims_halo(
+            func=set_value,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._set_value_k_interface = stencil_factory.from_dims_halo(
+            func=set_value,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._gfdl_microphysics_v3 = GFDLMPV3()
 
     def __call__(
         self,
@@ -176,3 +273,45 @@ class GFDL1M(NDSLRuntime):
         self._copy(input=state.mixing_ratio.graupel, output=state.radiation_field.graupel)
         self._copy(input=state.mixing_ratio.rain, output=state.radiation_field.rain)
         self._copy(input=state.mixing_ratio.snow, output=state.radiation_field.snow)
+
+        if self._config.GFDL_MP3:
+            # run the driver
+            self._gfdl_microphysics_v3(state=state, locals=self._locals)
+
+            # convert evap/subl/cloud/precipitation flux exports from (mm/day) to (kg m-2 s-1)
+            self._convert_mm_per_day_to_kg_per_m2_per_s(state.non_anvil_large_scale.evaporation)
+            self._convert_mm_per_day_to_kg_per_m2_per_s(state.non_anvil_large_scale.sublimation)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.ice_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.liquid_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.rain_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.snow_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.graupel_precip_flux)
+
+            if self._config.DO_REF:
+                option_not_impemented = True
+
+        if self._config.REPORT_GFDL1M_NEGATIVES:
+            ndsl_log.warning(
+                "[GFDL_1M] Negative adjustment requested with debug output, but NDSL does not support in-stencil prints. "
+                "The math has still been applied as expected, please use NDSL debug tools to see requested values"
+            )
+            self._negative_adjustment(
+                graupel=state.radiation_field.graupel,
+                ice=state.radiation_field.ice,
+                liquid=state.radiation_field.liquid,
+                rain=state.radiation_field.rain,
+                snow=state.radiation_field.snow,
+                vapor=state.radiation_field.vapor,
+            )
+        else:
+            self._negative_adjustment(
+                graupel=state.radiation_field.graupel,
+                ice=state.radiation_field.ice,
+                liquid=state.radiation_field.liquid,
+                rain=state.radiation_field.rain,
+                snow=state.radiation_field.snow,
+                vapor=state.radiation_field.vapor,
+            )
+
+        # update cloud fraction, redistribute clouds, and fill vapor/precip states
+        
