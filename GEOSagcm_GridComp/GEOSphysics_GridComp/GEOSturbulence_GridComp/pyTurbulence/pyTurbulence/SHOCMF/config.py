@@ -20,3 +20,4 @@ class SHOCMFConfiguration:
     L0_EDMF: Float
     L0fac: Float
     NUP: Int
+    DISCRETE: Int

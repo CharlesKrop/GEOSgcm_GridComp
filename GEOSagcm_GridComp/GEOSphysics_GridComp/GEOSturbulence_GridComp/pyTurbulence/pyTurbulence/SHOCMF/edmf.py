@@ -163,6 +163,127 @@ def estimate_scale_height(
     
     
 
+def flip_variables(
+    wthv: FloatFieldIJ,
+    tmp: FloatFieldIJ,
+    phis: FloatFieldIJ,
+    ztop: FloatFieldIJ,
+    zlo3: FloatField,
+    zw3: FloatField,
+    zlo: FloatField,
+    u3: FloatField,
+    u: FloatField,
+    v3: FloatField,
+    v: FloatField,
+    thl3: FloatField,
+    thl: FloatField,
+    thv3: FloatField,
+    thv: FloatField,
+    qv3: FloatField,
+    qv: FloatField,
+    ql3: FloatField,
+    ql: FloatField,
+    qi3: FloatField,
+    qi: FloatField,
+    ui: FloatField,
+    vi: FloatField,
+    thli: FloatField,
+    qvi: FloatField,
+    qli: FloatField,
+    qii:FloatField,
+    qt: FloatField,
+    qti: FloatField,
+    rhoe: FloatField,
+    zw: FloatField,
+    p: FloatField,
+    dp: FloatField,
+    rhoe3: FloatField,
+    pw3: FloatField,
+):
+
+    from __externals__ import k_end, DISCRETE
+
+    with computation(PARALLEL), interval(...):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                k_inv=k_end-K
+                zlo=zlo3.at(K=k_inv)-zw3.at(K=k_end+1)
+                u=u3.at(K=k_inv)
+                v=v3.at(K=k_inv)
+                thl=thl3.at(K=k_inv)
+                thv=thv3.at(K=k_inv)
+                qv=qv3.at(K=k_inv)
+                ql=ql3.at(K=k_inv)
+                qi=qi3.at(K=k_inv)
+
+    with computation(FORWARD), interval(...):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                k_inv=k_end-K+1
+                if DISCRETE == 0:
+                    ui   = 0.5*( u3.at(K=k_inv)   + u3.at(K=k_inv-1) )
+                    vi   = 0.5*( v3.at(K=k_inv)   + v3.at(K=k_inv-1) )
+                    thli = 0.5*( thl3.at(K=k_inv) + thl3.at(K=k_inv-1) )
+                    qvi  = 0.5*( qv3.at(K=k_inv)  + qv3.at(K=k_inv-1) )
+                    qli = 0.5*( ql3.at(K=k_inv)  + ql3.at(K=k_inv-1) )
+                    qii  = 0.5*( qi3.at(K=k_inv)  + qi3.at(K=k_inv-1) )
+                else:
+                    ui   = u3.at(K=k_inv-1)
+                    vi   = v3.at(K=k_inv-1)
+                    thli = thl3.at(K=k_inv-1)
+                    qvi = qv3.at(K=k_inv-1)
+                    qli  = ql3.at(K=k_inv-1)
+                    qii  = qi3.at(K=k_inv-1)
+
+    with computation(FORWARD), interval(-1,None):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                ui[0,0,1]     = u
+                vi[0,0,1]    = v
+                thli[0,0,1]   = thl
+                qvi[0,0,1]    = qv
+                qli[0,0,1]    = ql
+                qii[0,0,1]    = qi
+
+    with computation(PARALLEL), interval(0,1):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                ui   = u
+                vi   = v
+                thli = thl
+                qvi  = qv
+                qli  = ql
+                qii  = qi
+
+    with computation(FORWARD), interval(...):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                k_inv=k_end-K+1
+
+                qt  = qv+ql+qi
+                qti = qvi+qli+qii
+                qti[0,0,1] = qvi[0,0,1]+qli[0,0,1]+qii[0,0,1]
+
+    with computation(FORWARD), interval(...):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                k_inv=k_end-K+1
+                rhoe = rhoe3.at(K=k_inv)
+                zw  = zw3.at(K=k_inv)-zw3.at(K=k_end+1)
+                p   = pw3.at(K=k_inv)
+
+    with computation(FORWARD), interval(-1,None):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                k_inv=k_end-K+1
+                rhoe[0,0,1] = rhoe3.at(K=k_inv-1)
+                zw[0,0,1]  = zw3.at(K=k_inv-1)-zw3.at(K=k_end+1)
+                p[0,0,1]= pw3.at(K=k_inv-1)
+
+    with computation(FORWARD), interval(...):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                dp = p-p[0,0,1]
 
 
 
@@ -201,6 +322,12 @@ class RUN_EDMF(NDSLRuntime):
         self._estimate_scale_height = self.stencil_factory.from_dims_halo(
             func=estimate_scale_height,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._flip_variables = self.stencil_factory.from_dims_halo(
+            func=flip_variables,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"DISCRETE":config.DISCRETE}
         )
 
 
