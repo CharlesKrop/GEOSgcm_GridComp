@@ -16,7 +16,7 @@ class SHOCMFConfiguration:
     CesFAC: Float
     Ck: Float
     shoc_lambda: Float
-    #ET: Int
-    #L0_EDMF: Float
-    #L0fac: Float
-    #NUP: Int
+    ET: Int
+    L0_EDMF: Float
+    L0fac: Float
+    NUP: Int

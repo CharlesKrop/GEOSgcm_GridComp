@@ -50,6 +50,12 @@ class SHOCMFLocals:
     dtqw: Local
     dtqi: Local
     gamaz: Local
+    ZL0: Local
+    QL: Local
+    QI: Local
+    QA: Local
+    Z: Local
+    PLO: Local
 
     @classmethod
     def make(cls, runtime: NDSLRuntime, quantity_factory: QuantityFactory):
@@ -59,6 +65,7 @@ class SHOCMFLocals:
         RI = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_INTERFACE_DIM])
         prnum = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_INTERFACE_DIM])
         brunt_edge = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_INTERFACE_DIM])
+        ZL0 = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_INTERFACE_DIM])
 
         # FloatFields
         zl = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
@@ -99,6 +106,11 @@ class SHOCMFLocals:
         dtqi = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
         gamaz = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
         isotropy = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
+        QL = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
+        QI = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
+        QA= runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
+        Z = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
+        PLO = runtime.make_local(quantity_factory, [I_DIM, J_DIM, K_DIM])
 
         return cls(
             zi=zi,
@@ -144,5 +156,10 @@ class SHOCMFLocals:
             dtqi=dtqi,
             omega=omega,
             gamaz=gamaz,
-
+            ZL0=ZL0,
+            QL=QL,
+            QI=QI,
+            QA=QA,
+            Z=Z,
+            PLO=PLO,
         )

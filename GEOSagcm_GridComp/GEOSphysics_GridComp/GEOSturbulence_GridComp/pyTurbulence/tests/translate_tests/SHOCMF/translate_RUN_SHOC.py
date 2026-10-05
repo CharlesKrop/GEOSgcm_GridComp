@@ -28,15 +28,18 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {
             "BUOYF": {},
             "DRYCBLH": {},
+            "FCLD": {},
             "MFTKE": {},
             "OMEGA": {},
-            "PLO": {},
+            "PLE": {},
             "Q": {},
-            "QA": {},
-            "QI": {},
-            "QL": {},
+            "QGTOT": {},
+            "QITOT": {},
+            "QLTOT": {},
             "QPI": {},
             "QPL": {},
+            "QRTOT": {},
+            "QSTOT": {},
             "SH": {},
             "T": {},
             "TKESHOC": {},
@@ -45,7 +48,7 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
             "V": {},
             "WTHV2": {},
             "Z": {},
-            "ZL0": {},
+            "ZLE": {},
         }
 
         # FloatField Outputs
@@ -79,22 +82,25 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
         # Inputs
         state.input.BUOYF.field[:] = inputs["BUOYF"]
         state.input.DRYCBLH.field[:] = inputs["DRYCBLH"]
+        state.input.FCLD.field[:] = inputs["FCLD"]
         state.input.MFTKE.field[:] = inputs["MFTKE"]
         state.input.OMEGA.field[:] = inputs["OMEGA"]
-        state.input.PLO.field[:] = inputs["PLO"]
+        state.input.PLE.field[:] = inputs["PLE"]
         state.input.Q.field[:] = inputs["Q"]
-        state.input.QA.field[:] = inputs["QA"]
-        state.input.QI.field[:] = inputs["QI"]
-        state.input.QL.field[:] = inputs["QL"]
+        state.input.QGTOT.field[:] = inputs["QGTOT"]
+        state.input.QITOT.field[:] = inputs["QITOT"]
+        state.input.QLTOT.field[:] = inputs["QLTOT"]
         state.input.QPL.field[:] = inputs["QPL"]
         state.input.QPI.field[:] = inputs["QPI"]
+        state.input.QRTOT.field[:] = inputs["QRTOT"]
+        state.input.QSTOT.field[:] = inputs["QSTOT"]
         state.input.SH.field[:] = inputs["SH"]
         state.input.T.field[:] = inputs["T"]
         state.input.U.field[:] = inputs["U"]
         state.input.V.field[:] = inputs["V"]
         state.input.WTHV2.field[:] = inputs["WTHV2"]
         state.input.Z.field[:] = inputs["Z"]
-        state.input.ZL0.field[:] = inputs["ZL0"]
+        state.input.ZLE.field[:] = inputs["ZLE"]
         
         # In/outs
         state.input_output.TKESHOC.field[:] = inputs["TKESHOC"]
