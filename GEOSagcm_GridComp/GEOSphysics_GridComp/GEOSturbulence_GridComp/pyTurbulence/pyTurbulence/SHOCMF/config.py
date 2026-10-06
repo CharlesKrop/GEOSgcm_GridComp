@@ -26,3 +26,4 @@ class SHOCMFConfiguration:
     AlphaTH: Float
     pwmin: Float
     pwmax: Float
+    WCTHRESH: Float

@@ -19,6 +19,7 @@ from .SHOCMF.translate_QSatTest import TranslateQSatTest
 from .SHOCMF.translate_EstimateScaleHeight import TranslateEstimateScaleHeight
 from .SHOCMF.translate_FlipVariables import TranslateFlipVariables
 from .SHOCMF.translate_SurfaceConditions import TranslateSurfaceConditions
+from .SHOCMF.translate_IdentifyInversions import TranslateIdentifyInversions
 
 __all__ = [
     "TranslateInvertInterfaceVars",

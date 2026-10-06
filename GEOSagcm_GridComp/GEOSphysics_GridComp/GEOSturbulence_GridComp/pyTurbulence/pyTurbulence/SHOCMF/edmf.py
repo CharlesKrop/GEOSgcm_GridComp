@@ -327,6 +327,50 @@ def surface_conditions(
                 wmin=sigmaW*pwmin
                 wmax=sigmaW*pwmax
 
+def identify_inversions(
+    wthv: FloatFieldIJ,
+    tmp: FloatFieldIJ,
+    tmp_in: FloatFieldIJ,
+    phis: FloatFieldIJ,
+    ztop: FloatFieldIJ,
+    zlo: FloatField,
+    t3: FloatField,
+    thv: FloatField,
+    wcfac: FloatField,
+):
+    from __externals__ import k_end, k_start, WCTHRESH
+
+    with computation(FORWARD), interval(0,1):
+        if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                stop_loop: BoolFieldIJ = False
+                tmp = 0.
+                kidx: IntFieldIJ = k_start
+
+    with computation(PARALLEL), interval(...):
+        if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                wcfac = 0.
+
+    with computation(FORWARD), interval(0,1):
+         if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                while zlo.at(K=kidx) < 1500. and stop_loop==False:
+                    if t3.at(K=k_end-kidx-1) > t3.at(K=k_end-kidx):
+                        tmp = thv.at(K=kidx)  
+                        stop_loop=True
+                    kidx = kidx+1
+                    ktmp: IntFieldIJ = kidx
+
+    with computation(FORWARD), interval(...):
+         if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                if tmp != 0.:
+                    while zlo.at(K=ktmp-1) < zlo.at(K=kidx-1)+1e3:
+                        ktmp = ktmp+1
+                    if K <= kidx-1:
+                        wcfac = min(10.,max(0.,thv.at(K=ktmp-1)-thv.at(K=kidx-1)-WCTHRESH))*exp(-(zlo.at(K=kidx-1)-zlo)/200. )
+
 class RUN_EDMF(NDSLRuntime):
     def __init__(
         self,
@@ -370,11 +414,16 @@ class RUN_EDMF(NDSLRuntime):
             externals={"DISCRETE":config.DISCRETE}
         )
 
-
         self._surface_conditions = self.stencil_factory.from_dims_halo(
             func=surface_conditions,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"AlphaW":config.AlphaW, "AlphaQT":config.AlphaQT, "AlphaTH": config.AlphaTH, "pwmin": config.pwmin, "pwmax":config.pwmax}
+        )
+
+        self._identify_inversions = self.stencil_factory.from_dims_halo(
+            func=identify_inversions,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"WCTHRESH":config.WCTHRESH}
         )
 
 
@@ -413,4 +462,87 @@ class RUN_EDMF(NDSLRuntime):
         #     wthv=,
         # )
 
-        #self._estimate_scale_height()
+        #self._estimate_scale_height(
+        #     wthv=,
+        #     tmp=,
+        #     phis=,
+        #     UPW=,
+        #     UPTHL=,
+        #     UPTHV=,
+        #     UPQT=,
+        #     UPA=,
+        #     UPU=,
+        #     UPV=,
+        #     UPQI=,
+        #     UPQL=,
+        #     ENT=,
+        #     QR=,
+        #     QS=,
+        #     pw3=,
+        #     t3=,
+        #     wqt=,
+        #     qv3=,
+        #     zlo3=,
+        #     nup2=,
+        #     L0=,
+        #     pmid=,
+        #     esx=,
+        #     ztop=,
+        #     zw3=,
+        #     z=,
+        # )
+
+        #self._flip_variables(
+        #     wthv=,
+        #     tmp=,
+        #     phis=,
+        #     ztop=,
+        #     zlo3=,
+        #     zw3=,
+        #     zlo=,
+        #     u3=,
+        #     u=,
+        #     v3=,
+        #     v=,
+        #     thl3=,
+        #     thl=,
+        #     thv3=,
+        #     thv=,
+        #     qv3=,
+        #     qv=,
+        #     ql3=,
+        #     ql=,
+        #     qi3=,
+        #     qi=,
+        #     ui=,
+        #     vi=,
+        #     thli=,
+        #     qvi=,
+        #     qli=,
+        #     qii=,
+        #     qt=,
+        #     qti=,
+        #     rhoe=,
+        #     zw=,
+        #     p=,
+        #     dp=,
+        #     rhoe3=,
+        #     pw3=,
+        # )
+
+        #Poisson
+
+        #self._surface_conditions(
+        #     wmin=,
+        #     wmax=,
+        #     p=,
+        #     exfh=,
+        #     exf=,
+        #     wthv=,
+        #     pblh=,
+        #     tmp=,
+        #     phis=,
+        #     ztop=,
+        #     wqt=,
+        #     wthl=,
+        # )
