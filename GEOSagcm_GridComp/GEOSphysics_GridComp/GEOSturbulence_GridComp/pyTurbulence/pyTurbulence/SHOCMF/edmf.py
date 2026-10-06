@@ -286,6 +286,46 @@ def flip_variables(
                 dp = p-p[0,0,1]
 
 
+def surface_conditions(
+    wmin: FloatFieldIJ,
+    wmax: FloatFieldIJ,
+    p: FloatField,
+    exfh: FloatField,
+    exf: FloatField,
+    wthv: FloatFieldIJ,
+    pblh: FloatFieldIJ,
+    tmp: FloatFieldIJ,
+    phis: FloatFieldIJ,
+    ztop: FloatFieldIJ,
+    wqt: FloatFieldIJ,
+    wthl: FloatFieldIJ,
+):
+    from __externals__ import AlphaW, AlphaQT, AlphaTH, pwmin, pwmax
+
+    with computation(PARALLEL), interval(...):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                exfh=(p/constants.MAPL_P00)**constants.MAPL_KAPPA
+                exf=(0.5*(p[0,0,1]+p)/constants.MAPL_P00)**constants.MAPL_KAPPA
+
+    with computation(FORWARD), interval(-1,None):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                exfh[0,0,1]=(p[0,0,1]/constants.MAPL_P00)**constants.MAPL_KAPPA
+            
+    with computation(FORWARD), interval(0,1):
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
+            if ztop > 100.0:
+                wstar: FloatFieldIJ=max(constants.wstarmin,(constants.MAPL_GRAV*wthv*pblh/300.)**(1./3.))
+                qstar: FloatFieldIJ=max(0.,wqt)/wstar
+                thstar: FloatFieldIJ=max(0.,wthl)/wstar
+
+                sigmaW: FloatFieldIJ=AlphaW*wstar
+                sigmaQT: FloatFieldIJ=AlphaQT*qstar
+                sigmaTH: FloatFieldIJ=AlphaTH*thstar
+
+                wmin=sigmaW*pwmin
+                wmax=sigmaW*pwmax
 
 class RUN_EDMF(NDSLRuntime):
     def __init__(
@@ -329,6 +369,15 @@ class RUN_EDMF(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DISCRETE":config.DISCRETE}
         )
+
+
+        self._surface_conditions = self.stencil_factory.from_dims_halo(
+            func=surface_conditions,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"AlphaW":config.AlphaW, "AlphaQT":config.AlphaQT, "AlphaTH": config.AlphaTH, "pwmin": config.pwmin, "pwmax":config.pwmax}
+        )
+
+
 
 
     def __call__(

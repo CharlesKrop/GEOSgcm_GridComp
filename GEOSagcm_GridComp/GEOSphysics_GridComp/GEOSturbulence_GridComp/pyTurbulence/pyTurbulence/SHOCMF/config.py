@@ -21,3 +21,8 @@ class SHOCMFConfiguration:
     L0fac: Float
     NUP: Int
     DISCRETE: Int
+    AlphaW: Float
+    AlphaQT: Float
+    AlphaTH: Float
+    pwmin: Float
+    pwmax: Float
