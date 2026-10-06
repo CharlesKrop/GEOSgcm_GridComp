@@ -88,6 +88,14 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
+    one_minus_sigma: Local = dataclasses.field(
+        metadata={
+            "name": "one_minus_sigma",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
     p_interface_mb: Local = dataclasses.field(
         metadata={
             "name": "p_interface_mb",
