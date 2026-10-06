@@ -94,7 +94,7 @@ from pyMoist.shared.constants import (
 
 @function
 def bergeron_partition(
-    dtime: Float,
+    DTIME: Float,
     p_mb: Float,
     t: Float,
     vapor: Float,
@@ -115,7 +115,7 @@ def bergeron_partition(
     """Partition the new condensates. Follows Barahona et al. GMD. 2014
 
     Args:
-        dtime (Float)
+        DTIME (Float)
         p_mb (Float)
         t (Float)
         vapor (Float)
@@ -142,7 +142,7 @@ def bergeron_partition(
 
     # PHASE 1: Initialization & Temperature Bounds
     t_celsius = t - MAPL_TICE
-    delta_condensate_rate = delta_condensate = dtime  # convert total mass change to a rate
+    delta_condensate_rate = delta_condensate / DTIME  # convert total mass change to a rate
 
     # combine resolved and parameterized masses to get a bulk view of the grid box
     tot_ice = large_scale_ice + convective_ice
@@ -197,11 +197,11 @@ def bergeron_partition(
         # calculate final deposition rate using analytical integration of the relaxation equation
         deposition_rate = 0.0
         if time_eff_inv > 0.0 and large_scale_ice > 1.0e-14:
-            aux = max(min(dtime * time_eff_inv, 20.0), 0.0)
-            deposition_rate = (qv_inc - qsat_ice) * (1.0 - exp(-aux)) / dtime
+            aux = max(min(DTIME * time_eff_inv, 20.0), 0.0)
+            deposition_rate = (qv_inc - qsat_ice) * (1.0 - exp(-aux)) / DTIME
 
         # ice can sublimate, but only up to the amount of existing resolved ice
-        deposition_rate = max(deposition_rate, -large_scale_ice / dtime)
+        deposition_rate = max(deposition_rate, -large_scale_ice / DTIME)
 
         # PHASE 3: Condensate Partitioning
         # apply the Bergeron-Findeisen process based on the calculated deposition_rate
@@ -213,7 +213,7 @@ def bergeron_partition(
             if deposition_rate > 0.0:
                 # ice grows by deposition. It can consume the new condensate (delta_condensate_rate)
                 # PLUS the evaporation of existing resolved liquid (large_scale_liquid/dtime).
-                dice_rate = min(deposition_rate, delta_condensate_rate + (large_scale_liquid / dtime))
+                dice_rate = min(deposition_rate, delta_condensate_rate + (large_scale_liquid / DTIME))
                 dliquid_rate = delta_condensate_rate - dice_rate
             else:
                 # deposition is negative/zero; PDF allows condensation in subsaturated conditions
@@ -224,8 +224,8 @@ def bergeron_partition(
             # --- NET EVAPORATION ---
             # liquid droplets evaporate much faster than ice crystals sublimate.
             # therefore, liquid evaporates first, regardless of the deposition calculation.
-            dliquid_rate = max(delta_condensate_rate, -large_scale_liquid / dtime)
-            dice_rate = max(delta_condensate_rate - dliquid_rate, -large_scale_ice / dtime)
+            dliquid_rate = max(delta_condensate_rate, -large_scale_liquid / DTIME)
+            dice_rate = max(delta_condensate_rate - dliquid_rate, -large_scale_ice / DTIME)
 
         # calculate the final diagnostic ice fraction
         if delta_condensate_rate != 0.0:
@@ -625,7 +625,7 @@ def hydrostatic_pdf(
         estfrz (Float)
         estlqu (Float)
     """
-    from __externals__ import MIN_CLOUD_FRACTION, PDFSHAPE, USE_BERGERON, dtime
+    from __externals__ import MIN_CLOUD_FRACTION, PDFSHAPE, USE_BERGERON, DTIME
 
     with computation(PARALLEL), interval(...):
         # pre-declare internals to make linter happy
@@ -706,7 +706,7 @@ def hydrostatic_pdf(
                 n_fac = 100.0 * p_mb * R_AIR / t_internal
 
                 fraction_ice = bergeron_partition(
-                    dtime=dtime,
+                    DTIME=DTIME,
                     p_mb=p_mb,
                     t=t,
                     vapor=vapor,
@@ -964,14 +964,14 @@ def melt_freeze(
         ice (FloatField): _description_
     """
 
-    from __externals__ import dtime
+    from __externals__ import DTIME
 
     with computation(FORWARD), interval(0, 1):
         latent_heat_fusion: FloatFieldIJ = MAPL_ALHS - MAPL_ALHL
 
     with computation(PARALLEL), interval(...):
         if t <= MAPL_TICE:
-            # FREEZING REGIME (TE <= TICE)
+            # FREEZING REGIME (t <= MAPL_TICE)
 
             # 1. Target ice deficit (new_ice_condensate)
             fraction_ice = ice_fraction(t, convection_fraction, surface_type)
@@ -981,7 +981,7 @@ def melt_freeze(
             max_phase_change = max(0.0, (MAPL_TICE - t) * MAPL_CP / latent_heat_fusion)
 
             # 3. Apply relaxation timescale
-            condensate_phase_changed = (1.0 - exp(-dtime / max(dtime, TAUFRZ))) * min(target_ice, max_phase_change)
+            condensate_phase_changed = (1.0 - exp(-DTIME / max(DTIME, TAUFRZ))) * min(target_ice, max_phase_change)
 
             # 4. Update states (liquid -> ice, temp warms)
             ice = ice + condensate_phase_changed
@@ -989,7 +989,7 @@ def melt_freeze(
             t = t + (latent_heat_fusion * condensate_phase_changed) / MAPL_CP
 
         else:
-            # MELTING REGIME (TE > TICE)
+            # MELTING REGIME (t > MAPL_TICE)
 
             # 1. Target melt (assuming 0% ice fraction above freezing)
             target_melt = ice
@@ -998,7 +998,7 @@ def melt_freeze(
             max_phase_change = max(0.0, (t - MAPL_TICE) * MAPL_CP / latent_heat_fusion)
 
             # 3. Apply relaxation timescale
-            condensate_phase_changed = (1.0 - exp(-dtime / max(dtime, TAUMLT))) * min(target_melt, max_phase_change)
+            condensate_phase_changed = (1.0 - exp(-DTIME / max(DTIME, TAUMLT))) * min(target_melt, max_phase_change)
 
             # 4. Update states (ice -> liquid, temp cools)
             ice = ice - condensate_phase_changed
@@ -1109,6 +1109,91 @@ def pdffrac(
             cloud_fraction = 1.0
 
     return cloud_fraction
+
+
+@function
+def redistribute_clouds_function(
+    cloud_fraction: Float,
+    convective_cloud_fraction: Float,
+    convective_ice: Float,
+    convective_liquid: Float,
+    graupel: Float,
+    ice: Float,
+    large_scale_cloud_fraction: Float,
+    large_scale_ice: Float,
+    large_scale_liquid: Float,
+    liquid: Float,
+    rain: Float,
+    snow: Float,
+    t: Float,
+    vapor: Float,
+):
+    # internal parameter
+    epsilon = 1.0e-15
+
+    # 1. Liquid Growth vs. Decay Redistribution
+    liquid_old = convective_liquid + large_scale_liquid
+    if liquid < liquid_old:
+        # DECAY: Microphysics consumed liquid. Reduce proportionally.
+        if liquid_old > epsilon:
+            f_cn = convective_liquid / liquid_old
+            convective_liquid = liquid * f_cn
+            large_scale_liquid = liquid * (1.0 - f_cn)
+        else:
+            convective_liquid = 0.0
+            large_scale_liquid = 0.0
+    else:
+        # GROWTH: Microphysics created new liquid. All new mass is Large-Scale.
+        # convective_liquid remains unchanged
+        large_scale_liquid = liquid - convective_liquid
+
+    # 2. Ice Growth vs. Decay Redistribution
+    ice_old = convective_ice + large_scale_ice
+    if ice < ice_old:
+        # DECAY: Reduce proportionally
+        if ice_old > epsilon:
+            f_cn = convective_ice / ice_old
+            convective_ice = ice * f_cn
+            large_scale_ice = ice * (1.0 - f_cn)
+        else:
+            convective_ice = 0.0
+            large_scale_ice = 0.0
+    else:
+        # GROWTH: All new ice is large-Scale
+        # convective_ice remains unchanged
+        large_scale_ice = ice - convective_ice
+
+    # 3. Cloud Fraction Growth vs. Decay Redistribution
+    cloud_fraction_old = convective_cloud_fraction + large_scale_cloud_fraction
+    if cloud_fraction < cloud_fraction_old:
+        # DECAY: Cloud fraction shrank. Reduce proportionally.
+        if cloud_fraction_old > epsilon:
+            f_cn = convective_cloud_fraction / cloud_fraction_old
+            convective_cloud_fraction = min(1.0, cloud_fraction * f_cn)
+            large_scale_cloud_fraction = min(1.0, cloud_fraction * (1.0 - f_cn))
+        else:
+            convective_cloud_fraction = 0.0
+            large_scale_cloud_fraction = 0.0
+    else:
+        # GROWTH: Cloud expanded. Convective core stays its original size.
+        # convective_cloud_fraction remains unchanged (bounded to cloud_fraction just in case)
+        convective_cloud_fraction = min(convective_cloud_fraction, cloud_fraction)
+        large_scale_cloud_fraction = min(1.0, cloud_fraction - convective_cloud_fraction)
+
+    # 4. Clean up: Evaporate/Sublimate if clouds are completely gone
+    if (large_scale_cloud_fraction <= 0.0) and (large_scale_liquid + large_scale_ice > 0.0):
+        vapor = vapor + large_scale_liquid + large_scale_ice
+        t = t - (ALHLBCP) * large_scale_liquid - (ALHSBCP) * large_scale_ice
+        large_scale_cloud_fraction = 0.0
+        large_scale_liquid = 0.0
+        large_scale_ice = 0.0
+
+    if (convective_cloud_fraction <= 0.0) and (convective_liquid + convective_ice > 0.0):
+        vapor = vapor + convective_liquid + convective_ice
+        t = t - (ALHLBCP) * convective_liquid - (ALHSBCP) * convective_ice
+        convective_cloud_fraction = 0.0
+        convective_liquid = 0.0
+        convective_ice = 0.0
 
 
 def sublimate(

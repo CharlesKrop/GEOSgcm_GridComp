@@ -218,7 +218,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             func=hydrostatic_pdf,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "dtime": config.DT_MOIST,
+                "DTIME": config.DT_MOIST,
                 "PDFSHAPE": config.PDFSHAPE,
                 "MIN_CLOUD_FRACTION": config.MIN_CLOUD_FRACTION,
                 "USE_BERGERON": config.USE_BERGERON,
@@ -228,19 +228,19 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._melt_freeze = stencil_factory.from_dims_halo(
             func=melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"dtime": config.DT_MOIST},
+            externals={"DTIME": config.DT_MOIST},
         )
 
         self._evaporate = stencil_factory.from_dims_halo(
             func=evaporate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"dtime": config.DT_MOIST},
+            externals={"DTIME": config.DT_MOIST},
         )
 
         self._sublimate = stencil_factory.from_dims_halo(
             func=sublimate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"dtime": config.DT_MOIST},
+            externals={"DTIME": config.DT_MOIST},
         )
 
         self._update_output_by_dt = stencil_factory.from_dims_halo(
