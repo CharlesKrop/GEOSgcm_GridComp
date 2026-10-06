@@ -15,7 +15,7 @@ from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.shared.cloud_processes import redistribute_clouds_function, melt_freeze, fix_up_clouds
-from pyMoist.shared.numerical_recipes import fill_negative_q
+from pyMoist.shared.atmos_recipes import fill_negative_q
 from pyMoist.shared.constants import CFMIN, QCMIN
 from pyMoist.shared.atmos_recipes import sigma
 
@@ -605,4 +605,3 @@ class GFDL1M(NDSLRuntime):
             area=state.area,
             one_minus_sigma=self._locals.one_minus_sigma,
         )
-        

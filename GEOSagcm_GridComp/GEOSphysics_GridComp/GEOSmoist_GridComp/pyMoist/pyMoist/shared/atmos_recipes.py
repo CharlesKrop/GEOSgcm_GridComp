@@ -2,10 +2,11 @@
 These functions perform basic math and calculate fundamental
 meteorological quantities"""
 
-from ndsl.dsl.gt4py import exp, function
-from ndsl.dsl.typing import Float
+from ndsl.dsl.gt4py import exp, function, computation, FORWARD, PARALLEL, interval
+from ndsl.dsl.typing import Float, Bool, FloatField, FloatFieldIJ
 
-from pyMoist.constants import MAPL_GRAV, SIGMA_DX, SIGMA_EXP
+from pyMoist.constants import MAPL_GRAV
+from pyMoist.shared.constants import SIGMA_DX, SIGMA_EXP
 
 
 @function
@@ -45,3 +46,66 @@ def compute_estimated_inversion_strength_factor(estimated_inversion_strength) ->
         eis_factor = (estimated_inversion_strength / 10.0) ** 2
 
     return eis_factor
+
+
+def fill_negative_q(
+    q: FloatField,
+    dqdt: FloatField,
+    mass: FloatField,
+    fill_dqdt: Bool,
+):
+    """Fill negative values of a water species (mixing ratio)
+
+    Args:
+        q (FloatField): water species/mixing ratio
+        dqdt (FloatField): tendency do to fill - only written if fill_dqdt is True
+        mass (FloatField): mass of the air parcel
+        fill_dqdt (Bool): controls read/write of dqdt
+    """
+    from __externals__ import DTIME
+
+    with computation(PARALLEL), interval(...):
+        # save original q if tendency is requested
+        if fill_dqdt:
+            dqdt = q
+
+    with computation(FORWARD), interval(0, 1):
+        # fill internal temporaries
+        total_precipitable_water_before: FloatFieldIJ = 0.0
+        total_precipitable_water_after: FloatFieldIJ = 0.0
+
+    with computation(FORWARD), interval(...):
+        # moisture limited: per column mass conserving q fix
+        total_precipitable_water_before = total_precipitable_water_before + q * mass
+
+    with computation(PARALLEL), interval(...):
+        # remove negative values
+        if q < 0.0:
+            q = 0.0
+
+    with computation(FORWARD), interval(...):
+        # compute total precipitable water after removing negative values
+        total_precipitable_water_after = total_precipitable_water_after + q * mass
+
+    with computation(FORWARD), interval(0, 1):
+        dtpw = total_precipitable_water_before - total_precipitable_water_after  # > 0 means mass was removed
+
+    # redistribute delta TPW to positive layers only
+    with computation(FORWARD), interval(...):
+        if abs(dtpw) > 1.0e-15:
+            positive_mass = 0.0
+            if q > 0.0:
+                positive_mass = positive_mass + mass
+
+    with computation(FORWARD), interval(...):
+        if abs(dtpw) > 1.0e-15:
+            if positive_mass > 0.0:
+                if q > 0.0:
+                    q = q + dtpw * (mass / positive_mass)
+                    if q < 0.0:
+                        q = 0.0  # safety
+
+    with computation(PARALLEL), interval(...):
+        # update dqdt if requested
+        if fill_dqdt:
+            dqdt = (q - dqdt) / DTIME

@@ -1,6 +1,5 @@
 """Stencils and functions called by multiple pyMoist modules.
-These functions evaluate various in-cloud microphysical
-processes/quantities."""
+These functions evaluate various cloud processes/quantities."""
 
 from ndsl.dsl.gt4py import (
     BACKWARD,
@@ -40,6 +39,7 @@ from pyMoist.shared.constants import (
     AT_ICE_MAX,
     AT_ICE_PWR,
     BX,
+    CFMIN,
     DIFFU,
     EPSILON,
     ICE_FRACTION_POLYNOMIAL,
@@ -73,6 +73,7 @@ from pyMoist.shared.constants import (
     OT_ICE_ALL,
     OT_ICE_MAX,
     OT_ICE_PWR,
+    QCMIN,
     R13BBETA,
     R_AIR,
     RAW_MODIS_POLYNOMIAL,
@@ -455,8 +456,6 @@ def fix_up_clouds(
         lid_level (Int): the level above which clouds are removed (note 0 = TOA). set to a number < 0 to disable
     """
 
-    from __externals__ import MIN_CLOUD_FRACTION, MIN_CLOUD_QUANTITY
-
     with computation(FORWARD), interval(0, 1):
         if lid_level < 0:
             remove_clouds: BoolFieldIJ = False
@@ -486,7 +485,7 @@ def fix_up_clouds(
                 type_two_cloud_fraction = type_two_cloud_fraction * (1.0 / total_cloud_fraction)
 
             # fix if type one cloud fraction too small
-            if type_one_cloud_fraction < MIN_CLOUD_FRACTION:
+            if type_one_cloud_fraction < CFMIN:
                 vapor = vapor + type_one_liquid + type_two_liquid
                 t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_two_liquid
                 type_one_ice = 0.0
@@ -494,7 +493,7 @@ def fix_up_clouds(
                 type_one_cloud_fraction = 0.0
 
             # fix if type two cloud fraction too small
-            if type_two_cloud_fraction < MIN_CLOUD_FRACTION:
+            if type_two_cloud_fraction < CFMIN:
                 vapor = vapor + type_two_liquid + type_two_ice
                 t = t - ALHLBCP * type_two_liquid - ALHSBCP * type_two_ice
                 type_two_ice = 0.0
@@ -502,31 +501,31 @@ def fix_up_clouds(
                 type_two_cloud_fraction = 0.0
 
             # fix if type one liquid is too small
-            if type_one_liquid < MIN_CLOUD_QUANTITY:
+            if type_one_liquid < QCMIN:
                 vapor = vapor + type_one_liquid
                 t = t - ALHLBCP * type_one_liquid
                 type_one_liquid = 0.0
 
             # fix if type one ice is too small
-            if type_one_ice < MIN_CLOUD_QUANTITY:
+            if type_one_ice < QCMIN:
                 vapor = vapor + type_one_ice
                 t = t - ALHSBCP * type_one_ice
                 type_one_ice = 0.0
 
             # fix if type two liquid is too small
-            if type_two_liquid < MIN_CLOUD_QUANTITY:
+            if type_two_liquid < QCMIN:
                 vapor = vapor + type_two_liquid
                 t = t - ALHLBCP * type_two_liquid
                 type_two_liquid = 0.0
 
             # fix if type two ice is too small
-            if type_two_ice < MIN_CLOUD_QUANTITY:
+            if type_two_ice < QCMIN:
                 vapor = vapor + type_two_ice
                 t = t - ALHSBCP * type_two_ice
                 type_two_ice = 0.0
 
             # fix all type one quantities if liquid + ice is too small
-            if (type_one_liquid + type_two_liquid) < MIN_CLOUD_QUANTITY:
+            if (type_one_liquid + type_two_liquid) < QCMIN:
                 vapor = vapor + type_one_liquid + type_two_liquid
                 t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_two_liquid
                 type_two_ice = 0.0
@@ -534,7 +533,7 @@ def fix_up_clouds(
                 type_one_cloud_fraction = 0.0
 
             # fix all type two quantities if liquid + ice is too small
-            if (type_two_liquid + type_two_ice) < MIN_CLOUD_QUANTITY:
+            if (type_two_liquid + type_two_ice) < QCMIN:
                 vapor = vapor + type_two_liquid + type_two_ice
                 t = t - ALHLBCP * type_two_liquid - ALHSBCP * type_two_ice
                 type_two_cloud_fraction = 0.0

@@ -1,7 +1,8 @@
+"""Constants used for shared pyMoist stencils/functions."""
+
 from ndsl.dsl.typing import Bool, Float, Int
 
 from pyMoist.constants import MAPL_AIRMW, MAPL_ALHF, MAPL_ALHL, MAPL_ALHS, MAPL_CP, MAPL_GRAV, MAPL_H2OMW, MAPL_PI
-
 
 # surface type constants
 SRF_TYPE_OCEAN = Int(0)
