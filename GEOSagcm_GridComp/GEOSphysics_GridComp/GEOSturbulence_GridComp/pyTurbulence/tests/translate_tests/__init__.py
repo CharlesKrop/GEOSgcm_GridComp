@@ -20,6 +20,7 @@ from .SHOCMF.translate_EstimateScaleHeight import TranslateEstimateScaleHeight
 from .SHOCMF.translate_FlipVariables import TranslateFlipVariables
 from .SHOCMF.translate_SurfaceConditions import TranslateSurfaceConditions
 from .SHOCMF.translate_IdentifyInversions import TranslateIdentifyInversions
+from .SHOCMF.translate_DefineSurfaceProperties import TranslateDefineSurfaceProperties
 
 __all__ = [
     "TranslateInvertInterfaceVars",

@@ -19,7 +19,7 @@ class SHOCMFConfiguration:
     ET: Int
     L0_EDMF: Float
     L0fac: Float
-    NUP: Int
+    NUP: int
     DISCRETE: Int
     AlphaW: Float
     AlphaQT: Float
@@ -27,3 +27,4 @@ class SHOCMFConfiguration:
     pwmin: Float
     pwmax: Float
     WCTHRESH: Float
+    UPABUOYDEP: Int

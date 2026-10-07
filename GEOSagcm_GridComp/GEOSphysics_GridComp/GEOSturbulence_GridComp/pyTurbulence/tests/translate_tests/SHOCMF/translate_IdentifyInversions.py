@@ -25,7 +25,7 @@ class TranslateIdentifyInversions(TranslateFortranData2Py):
             "phis": {},
             "t3": {},
             "thv": {},
-            "tmp_in": {},
+            "tmp": {},
             "wthv": {},
             "zlo": {},
             "ztop": {},
@@ -33,7 +33,7 @@ class TranslateIdentifyInversions(TranslateFortranData2Py):
 
         # FloatField Outputs
         self.out_vars = {
-            "tmp_out": self.grid.compute_dict(),
+            "tmp2": self.grid.compute_dict(),
             "wcfac": self.grid.compute_dict(),
         }
 
@@ -73,12 +73,12 @@ class TranslateIdentifyInversions(TranslateFortranData2Py):
         )
         safe_assign_array(thv.view[:, :,:], inputs["thv"])
 
-        tmp_in = QuantityFactory.zeros(
+        tmp = QuantityFactory.zeros(
             self.quantity_factory,
             dims=[I_DIM, J_DIM],
             units="n/a",
         )
-        safe_assign_array(tmp_in.view[:, :], inputs["tmp_in"])
+        safe_assign_array(tmp.view[:, :], inputs["tmp"])
 
         wthv = QuantityFactory.zeros(
             self.quantity_factory,
@@ -108,7 +108,7 @@ class TranslateIdentifyInversions(TranslateFortranData2Py):
             dims=[I_DIM, J_DIM, K_DIM],
             units="n/a",
         )
-        tmp = QuantityFactory.zeros(
+        tmp2 = QuantityFactory.zeros(
             self.quantity_factory,
             dims=[I_DIM, J_DIM],
             units="n/a",
@@ -118,7 +118,7 @@ class TranslateIdentifyInversions(TranslateFortranData2Py):
         self._identify_inversions(
             wthv=wthv,
             tmp=tmp,
-            tmp_in=tmp_in,
+            tmp2=tmp2,
             phis=phis,
             ztop=ztop,
             zlo=zlo,
@@ -128,6 +128,6 @@ class TranslateIdentifyInversions(TranslateFortranData2Py):
         )
 
         return {
-            "tmp_out": tmp.view[:],
+            "tmp2": tmp2.view[:],
             "wcfac": wcfac.view[:],
         }

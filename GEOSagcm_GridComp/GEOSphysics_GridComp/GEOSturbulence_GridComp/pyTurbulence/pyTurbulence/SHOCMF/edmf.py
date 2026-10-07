@@ -8,6 +8,7 @@ from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
 from pyTurbulence.SHOCMF.locals import SHOCMFLocals
 from pyTurbulence.SHOCMF.state import SHOCMFState
 import pyTurbulence.constants as constants
+from pyTurbulence.field_types import FloatField_UpdraftProperties
 from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
 from pyMoist.saturation_tables.tables.ice_exact import ice_exact
 from pyMoist.saturation_tables.formulation import SaturationFormulation
@@ -78,7 +79,7 @@ def estimate_scale_height(
     wqt: FloatFieldIJ,
     qv3: FloatField,
     zlo3: FloatField,
-    nup2:FloatFieldIJ,
+    nup2: IntFieldIJ,
     L0: FloatFieldIJ,
     pmid: FloatField,
     esx: GlobalTable_saturation_tables,
@@ -92,6 +93,7 @@ def estimate_scale_height(
         stop_loop: BoolFieldIJ = False
         if wthv > 0.0 and tmp>0.05 and phis < 3e4:
             nup2 = NUP
+            # NOTE: THESE ARE FLOATFIELD BUNDLES shape (24,24,73,10)
             UPW=0.
             UPTHL=0.
             UPTHV=0.
@@ -330,7 +332,7 @@ def surface_conditions(
 def identify_inversions(
     wthv: FloatFieldIJ,
     tmp: FloatFieldIJ,
-    tmp_in: FloatFieldIJ,
+    tmp2: FloatFieldIJ,
     phis: FloatFieldIJ,
     ztop: FloatFieldIJ,
     zlo: FloatField,
@@ -341,35 +343,81 @@ def identify_inversions(
     from __externals__ import k_end, k_start, WCTHRESH
 
     with computation(FORWARD), interval(0,1):
-        if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
             if ztop > 100.0:
                 stop_loop: BoolFieldIJ = False
-                tmp = 0.
+                tmp2 = 0.
                 kidx: IntFieldIJ = k_start
 
     with computation(PARALLEL), interval(...):
-        if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+        if wthv > 0.0 and tmp>0.05 and phis < 3e4:
             if ztop > 100.0:
                 wcfac = 0.
 
     with computation(FORWARD), interval(0,1):
-         if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+         if wthv > 0.0 and tmp>0.05 and phis < 3e4:
             if ztop > 100.0:
                 while zlo.at(K=kidx) < 1500. and stop_loop==False:
                     if t3.at(K=k_end-kidx-1) > t3.at(K=k_end-kidx):
-                        tmp = thv.at(K=kidx)  
+                        tmp2 = thv.at(K=kidx)  
                         stop_loop=True
                     kidx = kidx+1
                     ktmp: IntFieldIJ = kidx
 
     with computation(FORWARD), interval(...):
-         if wthv > 0.0 and tmp_in>0.05 and phis < 3e4:
+         if wthv > 0.0 and tmp>0.05 and phis < 3e4:
             if ztop > 100.0:
-                if tmp != 0.:
+                if tmp2 != 0.:
                     while zlo.at(K=ktmp-1) < zlo.at(K=kidx-1)+1e3:
                         ktmp = ktmp+1
                     if K <= kidx-1:
                         wcfac = min(10.,max(0.,thv.at(K=ktmp-1)-thv.at(K=kidx-1)-WCTHRESH))*exp(-(zlo.at(K=kidx-1)-zlo)/200. )
+
+def define_surface_properties(
+    nup2: IntFieldIJ,
+    qt: FloatField,
+    sigmaQT: FloatFieldIJ,
+    sigmaTH: FloatFieldIJ,
+    sigmaW: FloatFieldIJ,
+    thv: FloatField,
+    u: FloatField,
+    v: FloatField,
+    wmax: FloatFieldIJ,
+    wmin: FloatFieldIJ,
+    wthv: FloatFieldIJ,
+    UPA: FloatField_UpdraftProperties,
+    UPQT: FloatField_UpdraftProperties,
+    UPTHV: FloatField_UpdraftProperties,
+    UPU: FloatField_UpdraftProperties,
+    UPV: FloatField_UpdraftProperties,
+    UPW: FloatField_UpdraftProperties,
+):
+    from __externals__ import UPABUOYDEP
+
+    with computation(FORWARD), interval(0,1):
+        idx: IntFieldIJ = 1
+        while idx <= nup2:
+            wlv: FloatFieldIJ=wmin+(wmax-wmin)/(float32(nup2))*(float32(idx)-1.)
+            wtv: FloatFieldIJ=wmin+(wmax-wmin)/(float32(nup2))*float32(idx)
+
+            UPW[0,0,0][idx-1]=min(0.5*(wlv+wtv), 5.)
+
+            if UPABUOYDEP!=0:
+                UPA[0,0,0][idx-1]=(0.5+0.5*tanh((wthv-0.02)/0.09))*(0.5*erfc(wlv/(sqrt(2.)*sigmaW))-0.5*erfc(wtv/(sqrt(2.)*sigmaW)))
+            else:
+                UPA[0,0,0][idx-1]=(0.5*erfc(wlv/(sqrt(2.)*sigmaW))-0.5*erfc(wtv/(sqrt(2.)*sigmaW)))
+
+            UPU[0,0,0][idx-1]=u
+            UPV[0,0,0][idx-1]=v
+
+            UPQT[0,0,0][idx-1]=qt+0.32*UPW[0,0,0][idx-1]*sigmaQT/sigmaW
+            UPTHV[0,0,0][idx-1]=thv+0.58*UPW[0,0,0][idx-1]*sigmaTH/sigmaW
+
+            idx = idx + 1
+
+
+
+
 
 class RUN_EDMF(NDSLRuntime):
     def __init__(
@@ -424,6 +472,12 @@ class RUN_EDMF(NDSLRuntime):
             func=identify_inversions,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"WCTHRESH":config.WCTHRESH}
+        )
+
+        self._define_surface_properties = self.stencil_factory.from_dims_halo(
+            func=define_surface_properties,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"UPABUOYDEP":config.UPABUOYDEP}
         )
 
 
@@ -546,3 +600,36 @@ class RUN_EDMF(NDSLRuntime):
         #     wqt=,
         #     wthl=,
         # )
+
+        # self._identify_inversions(  
+        #     wthv=,
+        #     tmp=,
+        #     tmp2=,
+        #     phis=,
+        #     ztop=,
+        #     zlo=,
+        #     t3=,
+        #     thv=,
+        #     wcfac=,
+        # )
+
+        # self._define_surface_properties(
+        #     nup2=,
+        #     qt=,
+        #     sigmaQT=,
+        #     sigmaTH=,
+        #     sigmaW=,
+        #     thv=,
+        #     u=,
+        #     v=,
+        #     wmax=,
+        #     wmin=,
+        #     wthv=,
+        #     UPA=,
+        #     UPQT=,
+        #     UPTHV=,
+        #     UPU=,
+        #     UPV=,
+        #     UPW=,
+        # )
+
