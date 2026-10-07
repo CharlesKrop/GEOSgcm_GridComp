@@ -128,6 +128,14 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
+    temporary_3d_2: Local = dataclasses.field(
+        metadata={
+            "name": "temporary_3d_2",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "N/A",
+            "dtype": Float,
+        }
+    )
     u_unmodified: Local = dataclasses.field(
         metadata={
             "name": "u_unmodified",

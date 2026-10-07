@@ -1,8 +1,6 @@
-from shapely import area
-
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD, sqrt
+from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.basic_operations import add, copy, set_value
 
@@ -15,9 +13,64 @@ from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.shared.cloud_processes import redistribute_clouds_function, melt_freeze, fix_up_clouds
-from pyMoist.shared.atmos_recipes import fill_negative_q
-from pyMoist.shared.atmos_recipes import sigma
+from pyMoist.shared.atmos_recipes import fill_negative_q, dissipative_kinetic_energy_heating
 from pyMoist.shared.radiation_coupling import radiation_coupling_scale_aware
+
+
+def compute_ice_water_path(
+    convective_ice: FloatField,
+    large_scale_ice: FloatField,
+    graupel: FloatField,
+    snow: FloatField,
+    mass: FloatField,
+    ice_water_path: FloatFieldIJ,
+):
+    """Compute ice water path throughout a column.
+
+    The ice water path is calculated as the sum of convective ice, large scale ice,
+    snow, and graupel, each multiplied by the mass, integrated over the vertical column.
+
+    Args:
+        convective_ice (FloatField)
+        large_scale_ice (FloatField)
+        graupel (FloatField)
+        snow (FloatField)
+        mass (FloatField)
+        ice_water_path (FloatFieldIJ)
+    """
+    with computation(FORWARD), interval(0, 1):
+        # ensure calculation starts at 0
+        ice_water_path = 0.0
+
+    with computation(FORWARD), interval(...):
+        ice_water_path += (convective_ice + large_scale_ice + snow + graupel) * mass
+
+
+def compute_liquid_water_path(
+    convective_liquid: FloatField,
+    large_scale_liquid: FloatField,
+    rain: FloatField,
+    mass: FloatField,
+    liquid_water_path: FloatFieldIJ,
+):
+    """Compute liquid water path throughout a column.
+
+    The liquid water path is calculated as the sum of convective liquid, large scale liquid,
+    and rain, each multiplied by the mass, integrated over the vertical column.
+
+    Args:
+        convective_liquid (FloatField)
+        large_scale_liquid (FloatField)
+        rain (FloatField)
+        mass (FloatField)
+        liquid_water_path (FloatFieldIJ)
+    """
+    with computation(FORWARD), interval(0, 1):
+        # ensure calculation starts at 0
+        liquid_water_path = 0.0
+
+    with computation(FORWARD), interval(...):
+        liquid_water_path += (convective_liquid + large_scale_liquid + rain) * mass
 
 
 def convert_mm_per_day_to_kg_per_m2_per_s(field: FloatField):
@@ -372,6 +425,16 @@ class GFDL1M(NDSLRuntime):
             externals={"DT": config.DT},
         )
 
+        self._compute_ice_water_path = stencil_factory.from_dims_halo(
+            func=compute_ice_water_path,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._compute_liquid_water_path = stencil_factory.from_dims_halo(
+            func=compute_liquid_water_path,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
         self._convert_mm_per_day_to_kg_per_m2_per_s = stencil_factory.from_dims_halo(
             func=convert_mm_per_day_to_kg_per_m2_per_s,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -384,6 +447,11 @@ class GFDL1M(NDSLRuntime):
 
         self._copy = stencil_factory.from_dims_halo(
             func=copy,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._dissipative_kinetic_energy_heating = stencil_factory.from_dims_halo(
+            func=dissipative_kinetic_energy_heating,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -712,3 +780,50 @@ class GFDL1M(NDSLRuntime):
             t=state.t,
             vapor=state.mixing_ratio.vapor,
         )
+
+        # --------------------------------------------------
+        # DIAGNOSTICS
+        # --------------------------------------------------
+        if state.large_scale_rainwater_source is not None:
+            self._add(summand_1=state.tendencies.drain_dt_macro, summand_2=state.tendencies.drain_dt_micro, sum=state.large_scale_rainwater_source)
+
+        if state.tendencies.dt_dt_friction_pressure_weighted is not None:
+            self._add(summand_1=state.tendencies.du_dt_macro, summand_2=state.tendencies.du_dt_micro, sum=self._locals.temporary_3d)
+            self._add(summand_1=state.tendencies.dv_dt_macro, summand_2=state.tendencies.dv_dt_micro, sum=self._locals.temporary_3d_2)
+            self._dissipative_kinetic_energy_heating(
+                mass=self._locals.mass,
+                u=state.u,
+                v=state.v,
+                du=self._locals.temporary_3d,
+                dv=self._locals.temporary_3d_2,
+                dt=state.tendencies.dt_dt_friction_pressure_weighted,
+            )
+
+        # call the shared radar diagnostics routine
+        option_not_implemented = True
+
+        if state.mass_fraction.suspended_graupel is not None:
+            self._copy(input=state.mixing_ratio.graupel, output=state.mass_fraction.suspended_graupel)
+        if state.mass_fraction.suspended_rain is not None:
+            self._copy(input=state.mixing_ratio.rain, output=state.mass_fraction.suspended_rain)
+        if state.mass_fraction.suspended_snow is not None:
+            self._copy(input=state.mixing_ratio.snow, output=state.mass_fraction.suspended_snow)
+
+        if state.ice_water_path is not None:
+            self._compute_ice_water_path(
+                convective_ice=state.mixing_ratio.convective_ice,
+                large_scale_ice=state.mixing_ratio.large_scale_ice,
+                graupel=state.mixing_ratio.graupel,
+                snow=state.mixing_ratio.snow,
+                mass=self._locals.mass,
+                ice_water_path=state.ice_water_path,
+            )
+
+        if state.liquid_water_path is not None:
+            self._compute_liquid_water_path(
+                convective_liquid=state.mixing_ratio.convective_liquid,
+                large_scale_liquid=state.mixing_ratio.large_scale_liquid,
+                rain=state.mixing_ratio.rain,
+                mass=self._locals.mass,
+                liquid_water_path=state.liquid_water_path,
+            )

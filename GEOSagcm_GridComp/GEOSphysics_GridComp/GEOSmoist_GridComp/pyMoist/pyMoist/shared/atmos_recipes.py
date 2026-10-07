@@ -2,10 +2,10 @@
 These functions perform basic math and calculate fundamental
 meteorological quantities"""
 
-from ndsl.dsl.gt4py import exp, function, computation, FORWARD, PARALLEL, interval
+from ndsl.dsl.gt4py import exp, function, computation, FORWARD, PARALLEL, interval, sqrt
 from ndsl.dsl.typing import Float, Bool, FloatField, FloatFieldIJ
 
-from pyMoist.constants import MAPL_GRAV
+from pyMoist.constants import MAPL_GRAV, MAPL_CP
 from pyMoist.shared.constants import SIGMA_DX, SIGMA_EXP
 
 
@@ -46,6 +46,41 @@ def compute_estimated_inversion_strength_factor(estimated_inversion_strength) ->
         eis_factor = (estimated_inversion_strength / 10.0) ** 2
 
     return eis_factor
+
+
+def dissipative_kinetic_energy_heating(
+    mass: FloatField,
+    u: FloatField,
+    v: FloatField,
+    du: FloatField,
+    dv: FloatField,
+    dt: FloatField,
+):
+    """Dissapate kinetic energy into heat
+
+    Args:
+        mass (FloatField)
+        u (FloatField)
+        v (FloatField)
+        du (FloatField)
+        dv (FloatField)
+        dt (FloatField)
+    """
+    # since kinetic energy is being dissipated, add heating accordingly (from ECMWF)
+    with computation(FORWARD), interval(0, 1):
+        dts: FloatFieldIJ = 0.0
+        fpi: FloatFieldIJ = 0.0
+
+    with computation(FORWARD), interval(...):
+        dt = 0.0
+        # total KE dissiptaion estimate
+        dts = dts - (du * u + dv * v) * mass
+        # fpi needed for calcualtion of conversion to potential energy integrated
+        ke = sqrt(du * du + dv * dv)
+        fpi = fpi + ke * mass
+
+        if fpi > 0.0:
+            dt = (ke / fpi) * dts * (1.0 / MAPL_CP)
 
 
 def fill_negative_q(
