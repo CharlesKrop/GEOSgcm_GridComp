@@ -747,169 +747,169 @@ class GFDL1MState(State):
 
     @dataclasses.dataclass
     class Tendencies:
-        dcloud_fractiondt_macro: Quantity = dataclasses.field(
+        dcloud_fraction_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "dsurface_specific_humuditydt_macro",
+                "name": "dcloud_fraction_dt_macro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dvapordt_macro: Quantity = dataclasses.field(
+        dvapor_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "dvapordt_macro",
+                "name": "dvapor_dt_macro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dicedt_macro: Quantity = dataclasses.field(
+        dice_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "dicedt_macro",
+                "name": "dice_dt_macro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dliquiddt_macro: Quantity = dataclasses.field(
+        dliquid_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "dliquiddt_macro",
+                "name": "dliquid_dt_macro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        draindt_macro: Quantity = dataclasses.field(
+        drain_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "draindt_macro",
+                "name": "drain_dt_macro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dgraupeldt_macro: Quantity = dataclasses.field(
+        dgraupel_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "dgraupeldt_macro",
+                "name": "dgraupel_dt_macro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dsnowdt_macro: Quantity = dataclasses.field(
+        dsnow_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "dsnowdt_macro",
+                "name": "dsnow_dt_macro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dudt_macro: Quantity = dataclasses.field(
+        du_dt_macro: Quantity = dataclasses.field(
             metadata={
-                "name": "dudt_macro",
+                "name": "du_dt_macro",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "m s-2",
+                "dtype": Float,
+            }
+        )
+        dv_dt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dv_dt_macro",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "m s-2",
+                "dtype": Float,
+            }
+        )
+        dt_dt_macro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dt_dt_macro",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "K s-1",
+                "dtype": Float,
+            }
+        )
+        dcloud_fraction_dt_micro: Quantity = dataclasses.field(
+            metadata={
+                "name": "dcloud_fraction_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dvdt_macro: Quantity = dataclasses.field(
+        dvapor_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dvdt_macro",
+                "name": "dvapor_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dtdt_macro: Quantity = dataclasses.field(
+        dice_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dtdt_macro",
+                "name": "dice_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dcloud_fractiondt_micro: Quantity = dataclasses.field(
+        dliquid_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dsurface_specific_humuditydt_micro",
+                "name": "dliquid_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dvapordt_micro: Quantity = dataclasses.field(
+        drain_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dvapordt_micro",
+                "name": "drain_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dicedt_micro: Quantity = dataclasses.field(
+        dgraupel_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dicedt_micro",
+                "name": "dgraupel_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        dliquiddt_micro: Quantity = dataclasses.field(
+        dsnow_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dliquiddt_micro",
+                "name": "dsnow_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "kg kg-1 s-1",
                 "dtype": Float,
             }
         )
-        draindt_micro: Quantity = dataclasses.field(
+        du_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "draindt_micro",
+                "name": "du_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "kg kg-1 s-1",
+                "units": "m s-2",
                 "dtype": Float,
             }
         )
-        dgraupeldt_micro: Quantity = dataclasses.field(
+        dv_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dgraupeldt_micro",
+                "name": "dv_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "kg kg-1 s-1",
+                "units": "m s-2",
                 "dtype": Float,
             }
         )
-        dsnowdt_micro: Quantity = dataclasses.field(
+        dt_dt_micro: Quantity = dataclasses.field(
             metadata={
-                "name": "dsnowdt_micro",
+                "name": "dt_dt_micro",
                 "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "kg kg-1 s-1",
+                "units": "K s-1",
                 "dtype": Float,
             }
         )
-        dudt_micro: Quantity = dataclasses.field(
+        dt_dt_friction_pressure_weighted: Quantity | None = dataclasses.field(
             metadata={
-                "name": "dudt_micro",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "kg kg-1 s-1",
-                "dtype": Float,
-            }
-        )
-        dvdt_micro: Quantity = dataclasses.field(
-            metadata={
-                "name": "dvdt_micro",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "kg kg-1 s-1",
-                "dtype": Float,
-            }
-        )
-        dtdt_micro: Quantity = dataclasses.field(
-            metadata={
-                "name": "dtdt_micro",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "kg kg-1 s-1",
-                "dtype": Float,
-            }
-        )
-        dtdt_friction_pressure_weighted: Quantity | None = dataclasses.field(
-            metadata={
-                "name": "dtdt_friction_pressure_weighted",
+                "name": "dt_dt_friction_pressure_weighted",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "Pa K s-1",
                 "dtype": Float,
