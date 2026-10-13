@@ -21,6 +21,10 @@ from .SHOCMF.translate_FlipVariables import TranslateFlipVariables
 from .SHOCMF.translate_SurfaceConditions import TranslateSurfaceConditions
 from .SHOCMF.translate_IdentifyInversions import TranslateIdentifyInversions
 from .SHOCMF.translate_DefineSurfaceProperties import TranslateDefineSurfaceProperties
+from .SHOCMF.translate_ScaleUpdraft import TranslateScaleUpdraft
+from .SHOCMF.translate_TotalUpdraftFlux import TranslateTotalUpdraftFlux
+from .SHOCMF.translate_IntegrateUpdrafts import TranslateIntegrateUpdrafts
+from .SHOCMF.translate_UpdateEntx import TranslateUpdateEntx
 
 __all__ = [
     "TranslateInvertInterfaceVars",

@@ -1,12 +1,13 @@
 import dace
 from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, int32, int64, interval, isnan, log, sqrt, tanh
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, int32, int64, interval, isnan, log, sqrt, tanh, erf
 from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ, Int
 
 from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
 from pyTurbulence.SHOCMF.locals import SHOCMFLocals
 from pyTurbulence.SHOCMF.state import SHOCMFState
+from pyTurbulence.SHOCMF.shocmf_functions import condensation_edmfA, condensation_edmf
 import pyTurbulence.constants as constants
 from pyTurbulence.field_types import FloatField_UpdraftProperties
 from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
@@ -403,9 +404,9 @@ def define_surface_properties(
             UPW[0,0,0][idx-1]=min(0.5*(wlv+wtv), 5.)
 
             if UPABUOYDEP!=0:
-                UPA[0,0,0][idx-1]=(0.5+0.5*tanh((wthv-0.02)/0.09))*(0.5*erfc(wlv/(sqrt(2.)*sigmaW))-0.5*erfc(wtv/(sqrt(2.)*sigmaW)))
+                UPA[0,0,0][idx-1]=(0.5+0.5*tanh((wthv-0.02)/0.09))*(0.5*erf(wtv/(sqrt(2.)*sigmaW))-0.5*erf(wlv/(sqrt(2.)*sigmaW)))
             else:
-                UPA[0,0,0][idx-1]=(0.5*erfc(wlv/(sqrt(2.)*sigmaW))-0.5*erfc(wtv/(sqrt(2.)*sigmaW)))
+                UPA[0,0,0][idx-1]=(0.5*erf(wtv/(sqrt(2.)*sigmaW))-0.5*erf(wlv/(sqrt(2.)*sigmaW)))
 
             UPU[0,0,0][idx-1]=u
             UPV[0,0,0][idx-1]=v
@@ -416,7 +417,182 @@ def define_surface_properties(
             idx = idx + 1
 
 
+def scale_updraft(
+    rhoe: FloatField,
+    UPA: FloatField_UpdraftProperties,
+    UPW: FloatField_UpdraftProperties,
+    dt: FloatFieldIJ,
+    dp: FloatField,
+    nup2: IntFieldIJ,
+):
 
+    with computation(FORWARD), interval(0,1):
+        idx=0
+        total: FloatFieldIJ=0
+        while idx < nup2:
+            total = total + rhoe*UPA[0,0,0][idx]*UPW[0,0,0][idx]
+            idx = idx+ 1
+
+        mf: FloatFieldIJ = total
+
+    with computation(FORWARD), interval(0,1):
+        factor: FloatFieldIJ = dp/(mf*constants.MAPL_GRAV*dt)
+        if factor < 1.0:
+            idx=0
+            while idx < nup2:
+                UPW[0,0,0][idx] = UPW[0,0,0][idx]*factor
+                idx = idx + 1
+
+
+def total_updraft_flux(
+    UPW:FloatField_UpdraftProperties,
+    UPA: FloatField_UpdraftProperties,
+    UPQT:FloatField_UpdraftProperties,
+    UPTHV:FloatField_UpdraftProperties,
+    nup2:IntFieldIJ,
+    wthv:FloatFieldIJ,
+    wqt:FloatFieldIJ,
+    qt:FloatField,
+    thv:FloatField,
+    p: FloatField,
+    UPQL: FloatField_UpdraftProperties,
+    UPQI: FloatField_UpdraftProperties,
+    UPTHL:FloatField_UpdraftProperties,
+    esx: GlobalTable_saturation_tables,
+):
+    from __externals__ import ICERAMP
+
+    with computation(FORWARD), interval(0,1):
+        QTsrfF: FloatFieldIJ = 0.
+        THVsrfF: FloatFieldIJ = 0.
+        idx=0
+        while idx < nup2:
+            QTsrfF  = QTsrfF +UPW[0,0,0][idx]*UPA[0,0,0][idx]*(UPQT[0,0,0][idx]-qt)
+            THVsrfF = THVsrfF+UPW[0,0,0][idx]*UPA[0,0,0][idx]*(UPTHV[0,0,0][idx]-thv)
+            idx = idx+1
+
+    with computation(FORWARD), interval(0,1):
+        if THVsrfF > 0.9*wthv and THVsrfF > 0.1:
+            idx=0
+            while idx < nup2:
+                UPTHV[0,0,0][idx]=(UPTHV[0,0,0][idx]-thv)*0.9*wthv/THVsrfF+thv
+                idx = idx + 1
+
+    with computation(FORWARD), interval(0,1):
+        if QTsrfF > 0.9*wqt and wqt > 0.:
+            idx=0
+            while idx < nup2:
+                UPQT[0,0,0][idx]=(UPQT[0,0,0][idx]-qt)*0.9*wqt/QTsrfF+qt
+                idx = idx + 1
+
+    with computation(FORWARD), interval(0,1):
+        idx = 0
+        while idx < nup2:
+            UPTHL[0,0,0][idx],UPQL[0,0,0][idx],UPQI[0,0,0][idx] = condensation_edmfA(UPTHV[0,0,0][idx], UPQT[0,0,0][idx], p,ICERAMP, esx)
+            idx = idx + 1
+   
+
+def integrate_updrafts(
+    ENT:FloatField_UpdraftProperties,
+    UPA: FloatField_UpdraftProperties,
+    UPQT: FloatField_UpdraftProperties,
+    UPTHL: FloatField_UpdraftProperties,
+    UPTHV: FloatField_UpdraftProperties,
+    UPU: FloatField_UpdraftProperties,
+    UPW: FloatField_UpdraftProperties,
+    UPV: FloatField_UpdraftProperties,
+    UPQI: FloatField_UpdraftProperties,
+    UPQL: FloatField_UpdraftProperties,
+    exfh: FloatField,
+    nup2: IntFieldIJ,
+    qr: FloatField,
+    qs: FloatField,
+    qt: FloatField,
+    thl: FloatField,
+    thv: FloatField,
+    u: FloatField,
+    v: FloatField,
+    wcfac: FloatField,
+    zw: FloatField,
+    p: FloatField,
+    esx: GlobalTable_saturation_tables,
+    testvar: FloatFieldIJ,
+):
+    from __externals__ import EntUFac, ICERAMP, PRCPCRIT, WB, WA, WC
+    with computation(FORWARD), interval(1,2):
+        testvar=0.0
+        QCn: FloatFieldIJ = 0.0
+        THVn: FloatFieldIJ = 0.0
+        wf: FloatFieldIJ = 0.0
+    with computation(FORWARD), interval(1,None):
+        idx = 0
+        while idx < nup2:
+            if UPW[0,0,-1][idx] > 0.:
+                EntExp: FloatFieldIJ  = exp(-ENT[0,0,-1][idx]*(zw[0,0,0]-zw[0,0,-1]))
+                EntExpU: FloatFieldIJ = exp(-ENT[0,0,-1][idx]*(zw[0,0,0]-zw[0,0,-1])*EntUFac)
+
+                QTn: FloatFieldIJ  = qt[0,0,-1]*(1-EntExp)+UPQT[0,0,-1][idx]*EntExp
+                THLn: FloatFieldIJ = thl[0,0,-1]*(1-EntExp)+UPTHL[0,0,-1][idx]*EntExp
+                Un: FloatFieldIJ   = u[0,0,-1]*(1-EntExpU)+UPU[0,0,-1][idx]*EntExpU
+                Vn: FloatFieldIJ   = v[0,0,-1]*(1-EntExpU)+UPV[0,0,-1][idx]*EntExpU
+
+                THVn,QCn,wf=condensation_edmf(QTn,THLn,p,ICERAMP,esx)
+                testvar=QCn
+
+                if PRCPCRIT > 0.:
+                    QP: FloatFieldIJ = max(0.,QCn-PRCPCRIT)
+                    QCn = QCn - QP
+                    QTn = QTn - QP
+                    THLn = THLn + (constants.MAPL_ALHL*wf+(1.-wf)*constants.MAPL_ALHS)/constants.MAPL_CP*QP/exfh[0,0,0]
+                    qr[0,0,-1] = qr[0,0,-1] + UPA[0,0,0][idx]*QP*wf
+                    qs[0,0,-1] = qs[0,0,-1] + UPA[0,0,0][idx]*QP*(1.-wf)
+                   
+
+                B: FloatFieldIJ=constants.MAPL_GRAV*(0.5*(THVn+UPTHV[0,0,-1][idx])/thv[0,0,-1]-1.)
+                WP: FloatFieldIJ=WB*ENT[0,0,-1][idx]+WC*wcfac[0,0,-1]
+                if WP==0.:
+                    Wn2: FloatFieldIJ=UPW[0,0,-1][idx]**2+2.*WA*B*(zw[0,0,0]-zw[0,0,-1])
+                else:
+                    EntW: FloatFieldIJ=exp(-2.*WP*(zw[0,0,0]-zw[0,0,-1]))
+                    Wn2: FloatFieldIJ=EntW*UPW[0,0,-1][idx]**2+(1.-EntW)*WA*B/WP
+
+                if Wn2>0.:
+                    UPW[0,0,0][idx]=sqrt(Wn2)
+                    UPTHV[0,0,0][idx]=THVn
+                    UPTHL[0,0,0][idx]=THLn
+                    UPQT[0,0,0][idx]=QTn
+                    UPQL[0,0,0][idx]=QCn*wf
+                    UPQI[0,0,0][idx]=QCn*(1.-wf)
+                    UPU[0,0,0][idx]=Un
+                    UPV[0,0,0][idx]=Vn
+                    UPA[0,0,0][idx]=UPA[0,0,-1][idx]
+                else:
+                    UPW[0,0,0][idx] = 0.
+                    UPA[0,0,0][idx] = 0.
+
+            idx = idx + 1
+    
+
+def update_entx(
+    nup2: IntFieldIJ,
+    UPA: FloatField_UpdraftProperties,
+    entx: FloatField,
+    ENT: FloatField_UpdraftProperties,
+    total: FloatField,
+    total1: FloatField,
+):
+    from __externals__ import k_end
+    with computation(PARALLEL), interval(...):
+        idx = 0
+        while idx < nup2:
+            total1 = total1 + UPA[0, 0, 1][idx]
+            total = total + (UPA[0, 0, 1][idx] * ENT[0, 0, 0][idx])
+            idx = idx + 1
+
+    with computation(BACKWARD), interval(...):
+        kidx = k_end-K
+        if total1.at(K=kidx) > 0.0:
+            entx = total.at(K=kidx) / total1.at(K=kidx)
 
 
 class RUN_EDMF(NDSLRuntime):
@@ -478,6 +654,28 @@ class RUN_EDMF(NDSLRuntime):
             func=define_surface_properties,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"UPABUOYDEP":config.UPABUOYDEP}
+        )
+
+        self._scale_updraft = self.stencil_factory.from_dims_halo(
+            func=scale_updraft,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._total_updraft_flux = self.stencil_factory.from_dims_halo(
+            func=total_updraft_flux,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"ICERAMP":config.ICERAMP}
+        )
+
+        self._integrate_updrafts = self.stencil_factory.from_dims_halo(
+            func=integrate_updrafts,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"EntUFac":config.EntUFac, "ICERAMP":config.ICERAMP, "PRCPCRIT":config.PRCPCRIT,"WB":config.WB,"WC":config.WC,"WA":config.WA}
+        )
+
+        self._update_entx = self.stencil_factory.from_dims_halo(
+            func=update_entx,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
 
@@ -632,4 +830,39 @@ class RUN_EDMF(NDSLRuntime):
         #     UPV=,
         #     UPW=,
         # )
+
+        # self._scale_updraft(
+        #     rhoe=,
+        #     UPA=,
+        #     UPW=,
+        #     dt=,
+        #     dp=,
+        #     nup2=,
+        # )
+
+        # self._total_updraft_flux(
+        #     UPW=,
+        #     UPA=,
+        #     UPQT=,
+        #     UPTHV=,
+        #     nup2=,
+        #     wthv=,
+        #     wqt=,
+        #     qt=,
+        #     thv=,
+        #     p=,
+        #     UPQL=,
+        #     UPQI=,
+        #     UPTHL=,
+        #     esx=,
+        # )
+
+        #self._update_entx(
+            # nup2: IntFieldIJ,
+            # UPA: FloatField_UpdraftProperties,
+            # entx: FloatField,
+            # ENT: FloatField_UpdraftProperties,
+            # total: FloatField,
+            # total1: FloatField,
+        #)
 

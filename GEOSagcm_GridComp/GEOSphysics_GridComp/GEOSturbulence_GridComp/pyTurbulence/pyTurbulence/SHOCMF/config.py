@@ -28,3 +28,9 @@ class SHOCMFConfiguration:
     pwmax: Float
     WCTHRESH: Float
     UPABUOYDEP: Int
+    ICERAMP: Float
+    EntUFac: Float
+    PRCPCRIT: Float
+    WA: Float
+    WB: Float
+    WC: Float
