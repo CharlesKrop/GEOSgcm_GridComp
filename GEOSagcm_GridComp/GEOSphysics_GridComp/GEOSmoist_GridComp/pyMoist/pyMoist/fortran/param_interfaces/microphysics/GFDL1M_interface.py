@@ -156,10 +156,15 @@ class GFDL1MInterface(UserCode):
 
         # Initialize the module
         with StencilBackendCompilerOverride(
-            MPI.COMM_WORLD,
+            ndsl_stack.comm,
             ndsl_stack.stencil_factory.config.dace_config,
         ):
-            self._gfdl_1m = GFDL1M(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, config)
+            self._gfdl_1m = GFDL1M(
+                ndsl_stack.stencil_factory,
+                ndsl_stack.quantity_factory,
+                config,
+                ndsl_stack.comm,
+            )
 
         # Make the state
         self._managed_state = MAPLManagedState(

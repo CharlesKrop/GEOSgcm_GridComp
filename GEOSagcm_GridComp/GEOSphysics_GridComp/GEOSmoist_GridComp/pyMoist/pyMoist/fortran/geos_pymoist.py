@@ -25,11 +25,13 @@ from ndsl import (
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl import NDSL_GLOBAL_PRECISION
+from ndsl.dsl.typing import Int32
 from ndsl.internal.hmm import is_hmm_available
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
 
 from pyMoist.fortran.build_helper import InterfaceTransferType, MemorySpace
+from pyMoist.fortran.mpi_bridge import fortran_comm_to_mpi4py
 
 
 from gt4py.cartesian.config import GT4PY_COMPILE_OPT_LEVEL  # isort: skip
@@ -45,6 +47,7 @@ class NDSLPhysicsConfiguration:
     layout_y: int = 1
     single_column: bool = False
     backend: str = "st:dace:cpu:KJI"
+    fortran_comm: int = 0
 
 
 class NDSLPhysicsStack:
@@ -55,28 +58,30 @@ class NDSLPhysicsStack:
     ) -> None:
         # Look for an override to run on a single node
         single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
-        comm = MPIComm()
+        self.comm = MPIComm()
         if single_rank_override >= 0:
-            comm = LocalComm(rank=single_rank_override, total_ranks=54, buffer_dict={})
+            self.comm = LocalComm(rank=single_rank_override, total_ranks=54, buffer_dict={})
+        else:
+            self.comm._comm = fortran_comm_to_mpi4py(flags.fortran_comm)
 
         self.backend = Backend(flags.backend)
         self.flags = flags
         layout = (self.flags.layout_x, self.flags.layout_y)
 
         # Make a custom performance collector for the GEOS wrapper
-        self.perf_collector = PerformanceCollector("GEOS Moist", comm)
+        self.perf_collector = PerformanceCollector("GEOS Moist", self.comm)
 
-        if True: # flags.single_column:
+        if flags.single_column:
             partitioner = TilePartitioner(layout)
             self.communicator = TileCommunicator(
-                comm,
+                self.comm,
                 partitioner,
                 timer=self.perf_collector.timestep_timer,
             )
         else:
             partitioner = CubedSpherePartitioner(TilePartitioner(layout))
             self.communicator = CubedSphereCommunicator(
-                comm,
+                self.comm,
                 partitioner,
                 timer=self.perf_collector.timestep_timer,
             )
@@ -163,6 +168,7 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
     """Initialization of the global NDSL stack for Physics parametrization"""
     MAPLPy = get_MAPLPy()
     grid_infos = MAPLPy.get_grid_infos(mapl_state)
+    ftn_comm = MAPLPy.get_resource("DSL__COMP_COMM", mapl_state, default=Int32(0))
     single_column = False
     ny = grid_infos.ny // 6
     if grid_infos.ny < 6:
@@ -173,13 +179,14 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
 
     return NDSLPhysicsStack(
         NDSLPhysicsConfiguration(
-            grid_infos.im,
-            grid_infos.jm,
-            grid_infos.lm,
-            grid_infos.nx,
-            ny,
-            single_column,
-            override_backend,
+            npx=grid_infos.im,
+            npy=grid_infos.jm,
+            npz=grid_infos.lm,
+            layout_x=grid_infos.nx,
+            layout_y=ny,
+            single_column=single_column,
+            backend=override_backend,
+            fortran_comm=ftn_comm,
         )
     )
 

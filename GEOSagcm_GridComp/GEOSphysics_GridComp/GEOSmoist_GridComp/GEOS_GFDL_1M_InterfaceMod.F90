@@ -17,6 +17,7 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
+  use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 
   implicit none
 
@@ -224,6 +225,9 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
     real                                :: DT_MOIST
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
+    logical :: halting_mode(5)
+    type(ESMF_VM) :: vm
+    integer :: comm
 
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
@@ -259,7 +263,10 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
     if (USE_PYMOIST_GFDL1M) then
+      call ESMF_VMGetCurrent(vm, rc=status) ! pchakrab: replace with ESMF_GridCompGet(gc, VM=VM, _RC)
+      call ESMF_VMGet(vm, mpiCommunicator=comm)
       call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_ConfigSetAttribute(CF, comm, 'DSL__COMP_COMM:', RC=STATUS); VERIFY_(STATUS)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
     else
       call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
@@ -362,6 +369,9 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer :: IM,JM,LM
     integer :: I, J, L
 
+    integer :: comm, rank, mpierr
+    real :: start, finish
+
     call ESMF_GridCompGet( GC, CONFIG=CF, RC=STATUS )
     VERIFY_(STATUS)
 
@@ -387,6 +397,11 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call ESMF_TimeIntervalGet(TINT,   S_R8=DT_R8,RC=STATUS); VERIFY_(STATUS)
     DT_MOIST = DT_R8
 
+    call ESMF_GridCompGet(gc, VM=VM, RC=STATUS); VERIFY_(STATUS)
+    call ESMF_VMGet(vm, mpiCommunicator=comm)
+    call MPI_Comm_rank(comm, rank, mpierr)
+    
+    call cpu_time(start)
     if (USE_PYMOIST_GFDL1M) then
       call MAPL_pybridge_gcrun_with_internal( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT, INTERNAL )
     else
@@ -981,6 +996,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) PTR3D = QGRAUPEL
 
     endif ! USE_PYMOIST_GFDL1M
+    call cpu_time(finish)
+    if (rank == 0) print *, '0: gfdl_1m: time taken = ', finish - start, 's'
 
      call MAPL_TimerOff(MAPL,"--GFDL_1M",RC=STATUS)
 

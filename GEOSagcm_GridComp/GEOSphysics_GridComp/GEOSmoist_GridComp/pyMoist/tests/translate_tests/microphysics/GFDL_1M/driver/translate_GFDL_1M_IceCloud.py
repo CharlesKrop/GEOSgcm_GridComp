@@ -1,5 +1,6 @@
 import numpy as np
 from f90nml import Namelist
+from mpi4py import MPI
 from ndsl import StencilFactory
 from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
@@ -57,7 +58,7 @@ class TranslateGFDL_1M_IceCloud(TranslateFortranData2Py):
         config_dependent_constants = GFDL1MDriverConfigDependentConstants.make(config)
 
         # initialize saturation tables
-        saturation_tables = get_tables(self.stencil_factory)
+        saturation_tables = get_tables(self.stencil_factory, MPI.COMM_WORLD)
 
         # get the shape of the field
         nx, ny, nz = inputs["driver_local_t_icecloud"].shape

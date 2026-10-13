@@ -1,6 +1,7 @@
 """GFDL_1M driver"""
 
 import dace
+from mpi4py import MPI
 from ndsl import NDSLRuntime, Quantity, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 
@@ -43,6 +44,7 @@ class GFDL1MDriver(NDSLRuntime):
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
+        comm: MPI.Intracomm,
     ):
         """Perform setup for the microphysics driver. Check flags for unimplemented options,
         initialize internal fields, and compile stencils.
@@ -67,7 +69,7 @@ class GFDL1MDriver(NDSLRuntime):
         self._locals = GFDL1MDriverLocals.make_locals(quantity_factory)
 
         # pull saturation specific humidity tables, generate if first call
-        self.driver_saturation_tables = get_tables(stencil_factory)
+        self.driver_saturation_tables = get_tables(stencil_factory, comm)
 
         # construct stencils
         self._setup = GFDL1MDriverSetup(

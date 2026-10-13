@@ -1,4 +1,5 @@
 from f90nml import Namelist
+from mpi4py import MPI
 from ndsl import StencilFactory
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 
@@ -26,7 +27,7 @@ class TranslateGFDL_1M_DriverTables(TranslateFortranData2Py):
         }
 
     def compute(self, inputs):
-        self.sat_tables = get_tables(self.stencil_factory)
+        self.sat_tables = get_tables(self.stencil_factory, MPI.COMM_WORLD)
 
         return {
             "table1_driver": self.sat_tables.table1,

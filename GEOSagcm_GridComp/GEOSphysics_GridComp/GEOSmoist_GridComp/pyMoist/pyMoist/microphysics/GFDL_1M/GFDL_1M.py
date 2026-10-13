@@ -1,3 +1,4 @@
+from mpi4py import MPI
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 
@@ -46,6 +47,7 @@ class GFDL1M(NDSLRuntime):
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
+        comm: MPI.Intracomm,
     ):
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
@@ -98,11 +100,7 @@ class GFDL1M(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._driver = GFDL1MDriver(
-            stencil_factory,
-            quantity_factory,
-            config,
-        )
+        self._driver = GFDL1MDriver(stencil_factory, quantity_factory, config, comm)
 
         self._update_after_driver = stencil_factory.from_dims_halo(
             func=update_after_driver,
