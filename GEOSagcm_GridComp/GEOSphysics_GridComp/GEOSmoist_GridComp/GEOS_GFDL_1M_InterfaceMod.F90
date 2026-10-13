@@ -17,7 +17,6 @@ module GEOS_GFDL_1M_InterfaceMod
   use GEOSmoist_Process_Library
   use Aer_Actv_Single_Moment
   use gfdl2_cloud_microphys_mod
-  use ieee_exceptions, only: ieee_get_halting_mode, ieee_set_halting_mode, ieee_all
 
   implicit none
 
@@ -225,7 +224,6 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
     real                                :: DT_MOIST
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
-    logical :: halting_mode(5)
     type(ESMF_VM) :: vm
     integer :: comm
 
@@ -369,6 +367,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     integer :: IM,JM,LM
     integer :: I, J, L
 
+    type(ESMF_VM) :: vm
     integer :: comm, rank, mpierr
     real :: start, finish
 
