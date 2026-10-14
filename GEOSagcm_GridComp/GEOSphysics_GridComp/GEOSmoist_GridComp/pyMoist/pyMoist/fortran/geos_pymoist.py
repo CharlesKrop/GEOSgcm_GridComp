@@ -25,7 +25,6 @@ from ndsl import (
 )
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl import NDSL_GLOBAL_PRECISION
-from ndsl.dsl.typing import Int32
 from ndsl.internal.hmm import is_hmm_available
 from ndsl.logging import ndsl_log_on_rank_0
 from ndsl.optional_imports import cupy as cp
@@ -57,7 +56,7 @@ class NDSLPhysicsStack:
         fortran_mem_space: MemorySpace = MemorySpace.CPU,
     ) -> None:
         # Look for an override to run on a single node
-        single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", -1))
+        single_rank_override = int(os.getenv("GEOS_PYFV3_SINGLE_RANK_OVERRIDE", "-1"))
         self.comm = MPIComm()
         if single_rank_override >= 0:
             self.comm = LocalComm(rank=single_rank_override, total_ranks=54, buffer_dict={})
@@ -168,7 +167,7 @@ def _set_NDSL_physics(mapl_state) -> NDSLPhysicsStack:
     """Initialization of the global NDSL stack for Physics parametrization"""
     MAPLPy = get_MAPLPy()
     grid_infos = MAPLPy.get_grid_infos(mapl_state)
-    ftn_comm = MAPLPy.get_resource("DSL__COMP_COMM", mapl_state, default=Int32(0))
+    ftn_comm = MAPLPy.get_fortran_comm()
     single_column = False
     ny = grid_infos.ny // 6
     if grid_infos.ny < 6:

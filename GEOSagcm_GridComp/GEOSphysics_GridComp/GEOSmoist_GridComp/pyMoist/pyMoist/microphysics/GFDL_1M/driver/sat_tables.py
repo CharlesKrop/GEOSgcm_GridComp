@@ -215,7 +215,7 @@ class GFDL_driver_tables:
         # TODO: this should come for free with the rewrite of the gt:X stencils
         #       compilation mode
         if not stencil_factory.config.dace_config.is_compiling():
-            comm.Barrier()
+            comm.barrier()
 
         compute_qs_table_1 = stencil_factory.from_origin_domain(
             func=qs_table_1,
@@ -259,7 +259,7 @@ class GFDL_driver_tables:
         )
 
         if stencil_factory.config.dace_config.is_compiling():
-            comm.Barrier()
+            comm.barrier()
 
         self.table1 = self._table1.view[0, 0, :]
         self.table2 = self._table2.view[0, 0, :]

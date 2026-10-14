@@ -224,8 +224,6 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
     real                                :: DT_MOIST
 
     real, pointer, dimension(:,:,:)     :: Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL
-    type(ESMF_VM) :: vm
-    integer :: comm
 
     call MAPL_GetResource( MAPL, LHYDROSTATIC, Label="HYDROSTATIC:",  default=.TRUE., RC=STATUS)
     VERIFY_(STATUS)
@@ -261,10 +259,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, IMPORT, EXPORT, RC)
     call MAPL_GetResource(MAPL, USE_PYMOIST_GFDL1M, 'USE_PYMOIST_GFDL1M:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
 
     if (USE_PYMOIST_GFDL1M) then
-      call ESMF_VMGetCurrent(vm, rc=status) ! pchakrab: replace with ESMF_GridCompGet(gc, VM=VM, _RC)
-      call ESMF_VMGet(vm, mpiCommunicator=comm)
       call MAPL_ConfigSetAttribute(CF, DT_MOIST, 'DSL__GFLD1M_DT:', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_ConfigSetAttribute(CF, comm, 'DSL__COMP_COMM:', RC=STATUS); VERIFY_(STATUS)
       call MAPL_pybridge_gcinit( "pyMoist.fortran.param_interfaces.microphysics.GFDL1M_interface", MAPL, IMPORT, EXPORT )
     else
       call MAPL_GetResource( MAPL, SH_MD_DP        , 'SH_MD_DP:'        , DEFAULT= .TRUE., RC=STATUS); VERIFY_(STATUS)
