@@ -6,6 +6,7 @@ from ndsl.dsl.typing import Float, Int
 @dataclass
 class SHOCMFConfiguration:
     dtn: Float
+    dt: Float
     PRNUMBER: Float
     BUOYOPT: Int
     LENOPT: Int

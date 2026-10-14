@@ -421,10 +421,10 @@ def scale_updraft(
     rhoe: FloatField,
     UPA: FloatField_UpdraftProperties,
     UPW: FloatField_UpdraftProperties,
-    dt: FloatFieldIJ,
     dp: FloatField,
     nup2: IntFieldIJ,
 ):
+    from __externals__ import dt
 
     with computation(FORWARD), interval(0,1):
         idx=0
@@ -601,11 +601,10 @@ def check_mass_flux(
     UPA: FloatField_UpdraftProperties,
     UPW: FloatField_UpdraftProperties,
     dp: FloatField,
-    dt: FloatFieldIJ,
     qr: FloatField,
     qs: FloatField,
 ):
-    from __externals__ import MFLIMFAC
+    from __externals__ import MFLIMFAC, dt
     
     with computation(FORWARD), interval(...):
         factor: FloatFieldIJ = 1.0
@@ -622,6 +621,93 @@ def check_mass_flux(
         UPA = factor*UPA
         qr  = factor*qr
         qs  = factor*qs
+
+def rescale_updraft_properties(
+    UPA: FloatField_UpdraftProperties,
+    UPW: FloatField_UpdraftProperties,
+    nup2: IntFieldIJ,
+    qr: FloatField,
+    qs: FloatField,
+    dqrdt: FloatField,
+    dqsdt: FloatField,
+    rhoe:FloatField,
+    TKE3: FloatField,
+    zw: FloatField,
+    edmfmf: FloatField,
+):
+    # NOTE: This stencil validates but needs revisiting
+    from __externals__ import k_end, dt
+    
+    with computation(FORWARD), interval(...):
+        factor_out = 0.0
+
+    with computation(FORWARD), interval(...):
+        prev_factor = factor_out[0, 0, -1]
+
+        idx = 0
+        total: FloatFieldIJ = 0.0
+        total_upw: FloatFieldIJ = 0.0
+        total3 = 0.0
+
+        while idx < nup2:
+            upw_prev = UPW[0, 0, 0][idx]
+            upw_curr = UPW[0, 0, 1][idx]
+
+            total_upw = total_upw + upw_prev
+            total = total + (
+                UPA[0, 0, 0][idx] * upw_prev * upw_prev
+                + UPA[0, 0, 1][idx] * upw_curr * upw_curr
+            )
+            total3 = total3 + UPA[0,0,1][idx]*UPW[0,0,1][idx]
+            idx = idx + 1
+
+        tmp = 0.25 * total
+
+        if zw < 200.0 and total_upw > 0.0:
+            tmp2 = TKE3.at(K=k_end-K)
+            factor_out = min(prev_factor, 0.5 * tmp2 / tmp)
+        else:
+            factor_out = prev_factor
+
+        if factor_out < 1.:
+            #UPA = factor_out*UPA
+            qr     = factor_out*qr
+            qs     = factor_out*qs
+
+    with computation(BACKWARD), interval(...):
+        kidx = k_end-K
+        edmfmf = rhoe.at(K=kidx+1)*total3.at(K=kidx)
+
+    with computation(PARALLEL), interval(...):
+        kidx = k_end-K
+        dqrdt = qr.at(K=kidx)/dt
+        dqsdt = qs.at(K=kidx)/dt
+
+def write_updraft_properties(
+    dry_a: FloatField,
+    moist_a: FloatField,
+    nup2: IntFieldIJ,
+    UPQL: FloatField_UpdraftProperties,
+    UPQI:FloatField_UpdraftProperties,
+    UPA: FloatField_UpdraftProperties,
+):
+    
+    with computation(PARALLEL), interval(...):
+        dry_a     = 0.
+        moist_a   = 0.
+
+    with computation(PARALLEL), interval(...):
+        idx = 0
+        while idx < nup2: 
+            if UPQL[0,0,0][idx]>0. or UPQI[0,0,0][idx]>0.:
+                moist_a = moist_a+UPA[0,0,0][idx]
+            else:
+                dry_a = dry_a+UPA[0,0,0][idx]
+            idx = idx + 1
+   
+
+    
+
 
 
 class RUN_EDMF(NDSLRuntime):
@@ -711,6 +797,17 @@ class RUN_EDMF(NDSLRuntime):
             func=check_mass_flux,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"MFLIMFAC":config.MFLIMFAC}, 
+        )
+
+        self._rescale_updraft_properties = self.stencil_factory.from_dims_halo(
+            func=rescale_updraft_properties,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"dt":config.dt}, 
+        )
+
+        self._write_updraft_properties = self.stencil_factory.from_dims_halo(
+            func=write_updraft_properties,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
 
@@ -900,4 +997,38 @@ class RUN_EDMF(NDSLRuntime):
             # total: FloatField,
             # total1: FloatField,
         #)
+
+        # self._check_mass_flux(
+        #     nup2=,
+        #     rhoe=,
+        #     UPA=,
+        #     UPW=,
+        #     dp=,
+        #     dt=,
+        #     qr=,
+        #     qs=,
+        # )
+
+        # self._rescale_updraft_properties(
+        #     UPA: FloatField_UpdraftProperties,
+        #     UPW: FloatField_UpdraftProperties,
+        #     nup2: IntFieldIJ,
+        #     qr: FloatField,
+        #     qs: FloatField,
+        #     dqrdt: FloatField,
+        #     dqsdt: FloatField,
+        #     rhoe:FloatField,
+        #     TKE3: FloatField,
+        #     zw: FloatField,
+        #     edmfmf: FloatField,
+        # )
+
+        # self._write_updraft_properties(
+        #     dry_a=,
+        #     moist_a=,
+        #     nup2=,
+        #     UPQL=,
+        #     UPQI=,
+        #     UPA=,
+        # )
 
