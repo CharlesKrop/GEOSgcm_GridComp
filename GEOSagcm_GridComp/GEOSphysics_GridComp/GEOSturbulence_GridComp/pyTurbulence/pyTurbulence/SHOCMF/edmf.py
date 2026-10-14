@@ -595,6 +595,35 @@ def update_entx(
             entx = total.at(K=kidx) / total1.at(K=kidx)
 
 
+def check_mass_flux(
+    nup2: IntFieldIJ,
+    rhoe: FloatField,
+    UPA: FloatField_UpdraftProperties,
+    UPW: FloatField_UpdraftProperties,
+    dp: FloatField,
+    dt: FloatFieldIJ,
+    qr: FloatField,
+    qs: FloatField,
+):
+    from __externals__ import MFLIMFAC
+    
+    with computation(FORWARD), interval(...):
+        factor: FloatFieldIJ = 1.0
+        idx = 0
+        mf: FloatFieldIJ = 0
+        while idx < nup2:
+            mf = mf + (rhoe[0,0,1]*UPA[0,0,1][idx]*UPW[0,0,1][idx])
+
+            if (mf > MFLIMFAC*dp/(constants.MAPL_GRAV*dt)):
+                factor = min(factor,MFLIMFAC*dp/(mf*constants.MAPL_GRAV*dt) )
+
+            idx = idx + 1
+
+        UPA = factor*UPA
+        qr  = factor*qr
+        qs  = factor*qs
+
+
 class RUN_EDMF(NDSLRuntime):
     def __init__(
         self,
@@ -676,6 +705,12 @@ class RUN_EDMF(NDSLRuntime):
         self._update_entx = self.stencil_factory.from_dims_halo(
             func=update_entx,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+        self._check_mass_flux = self.stencil_factory.from_dims_halo(
+            func=check_mass_flux,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"MFLIMFAC":config.MFLIMFAC}, 
         )
 
 

@@ -25,6 +25,7 @@ from .SHOCMF.translate_ScaleUpdraft import TranslateScaleUpdraft
 from .SHOCMF.translate_TotalUpdraftFlux import TranslateTotalUpdraftFlux
 from .SHOCMF.translate_IntegrateUpdrafts import TranslateIntegrateUpdrafts
 from .SHOCMF.translate_UpdateEntx import TranslateUpdateEntx
+from .SHOCMF.translate_CheckMassFlux import TranslateCheckMassFlux
 
 __all__ = [
     "TranslateInvertInterfaceVars",

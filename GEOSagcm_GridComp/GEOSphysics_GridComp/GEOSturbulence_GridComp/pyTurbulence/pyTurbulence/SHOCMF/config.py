@@ -34,3 +34,4 @@ class SHOCMFConfiguration:
     WA: Float
     WB: Float
     WC: Float
+    MFLIMFAC: Float
