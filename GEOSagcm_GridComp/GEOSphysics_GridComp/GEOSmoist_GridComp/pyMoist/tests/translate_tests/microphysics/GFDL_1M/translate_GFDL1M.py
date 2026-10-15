@@ -272,7 +272,7 @@ class TranslateGFDL1M(TranslateFortranData2Py):
 
         # state.tendencies
         safe_assign_array(state.tendencies.dcloud_fraction_dt_macro.field[:], inputs["DQADT_macro"])
-        safe_assign_array(state.tendencies.dvapor_dt_macro.field[:], inputs["DQV_DT_macro"])
+        safe_assign_array(state.tendencies.dvapor_dt_macro.field[:], inputs["DQVDT_macro"])
         safe_assign_array(state.tendencies.dice_dt_macro.field[:], inputs["DQIDT_macro"])
         safe_assign_array(state.tendencies.dliquid_dt_macro.field[:], inputs["DQLDT_macro"])
         safe_assign_array(state.tendencies.drain_dt_macro.field[:], inputs["DQRDT_macro"])

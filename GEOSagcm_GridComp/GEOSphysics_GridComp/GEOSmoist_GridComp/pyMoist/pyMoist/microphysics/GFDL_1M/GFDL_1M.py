@@ -219,21 +219,30 @@ def post_microphysics_calculations(
             radiation_cloud_fraction = 0.0
 
         # 2. Redistribute clouds
-        redistribute_clouds_function(
+        (
             radiation_cloud_fraction,
             convective_cloud_fraction,
             convective_ice,
             convective_liquid,
-            radiation_graupel,
             radiation_ice,
             large_scale_cloud_fraction,
             large_scale_ice,
             large_scale_liquid,
             radiation_liquid,
-            radiation_rain,
-            radiation_snow,
             t,
             radiation_vapor,
+        ) = redistribute_clouds_function(
+            cloud_fraction=radiation_cloud_fraction,
+            convective_cloud_fraction=convective_cloud_fraction,
+            convective_ice=convective_ice,
+            convective_liquid=convective_liquid,
+            ice=radiation_ice,
+            large_scale_cloud_fraction=large_scale_cloud_fraction,
+            large_scale_ice=large_scale_ice,
+            large_scale_liquid=large_scale_liquid,
+            liquid=radiation_liquid,
+            t=t,
+            vapor=radiation_vapor,
         )
 
         # 3. Fill vapor/rain/snow/graupel state
@@ -382,13 +391,8 @@ class GFDL1M(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
     ):
+        # initialize NDSLRuntime parent class
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
-
-        # WARNING - to be removed when 11.10.1 update is complete
-        ndsl_log.warning(
-            "pyMoist.GFDL_1M: This NDSL version of GFDL_1M was ported from GEOS v11.8.1, and has not yet been updated to v11.10. "
-            "Stable execution is not guarenteed, as v11.10 made siginificant changes to the source Fortran."
-        )
 
         # initialize saturation tables
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory)
@@ -458,6 +462,7 @@ class GFDL1M(NDSLRuntime):
         self._fill_negative_q = stencil_factory.from_dims_halo(
             func=fill_negative_q,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"DTIME": config.DT},
         )
 
         self._fix_up_clouds = stencil_factory.from_dims_halo(
@@ -473,7 +478,7 @@ class GFDL1M(NDSLRuntime):
         self._melt_freeze = stencil_factory.from_dims_halo(
             func=melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DT": config.DT},
+            externals={"DTIME": config.DT},
         )
 
         self._min_with_one = stencil_factory.from_dims_halo(
@@ -494,6 +499,14 @@ class GFDL1M(NDSLRuntime):
         self._radiation_coupling_scale_aware = stencil_factory.from_dims_halo(
             func=radiation_coupling_scale_aware,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "MIN_RL": config.MIN_RL,
+                "MAX_RL": config.MAX_RL,
+                "FAC_RL": config.FAC_RL,
+                "MIN_RI": config.MIN_RI,
+                "MAX_RI": config.MAX_RI,
+                "FAC_RI": config.FAC_RI,
+            },
         )
 
         self._redistribute_precipitation_fluxes = stencil_factory.from_dims_halo(
@@ -508,15 +521,16 @@ class GFDL1M(NDSLRuntime):
 
         self._set_value_k_interface = stencil_factory.from_dims_halo(
             func=set_value,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
 
         self._update_microphysics_tendencies = stencil_factory.from_dims_halo(
             func=update_microphysics_tendencies,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"DT": config.DT},
         )
 
-        self._gfdl_microphysics_v3 = GFDLMPV3()
+        self._gfdl_microphysics_v3 = GFDLMPV3(stencil_factory=stencil_factory, quantity_factory=quantity_factory, gfdl_1m_config=config)
 
     def __call__(
         self,

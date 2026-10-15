@@ -107,6 +107,7 @@ class GFDL1MMacrophysicsLocals(LocalState):
         metadata={
             "name": "min_rh_crit",
             "dims": [I_DIM, J_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -114,6 +115,7 @@ class GFDL1MMacrophysicsLocals(LocalState):
         metadata={
             "name": "turn_rh_crit",
             "dims": [I_DIM, J_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -121,6 +123,7 @@ class GFDL1MMacrophysicsLocals(LocalState):
         metadata={
             "name": "rh_crit",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -128,6 +131,7 @@ class GFDL1MMacrophysicsLocals(LocalState):
         metadata={
             "name": "alpha",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -135,6 +139,7 @@ class GFDL1MMacrophysicsLocals(LocalState):
         metadata={
             "name": "one_minus_alpha",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -142,6 +147,7 @@ class GFDL1MMacrophysicsLocals(LocalState):
         metadata={
             "name": "temporary_3d",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -149,6 +155,7 @@ class GFDL1MMacrophysicsLocals(LocalState):
         metadata={
             "name": "dummy_field_no_read_write",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -188,17 +195,13 @@ class GFDL1MMacrophysics(NDSLRuntime):
             externals={
                 "MIN_RH_UNSTABLE": config.MIN_RH_UNSTABLE,
                 "MIN_RH_STABLE": config.MIN_RH_STABLE,
-                "TURNRHCRIT_PARAM": config.TURNRHCRIT_PARAM,
+                "TURNRHCRIT_PARAM": config.TURNRHCRIT,
             },
         )
 
         self._fix_up_clouds = stencil_factory.from_dims_halo(
             func=fix_up_clouds,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={
-                "MIN_CLOUD_FRACTION": config.MIN_CLOUD_FRACTION,
-                "MIN_CLOUD_QUANTITY": config.MIN_CLOUD_QUANTITY,
-            },
         )
 
         self._compute_critical_relative_humidity = stencil_factory.from_dims_halo(
@@ -216,9 +219,8 @@ class GFDL1MMacrophysics(NDSLRuntime):
             func=hydrostatic_pdf,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "DTIME": config.DT_MOIST,
+                "DTIME": config.DT,
                 "PDFSHAPE": config.PDFSHAPE,
-                "MIN_CLOUD_FRACTION": config.MIN_CLOUD_FRACTION,
                 "USE_BERGERON": config.USE_BERGERON,
             },
         )
@@ -226,31 +228,37 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._melt_freeze = stencil_factory.from_dims_halo(
             func=melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": config.DT_MOIST},
+            externals={"DTIME": config.DT},
         )
 
         self._evaporate = stencil_factory.from_dims_halo(
             func=evaporate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": config.DT_MOIST},
+            externals={
+                "DTIME": config.DT,
+                "CCW_EVAP_EFF": config.CCW_EVAP_EFF,
+            },
         )
 
         self._sublimate = stencil_factory.from_dims_halo(
             func=sublimate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": config.DT_MOIST},
+            externals={
+                "DTIME": config.DT,
+                "CCI_EVAP_EFF": config.CCI_EVAP_EFF,
+            },
         )
 
         self._update_output_by_dt = stencil_factory.from_dims_halo(
             func=update_output_by_dt,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": config.DT_MOIST},
+            externals={"DTIME": config.DT},
         )
 
         self._fill_negative_q = stencil_factory.from_dims_halo(
             func=fill_negative_q,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": config.DT_MOIST},
+            externals={"DTIME": config.DT},
         )
 
         self._add = stencil_factory.from_dims_halo(

@@ -19,6 +19,7 @@ from ndsl.dsl.gt4py import (
     round_away_from_zero,
     sin,
     sqrt,
+    trunc,
 )
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 
@@ -440,7 +441,7 @@ def fix_up_clouds(
     type_two_ice: FloatField,
     type_two_liquid: FloatField,
     type_two_cloud_fraction: FloatField,
-    lid_level: Int,
+    lid_level: IntFieldIJ,
 ):
     """Fix up cloud variables to ensure physical consistency.
 
@@ -453,7 +454,7 @@ def fix_up_clouds(
         type_two_ice (FloatField): ice mixing ratio (type two, e.g. convective/large scale)
         type_two_liquid (FloatField): liquid mixing ratio (type two, e.g. convective/large scale)
         type_two_cloud_fraction (FloatField): cloud fraction (type two, e.g. convective/large scale)
-        lid_level (Int): the level above which clouds are removed (note 0 = TOA). set to a number < 0 to disable
+        lid_level (IntFieldIJ): the level above which clouds are removed (note 0 = TOA). set to a number < 0 to disable
     """
 
     with computation(FORWARD), interval(0, 1):
@@ -624,7 +625,7 @@ def hydrostatic_pdf(
         estfrz (Float)
         estlqu (Float)
     """
-    from __externals__ import MIN_CLOUD_FRACTION, PDFSHAPE, USE_BERGERON, DTIME
+    from __externals__ import PDFSHAPE, USE_BERGERON, DTIME
 
     with computation(PARALLEL), interval(...):
         # pre-declare internals to make linter happy
@@ -806,7 +807,7 @@ def hydrostatic_pdf(
             dice = fraction_ice * excess_condensate
 
         # clean up residual clouds if fraction is negligibly small
-        if large_scale_cloud_fraction < MIN_CLOUD_FRACTION:
+        if large_scale_cloud_fraction < CFMIN:
             dice = -large_scale_ice
             dliquid = -large_scale_liquid
 
@@ -835,6 +836,9 @@ def ice_fraction(
     Returns:
         ice_fraction (Float): ice fraction
     """
+    # save an integer copy of surface type for comparisons
+    surface_type_int = trunc(surface_type)
+
     if ICE_FRACTION_POLYNOMIAL == RAW_MODIS_POLYNOMIAL:
         # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
         tc = max(-46.0, min(t - MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
@@ -858,7 +862,7 @@ def ice_fraction(
         # 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
         # ------------------------------------------------------------------
         # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-        if Int(surface_type) == SRF_TYPE_SNOW or Int(surface_type) == SRF_TYPE_ICE or Int(surface_type) == SRF_TYPE_LANDICE:
+        if surface_type_int == SRF_TYPE_SNOW or surface_type_int == SRF_TYPE_ICE or surface_type_int == SRF_TYPE_LANDICE:
             # Over snow (SRF_TYPE == 2.0) and ice (SRF_TYPE >= 3.0)
             ice_fraction_m = 0.00
             if t <= JIT_ICE_ALL:
@@ -868,7 +872,7 @@ def ice_fraction(
             ice_fraction_m = min(ice_fraction_m, 1.00)
             ice_fraction_m = max(ice_fraction_m, 0.00)
             ice_fraction_m = ice_fraction_m**JIT_ICE_PWR
-        if Int(surface_type) == SRF_TYPE_LAND:
+        if surface_type_int == SRF_TYPE_LAND:
             # Over Land (SRF_TYPE == 1)
             ice_fraction_m = 0.00
             if t <= JLT_ICE_ALL:
@@ -878,7 +882,7 @@ def ice_fraction(
             ice_fraction_m = min(ice_fraction_m, 1.00)
             ice_fraction_m = max(ice_fraction_m, 0.00)
             ice_fraction_m = ice_fraction_m**JLT_ICE_PWR
-        elif Int(surface_type) == SRF_TYPE_OCEAN:
+        elif surface_type_int == SRF_TYPE_OCEAN:
             # Over Oceans (SRF_TYPE == 0)
             ice_fraction_m = 0.00
             if t <= JOT_ICE_ALL:
@@ -1116,17 +1120,29 @@ def redistribute_clouds_function(
     convective_cloud_fraction: Float,
     convective_ice: Float,
     convective_liquid: Float,
-    graupel: Float,
     ice: Float,
     large_scale_cloud_fraction: Float,
     large_scale_ice: Float,
     large_scale_liquid: Float,
     liquid: Float,
-    rain: Float,
-    snow: Float,
     t: Float,
     vapor: Float,
 ):
+    """Ensure physical values for all in-cloud quantities.
+
+    Args:
+        cloud_fraction (Float)
+        convective_cloud_fraction (Float)
+        convective_ice (Float)
+        convective_liquid (Float)
+        ice (Float)
+        large_scale_cloud_fraction (Float)
+        large_scale_ice (Float)
+        large_scale_liquid (Float)
+        liquid (Float)
+        t (Float)
+        vapor (Float)
+    """
     # internal parameter
     epsilon = 1.0e-15
 
@@ -1193,6 +1209,20 @@ def redistribute_clouds_function(
         convective_cloud_fraction = 0.0
         convective_liquid = 0.0
         convective_ice = 0.0
+
+    return (
+        cloud_fraction,
+        convective_cloud_fraction,
+        convective_ice,
+        convective_liquid,
+        ice,
+        large_scale_cloud_fraction,
+        large_scale_ice,
+        large_scale_liquid,
+        liquid,
+        t,
+        vapor,
+    )
 
 
 def sublimate(

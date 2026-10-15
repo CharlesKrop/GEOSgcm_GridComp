@@ -10,6 +10,7 @@ from ndsl.stencils.basic_operations_2d import set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 from pyMoist.microphysics.GFDL_1M.microphysics import constants
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.driver import GFDLMPV3Driver
@@ -34,7 +35,7 @@ class GFDLMPV3(NDSLRuntime):
 
     def __init__(self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, gfdl_1m_config: GFDL1MConfig, namelist: str = "input.nml"):
         # initialize NDSLRuntime parent class
-        super.__init__(stencil_factory)
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
         # make overatching GFDL1M config visible throughout the class
         self._gfdl_1m_config = gfdl_1m_config

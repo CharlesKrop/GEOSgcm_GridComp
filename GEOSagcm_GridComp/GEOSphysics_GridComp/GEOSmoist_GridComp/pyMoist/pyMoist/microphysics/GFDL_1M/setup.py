@@ -2,8 +2,8 @@ import dataclasses
 
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import PARALLEL, computation, interval
-from ndsl.dsl.typing import Float, FloatField, Int
+from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
+from ndsl.dsl.typing import Float, FloatField, Int, IntFieldIJ
 from ndsl.stencils.basic_operations import add, copy, set_value
 
 from pyMoist.constants import MAPL_GRAV
@@ -79,6 +79,18 @@ def calculate_derived_states(
         v_unmodified = v
 
 
+def set_value_2d_int(field: IntFieldIJ, value: Int) -> None:
+    """
+    Sets every element of a field to a single value.
+
+    Args:
+        field: output field
+        value: value of Int type
+    """
+    with computation(FORWARD), interval(0, 1):
+        field = value
+
+
 def update_precipitation(
     mixing_ratio: FloatField,
     shallow_convection_values: FloatField,
@@ -89,10 +101,10 @@ def update_precipitation(
         mixing_ratio (FloatField)
         shallow_convection_values (FloatField)
     """
-    from __externals__ import DT_MOIST
+    from __externals__ import DT
 
     with computation(PARALLEL), interval(...):
-        mixing_ratio = mixing_ratio + shallow_convection_values * DT_MOIST
+        mixing_ratio = mixing_ratio + shallow_convection_values * DT
 
 
 @dataclasses.dataclass
@@ -101,6 +113,7 @@ class GFDL1MSetupLocals(LocalState):
         metadata={
             "name": "temporary_3d",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -141,8 +154,8 @@ class GFDL1MSetup(NDSLRuntime):
         self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
 
         # construct stencils
-        self._set_value = stencil_factory.from_dims_halo(
-            func=set_value,
+        self._add = stencil_factory.from_dims_halo(
+            func=add,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -151,18 +164,23 @@ class GFDL1MSetup(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
 
+        self._copy = stencil_factory.from_dims_halo(
+            func=copy,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
         self._find_lcl_level = stencil_factory.from_dims_halo(
             func=find_lcl_level,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._add = stencil_factory.from_dims_halo(
-            func=add,
+        self._set_value = stencil_factory.from_dims_halo(
+            func=set_value,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-        self._copy = stencil_factory.from_dims_halo(
-            func=copy,
+        self._set_value_2d_int = stencil_factory.from_dims_halo(
+            func=set_value_2d_int,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -170,7 +188,7 @@ class GFDL1MSetup(NDSLRuntime):
             func=update_precipitation,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "DT_MOIST": config.DT_MOIST,
+                "DT": config.DT,
             },
         )
 
@@ -226,9 +244,9 @@ class GFDL1MSetup(NDSLRuntime):
         )
 
         if self.config.GFDL_MP_KLID > 0.0:
-            locals.lid_level = Int(self.config.GFDL_MP_KLID)
+            self._set_value_2d_int(field=locals.lid_level, value=Int(self.config.GFDL_MP_KLID))
         else:
-            locals.lid_level = Int(1)
+            self._set_value_2d_int(field=locals.lid_level, value=Int(1))
 
         # set unused exports to zero
         self._set_value(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))

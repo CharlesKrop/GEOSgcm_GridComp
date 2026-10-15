@@ -130,7 +130,7 @@ class GFDL1MState(State):
     evaporation: Quantity = dataclasses.field(
         metadata={
             "name": "evaporation",
-            "dims": [I_DIM, J_DIM, K_DIM],
+            "dims": [I_DIM, J_DIM],
             "units": "kg kg-1 s-1",
             "dtype": Float,
         }
