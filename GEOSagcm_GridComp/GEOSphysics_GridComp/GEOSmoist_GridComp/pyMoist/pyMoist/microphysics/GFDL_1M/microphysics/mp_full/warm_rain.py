@@ -5,12 +5,10 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log
 from ndsl.dsl.typing import Float, FloatField, FloatField64, FloatFieldIJ
 
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig, GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL20
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, QPMIN, RHOW
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
+from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full_locals import MPFullLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import (

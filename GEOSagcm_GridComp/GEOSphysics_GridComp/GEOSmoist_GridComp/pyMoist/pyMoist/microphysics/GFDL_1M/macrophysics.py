@@ -1,5 +1,4 @@
 import dataclasses
-from tkinter.tix import MAX
 
 from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
@@ -11,9 +10,8 @@ from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 from pyMoist.saturation_tables import SaturationVaporPressureTable
-from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor
+from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, fill_negative_q
 from pyMoist.shared.cloud_processes import evaporate, fix_up_clouds, hydrostatic_pdf, melt_freeze, sublimate
-from pyMoist.shared.numerical_recipes import fill_negative_q
 
 
 def compute_macrophysics_factors(
@@ -72,7 +70,7 @@ def compute_critical_relative_humidity(
     with computation(FORWARD), interval(0, 1):
         # use Slingo-Ritter (1985) formulation for critical relative humidity
         # ensure the max is never lower than the min
-        safe_max_rh_crit = MAX(MAX_RH_CRIT, min_rh_crit)
+        safe_max_rh_crit = max(MAX_RH_CRIT, min_rh_crit)
         if p_mb <= turn_rh_crit:
             min_rh_crit = min_rh_crit
         elif K == k_end:

@@ -11,7 +11,7 @@ from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
+from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full_locals import MPFullLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc_wrapper, moist_total_energy, terminal_velocity_graupel_rain_snow_wrapper
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
 
@@ -519,7 +519,7 @@ class Sedimentation:
         self._set_heights = stencil_factory.from_dims_halo(
             func=set_heights,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DT": gfdl_1m_config.DT_MOIST},
+            externals={"DT": gfdl_1m_config.DT},
         )
         self._terminal_fall = stencil_factory.from_dims_halo(
             func=terminal_fall,
@@ -532,7 +532,7 @@ class Sedimentation:
                 "DO_SEDI_HEAT": mp_namelist.DO_SEDI_HEAT,
                 "DO_SEDI_UV": mp_namelist.DO_SEDI_UV,
                 "DO_SEDI_W": mp_namelist.DO_SEDI_W,
-                "DT": gfdl_1m_config.DT_MOIST,
+                "DT": gfdl_1m_config.DT,
                 "SEDFLAG": mp_namelist.SEDFLAG,
             },
         )

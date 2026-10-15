@@ -71,7 +71,6 @@ class GFDL1MLocals(LocalState):
             "dtype": Int,
         }
     )
-    lid_level: Int = -999
     mass: Local = dataclasses.field(
         metadata={
             "name": "mass",
@@ -152,3 +151,4 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
+    lid_level: Int = -999
