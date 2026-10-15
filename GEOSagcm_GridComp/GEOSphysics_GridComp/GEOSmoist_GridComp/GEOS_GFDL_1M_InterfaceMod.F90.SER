@@ -363,14 +363,14 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
 
     call MAPL_GetResource( MAPL, GFDL_MP_KLID    , 'GFDL_MP_KLID:'    , DEFAULT= -999.0, RC=STATUS); VERIFY_(STATUS)
 
-    !$ser savepoint GFDL1M_Config
+    !$ser savepoint GFDL1M-Config
+    !$ser data DT=DT_MOIST
     !$ser data PHYS_HYDROSTATIC=LPHYS_HYDROSTATIC
     !$ser data MELTFRZ_CLDMACRO=LMELTFRZ_CLDMACRO
     !$ser data MELTFRZ_CLDMICRO=LMELTFRZ_CLDMICRO
     !$ser data REPORT_GFDL_1M_NEGATIVES=REPORT_GFDL_1M_NEGATIVES
     !$ser data GFDL_MP3=GFDL_MP3
     !$ser data DO_GFDL_REFLECTIVITY=do_ref
-    !$ser data USE_PYMOIST_GFDL1M=USE_PYMOIST_GFDL1M
     !$ser data SH_MD_DP=SH_MD_DP
     !$ser data TURNRHCRIT=TURNRHCRIT_PARAM
     !$ser data MAX_RH_CRIT=MAX_RH_CRIT
@@ -562,8 +562,6 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     call MAPL_GetPointer(IMPORT, OMEGA,   'OMEGA'   , RC=STATUS); VERIFY_(STATUS)
     call MAPL_GetPointer(IMPORT, PHIS,    'PHIS'    , RC=STATUS); VERIFY_(STATUS)
 
-    !!$ser savepoint THE_NUMBER_ONE
-    !!$ser data THE_NUMBER_ONE=1
     !$ser savepoint GFDL1M-In_part_1
     !$ser data Q=Q
     !$ser data QRAIN=QRAIN
