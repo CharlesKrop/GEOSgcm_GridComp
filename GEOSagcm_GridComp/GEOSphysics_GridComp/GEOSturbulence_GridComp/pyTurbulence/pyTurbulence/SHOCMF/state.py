@@ -359,6 +359,16 @@ class SHOCMFState(State):
                 "dtype": Float,
             }
         )
+        KH: Quantity = dataclasses.field(
+            metadata={
+                "name": "KH",
+                "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
+                "intent": "?",
+                "dtype": Float,
+            }
+        )
+
     
 
     input: Input

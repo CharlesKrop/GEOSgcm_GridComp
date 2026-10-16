@@ -54,7 +54,7 @@ class TranslateSolveTke(TranslateFortranData2Py):
         _solve_tke = self.stencil_factory.from_dims_halo(
             func=solve_tke,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"max_tke":config.max_tke,"min_tke":config.min_tke,"nitr":config.nitr,"BUOYOPT":config.BUOYOPT, "Ce":config.Ce, "Ces":config.Ces, "dtn":config.dtn}
+            externals={"BUOYOPT":config.BUOYOPT,"dtn":config.dtn, "CeFAC":config.CeFAC, "CesFAC":config.CesFAC, "Ck":config.Ck}
         )
 
         # Inputs

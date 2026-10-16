@@ -42,8 +42,8 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
             "QSTOT": {},
             "SH": {},
             "T": {},
-            "TKESHOC": {},
-            "TKH": {},
+            "TKESHOC_IN": {},
+            "TKH_IN": {},
             "U": {},
             "V": {},
             "WTHV2": {},
@@ -60,6 +60,8 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
             "TKH": self.grid.compute_dict(),
             "RI": self.grid.compute_dict(),
             "BRUNTSHOC": self.grid.compute_dict(),
+            "KM": self.grid.compute_dict(),
+            "KH": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -103,8 +105,8 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
         state.input.ZLE.field[:] = inputs["ZLE"]
         
         # In/outs
-        state.input_output.TKESHOC.field[:] = inputs["TKESHOC"]
-        state.input_output.TKH.field[:] = inputs["TKH"]
+        state.input_output.TKESHOC.field[:] = inputs["TKESHOC_IN"]
+        state.input_output.TKH.field[:] = inputs["TKH_IN"]
 
         run_shoc(
             state,
@@ -118,4 +120,5 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
             "TKH": state.input_output.TKH.view[:],
             "RI": state.output.RI.view[:],
             "BRUNTSHOC": state.output.BRUNTSHOC.view[:],
+            "KH": state.output.KH.view[:],
         }

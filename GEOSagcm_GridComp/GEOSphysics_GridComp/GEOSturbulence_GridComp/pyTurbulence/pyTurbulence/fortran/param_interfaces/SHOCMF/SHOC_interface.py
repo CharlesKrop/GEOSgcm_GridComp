@@ -1,10 +1,7 @@
 from MAPL_PythonBridge import UserCode, get_MAPLPy
 from MAPL_PythonBridge.types import CVoidPointer
 from mpi4py import MPI
-from ndsl.dsl.gt4py import IJ, IJK
 from ndsl.dsl.typing import Float, Int
-from ndsl.quantity.data_dimensions_field import DataDimensionsField
-from ndsl.utils import safe_assign_array
 
 from pyTurbulence.SHOCMF.shoc import RUN_SHOC, SHOCMFConfiguration, SHOCMFState
 from pyMoist.fortran import get_NDSL_physics
@@ -87,6 +84,7 @@ class SHOCGEOSInterface(UserCode):
 
         self._managed_state.register("input_output.TKESHOC", "TKESHOC", internal_repository)
         self._managed_state.register("input_output.TKH", "TKH", internal_repository)
+        self._managed_state.register("output.KH", "KH", export_repository,alloc=True)
         self._managed_state.register("output.KM", "KM", export_repository, alloc=True)
         self._managed_state.register("output.ISOTROPY", "ISOTROPY", export_repository, alloc=True)
         self._managed_state.register("output.TKEDISS", "TKEDISS", export_repository)
@@ -97,7 +95,7 @@ class SHOCGEOSInterface(UserCode):
         self._managed_state.register("output.LSHOC2", "LSHOC2", export_repository)
         self._managed_state.register("output.LSHOC3", "LSHOC3", export_repository)
         self._managed_state.register("output.BRUNTSHOC", "BRUNTSHOC", export_repository)
-        self._managed_state.register_K_interface("output.RI", "RI", export_repository)  
+        self._managed_state.register_K_interface("output.RI", "RI", export_repository,alloc=True)  
         self._managed_state.register_K_interface("output.SHOCPRNUM", "SHOCPRNUM", export_repository)    
 
         if self._shoc is None:
@@ -113,7 +111,7 @@ class SHOCGEOSInterface(UserCode):
                 self._managed_state.fortran_to_ndsl()
 
             with TimedCUDAProfiler("SHOC Numerics", {}):
-                self._uw(self._managed_state.ndsl_state)
+                self._shoc(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("SHOC - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()

@@ -28,6 +28,7 @@ class TranslateEnvironmentalTke(TranslateFortranData2Py):
             "dryzpbl": {},
             "brunt_edge": {},
             "prnum": {},
+            "tkh": {},
         }
 
         # FloatField Outputs
@@ -45,7 +46,7 @@ class TranslateEnvironmentalTke(TranslateFortranData2Py):
         _environmental_tke = self.stencil_factory.from_dims_halo(
             func=environmental_tke,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"shoc_lambda":config.shoc_lambda, "ck": config.ck}
+            externals={"shoc_lambda":config.shoc_lambda, "Ck": config.Ck}
         )
 
         # Inputs
@@ -61,11 +62,12 @@ class TranslateEnvironmentalTke(TranslateFortranData2Py):
         safe_assign_array(prnum.view[:, :, :], inputs["prnum"])
         brunt_edge = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_INTERFACE_DIM], units="n/a")
         safe_assign_array(brunt_edge.view[:, :, :], inputs["brunt_edge"])
+        tkh = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        safe_assign_array(tkh.view[:, :, :], inputs["tkh"])
         
         # Outputs
         isotropy = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        tkh = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-    
+        
         _environmental_tke(
             tscale1=tscale1,
             zl=zl,

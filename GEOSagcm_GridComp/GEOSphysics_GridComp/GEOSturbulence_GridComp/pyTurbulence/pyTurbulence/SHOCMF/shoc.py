@@ -1,18 +1,17 @@
 import dace
 from ndsl import NDSLRuntime, OptimizationConfig, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, K, computation, erfc, exp, float32, int32, int64, interval, isnan, log, sqrt, tanh
-from ndsl.dsl.typing import Bool, BoolFieldIJ, FloatField, FloatFieldIJ, IntField, IntFieldIJ, Int
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, interval, sqrt, tanh
+from ndsl.dsl.typing import FloatField, FloatFieldIJ, Int, Float
 
 from pyTurbulence.SHOCMF.config import SHOCMFConfiguration
 from pyTurbulence.SHOCMF.locals import SHOCMFLocals
 from pyTurbulence.SHOCMF.state import SHOCMFState
 import pyTurbulence.constants as constants
-from pyMoist.saturation_tables.tables.liquid_exact import liquid_exact
-from pyMoist.saturation_tables.tables.ice_exact import ice_exact
-from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity_frozen_surface
+from pyMoist.saturation_tables import GlobalTable_saturation_tables,get_saturation_vapor_pressure_table
+from pyMoist.saturation_tables.saturation_specific_humidity_functions import saturation_specific_humidity_frozen_surface,saturation_specific_humidity_liquid_surface
 from pyMoist.saturation_tables.formulation import SaturationFormulation
-from pyMoist.saturation_tables.tables.constants import IceExactConstants, LiquidExactConstants
+
 
 def setup_preliminary_inputs(
     ZLE: FloatField,
@@ -269,8 +268,6 @@ def eddy_length2(
     qci: FloatField,
     tabs: FloatField,
     prsl: FloatField,
-    dtqw: FloatField,
-    dtqi: FloatField,
     qpl: FloatField,
     qpi: FloatField,
     cld_sgs: FloatField,
@@ -282,9 +279,10 @@ def eddy_length2(
     qv: FloatField,
     zl: FloatField,
     dryzpbl: FloatFieldIJ,
-    #qsat_liq: FloatField, #Debug var
-    #qsat_ice: FloatField, # Debug var
-    formulation: Int,
+    frz: Float,
+    lqu: Float,
+    ese: GlobalTable_saturation_tables,
+    esw: GlobalTable_saturation_tables,
 ):
     from __externals__ import k_end
 
@@ -308,103 +306,23 @@ def eddy_length2(
         wrk = qcl + qci
         omn = qcl / (wrk+1.e-20)
         lstarn = constants.fac_cond + (1.-omn)*constants.fac_fus
-        qsat_liq, _ = liquid_exact(
-            tabs,
-            formulation,
-            LiquidExactConstants.B6,
-            LiquidExactConstants.B5,
-            LiquidExactConstants.B4,
-            LiquidExactConstants.B3,
-            LiquidExactConstants.B2,
-            LiquidExactConstants.B1,
-            LiquidExactConstants.B0,
-            IceExactConstants.BI6,
-            IceExactConstants.BI5,
-            IceExactConstants.BI4,
-            IceExactConstants.BI3,
-            IceExactConstants.BI2,
-            IceExactConstants.BI1,
-            IceExactConstants.BI0,
-            IceExactConstants.S16,
-            IceExactConstants.S15,
-            IceExactConstants.S14,
-            IceExactConstants.S13,
-            IceExactConstants.S12,
-            IceExactConstants.S11,
-            IceExactConstants.S10,
-            IceExactConstants.S26,
-            IceExactConstants.S25,
-            IceExactConstants.S24,
-            IceExactConstants.S23,
-            IceExactConstants.S22,
-            IceExactConstants.S21,
-            IceExactConstants.S20,
-            LiquidExactConstants.DL_0,
-            LiquidExactConstants.DL_1,
-            LiquidExactConstants.DL_2,
-            LiquidExactConstants.DL_3,
-            LiquidExactConstants.DL_4,
-            LiquidExactConstants.DL_5,
-            LiquidExactConstants.TS,
-            LiquidExactConstants.LOGPS,
-            LiquidExactConstants.CL_0,
-            LiquidExactConstants.CL_1,
-            LiquidExactConstants.CL_2,
-            LiquidExactConstants.CL_3,
-            LiquidExactConstants.CL_4,
-            LiquidExactConstants.CL_5,
-            LiquidExactConstants.CL_6,
-            LiquidExactConstants.CL_7,
-            LiquidExactConstants.CL_8,
-            LiquidExactConstants.CL_9,
-            prsl,
-        )
-        qsat_ice, _ = ice_exact(
-            tabs,
-            formulation,
-            IceExactConstants.TMINSTR,
-            IceExactConstants.TMINICE,
-            IceExactConstants.TSTARR1,
-            IceExactConstants.TSTARR2,
-            IceExactConstants.TSTARR3,
-            IceExactConstants.TSTARR4,
-            IceExactConstants.TMAXSTR,
-            IceExactConstants.DI_0,
-            IceExactConstants.DI_1,
-            IceExactConstants.DI_2,
-            IceExactConstants.DI_3,
-            IceExactConstants.CI_0,
-            IceExactConstants.CI_1,
-            IceExactConstants.CI_2,
-            IceExactConstants.CI_3,
-            IceExactConstants.S16,
-            IceExactConstants.S15,
-            IceExactConstants.S14,
-            IceExactConstants.S13,
-            IceExactConstants.S12,
-            IceExactConstants.S11,
-            IceExactConstants.S10,
-            IceExactConstants.S26,
-            IceExactConstants.S25,
-            IceExactConstants.S24,
-            IceExactConstants.S23,
-            IceExactConstants.S22,
-            IceExactConstants.S21,
-            IceExactConstants.S20,
-            IceExactConstants.BI6,
-            IceExactConstants.BI5,
-            IceExactConstants.BI4,
-            IceExactConstants.BI3,
-            IceExactConstants.BI2,
-            IceExactConstants.BI1,
-            IceExactConstants.BI0,
-            prsl
-        )
+        qsat_liq, dqsat_liq = saturation_specific_humidity_liquid_surface(esw,lqu,tabs,prsl)
+        qsat_ice, dqsat_ice = saturation_specific_humidity_frozen_surface(ese,frz,tabs,prsl)
         qsatt = omn  * qsat_liq + (1.-omn) * qsat_ice
-        dqsat =  omn * dtqw + (1.-omn) * dtqi
+        dqsat =  omn * qsat_liq + (1.-omn) * qsat_ice
         bbb = (1. + constants.epsv*qsatt-wrk-qpl-qpi + 1.61*tabs*dqsat) / (1.+lstarn*dqsat)
 
     with computation(PARALLEL), interval(...):
+        if K == 0:
+            kb = 0
+            kc = 1
+        elif K == k_end:
+            kb = k_end-1
+            kc = k_end
+        else:
+            kb = K - 1
+            kc = K + 1
+
         brunt = cld_sgs*betdz*(bbb*(hl.at(K=kc)-hl.at(K=kb))) + (bbb*lstarn - (1.+lstarn*dqsat)*tabs) * (total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond - (1.+constants.fac_cond*dqsat)*tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub  - (1.+constants.fac_sub*dqsat)*tabs)*(qpi.at(K=kc)-qpi.at(K=kb))
     
     with computation(PARALLEL), interval(1,None):
@@ -415,9 +333,9 @@ def eddy_length2(
         bbb = 1. + constants.epsv*qv - qpl - qpi
         brunt = brunt + (1.-cld_sgs)*betdz*( bbb*(hl.at(K=kc)-hl.at(K=kb)) + constants.epsv*tabs*(total_water.at(K=kc)-total_water.at(K=kb)) + (bbb*constants.fac_cond-tabs)*(qpl.at(K=kc)-qpl.at(K=kb)) + (bbb*constants.fac_sub -tabs)*(qpi.at(K=kc)-qpi.at(K=kb)) )
 
-    with computation(PARALLEL), interval(1,None):
+    with computation(FORWARD), interval(1,None):
         bbb = 0.5*(bbb + 1. + constants.epsv*qv[0,0,-1] - qpl[0,0,-1] - qpi[0,0,-1])
-        brunt_edge = brunt_edge + (1.-0.5*(cld_sgs+cld_sgs[0,0,-1]))*betdz*( bbb*(hl-hl[0,0,-1]) + constants.epsv*tabs*(total_water-total_water[0,0,-1]) + (bbb*constants.fac_cond-tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub -tabs)*(qpi-qpi[0,0,-1]) )
+        brunt_edge = brunt_edge + (1.-0.5*(cld_sgs+cld_sgs[0,0,-1]))*betdz*( bbb*(hl-hl[0,0,-1]) + constants.epsv*tabs*(total_water-total_water[0,0,-1])+ (bbb*constants.fac_cond-tabs)*(qpl-qpl[0,0,-1]) + (bbb*constants.fac_sub -tabs)*(qpi-qpi[0,0,-1]) )
 
     with computation(PARALLEL), interval(...):
         if (brunt < 1e-5 or zl < 0.75*dryzpbl):
@@ -430,7 +348,7 @@ def eddy_length2(
         brunt2 = brunt2[0,0,1]
 
     with computation(FORWARD), interval(-1,None):
-        brunt_edge = brunt_edge.at(K=k_end-1)
+        brunt_edge[0,0,1] = brunt_edge.at(K=k_end)
         brunt2 = brunt2.at(K=k_end-1)
 
 
@@ -543,8 +461,7 @@ def solve_tke(
     from __externals__ import k_end, BUOYOPT, dtn, CeFAC, CesFAC, Ck
 
     with computation(PARALLEL), interval(...):
-        Ce = CeFAC*Ck**3/constants.Cs**4 
-        Cek = Ce/0.7
+        Ce = CeFAC*Ck**3.0/constants.Cs**4.0
         Ces = CesFAC*Ce  
 
         if K == 0:
@@ -555,6 +472,10 @@ def solve_tke(
             ku = K
             kd = K
             Cek = Ces
+        else:
+            Cek = Ce/0.7
+            ku = K + 1
+            kd = K
         
         grd = adzl
         wrk  = 0.5 * (tkh.at(K=ku)+tkh.at(K=kd))
@@ -572,15 +493,18 @@ def solve_tke(
             smix = min(grd,max(0.1*grd, 0.76*sqrt(tke/(buoy_sgs+1.e-10))))
 
         Cee = Cek* (constants.pt19 + constants.pt51*smix/grd)
-        wrk   = 0.5 * wrk * (prnum.at(K=ku) + prnum.at(K=kd))
+
+        wrk = 0.5 * wrk * (prnum.at(K=ku) + prnum.at(K=kd))
 
         a_prod_sh = min(min(constants.tkhmax,wrk)*def2,0.1)  
+       
         wtke = tke
         wtk2 = wtke
         wrk  = (dtn*Cee)/smixt
         wrk1 = wtke + dtn*(a_prod_sh+a_prod_bu)
 
-        wrk2 = constants.min_tke*(1.+9.*exp(-zl/100.))+0.5*(tke_mf+tke_mf)
+        wrk2 = constants.min_tke*(1.+9.*exp(-zl/100.))+0.5*(tke_mf.at(K=k_end-K+1)+tke_mf.at(K=k_end-K))
+
         itr=1
         while itr <= constants.nitr:                    
             wtke   = min(max(wrk2, wtke), constants.max_tke)
@@ -593,7 +517,7 @@ def solve_tke(
         tke = min(max(wrk2, wtke), constants.max_tke)
         tscale1 = (dtn+dtn) / a_diss        
         a_diss = (a_diss/dtn)*tke  
-
+    
         tkesbdiss = -a_diss
         tkesbshear = a_prod_sh
         tkesbbuoy = a_prod_bu
@@ -674,7 +598,13 @@ def flip_output(
         kinv = k_end - K
         output = input.at(K=kinv)
 
-
+def update_diffusivity(
+    tkh_inv: FloatField,
+    KH: FloatField,
+):
+    
+    with computation(PARALLEL), interval(...):
+        KH=tkh_inv
 
 class RUN_SHOC(NDSLRuntime):
     def __init__(
@@ -781,6 +711,12 @@ class RUN_SHOC(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
+        self._update_diffusivity = self.stencil_factory.from_dims_halo(
+            func=update_diffusivity,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
+
         if formulation == SaturationFormulation.Staars:
             self.formulation_int = Int(1)
         elif formulation == SaturationFormulation.CAM:
@@ -803,7 +739,12 @@ class RUN_SHOC(NDSLRuntime):
             state: SHOCMFState
         """
 
-    
+        saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
+        self.esw = saturation_vapor_pressure_table.esw
+        self.ese = saturation_vapor_pressure_table.ese
+        self.frz = saturation_vapor_pressure_table.frz
+        self.lqu = saturation_vapor_pressure_table.lqu
+        self.esx =  saturation_vapor_pressure_table.esx
         # Reset locals
 
         self._setup_preliminary_inputs(
@@ -918,8 +859,6 @@ class RUN_SHOC(NDSLRuntime):
             qci=self.locals.qci,
             tabs=self.locals.tabs,
             prsl=self.locals.prsl,
-            dtqw=self.locals.dtqw,
-            dtqi=self.locals.dtqi,
             qpl=self.locals.qpl,
             qpi=self.locals.qpi,
             cld_sgs=self.locals.cld_sgs,
@@ -931,7 +870,10 @@ class RUN_SHOC(NDSLRuntime):
             qv=self.locals.qv,
             zl=self.locals.zl,
             dryzpbl=state.input.DRYCBLH,
-            formulation=self.formulation_int,
+            frz=self.frz,
+            lqu=self.lqu,
+            ese=self.ese,
+            esw=self.esw,
         )
 
         self._eddy_length3(
@@ -977,10 +919,10 @@ class RUN_SHOC(NDSLRuntime):
         )
         
         self._flip_and_export(
-            tkh_inv=state.output.TKH,
+            tkh_inv=state.input_output.TKH,
             tkm_inv=state.output.KM,
             isotropy_inv=state.output.ISOTROPY,
-            tke_inv=state.output.TKESHOC,
+            tke_inv=state.input_output.TKESHOC,
             tkesbdiss=self.locals.tkesbdiss,
             tkh=self.locals.tkh,
             prnum=self.locals.prnum,
@@ -1043,6 +985,11 @@ class RUN_SHOC(NDSLRuntime):
                 input=self.locals.RI,
                 output=state.output.RI,
             )
+
+        self._update_diffusivity(
+            tkh_inv=state.input_output.TKH,
+            KH=state.output.KH,
+        )
 
 
 

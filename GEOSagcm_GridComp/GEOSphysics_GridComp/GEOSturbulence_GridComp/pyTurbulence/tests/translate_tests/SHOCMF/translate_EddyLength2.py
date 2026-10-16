@@ -41,18 +41,14 @@ class TranslateEddyLength2(TranslateFortranData2Py):
             "tke": {},
             "total_water": {},
             "zl": {},
-            "dtqw": {},
-            "dtqi": {},
             "qv": {},
         }
 
         # FloatField Outputs
         self.out_vars = {
-            #"brunt": self.grid.compute_dict(),
-            #"brunt2": self.grid.compute_dict(),
-            #"brunt_edge": self.grid.compute_dict(),
-            "qsat_liq": self.grid.compute_dict(),
-            "qsat_ice": self.grid.compute_dict(),
+            "brunt": self.grid.compute_dict(),
+            "brunt2": self.grid.compute_dict(),
+            "brunt_edge": self.grid.compute_dict(),
         }
 
     def extra_data_load(self, data_loader: DataLoader):
@@ -99,10 +95,10 @@ class TranslateEddyLength2(TranslateFortranData2Py):
         safe_assign_array(total_water.view[:, :, :], inputs["total_water"])
         zl = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(zl.view[:, :, :], inputs["zl"])
-        dtqw = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        safe_assign_array(dtqw.view[:, :, :], inputs["dtqw"])
-        dtqi = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
-        safe_assign_array(dtqi.view[:, :, :], inputs["dtqi"])
+        # dtqw = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        # safe_assign_array(dtqw.view[:, :, :], inputs["dtqw"])
+        # dtqi = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
+        # safe_assign_array(dtqi.view[:, :, :], inputs["dtqi"])
         qv = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         safe_assign_array(qv.view[:, :, :], inputs["qv"])
           
@@ -115,6 +111,10 @@ class TranslateEddyLength2(TranslateFortranData2Py):
 
         saturation_vapor_pressure_table = get_saturation_vapor_pressure_table(self.stencil_factory)
         self.esw = saturation_vapor_pressure_table.esw
+        self.ese = saturation_vapor_pressure_table.ese
+        self.frz = saturation_vapor_pressure_table.frz
+        self.lqu = saturation_vapor_pressure_table.lqu
+        self.esx =  saturation_vapor_pressure_table.esx
 
         qsat_liq = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
         qsat_ice = QuantityFactory.zeros(self.quantity_factory, dims=[I_DIM, J_DIM, K_DIM], units="n/a")
@@ -127,8 +127,6 @@ class TranslateEddyLength2(TranslateFortranData2Py):
             qci=qci,
             tabs=tabs,
             prsl=prsl,
-            dtqw=dtqw,
-            dtqi=dtqi,
             qpl=qpl,
             qpi=qpi,
             cld_sgs=cld_sgs,
@@ -143,12 +141,14 @@ class TranslateEddyLength2(TranslateFortranData2Py):
             qsat_liq=qsat_liq,
             qsat_ice=qsat_ice,
             formulation=formulation,
+            frz=self.frz,
+            lqu=self.lqu,
+            ese=self.ese,
+            esw=self.esw,
         )
 
         return {
-            #"brunt": brunt.view[:],
-            #"brunt2": brunt2.view[:],
-            #"brunt_edge": brunt_edge.view[:],
-            "qsat_liq": qsat_liq.view[:],
-            "qsat_ice": qsat_ice.view[:],
+            "brunt": brunt.view[:],
+            "brunt2": brunt2.view[:],
+            "brunt_edge": brunt_edge.view[:],
         }
