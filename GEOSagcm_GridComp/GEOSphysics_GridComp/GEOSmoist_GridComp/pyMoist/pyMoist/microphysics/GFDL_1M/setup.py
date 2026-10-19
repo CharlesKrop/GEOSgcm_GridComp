@@ -5,6 +5,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
 from ndsl.dsl.typing import Float, FloatField, Int, IntFieldIJ
 from ndsl.stencils.basic_operations import add, copy, set_value
+from ndsl.stencils.basic_operations_2d import set_value_2d
 
 from pyMoist.constants import MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
@@ -179,6 +180,11 @@ class GFDL1MSetup(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
+        self._set_value_2d = stencil_factory.from_dims_halo(
+            func=set_value_2d,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+
         self._set_value_2d_int = stencil_factory.from_dims_halo(
             func=set_value_2d_int,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -218,7 +224,7 @@ class GFDL1MSetup(NDSLRuntime):
             p_interface=state.p_interface,
             p_interface_mb=locals.p_interface_mb,
             p_mb=locals.p_mb,
-            geopotential_height_interface=locals.z_interface,
+            geopotential_height_interface=state.z_interface,
             edge_height_above_surface=locals.edge_height_above_surface,
             layer_height_above_surface=locals.layer_height_above_surface,
             layer_thickness=locals.layer_thickness,
@@ -249,23 +255,23 @@ class GFDL1MSetup(NDSLRuntime):
             self._set_value_2d_int(field=locals.lid_level, value=Int(1))
 
         # set unused exports to zero
-        self._set_value(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.anvil_precipitation, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.shallow_convective_snow, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.deep_convective_snow, value=Float(0.0))
-        self._set_value(field=state.precipitation_at_surface.anvil_snow, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.anvil_precipitation, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.shallow_convective_snow, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.deep_convective_snow, value=Float(0.0))
+        self._set_value_2d(field=state.precipitation_at_surface.anvil_snow, value=Float(0.0))
 
         # pre-fill macrophysics exports
         self._copy(input=state.u, output=state.tendencies.du_dt_macro)
         self._copy(input=state.v, output=state.tendencies.dv_dt_macro)
         self._copy(input=state.t, output=state.tendencies.dt_dt_macro)
         self._copy(input=state.mixing_ratio.vapor, output=state.tendencies.dvapor_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, output=self._locals.temporary_3d)
+        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
         self._copy(input=self._locals.temporary_3d, output=state.tendencies.dliquid_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, output=self._locals.temporary_3d)
+        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
         self._copy(input=self._locals.temporary_3d, output=state.tendencies.dice_dt_macro)
-        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, output=self._locals.temporary_3d)
+        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
         self._copy(input=self._locals.temporary_3d, output=state.tendencies.dcloud_fraction_dt_macro)
         self._copy(input=state.mixing_ratio.graupel, output=state.tendencies.dgraupel_dt_macro)
         self._copy(input=state.mixing_ratio.rain, output=state.tendencies.drain_dt_macro)

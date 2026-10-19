@@ -312,12 +312,15 @@ def redistribute_precipitation_fluxes(
         non_anvil_large_scale_ice_precip_flux (FloatField)
         non_anvil_large_scale_liquid_precip_flux (FloatField)
     """
-    with computation(PARALLEL), interval(...):
-        tmp_val = min(1.0, max(convective_liquid / max(radiation_liquid, 1.0e-8), 0.0))
+    with computation(PARALLEL), interval(1, None):
+        # source (internal) fields (tmp_val) are grid center (K levels)
+        # model state fields (LHS) are grid edge (K+1 levels)
+        # must adjust reads accordingly, do not update level 0 of LHS
+        tmp_val = min(1.0, max(convective_liquid[0,0,-1] / max(radiation_liquid[0,0,-1], 1.0e-8), 0.0))
         anvil_liquid_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_rain_precip_flux) * tmp_val
         non_anvil_large_scale_ice_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_rain_precip_flux) - anvil_liquid_precip_flux
 
-        tmp_val = min(1.0, max(convective_ice / max(radiation_ice, 1.0e-8), 0.0))
+        tmp_val = min(1.0, max(convective_ice[0,0,-1] / max(radiation_ice[0,0,-1], 1.0e-8), 0.0))
         anvil_ice_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux) * tmp_val
         non_anvil_large_scale_liquid_precip_flux = (
             non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux
@@ -552,10 +555,6 @@ class GFDL1M(NDSLRuntime):
             locals=self._locals,
         )
 
-        # print a debug warning, if any non-physical values are identified
-        if self._config.DEBUG_TQ_ERRORS:
-            option_not_implemented = True
-
         # --------------------------------------------------
         # MICROPHYSICS
         # --------------------------------------------------
@@ -577,9 +576,9 @@ class GFDL1M(NDSLRuntime):
         self._flip_sign(input=self._locals.layer_thickness, output=self._locals.layer_thickness_negative)
 
         # zero out GFDLMPV3 outputs
-        self._set_value(field=self._locals.dcloud_fractiondt, value=Float(0.0))
-        self._set_value_k_interface(fleid=state.non_anvil_large_scale.ice_precip_flux, value=Float(0.0))
-        self._set_value_k_interface(fleid=state.non_anvil_large_scale.liquid_precip_flux, value=Float(0.0))
+        self._set_value(field=self._locals.dcloud_fraction_dt, value=Float(0.0))
+        self._set_value_k_interface(field=state.non_anvil_large_scale.ice_precip_flux, value=Float(0.0))
+        self._set_value_k_interface(field=state.non_anvil_large_scale.liquid_precip_flux, value=Float(0.0))
 
         # cloud fractions and condensates for radiation
         self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
@@ -635,10 +634,25 @@ class GFDL1M(NDSLRuntime):
 
         # update cloud fraction, redistribute clouds, and fill vapor/precip states
         self._post_microphysics_calculations(
-            cloud_fraction=state.radiation_field.cloud_fraction,
+            convective_cloud_fraction=state.cloud_fraction.convective,
+            convective_ice=state.mixing_ratio.convective_ice,
+            convective_liquid=state.mixing_ratio.convective_liquid,
             dcloud_fraction_dt=self._locals.dcloud_fraction_dt,
-            ice=state.radiation_field.ice,
-            liquid=state.radiation_field.liquid,
+            graupel=state.mixing_ratio.graupel,
+            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
+            large_scale_ice=state.mixing_ratio.large_scale_ice,
+            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
+            radiation_cloud_fraction=state.radiation_field.cloud_fraction,
+            radiation_graupel=state.radiation_field.graupel,
+            radiation_ice=state.radiation_field.ice,
+            radiation_liquid=state.radiation_field.liquid,
+            radiation_rain=state.radiation_field.rain,
+            radiation_snow=state.radiation_field.snow,
+            radiation_vapor=state.radiation_field.vapor,
+            rain=state.mixing_ratio.rain,
+            snow=state.mixing_ratio.snow,
+            t=state.t,
+            vapor=state.mixing_ratio.vapor,
         )
 
         if self._config.REPORT_GFDL_1M_NEGATIVES:
@@ -692,7 +706,7 @@ class GFDL1M(NDSLRuntime):
             radiation_liquid=state.radiation_field.liquid,
         )
 
-        # MeltFreeze, RadCouple
+        # melt/freeze and fix clouds outside of driver (if desired)
         if self._config.MELTFRZ_CLDMICRO:
             self._melt_freeze(
                 convection_fraction=state.convection_fraction,

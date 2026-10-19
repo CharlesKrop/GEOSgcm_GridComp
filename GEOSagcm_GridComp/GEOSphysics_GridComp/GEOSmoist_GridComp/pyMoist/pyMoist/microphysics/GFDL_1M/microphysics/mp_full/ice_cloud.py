@@ -397,7 +397,7 @@ def p_graupel_melt(
     terminal_velocity_graupel: FloatField,
     terminal_velocity_liquid: FloatField,
     terminal_velocity_rain: FloatField,
-    mppmg: FloatField,
+    mppmg: FloatFieldIJ,
     one_minus_sigma: FloatFieldIJ,
     ACC: GFDLMPV3TableL20,
     ACCO: GFDLMPV3TableL3xL10,
@@ -1398,7 +1398,7 @@ class IceCloudLocals(LocalState):
             "name": "total_liquid",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "dtype": Float64,
+            "dtype": Float,
         }
     )
     total_solid: Local = dataclasses.field(
@@ -1406,7 +1406,7 @@ class IceCloudLocals(LocalState):
             "name": "total_solid",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "dtype": Float64,
+            "dtype": Float,
         }
     )
 

@@ -107,7 +107,7 @@ def p_instant(
     with computation(FORWARD), interval(0, 1):
         fac_l2v: FloatFieldIJ = 1.0 - exp(-DT / TAU_L2V)
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         # -----------------------------------------------------------------------
         # instant deposit all water vapor to cloud ice when temperature is super low
         # -----------------------------------------------------------------------
@@ -186,7 +186,7 @@ def p_instant(
         # -----------------------------------------------------------------------
 
         combined_precip = vapor + liquid + ice
-        t_in = (total_energy - LV00 * combined_precip + LI00 * (snow + graupel)) / moist_heat_capacity_3(combined_precip, rain, snow + graupel)
+        t_in = (total_energy - LV00 * combined_precip + LI00 * (snow + graupel)) / moist_heat_capacity_3(combined_precip, rain, snow + graupel, C1_VAP, C1_LIQ, C1_ICE)
 
         if t_in > T_SUB + 6.0:
 
@@ -315,7 +315,7 @@ class SubgridProcessesLocals(LocalState):
             "name": "total_liquid",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "dtype": Float64,
+            "dtype": Float,
         }
     )
     total_solid: Local = dataclasses.field(
@@ -323,7 +323,7 @@ class SubgridProcessesLocals(LocalState):
             "name": "total_solid",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "dtype": Float64,
+            "dtype": Float,
         }
     )
 

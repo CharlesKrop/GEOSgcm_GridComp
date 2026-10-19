@@ -26,11 +26,11 @@ def update_precip_fluxes(
     internal_surface_precip_graupel: FloatFieldIJ,
     internal_surface_precip_rain: FloatFieldIJ,
     internal_surface_precip_snow: FloatFieldIJ,
-    internal_precip_ice: FloatFieldIJ,
-    internal_precip_liquid: FloatFieldIJ,
-    internal_precip_graupel: FloatFieldIJ,
-    internal_precip_rain: FloatFieldIJ,
-    internal_precip_snow: FloatFieldIJ,
+    internal_precip_ice: FloatField,
+    internal_precip_liquid: FloatField,
+    internal_precip_graupel: FloatField,
+    internal_precip_rain: FloatField,
+    internal_precip_snow: FloatField,
     # the following are k-interface fields
     non_anvil_large_scale_ice_precip_flux: FloatField,
     non_anvil_large_scale_liquid_precip_flux: FloatField,
@@ -50,11 +50,11 @@ def update_precip_fluxes(
     with computation(FORWARD), interval(...):
         # all LHS fields are k-interface fields, while RHS (internal_precip_*) are k-center fields
         # do not update bottom layer (TOA), offset all read/writes up one
-        non_anvil_large_scale_ice_precip_flux[0,0,1] = non_anvil_large_scale_ice_precip_flux[0,0,1] + internal_precip_ice * CONV_FACTOR
-        non_anvil_large_scale_liquid_precip_flux[0,0,1] = non_anvil_large_scale_liquid_precip_flux[0,0,1] + internal_precip_liquid * CONV_FACTOR
-        non_anvil_large_scale_graupel_precip_flux[0,0,1] = non_anvil_large_scale_graupel_precip_flux[0,0,1] + internal_precip_graupel * CONV_FACTOR
-        non_anvil_large_scale_rain_precip_flux[0,0,1] = non_anvil_large_scale_rain_precip_flux[0,0,1] + internal_precip_rain * CONV_FACTOR
-        non_anvil_large_scale_snow_precip_flux[0,0,1] = non_anvil_large_scale_snow_precip_flux[0,0,1] + internal_precip_snow * CONV_FACTOR
+        non_anvil_large_scale_ice_precip_flux[0, 0, 1] = non_anvil_large_scale_ice_precip_flux[0, 0, 1] + internal_precip_ice * CONV_FACTOR
+        non_anvil_large_scale_liquid_precip_flux[0, 0, 1] = non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + internal_precip_liquid * CONV_FACTOR
+        non_anvil_large_scale_graupel_precip_flux[0, 0, 1] = non_anvil_large_scale_graupel_precip_flux[0, 0, 1] + internal_precip_graupel * CONV_FACTOR
+        non_anvil_large_scale_rain_precip_flux[0, 0, 1] = non_anvil_large_scale_rain_precip_flux[0, 0, 1] + internal_precip_rain * CONV_FACTOR
+        non_anvil_large_scale_snow_precip_flux[0, 0, 1] = non_anvil_large_scale_snow_precip_flux[0, 0, 1] + internal_precip_snow * CONV_FACTOR
 
 
 class MPFull(NDSLRuntime):
@@ -89,7 +89,7 @@ class MPFull(NDSLRuntime):
         self._mp_namelist = mp_namelist
 
     def __call__(self, state: GFDL1MState, gfdl_mp_v3_locals: GFDLMPV3Locals):
-        for f in self._mp_namelist.NTIMES:
+        for f in range(self._mp_namelist.NTIMES):
             # --------------------------------------------------
             # sedimentation of cloud ice, snow, graupel or hail, and rain
             # --------------------------------------------------
@@ -101,16 +101,16 @@ class MPFull(NDSLRuntime):
                 surface_precip_graupel=state.precipitation_at_surface.graupel,
                 surface_precip_rain=state.precipitation_at_surface.rain,
                 surface_precip_snow=state.precipitation_at_surface.snow,
-                internal_surface_precip_ice=self._mp_full_locals.internal_surface_precip_ice,
-                internal_surface_precip_liquid=self._mp_full_locals.internal_surface_precip_liquid,
-                internal_surface_precip_graupel=self._mp_full_locals.internal_surface_precip_graupel,
-                internal_surface_precip_rain=self._mp_full_locals.internal_surface_precip_rain,
-                internal_surface_precip_snow=self._mp_full_locals.internal_surface_precip_snow,
-                internal_precip_ice=self._mp_full_locals.internal_precip_ice,
-                internal_precip_liquid=self._mp_full_locals.internal_precip_liquid,
-                internal_precip_graupel=self._mp_full_locals.internal_precip_graupel,
-                internal_precip_rain=self._mp_full_locals.internal_precip_rain,
-                internal_precip_snow=self._mp_full_locals.internal_precip_snow,
+                internal_surface_precip_ice=self._mp_full_locals.surface_precip.ice,
+                internal_surface_precip_liquid=self._mp_full_locals.surface_precip.liquid,
+                internal_surface_precip_graupel=self._mp_full_locals.surface_precip.graupel,
+                internal_surface_precip_rain=self._mp_full_locals.surface_precip.rain,
+                internal_surface_precip_snow=self._mp_full_locals.surface_precip.snow,
+                internal_precip_ice=self._mp_full_locals.precip.ice,
+                internal_precip_liquid=self._mp_full_locals.precip.liquid,
+                internal_precip_graupel=self._mp_full_locals.precip.graupel,
+                internal_precip_rain=self._mp_full_locals.precip.rain,
+                internal_precip_snow=self._mp_full_locals.precip.snow,
                 non_anvil_large_scale_ice_precip_flux=state.non_anvil_large_scale.ice_precip_flux,
                 non_anvil_large_scale_liquid_precip_flux=state.non_anvil_large_scale.liquid_precip_flux,
                 non_anvil_large_scale_graupel_precip_flux=state.non_anvil_large_scale.graupel_precip_flux,

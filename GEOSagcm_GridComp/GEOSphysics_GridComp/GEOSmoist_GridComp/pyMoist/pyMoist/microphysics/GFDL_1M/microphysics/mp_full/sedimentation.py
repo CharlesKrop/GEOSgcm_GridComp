@@ -391,7 +391,7 @@ class SedimentationLocals(LocalState):
             "name": "total_liquid",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "dtype": Float64,
+            "dtype": Float,
         }
     )
     total_solid: Local = dataclasses.field(
@@ -399,7 +399,7 @@ class SedimentationLocals(LocalState):
             "name": "total_solid",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "dtype": Float64,
+            "dtype": Float,
         }
     )
     ze: Local = dataclasses.field(
@@ -536,23 +536,23 @@ class Sedimentation(NDSLRuntime):
         self._set_value(mp_full_locals.precip.rain, Float(0.0))
         self._set_value(mp_full_locals.precip.snow, Float(0.0))
 
-        self._set_value_2d(mp_full_locals.terminal_velocity.ice, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity.liquid, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity.graupel, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity.rain, Float(0.0))
-        self._set_value_2d(mp_full_locals.terminal_velocity.snow, Float(0.0))
+        self._set_value(mp_full_locals.terminal_velocity.ice, Float(0.0))
+        self._set_value(mp_full_locals.terminal_velocity.liquid, Float(0.0))
+        self._set_value(mp_full_locals.terminal_velocity.graupel, Float(0.0))
+        self._set_value(mp_full_locals.terminal_velocity.rain, Float(0.0))
+        self._set_value(mp_full_locals.terminal_velocity.snow, Float(0.0))
 
         # --------------------------------------------------
         # calculate heat capacities and latent heat coefficients
         # --------------------------------------------------
         self._calc_mhc_lhc_wrapper(
             t=gfdl_mp_v3_locals.t,
-            vapor=gfdl_mp_v3_locals.vapor,
-            ice=gfdl_mp_v3_locals.ice,
-            liquid=gfdl_mp_v3_locals.liquid,
-            graupel=gfdl_mp_v3_locals.graupel,
-            rain=gfdl_mp_v3_locals.rain,
-            snow=gfdl_mp_v3_locals.snow,
+            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
             total_liquid=self._sedimentation_locals.total_liquid,
             total_solid=self._sedimentation_locals.total_solid,
             cvm=self._sedimentation_locals.cvm,
@@ -568,7 +568,7 @@ class Sedimentation(NDSLRuntime):
         # --------------------------------------------------
         if self._mp_namelist.DO_PSD_ICE_FALL:
             self._terminal_velocity_graupel_rain_snow_wrapper(
-                condensate=gfdl_mp_v3_locals.ice,
+                condensate=gfdl_mp_v3_locals.mixing_ratio.ice,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
                 terminal_velocity=mp_full_locals.terminal_velocity.ice,
@@ -581,14 +581,14 @@ class Sedimentation(NDSLRuntime):
                 v_fac=self._mp_namelist.VI_FAC,
                 const_v=self._mp_namelist.CONST_VI,
             )
-        else:
-            self._terminal_velocity_ice(
-                t=gfdl_mp_v3_locals.t,
-                ice=gfdl_mp_v3_locals.ice,
-                density=gfdl_mp_v3_locals.density,
-                terminal_velocity_ice=mp_full_locals.terminal_velocity.ice,
-                convection_fraction=gfdl_mp_v3_locals.convection_fraction,
-            )
+        # else:
+        #     self._terminal_velocity_ice(
+        #         t=gfdl_mp_v3_locals.t,
+        #         ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+        #         density=gfdl_mp_v3_locals.density,
+        #         terminal_velocity_ice=mp_full_locals.terminal_velocity.ice,
+        #         convection_fraction=gfdl_mp_v3_locals.convection_fraction,
+        #     )
 
         if self._mp_namelist.DO_SEDI_MELT_QI:
             ndsl_log.error(
@@ -637,7 +637,7 @@ class Sedimentation(NDSLRuntime):
         # terminal fall and melting of falling snow into rain
         # --------------------------------------------------
         self._terminal_velocity_graupel_rain_snow_wrapper(
-            condensate=gfdl_mp_v3_locals.snow,
+            condensate=gfdl_mp_v3_locals.mixing_ratio.snow,
             density=gfdl_mp_v3_locals.density,
             density_factor=gfdl_mp_v3_locals.density_factor,
             terminal_velocity=mp_full_locals.terminal_velocity.snow,
@@ -699,7 +699,7 @@ class Sedimentation(NDSLRuntime):
         # --------------------------------------------------
         if self._mp_namelist.DO_HAIL:
             self._terminal_velocity_graupel_rain_snow_wrapper(
-                condensate=gfdl_mp_v3_locals.graupel,
+                condensate=gfdl_mp_v3_locals.mixing_ratio.graupel,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
                 terminal_velocity=mp_full_locals.terminal_velocity.graupel,
@@ -714,7 +714,7 @@ class Sedimentation(NDSLRuntime):
             )
         else:
             self._terminal_velocity_graupel_rain_snow_wrapper(
-                condensate=gfdl_mp_v3_locals.graupel,
+                condensate=gfdl_mp_v3_locals.mixing_ratio.graupel,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
                 terminal_velocity=mp_full_locals.terminal_velocity.graupel,
@@ -776,7 +776,7 @@ class Sedimentation(NDSLRuntime):
         # --------------------------------------------------
         if self._mp_namelist.DO_PSD_WATER_FALL:
             self._terminal_velocity_graupel_rain_snow_wrapper(
-                condensate=gfdl_mp_v3_locals.liquid,
+                condensate=gfdl_mp_v3_locals.mixing_ratio.liquid,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
                 terminal_velocity=mp_full_locals.terminal_velocity.liquid,
@@ -827,7 +827,7 @@ class Sedimentation(NDSLRuntime):
         # terminal fall of rain
         # --------------------------------------------------
         self._terminal_velocity_graupel_rain_snow_wrapper(
-            condensate=gfdl_mp_v3_locals.rain,
+            condensate=gfdl_mp_v3_locals.mixing_ratio.rain,
             density=gfdl_mp_v3_locals.density,
             density_factor=gfdl_mp_v3_locals.density_factor,
             terminal_velocity=mp_full_locals.terminal_velocity.rain,

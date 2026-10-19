@@ -147,7 +147,7 @@ def calc_mhc_lhc(
 
 
 def calc_mhc_lhc_wrapper(
-    t: FloatField,
+    t: FloatField64,
     vapor: FloatField,
     ice: FloatField,
     liquid: FloatField,
@@ -156,8 +156,8 @@ def calc_mhc_lhc_wrapper(
     snow: FloatField,
     total_liquid: FloatField,
     total_solid: FloatField,
-    cvm: FloatField,
-    total_energy: FloatField,
+    cvm: FloatField64,
+    total_energy: FloatField64,
     lcpk: FloatField,
     icpk: FloatField,
     tcpk: FloatField,
@@ -253,15 +253,15 @@ def linear_prof(
     """
     from __externals__ import Z_SLOPE, k_end
 
-    with computation(FORWARD), interval(...):
-        if Z_SLOPE and K >= 1:
+    with computation(FORWARD), interval(1, None):
+        if Z_SLOPE:
             dprecipitate = 0.5 * (precipitate - precipitate[0, 0, -1])
 
     with computation(FORWARD), interval(0, 1):
         if Z_SLOPE:
             dm = 0.0
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(1, -1):
         if Z_SLOPE:
             # use twice the strength of the positive definiteness limiter (Lin et al. 1994)
             dm = 0.5 * min(abs(dprecipitate + dprecipitate[0, 0, 1]), 0.5 * precipitate)
@@ -388,7 +388,7 @@ def p_bigg(
     """
     from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_BIGG, DO_PSD_WATER_NUM, DO_QA, DT, LI00, LI20, LV00, MUW, PCAW, PCBW, T_WFR
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if DO_BIGG:
             tc = TICE - t
 
@@ -477,7 +477,7 @@ def p_complete_freezing(
     """
     from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, LI00, LI20, LV00, T_WFR
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         tc = T_WFR - t
 
         if tc > 0.0 and liquid > QCMIN:
@@ -567,7 +567,7 @@ def p_graupel_deposition_and_sublimation(
     """
     from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLING, BLINH, CONV_FACTOR, D1_ICE, D1_VAP, DO_HAIL, DO_QA, DT, GS_FAC, LI00, LI20, LV00, MUG, MUH, T_SUB, T_WFR
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if graupel > QPMIN:
             t_in = t
             ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
@@ -606,7 +606,7 @@ def p_graupel_deposition_and_sublimation(
             pgsub = DT * pgsub
             dq = dq / (1.0 + tcpk * dice_saturation_humidity)
             if pgsub > 0.0:
-                sink = min(pgsub * min(1.0, max(t - T_SUB, 0.0) * GS_FAC), qg)
+                sink = min(pgsub * min(1.0, max(t - T_SUB, 0.0) * GS_FAC), graupel)
                 mppsg = mppsg + sink * dry_dp * CONV_FACTOR
             else:
                 sink = 0.0
@@ -721,7 +721,7 @@ def p_ice_deposition_and_sublimation(
         T_WFR,
     )
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t < TICE:
             pidep = 0.0
             t_in = t
@@ -764,43 +764,43 @@ def p_ice_deposition_and_sublimation(
                     qi_crt = 1.82e-6 * min(QI_LIM, 0.1 * tc) / density
                 if IGFLAG == 4:
                     qi_crt = max(qi_gen, 1.82e-6) * min(QI_LIM, 0.1 * tc) / density
-                sink = min(tmp, max(qi_crt - ice, pidep), tc / tcpk)
+                sink = min(tmp, min(max(qi_crt - ice, pidep), tc / tcpk))
                 mppdi = mppdi + sink * dry_dp * CONV_FACTOR
-            else:
-                pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
-                sink = max(pidep, max(tmp, -ice))
-                sink = sink * one_minus_sigma  # resolution dependent subl 0:1 coarse:fine
-                mppsi = mppsi - sink * dry_dp * CONV_FACTOR
-                # 3D ice sublimation export
-                rsubl = rsubl - sink * dry_dp * CONV_FACTOR
+            # else:
+            #     pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
+            #     sink = max(pidep, max(tmp, -ice))
+            #     sink = sink * one_minus_sigma  # resolution dependent subl 0:1 coarse:fine
+            #     mppsi = mppsi - sink * dry_dp * CONV_FACTOR
+            #     # 3D ice sublimation export
+            #     rsubl = rsubl - sink * dry_dp * CONV_FACTOR
 
-            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
-                cloud_fraction=cloud_fraction,
-                vapor=vapor,
-                ice=ice,
-                liquid=liquid,
-                graupel=graupel,
-                rain=rain,
-                snow=snow,
-                dvapor=-sink,
-                dice=sink,
-                dliquid=0.0,
-                dgraupel=0.0,
-                drain=0.0,
-                dsnow=0.0,
-                t=t,
-                total_energy=total_energy,
-                DO_QA=DO_QA,
-                D1_VAP=D1_VAP,
-                D1_ICE=D1_ICE,
-                LI00=LI00,
-                LI20=LI20,
-                LV00=LV00,
-                T_WFR=T_WFR,
-                C1_VAP=C1_VAP,
-                C1_LIQ=C1_LIQ,
-                C1_ICE=C1_ICE,
-            )
+            # t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+            #     cloud_fraction=cloud_fraction,
+            #     vapor=vapor,
+            #     ice=ice,
+            #     liquid=liquid,
+            #     graupel=graupel,
+            #     rain=rain,
+            #     snow=snow,
+            #     dvapor=-sink,
+            #     dice=sink,
+            #     dliquid=0.0,
+            #     dgraupel=0.0,
+            #     drain=0.0,
+            #     dsnow=0.0,
+            #     t=t,
+            #     total_energy=total_energy,
+            #     DO_QA=DO_QA,
+            #     D1_VAP=D1_VAP,
+            #     D1_ICE=D1_ICE,
+            #     LI00=LI00,
+            #     LI20=LI20,
+            #     LV00=LV00,
+            #     T_WFR=T_WFR,
+            #     C1_VAP=C1_VAP,
+            #     C1_LIQ=C1_LIQ,
+            #     C1_ICE=C1_ICE,
+            # )
 
 
 @function
@@ -877,7 +877,7 @@ def p_snow_deposition_and_sublimation(
     """
     from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLINS, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUS, SS_FAC, T_SUB, T_WFR
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if snow > QPMIN:
             t_in = t
             ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
@@ -905,7 +905,7 @@ def p_snow_deposition_and_sublimation(
             else:
                 sink = 0.0
                 if t <= TICE:
-                    sink = max(pssub, dq, (t - TICE) / tcpk)
+                    sink = max(pssub, max(dq, (t - TICE) / tcpk))
                 mppds = mppds - sink * dry_dp * CONV_FACTOR
 
             t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -1049,7 +1049,7 @@ def p_wbf(
             # Calculate the time-step fraction using the effective timescale
             fac_wbf = 1.0 - exp(-DT / tau_wbf_eff)
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if DO_WBF:
             tc = TICE - t
 

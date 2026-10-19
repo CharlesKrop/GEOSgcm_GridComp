@@ -13,6 +13,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "ice",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -20,6 +21,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "liquid",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -27,6 +29,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "graupel",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -34,6 +37,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "rain",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -41,24 +45,26 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "snow",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
-
-    surface_precip_ice: Local = dataclasses.field(
-        metadata={
-            "name": "surface_precip_ice",
-            "dims": [I_DIM, J_DIM],
-            "dtype": Float,
-        }
-    )
 
     @dataclasses.dataclass
     class SurfacePrecip(LocalState):
+        ice: Local = dataclasses.field(
+            metadata={
+                "name": "ice",
+                "dims": [I_DIM, J_DIM],
+                "units": "?",
+                "dtype": Float,
+            }
+        )
         liquid: Local = dataclasses.field(
             metadata={
                 "name": "liquid",
                 "dims": [I_DIM, J_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -66,6 +72,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "graupel",
                 "dims": [I_DIM, J_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -73,6 +80,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "rain",
                 "dims": [I_DIM, J_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -80,6 +88,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "snow",
                 "dims": [I_DIM, J_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -90,6 +99,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "ice",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -97,6 +107,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "liquid",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -104,6 +115,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "graupel",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -111,6 +123,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "rain",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )
@@ -118,6 +131,7 @@ class MPFullLocals(LocalState):
             metadata={
                 "name": "snow",
                 "dims": [I_DIM, J_DIM, K_DIM],
+                "units": "?",
                 "dtype": Float,
             }
         )

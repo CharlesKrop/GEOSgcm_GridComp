@@ -4,9 +4,10 @@ from math import exp, gamma, log, sqrt
 import numpy as np
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.typing import Float
+from ndsl.dsl.typing import Float, Int
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
+from ndsl.dsl.gt4py import float64
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
@@ -134,20 +135,20 @@ class GFDLMPV3(NDSLRuntime):
 
         # scaled constants (to reduce float point errors for 32-bit)
 
-        mp_config.D1_VAP = d0_vap / mp_config.C_AIR
-        mp_config.D1_ICE = constants.DC_ICE / mp_config.C_AIR
+        mp_config.D1_VAP = float64(d0_vap / mp_config.C_AIR)
+        mp_config.D1_ICE = float64(constants.DC_ICE / mp_config.C_AIR)
 
         if gfdl_1m_config.PHYS_HYDROSTATIC:
-            mp_config.LV00 = (constants.HLV - d0_vap * constants.TICE) / mp_config.C_AIR
+            mp_config.LV00 = float64((constants.HLV - d0_vap * constants.TICE) / mp_config.C_AIR)
         else:
-            mp_config.LV00 = (constants.HLV - d0_vap * constants.TICE - constants.RVGAS * constants.TICE) / mp_config.C_AIR
+            mp_config.LV00 = float64((constants.HLV - d0_vap * constants.TICE - constants.RVGAS * constants.TICE) / mp_config.C_AIR)
 
-        mp_config.LI00 = (constants.HLF - constants.DC_ICE * constants.TICE) / mp_config.C_AIR
-        mp_config.LI20 = mp_config.LV00 + mp_config.LI00
+        mp_config.LI00 = float64((constants.HLF - constants.DC_ICE * constants.TICE) / mp_config.C_AIR)
+        mp_config.LI20 = float64(mp_config.LV00 + mp_config.LI00)
 
-        mp_config.C1_VAP = mp_config.C_VAP / mp_config.C_AIR
-        mp_config.C1_LIQ = constants.C_LIQ / mp_config.C_AIR
-        mp_config.C1_ICE = constants.C_ICE / mp_config.C_AIR
+        mp_config.C1_VAP = float64(mp_config.C_VAP / mp_config.C_AIR)
+        mp_config.C1_LIQ = float64(constants.C_LIQ / mp_config.C_AIR)
+        mp_config.C1_ICE = float64(constants.C_ICE / mp_config.C_AIR)
 
         # --------------------------------------------------
         # all other internal configuration parameters
@@ -158,208 +159,268 @@ class GFDLMPV3(NDSLRuntime):
         if mp_namelist.DO_WARM_RAIN_MP:
             mp_config.T_WFR = mp_namelist.T_MIN
         else:
-            mp_config.T_WFR = constants.TICE - 40.0
+            mp_config.T_WFR = constants.TICE - Float(40.0)
 
         # cloud water autoconversion, Hong et al. (2004)
 
-        aone = 2.0 / 9.0 * (3.0 / 4.0) ** (4.0 / 3.0) / constants.PI ** (1.0 / 3.0)
-        mp_config.CPAUT0 = mp_namelist.C_PAUT * aone * constants.GRAV / constants.VISD
+        aone = Float(2.0) / Float(9.0) * (Float(3.0) / Float(4.0)) ** (Float(4.0) / Float(3.0)) / constants.PI ** (Float(1.0) / Float(3.0))
+        mp_config.CPAUT0 = float64(mp_namelist.C_PAUT * aone * constants.GRAV / constants.VISD)
 
         # terminal velocities parameters, Lin et al. (1983)
 
-        gcon = (4.0 * constants.GRAV * constants.RHOG / (3.0 * constants.CDG * constants.RHO0)) ** 0.5
-        hcon = (4.0 * constants.GRAV * constants.RHOH / (3.0 * constants.CDH * constants.RHO0)) ** 0.5
+        gcon = (Float(4.0) * constants.GRAV * constants.RHOG / (Float(3.0) * constants.CDG * constants.RHO0)) ** Float(0.5)
+        hcon = (Float(4.0) * constants.GRAV * constants.RHOH / (Float(3.0) * constants.CDH * constants.RHO0)) ** Float(0.5)
 
         # part of the slope parameters
 
-        mp_config.NORMW = constants.PI * constants.RHOW * mp_namelist.N0W_SIG * gamma(mp_namelist.MUW + 3)
-        mp_config.NORMI = constants.PI * constants.RHOI * mp_namelist.N0I_SIG * gamma(mp_namelist.MUI + 3)
-        mp_config.NORMR = constants.PI * constants.RHOR * mp_namelist.N0R_SIG * gamma(mp_namelist.MUR + 3)
-        mp_config.NORMS = constants.PI * constants.RHOS * mp_namelist.N0S_SIG * gamma(mp_namelist.MUS + 3)
-        mp_config.NORMG = constants.PI * constants.RHOG * mp_namelist.N0G_SIG * gamma(mp_namelist.MUG + 3)
-        mp_config.NORMH = constants.PI * constants.RHOH * mp_namelist.N0H_SIG * gamma(mp_namelist.MUH + 3)
+        mp_config.NORMW = float64(constants.PI * constants.RHOW * mp_namelist.N0W_SIG * gamma(mp_namelist.MUW + Int(3)))
+        mp_config.NORMI = float64(constants.PI * constants.RHOI * mp_namelist.N0I_SIG * gamma(mp_namelist.MUI + Int(3)))
+        mp_config.NORMR = float64(constants.PI * constants.RHOR * mp_namelist.N0R_SIG * gamma(mp_namelist.MUR + Int(3)))
+        mp_config.NORMS = float64(constants.PI * constants.RHOS * mp_namelist.N0S_SIG * gamma(mp_namelist.MUS + Int(3)))
+        mp_config.NORMG = float64(constants.PI * constants.RHOG * mp_namelist.N0G_SIG * gamma(mp_namelist.MUG + Int(3)))
+        mp_config.NORMH = float64(constants.PI * constants.RHOH * mp_namelist.N0H_SIG * gamma(mp_namelist.MUH + Int(3)))
 
-        mp_config.EXPOW = exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + 3) * log(10.0))
-        mp_config.EXPOI = exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + 3) * log(10.0))
-        mp_config.EXPOR = exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + 3) * log(10.0))
-        mp_config.EXPOS = exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + 3) * log(10.0))
-        mp_config.EXPOG = exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + 3) * log(10.0))
-        mp_config.EXPOH = exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + 3) * log(10.0))
+        mp_config.EXPOW = float64(exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + Int(3)) * log(Float(10.0))))
+        mp_config.EXPOI = float64(exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + Int(3)) * log(Float(10.0))))
+        mp_config.EXPOR = float64(exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + Int(3)) * log(Float(10.0))))
+        mp_config.EXPOS = float64(exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + Int(3)) * log(Float(10.0))))
+        mp_config.EXPOG = float64(exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + Int(3)) * log(Float(10.0))))
+        mp_config.EXPOH = float64(exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + Int(3)) * log(Float(10.0))))
 
         # parameters for particle concentration (pc), effective diameter (ed), optical extinction (oe),
         # radar reflectivity factor (rr), and mass-weighted terminal velocity (tv)
 
-        mp_config.PCAW = (
-            exp(3 / (mp_namelist.MUW + 3) * log(mp_namelist.N0W_SIG)) * gamma(mp_namelist.MUW) * exp(3 * mp_namelist.N0W_EXP / (mp_namelist.MUW + 3) * log(10.0))
+        mp_config.PCAW = float64(
+            exp(Int(3) / (mp_namelist.MUW + Int(3)) * log(mp_namelist.N0W_SIG))
+            * gamma(mp_namelist.MUW)
+            * exp(Int(3) * mp_namelist.N0W_EXP / (mp_namelist.MUW + Int(3)) * log(Float(10.0)))
         )
-        mp_config.PCAI = (
-            exp(3 / (mp_namelist.MUI + 3) * log(mp_namelist.N0I_SIG)) * gamma(mp_namelist.MUI) * exp(3 * mp_namelist.N0I_EXP / (mp_namelist.MUI + 3) * log(10.0))
+        mp_config.PCAI = float64(
+            exp(Int(3) / (mp_namelist.MUI + Int(3)) * log(mp_namelist.N0I_SIG))
+            * gamma(mp_namelist.MUI)
+            * exp(Int(3) * mp_namelist.N0I_EXP / (mp_namelist.MUI + Int(3)) * log(Float(10.0)))
         )
-        mp_config.PCAR = (
-            exp(3 / (mp_namelist.MUR + 3) * log(mp_namelist.N0R_SIG)) * gamma(mp_namelist.MUR) * exp(3 * mp_namelist.N0R_EXP / (mp_namelist.MUR + 3) * log(10.0))
+        mp_config.PCAR = float64(
+            exp(Int(3) / (mp_namelist.MUR + Int(3)) * log(mp_namelist.N0R_SIG))
+            * gamma(mp_namelist.MUR)
+            * exp(Int(3) * mp_namelist.N0R_EXP / (mp_namelist.MUR + Int(3)) * log(Float(10.0)))
         )
-        mp_config.PCAS = (
-            exp(3 / (mp_namelist.MUS + 3) * log(mp_namelist.N0S_SIG)) * gamma(mp_namelist.MUS) * exp(3 * mp_namelist.N0S_EXP / (mp_namelist.MUS + 3) * log(10.0))
+        mp_config.PCAS = float64(
+            exp(Int(3) / (mp_namelist.MUS + Int(3)) * log(mp_namelist.N0S_SIG))
+            * gamma(mp_namelist.MUS)
+            * exp(Int(3) * mp_namelist.N0S_EXP / (mp_namelist.MUS + Int(3)) * log(Float(10.0)))
         )
-        mp_config.PCAG = (
-            exp(3 / (mp_namelist.MUG + 3) * log(mp_namelist.N0G_SIG)) * gamma(mp_namelist.MUG) * exp(3 * mp_namelist.N0G_EXP / (mp_namelist.MUG + 3) * log(10.0))
+        mp_config.PCAG = float64(
+            exp(Int(3) / (mp_namelist.MUG + Int(3)) * log(mp_namelist.N0G_SIG))
+            * gamma(mp_namelist.MUG)
+            * exp(Int(3) * mp_namelist.N0G_EXP / (mp_namelist.MUG + Int(3)) * log(Float(10.0)))
         )
-        mp_config.PCAH = (
-            exp(3 / (mp_namelist.MUH + 3) * log(mp_namelist.N0H_SIG)) * gamma(mp_namelist.MUH) * exp(3 * mp_namelist.N0H_EXP / (mp_namelist.MUH + 3) * log(10.0))
-        )
-
-        mp_config.PCBW = exp(mp_namelist.MUW / (mp_namelist.MUW + 3) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + 3)))
-        mp_config.PCBI = exp(mp_namelist.MUI / (mp_namelist.MUI + 3) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + 3)))
-        mp_config.PCBR = exp(mp_namelist.MUR / (mp_namelist.MUR + 3) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + 3)))
-        mp_config.PCBS = exp(mp_namelist.MUS / (mp_namelist.MUS + 3) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + 3)))
-        mp_config.PCBG = exp(mp_namelist.MUG / (mp_namelist.MUG + 3) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + 3)))
-        mp_config.PCBH = exp(mp_namelist.MUH / (mp_namelist.MUH + 3) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + 3)))
-
-        mp_config.EDAW = (
-            exp(-1.0 / (mp_namelist.MUW + 3) * log(mp_namelist.N0W_SIG)) * (mp_namelist.MUW + 2) * exp(-mp_namelist.N0W_EXP / (mp_namelist.MUW + 3) * log(10.0))
-        )
-        mp_config.EDAI = (
-            exp(-1.0 / (mp_namelist.MUI + 3) * log(mp_namelist.N0I_SIG)) * (mp_namelist.MUI + 2) * exp(-mp_namelist.N0I_EXP / (mp_namelist.MUI + 3) * log(10.0))
-        )
-        mp_config.EDAR = (
-            exp(-1.0 / (mp_namelist.MUR + 3) * log(mp_namelist.N0R_SIG)) * (mp_namelist.MUR + 2) * exp(-mp_namelist.N0R_EXP / (mp_namelist.MUR + 3) * log(10.0))
-        )
-        mp_config.EDAS = (
-            exp(-1.0 / (mp_namelist.MUS + 3) * log(mp_namelist.N0S_SIG)) * (mp_namelist.MUS + 2) * exp(-mp_namelist.N0S_EXP / (mp_namelist.MUS + 3) * log(10.0))
-        )
-        mp_config.EDAG = (
-            exp(-1.0 / (mp_namelist.MUG + 3) * log(mp_namelist.N0G_SIG)) * (mp_namelist.MUG + 2) * exp(-mp_namelist.N0G_EXP / (mp_namelist.MUG + 3) * log(10.0))
-        )
-        mp_config.EDAH = (
-            exp(-1.0 / (mp_namelist.MUH + 3) * log(mp_namelist.N0H_SIG)) * (mp_namelist.MUH + 2) * exp(-mp_namelist.N0H_EXP / (mp_namelist.MUH + 3) * log(10.0))
+        mp_config.PCAH = float64(
+            exp(Int(3) / (mp_namelist.MUH + Int(3)) * log(mp_namelist.N0H_SIG))
+            * gamma(mp_namelist.MUH)
+            * exp(Int(3) * mp_namelist.N0H_EXP / (mp_namelist.MUH + Int(3)) * log(Float(10.0)))
         )
 
-        mp_config.EDBW = exp(1.0 / (mp_namelist.MUW + 3) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + 3)))
-        mp_config.EDBI = exp(1.0 / (mp_namelist.MUI + 3) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + 3)))
-        mp_config.EDBR = exp(1.0 / (mp_namelist.MUR + 3) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + 3)))
-        mp_config.EDBS = exp(1.0 / (mp_namelist.MUS + 3) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + 3)))
-        mp_config.EDBG = exp(1.0 / (mp_namelist.MUG + 3) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + 3)))
-        mp_config.EDBH = exp(1.0 / (mp_namelist.MUH + 3) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + 3)))
+        mp_config.PCBW = float64(exp(mp_namelist.MUW / (mp_namelist.MUW + Int(3)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Int(3)))))
+        mp_config.PCBI = float64(exp(mp_namelist.MUI / (mp_namelist.MUI + Int(3)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Int(3)))))
+        mp_config.PCBR = float64(exp(mp_namelist.MUR / (mp_namelist.MUR + Int(3)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Int(3)))))
+        mp_config.PCBS = float64(exp(mp_namelist.MUS / (mp_namelist.MUS + Int(3)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Int(3)))))
+        mp_config.PCBG = float64(exp(mp_namelist.MUG / (mp_namelist.MUG + Int(3)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Int(3)))))
+        mp_config.PCBH = float64(exp(mp_namelist.MUH / (mp_namelist.MUH + Int(3)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Int(3)))))
 
-        mp_config.OEAW = (
-            exp(1.0 / (mp_namelist.MUW + 3) * log(mp_namelist.N0W_SIG))
+        mp_config.EDAW = float64(
+            exp(-Float(1.0) / (mp_namelist.MUW + Int(3)) * log(mp_namelist.N0W_SIG))
+            * (mp_namelist.MUW + Int(2))
+            * exp(-mp_namelist.N0W_EXP / (mp_namelist.MUW + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.EDAI = float64(
+            exp(-Float(1.0) / (mp_namelist.MUI + Int(3)) * log(mp_namelist.N0I_SIG))
+            * (mp_namelist.MUI + Int(2))
+            * exp(-mp_namelist.N0I_EXP / (mp_namelist.MUI + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.EDAR = float64(
+            exp(-Float(1.0) / (mp_namelist.MUR + Int(3)) * log(mp_namelist.N0R_SIG))
+            * (mp_namelist.MUR + Int(2))
+            * exp(-mp_namelist.N0R_EXP / (mp_namelist.MUR + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.EDAS = float64(
+            exp(-Float(1.0) / (mp_namelist.MUS + Int(3)) * log(mp_namelist.N0S_SIG))
+            * (mp_namelist.MUS + Int(2))
+            * exp(-mp_namelist.N0S_EXP / (mp_namelist.MUS + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.EDAG = float64(
+            exp(-Float(1.0) / (mp_namelist.MUG + Int(3)) * log(mp_namelist.N0G_SIG))
+            * (mp_namelist.MUG + Int(2))
+            * exp(-mp_namelist.N0G_EXP / (mp_namelist.MUG + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.EDAH = float64(
+            exp(-Float(1.0) / (mp_namelist.MUH + Int(3)) * log(mp_namelist.N0H_SIG))
+            * (mp_namelist.MUH + Int(2))
+            * exp(-mp_namelist.N0H_EXP / (mp_namelist.MUH + Int(3)) * log(Float(10.0)))
+        )
+
+        mp_config.EDBW = float64(exp(Float(1.0) / (mp_namelist.MUW + Int(3)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Int(3)))))
+        mp_config.EDBI = float64(exp(Float(1.0) / (mp_namelist.MUI + Int(3)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Int(3)))))
+        mp_config.EDBR = float64(exp(Float(1.0) / (mp_namelist.MUR + Int(3)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Int(3)))))
+        mp_config.EDBS = float64(exp(Float(1.0) / (mp_namelist.MUS + Int(3)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Int(3)))))
+        mp_config.EDBG = float64(exp(Float(1.0) / (mp_namelist.MUG + Int(3)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Int(3)))))
+        mp_config.EDBH = float64(exp(Float(1.0) / (mp_namelist.MUH + Int(3)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Int(3)))))
+
+        mp_config.OEAW = float64(
+            exp(Float(1.0) / (mp_namelist.MUW + Int(3)) * log(mp_namelist.N0W_SIG))
             * constants.PI
-            * gamma(mp_namelist.MUW + 2)
-            * exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + 3) * log(10.0))
+            * gamma(mp_namelist.MUW + Int(2))
+            * exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + Int(3)) * log(10.0))
         )
-        mp_config.OEAI = (
-            exp(1.0 / (mp_namelist.MUI + 3) * log(mp_namelist.N0I_SIG))
+        mp_config.OEAI = float64(
+            exp(Float(1.0) / (mp_namelist.MUI + Int(3)) * log(mp_namelist.N0I_SIG))
             * constants.PI
-            * gamma(mp_namelist.MUI + 2)
-            * exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + 3) * log(10.0))
+            * gamma(mp_namelist.MUI + Int(2))
+            * exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + Int(3)) * log(10.0))
         )
-        mp_config.OEAR = (
-            exp(1.0 / (mp_namelist.MUR + 3) * log(mp_namelist.N0R_SIG))
+        mp_config.OEAR = float64(
+            exp(Float(1.0) / (mp_namelist.MUR + Int(3)) * log(mp_namelist.N0R_SIG))
             * constants.PI
-            * gamma(mp_namelist.MUR + 2)
-            * exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + 3) * log(10.0))
+            * gamma(mp_namelist.MUR + Int(2))
+            * exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + Int(3)) * log(10.0))
         )
-        mp_config.OEAS = (
-            exp(1.0 / (mp_namelist.MUS + 3) * log(mp_namelist.N0S_SIG))
+        mp_config.OEAS = float64(
+            exp(Float(1.0) / (mp_namelist.MUS + Int(3)) * log(mp_namelist.N0S_SIG))
             * constants.PI
-            * gamma(mp_namelist.MUS + 2)
-            * exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + 3) * log(10.0))
+            * gamma(mp_namelist.MUS + Int(2))
+            * exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + Int(3)) * log(10.0))
         )
-        mp_config.OEAG = (
-            exp(1.0 / (mp_namelist.MUG + 3) * log(mp_namelist.N0G_SIG))
+        mp_config.OEAG = float64(
+            exp(Float(1.0) / (mp_namelist.MUG + Int(3)) * log(mp_namelist.N0G_SIG))
             * constants.PI
-            * gamma(mp_namelist.MUG + 2)
-            * exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + 3) * log(10.0))
+            * gamma(mp_namelist.MUG + Int(2))
+            * exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + Int(3)) * log(10.0))
         )
-        mp_config.OEAH = (
-            exp(1.0 / (mp_namelist.MUH + 3) * log(mp_namelist.N0H_SIG))
+        mp_config.OEAH = float64(
+            exp(Float(1.0) / (mp_namelist.MUH + Int(3)) * log(mp_namelist.N0H_SIG))
             * constants.PI
-            * gamma(mp_namelist.MUH + 2)
-            * exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + 3) * log(10.0))
+            * gamma(mp_namelist.MUH + Int(2))
+            * exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + Int(3)) * log(10.0))
         )
 
-        mp_config.OEBW = 2 * exp((mp_namelist.MUW + 2) / (mp_namelist.MUW + 3) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + 3)))
-        mp_config.OEBI = 2 * exp((mp_namelist.MUI + 2) / (mp_namelist.MUI + 3) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + 3)))
-        mp_config.OEBR = 2 * exp((mp_namelist.MUR + 2) / (mp_namelist.MUR + 3) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + 3)))
-        mp_config.OEBS = 2 * exp((mp_namelist.MUS + 2) / (mp_namelist.MUS + 3) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + 3)))
-        mp_config.OEBG = 2 * exp((mp_namelist.MUG + 2) / (mp_namelist.MUG + 3) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + 3)))
-        mp_config.OEBH = 2 * exp((mp_namelist.MUH + 2) / (mp_namelist.MUH + 3) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + 3)))
-
-        mp_config.RRAW = (
-            exp(-3 / (mp_namelist.MUW + 3) * log(mp_namelist.N0W_SIG)) * gamma(mp_namelist.MUW + 6) * exp(-3 * mp_namelist.N0W_EXP / (mp_namelist.MUW + 3) * log(10.0))
+        mp_config.OEBW = float64(
+            Int(2) * exp((mp_namelist.MUW + Int(2)) / (mp_namelist.MUW + Int(3)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Int(3))))
         )
-        mp_config.RRAI = (
-            exp(-3 / (mp_namelist.MUI + 3) * log(mp_namelist.N0I_SIG)) * gamma(mp_namelist.MUI + 6) * exp(-3 * mp_namelist.N0I_EXP / (mp_namelist.MUI + 3) * log(10.0))
+        mp_config.OEBI = float64(
+            Int(2) * exp((mp_namelist.MUI + Int(2)) / (mp_namelist.MUI + Int(3)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Int(3))))
         )
-        mp_config.RRAR = (
-            exp(-3 / (mp_namelist.MUR + 3) * log(mp_namelist.N0R_SIG)) * gamma(mp_namelist.MUR + 6) * exp(-3 * mp_namelist.N0R_EXP / (mp_namelist.MUR + 3) * log(10.0))
+        mp_config.OEBR = float64(
+            Int(2) * exp((mp_namelist.MUR + Int(2)) / (mp_namelist.MUR + Int(3)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Int(3))))
         )
-        mp_config.RRAS = (
-            exp(-3 / (mp_namelist.MUS + 3) * log(mp_namelist.N0S_SIG)) * gamma(mp_namelist.MUS + 6) * exp(-3 * mp_namelist.N0S_EXP / (mp_namelist.MUS + 3) * log(10.0))
+        mp_config.OEBS = float64(
+            Int(2) * exp((mp_namelist.MUS + Int(2)) / (mp_namelist.MUS + Int(3)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Int(3))))
         )
-        mp_config.RRAG = (
-            exp(-3 / (mp_namelist.MUG + 3) * log(mp_namelist.N0G_SIG)) * gamma(mp_namelist.MUG + 6) * exp(-3 * mp_namelist.N0G_EXP / (mp_namelist.MUG + 3) * log(10.0))
+        mp_config.OEBG = float64(
+            Int(2) * exp((mp_namelist.MUG + Int(2)) / (mp_namelist.MUG + Int(3)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Int(3))))
         )
-        mp_config.RRAH = (
-            exp(-3 / (mp_namelist.MUH + 3) * log(mp_namelist.N0H_SIG)) * gamma(mp_namelist.MUH + 6) * exp(-3 * mp_namelist.N0H_EXP / (mp_namelist.MUH + 3) * log(10.0))
+        mp_config.OEBH = float64(
+            Int(2) * exp((mp_namelist.MUH + Int(2)) / (mp_namelist.MUH + Int(3)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Int(3))))
         )
 
-        mp_config.RRBW = exp((mp_namelist.MUW + 6) / (mp_namelist.MUW + 3) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + 3)))
-        mp_config.RRBI = exp((mp_namelist.MUI + 6) / (mp_namelist.MUI + 3) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + 3)))
-        mp_config.RRBR = exp((mp_namelist.MUR + 6) / (mp_namelist.MUR + 3) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + 3)))
-        mp_config.RRBS = exp((mp_namelist.MUS + 6) / (mp_namelist.MUS + 3) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + 3)))
-        mp_config.RRBG = exp((mp_namelist.MUG + 6) / (mp_namelist.MUG + 3) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + 3)))
-        mp_config.RRBH = exp((mp_namelist.MUH + 6) / (mp_namelist.MUH + 3) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + 3)))
+        mp_config.RRAW = float64(
+            exp(-Int(3) / (mp_namelist.MUW + Int(3)) * log(mp_namelist.N0W_SIG))
+            * gamma(mp_namelist.MUW + Int(6))
+            * exp(-Int(3) * mp_namelist.N0W_EXP / (mp_namelist.MUW + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.RRAI = float64(
+            exp(-Int(3) / (mp_namelist.MUI + Int(3)) * log(mp_namelist.N0I_SIG))
+            * gamma(mp_namelist.MUI + Int(6))
+            * exp(-Int(3) * mp_namelist.N0I_EXP / (mp_namelist.MUI + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.RRAR = float64(
+            exp(-Int(3) / (mp_namelist.MUR + Int(3)) * log(mp_namelist.N0R_SIG))
+            * gamma(mp_namelist.MUR + Int(6))
+            * exp(-Int(3) * mp_namelist.N0R_EXP / (mp_namelist.MUR + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.RRAS = float64(
+            exp(-Int(3) / (mp_namelist.MUS + Int(3)) * log(mp_namelist.N0S_SIG))
+            * gamma(mp_namelist.MUS + Int(6))
+            * exp(-Int(3) * mp_namelist.N0S_EXP / (mp_namelist.MUS + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.RRAG = float64(
+            exp(-Int(3) / (mp_namelist.MUG + Int(3)) * log(mp_namelist.N0G_SIG))
+            * gamma(mp_namelist.MUG + Int(6))
+            * exp(-Int(3) * mp_namelist.N0G_EXP / (mp_namelist.MUG + Int(3)) * log(Float(10.0)))
+        )
+        mp_config.RRAH = float64(
+            exp(-Int(3) / (mp_namelist.MUH + Int(3)) * log(mp_namelist.N0H_SIG))
+            * gamma(mp_namelist.MUH + Int(6))
+            * exp(-Int(3) * mp_namelist.N0H_EXP / (mp_namelist.MUH + Int(3)) * log(Float(10.0)))
+        )
 
-        mp_config.TVAW = (
-            exp(-mp_namelist.BLINW / (mp_namelist.MUW + 3) * log(mp_namelist.N0W_SIG))
+        mp_config.RRBW = float64(exp((mp_namelist.MUW + Int(6)) / (mp_namelist.MUW + Int(3)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Int(3)))))
+        mp_config.RRBI = float64(exp((mp_namelist.MUI + Int(6)) / (mp_namelist.MUI + Int(3)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Int(3)))))
+        mp_config.RRBR = float64(exp((mp_namelist.MUR + Int(6)) / (mp_namelist.MUR + Int(3)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Int(3)))))
+        mp_config.RRBS = float64(exp((mp_namelist.MUS + Int(6)) / (mp_namelist.MUS + Int(3)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Int(3)))))
+        mp_config.RRBG = float64(exp((mp_namelist.MUG + Int(6)) / (mp_namelist.MUG + Int(3)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Int(3)))))
+        mp_config.RRBH = float64(exp((mp_namelist.MUH + Int(6)) / (mp_namelist.MUH + Int(3)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Int(3)))))
+
+        mp_config.TVAW = float64(
+            exp(-mp_namelist.BLINW / (mp_namelist.MUW + Int(3)) * log(mp_namelist.N0W_SIG))
             * mp_namelist.ALINW
-            * gamma(mp_namelist.MUW + mp_namelist.BLINW + 3)
-            * exp(-mp_namelist.BLINW * mp_namelist.N0W_EXP / (mp_namelist.MUW + 3) * log(10.0))
+            * gamma(mp_namelist.MUW + mp_namelist.BLINW + Int(3))
+            * exp(-mp_namelist.BLINW * mp_namelist.N0W_EXP / (mp_namelist.MUW + Int(3)) * log(Float(10.0)))
         )
-        mp_config.TVAI = (
-            exp(-mp_namelist.BLINI / (mp_namelist.MUI + 3) * log(mp_namelist.N0I_SIG))
+        mp_config.TVAI = float64(
+            exp(-mp_namelist.BLINI / (mp_namelist.MUI + Int(3)) * log(mp_namelist.N0I_SIG))
             * mp_namelist.ALINI
-            * gamma(mp_namelist.MUI + mp_namelist.BLINI + 3)
-            * exp(-mp_namelist.BLINI * mp_namelist.N0I_EXP / (mp_namelist.MUI + 3) * log(10.0))
+            * gamma(mp_namelist.MUI + mp_namelist.BLINI + Int(3))
+            * exp(-mp_namelist.BLINI * mp_namelist.N0I_EXP / (mp_namelist.MUI + Int(3)) * log(Float(10.0)))
         )
-        mp_config.TVAR = (
-            exp(-mp_namelist.BLINR / (mp_namelist.MUR + 3) * log(mp_namelist.N0R_SIG))
+        mp_config.TVAR = float64(
+            exp(-mp_namelist.BLINR / (mp_namelist.MUR + Int(3)) * log(mp_namelist.N0R_SIG))
             * mp_namelist.ALINR
-            * gamma(mp_namelist.MUR + mp_namelist.BLINR + 3)
-            * exp(-mp_namelist.BLINR * mp_namelist.N0R_EXP / (mp_namelist.MUR + 3) * log(10.0))
+            * gamma(mp_namelist.MUR + mp_namelist.BLINR + Int(3))
+            * exp(-mp_namelist.BLINR * mp_namelist.N0R_EXP / (mp_namelist.MUR + Int(3)) * log(Float(10.0)))
         )
-        mp_config.TVAS = (
-            exp(-mp_namelist.BLINS / (mp_namelist.MUS + 3) * log(mp_namelist.N0S_SIG))
+        mp_config.TVAS = float64(
+            exp(-mp_namelist.BLINS / (mp_namelist.MUS + Int(3)) * log(mp_namelist.N0S_SIG))
             * mp_namelist.ALINS
-            * gamma(mp_namelist.MUS + mp_namelist.BLINS + 3)
-            * exp(-mp_namelist.BLINS * mp_namelist.N0S_EXP / (mp_namelist.MUS + 3) * log(10.0))
+            * gamma(mp_namelist.MUS + mp_namelist.BLINS + Int(3))
+            * exp(-mp_namelist.BLINS * mp_namelist.N0S_EXP / (mp_namelist.MUS + Int(3)) * log(Float(10.0)))
         )
-        mp_config.TVAG = (
-            exp(-mp_namelist.BLING / (mp_namelist.MUG + 3) * log(mp_namelist.N0G_SIG))
+        mp_config.TVAG = float64(
+            exp(-mp_namelist.BLING / (mp_namelist.MUG + Int(3)) * log(mp_namelist.N0G_SIG))
             * mp_namelist.ALING
-            * gamma(mp_namelist.MUG + mp_namelist.BLING + 3)
-            * exp(-mp_namelist.BLING * mp_namelist.N0G_EXP / (mp_namelist.MUG + 3) * log(10.0))
+            * gamma(mp_namelist.MUG + mp_namelist.BLING + Int(3))
+            * exp(-mp_namelist.BLING * mp_namelist.N0G_EXP / (mp_namelist.MUG + Int(3)) * log(Float(10.0)))
             * gcon
         )
-        mp_config.TVAH = (
-            exp(-mp_namelist.BLINH / (mp_namelist.MUH + 3) * log(mp_namelist.N0H_SIG))
+        mp_config.TVAH = float64(
+            exp(-mp_namelist.BLINH / (mp_namelist.MUH + Int(3)) * log(mp_namelist.N0H_SIG))
             * mp_namelist.ALINH
-            * gamma(mp_namelist.MUH + mp_namelist.BLINH + 3)
-            * exp(-mp_namelist.BLINH * mp_namelist.N0H_EXP / (mp_namelist.MUH + 3) * log(10.0))
+            * gamma(mp_namelist.MUH + mp_namelist.BLINH + Int(3))
+            * exp(-mp_namelist.BLINH * mp_namelist.N0H_EXP / (mp_namelist.MUH + Int(3)) * log(Float(10.0)))
             * hcon
         )
 
-        mp_config.TVBW = exp(mp_namelist.BLINW / (mp_namelist.MUW + 3) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + 3))) * gamma(mp_namelist.MUW + 3)
-        mp_config.TVBI = exp(mp_namelist.BLINI / (mp_namelist.MUI + 3) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + 3))) * gamma(mp_namelist.MUI + 3)
-        mp_config.TVBR = exp(mp_namelist.BLINR / (mp_namelist.MUR + 3) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + 3))) * gamma(mp_namelist.MUR + 3)
-        mp_config.TVBS = exp(mp_namelist.BLINS / (mp_namelist.MUS + 3) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + 3))) * gamma(mp_namelist.MUS + 3)
-        mp_config.TVBG = exp(mp_namelist.BLING / (mp_namelist.MUG + 3) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + 3))) * gamma(mp_namelist.MUG + 3)
-        mp_config.TVBH = exp(mp_namelist.BLINH / (mp_namelist.MUH + 3) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + 3))) * gamma(mp_namelist.MUH + 3)
+        mp_config.TVBW = float64(
+            exp(mp_namelist.BLINW / (mp_namelist.MUW + Int(3)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Int(3)))) * gamma(mp_namelist.MUW + Int(3))
+        )
+        mp_config.TVBI = float64(
+            exp(mp_namelist.BLINI / (mp_namelist.MUI + Int(3)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Int(3)))) * gamma(mp_namelist.MUI + Int(3))
+        )
+        mp_config.TVBR = float64(
+            exp(mp_namelist.BLINR / (mp_namelist.MUR + Int(3)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Int(3)))) * gamma(mp_namelist.MUR + Int(3))
+        )
+        mp_config.TVBS = float64(
+            exp(mp_namelist.BLINS / (mp_namelist.MUS + Int(3)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Int(3)))) * gamma(mp_namelist.MUS + Int(3))
+        )
+        mp_config.TVBG = float64(
+            exp(mp_namelist.BLING / (mp_namelist.MUG + Int(3)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Int(3)))) * gamma(mp_namelist.MUG + Int(3))
+        )
+        mp_config.TVBH = float64(
+            exp(mp_namelist.BLINH / (mp_namelist.MUH + Int(3)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Int(3)))) * gamma(mp_namelist.MUH + Int(3))
+        )
 
         # Schmidt number, Sc ** (1 / 3) in Lin et al. (1983)
 
-        scm3 = exp(1.0 / 3.0 * log(constants.VISK / constants.VDIFU))
+        scm3 = exp(Float(1.0) / Float(3.0) * log(constants.VISK / constants.VDIFU))
 
         pisq = constants.PI * constants.PI
 
@@ -369,90 +430,90 @@ class GFDLMPV3(NDSLRuntime):
             constants.PI
             * mp_namelist.N0R_SIG
             * mp_namelist.ALINR
-            * gamma(2 + mp_namelist.MUR + mp_namelist.BLINR)
-            / (4.0 * exp((2 + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + 3) * log(mp_config.NORMR)))
-            * exp((1 - mp_namelist.BLINR) * log(mp_config.EXPOR))
+            * gamma(Int(2) + mp_namelist.MUR + mp_namelist.BLINR)
+            / (Float(4.0) * exp((Int(2) + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Int(3)) * log(mp_config.NORMR)))
+            * exp((Int(1) - mp_namelist.BLINR) * log(mp_config.EXPOR))
         )
         mp_config.CRACI = (
             constants.PI
             * mp_namelist.N0R_SIG
             * mp_namelist.ALINR
-            * gamma(2 + mp_namelist.MUR + mp_namelist.BLINR)
-            / (4.0 * exp((2 + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + 3) * log(mp_config.NORMR)))
-            * exp((1 - mp_namelist.BLINR) * log(mp_config.EXPOR))
+            * gamma(Int(2) + mp_namelist.MUR + mp_namelist.BLINR)
+            / (Float(4.0) * exp((Int(2) + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Int(3)) * log(mp_config.NORMR)))
+            * exp((Int(1) - mp_namelist.BLINR) * log(mp_config.EXPOR))
         )
         mp_config.CSACW = (
             constants.PI
             * mp_namelist.N0S_SIG
             * mp_namelist.ALINS
-            * gamma(2 + mp_namelist.MUS + mp_namelist.BLINS)
-            / (4.0 * exp((2 + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + 3) * log(mp_config.NORMS)))
-            * exp((1 - mp_namelist.BLINS) * log(mp_config.EXPOS))
+            * gamma(Int(2) + mp_namelist.MUS + mp_namelist.BLINS)
+            / (Float(4.0) * exp((Int(2) + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Int(3)) * log(mp_config.NORMS)))
+            * exp((Int(1) - mp_namelist.BLINS) * log(mp_config.EXPOS))
         )
         mp_config.CSACI = (
             constants.PI
             * mp_namelist.N0S_SIG
             * mp_namelist.ALINS
-            * gamma(2 + mp_namelist.MUS + mp_namelist.BLINS)
-            / (4.0 * exp((2 + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + 3) * log(mp_config.NORMS)))
-            * exp((1 - mp_namelist.BLINS) * log(mp_config.EXPOS))
+            * gamma(Int(2) + mp_namelist.MUS + mp_namelist.BLINS)
+            / (Float(4.0) * exp((Int(2) + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Int(3)) * log(mp_config.NORMS)))
+            * exp((Int(1) - mp_namelist.BLINS) * log(mp_config.EXPOS))
         )
         if mp_namelist.DO_HAIL:
             mp_config.CGACW = (
                 constants.PI
                 * mp_namelist.N0H_SIG
                 * mp_namelist.ALINH
-                * gamma(2 + mp_namelist.MUH + mp_namelist.BLINH)
+                * gamma(Int(2) + mp_namelist.MUH + mp_namelist.BLINH)
                 * hcon
-                / (4.0 * exp((2 + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + 3) * log(mp_config.NORMH)))
-                * exp((1 - mp_namelist.BLINH) * log(mp_config.EXPOH))
+                / (Float(4.0) * exp((Int(2) + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + Int(3)) * log(mp_config.NORMH)))
+                * exp((Int(1) - mp_namelist.BLINH) * log(mp_config.EXPOH))
             )
             mp_config.CGACI = (
                 constants.PI
                 * mp_namelist.N0H_SIG
                 * mp_namelist.ALINH
-                * gamma(2 + mp_namelist.MUH + mp_namelist.BLINH)
+                * gamma(Int(2) + mp_namelist.MUH + mp_namelist.BLINH)
                 * hcon
-                / (4.0 * exp((2 + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + 3) * log(mp_config.NORMH)))
-                * exp((1 - mp_namelist.BLINH) * log(mp_config.EXPOH))
+                / (Float(4.0) * exp((Int(2) + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + Int(3)) * log(mp_config.NORMH)))
+                * exp((Int(1) - mp_namelist.BLINH) * log(mp_config.EXPOH))
             )
         else:
             mp_config.CGACW = (
                 constants.PI
                 * mp_namelist.N0G_SIG
                 * mp_namelist.ALING
-                * gamma(2 + mp_namelist.MUG + mp_namelist.BLING)
+                * gamma(Int(2) + mp_namelist.MUG + mp_namelist.BLING)
                 * gcon
-                / (4.0 * exp((2 + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + 3) * log(mp_config.NORMG)))
-                * exp((1 - mp_namelist.BLING) * log(mp_config.EXPOG))
+                / (Float(4.0) * exp((Int(2) + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Int(3)) * log(mp_config.NORMG)))
+                * exp((Int(1) - mp_namelist.BLING) * log(mp_config.EXPOG))
             )
             mp_config.CGACI = (
                 constants.PI
                 * mp_namelist.N0G_SIG
                 * mp_namelist.ALING
-                * gamma(2 + mp_namelist.MUG + mp_namelist.BLING)
+                * gamma(Int(2) + mp_namelist.MUG + mp_namelist.BLING)
                 * gcon
-                / (4.0 * exp((2 + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + 3) * log(mp_config.NORMG)))
-                * exp((1 - mp_namelist.BLING) * log(mp_config.EXPOG))
+                / (Float(4.0) * exp((Int(2) + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Int(3)) * log(mp_config.NORMG)))
+                * exp((Int(1) - mp_namelist.BLING) * log(mp_config.EXPOG))
             )
 
         if mp_namelist.DO_3D_ACC_CLIQ:
 
-            mp_config.CRACW = pisq * mp_namelist.N0R_SIG * mp_namelist.N0W_SIG * constants.RHOW / 24.0
-            mp_config.CSACW = pisq * mp_namelist.N0S_SIG * mp_namelist.N0W_SIG * constants.RHOW / 24.0
+            mp_config.CRACW = pisq * mp_namelist.N0R_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
+            mp_config.CSACW = pisq * mp_namelist.N0S_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
             if mp_namelist.DO_HAIL:
-                mp_config.CGACW = pisq * mp_namelist.N0H_SIG * mp_namelist.N0W_SIG * constants.RHOW / 24.0
+                mp_config.CGACW = pisq * mp_namelist.N0H_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
             else:
-                mp_config.CGACW = pisq * mp_namelist.N0G_SIG * mp_namelist.N0W_SIG * constants.RHOW / 24.0
+                mp_config.CGACW = pisq * mp_namelist.N0G_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
 
         if mp_namelist.DO_3D_ACC_CICE:
 
-            craci = pisq * mp_namelist.N0R_SIG * mp_namelist.N0I_SIG * constants.RHOI / 24.0
-            csaci = pisq * mp_namelist.N0S_SIG * mp_namelist.N0I_SIG * constants.RHOI / 24.0
+            craci = pisq * mp_namelist.N0R_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
+            csaci = pisq * mp_namelist.N0S_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
             if mp_namelist.DO_HAIL:
-                cgaci = pisq * mp_namelist.N0H_SIG * mp_namelist.N0I_SIG * constants.RHOI / 24.0
+                cgaci = pisq * mp_namelist.N0H_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
             else:
-                cgaci = pisq * mp_namelist.N0G_SIG * mp_namelist.N0I_SIG * constants.RHOI / 24.0
+                cgaci = pisq * mp_namelist.N0G_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
 
         mp_config.CRACW = mp_config.CRACW * mp_namelist.C_PRACW
         mp_config.CRACI = mp_config.CRACI * mp_namelist.C_PRACI
@@ -463,14 +524,14 @@ class GFDLMPV3(NDSLRuntime):
 
         # accretion between cloud water, cloud ice, rain, snow, and graupel or hail, Lin et al. (1983)
 
-        mp_config.CRACS = pisq * mp_namelist.N0R_SIG * mp_namelist.N0S_SIG * constants.RHOS / 24.0
-        mp_config.CSACR = pisq * mp_namelist.N0S_SIG * mp_namelist.N0R_SIG * constants.RHOR / 24.0
+        mp_config.CRACS = pisq * mp_namelist.N0R_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0)
+        mp_config.CSACR = pisq * mp_namelist.N0S_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0)
         if mp_namelist.DO_HAIL:
-            mp_config.CGACR = pisq * mp_namelist.N0H_SIG * mp_namelist.N0R_SIG * constants.RHOR / 24.0
-            mp_config.CGACS = pisq * mp_namelist.N0H_SIG * mp_namelist.N0S_SIG * constants.RHOS / 24.0
+            mp_config.CGACR = pisq * mp_namelist.N0H_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0)
+            mp_config.CGACS = pisq * mp_namelist.N0H_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0)
         else:
-            mp_config.CGACR = pisq * mp_namelist.N0G_SIG * mp_namelist.N0R_SIG * constants.RHOR / 24.0
-            mp_config.CGACS = pisq * mp_namelist.N0G_SIG * mp_namelist.N0S_SIG * constants.RHOS / 24.0
+            mp_config.CGACR = pisq * mp_namelist.N0G_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0)
+            mp_config.CGACS = pisq * mp_namelist.N0G_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0)
 
         mp_config.CRACS = mp_config.CRACS * mp_namelist.C_PRACS
         mp_config.CSACR = mp_config.CSACR * mp_namelist.C_PSACR
@@ -560,113 +621,113 @@ class GFDLMPV3(NDSLRuntime):
 
                 mp_config.ACCO[i, k] = (
                     occ[i]
-                    * gamma(6 + mp_config.ACC[2 * fk - 1 - 1] - fi)
-                    * gamma(mp_config.ACC[2 * fk - 1] + fi - 1)
+                    * gamma(Int(6) + mp_config.ACC[2 * fk - 1 - 1] - fi)
+                    * gamma(mp_config.ACC[2 * fk - 1] + fi - Int(1))
                     / (
-                        exp((6 + mp_config.ACC[2 * fk - 1 - 1] - fi) / (mp_config.ACC[2 * fk - 1 - 1] + 3) * log(act[2 * fk - 1 - 1]))
-                        * exp((mp_config.ACC[2 * fk - 1] + fi - 1) / (mp_config.ACC[2 * fk - 1] + 3) * log(act[2 * fk - 1]))
+                        exp((Int(6) + mp_config.ACC[2 * fk - 1 - 1] - fi) / (mp_config.ACC[2 * fk - 1 - 1] + Int(3)) * log(act[2 * fk - 1 - 1]))
+                        * exp((mp_config.ACC[2 * fk - 1] + fi - Int(1)) / (mp_config.ACC[2 * fk - 1] + Int(3)) * log(act[2 * fk - 1]))
                     )
-                    * exp((fi - 3) * log(ace[2 * fk - 1 - 1]))
-                    * exp((4 - fi) * log(ace[2 * fk - 1]))
+                    * exp((fi - Int(3)) * log(ace[2 * fk - 1 - 1]))
+                    * exp((Int(4) - fi) * log(ace[2 * fk - 1]))
                 )
 
         # rain evaporation, snow sublimation, and graupel or hail sublimation, Lin et al. (1983)
 
         crevp[0] = (
-            2.0
+            Float(2.0)
             * constants.PI
             * constants.VDIFU
             * constants.TCOND
             * constants.RVGAS
             * mp_namelist.N0R_SIG
-            * gamma(1 + mp_namelist.MUR)
-            / exp((1 + mp_namelist.MUR) / (mp_namelist.MUR + 3) * log(mp_config.NORMR))
-            * exp(2.0 * log(mp_config.EXPOR))
+            * gamma(Int(1) + mp_namelist.MUR)
+            / exp((Int(1) + mp_namelist.MUR) / (mp_namelist.MUR + Int(3)) * log(mp_config.NORMR))
+            * exp(Float(2.0) * log(mp_config.EXPOR))
         )
-        crevp[1] = 0.78
+        crevp[1] = Float(0.78)
         crevp[2] = (
-            0.31
+            Float(0.31)
             * scm3
             * sqrt(mp_namelist.ALINR / constants.VISK)
-            * gamma((3 + 2 * mp_namelist.MUR + mp_namelist.BLINR) / 2)
-            / exp((3 + 2 * mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + 3) / 2 * log(mp_config.NORMR))
-            * exp((1 + mp_namelist.MUR) / (mp_namelist.MUR + 3) * log(mp_config.NORMR))
-            / gamma(1 + mp_namelist.MUR)
-            * exp((-1 - mp_namelist.BLINR) / 2.0 * log(mp_config.EXPOR))
+            * gamma((Int(3) + Int(2) * mp_namelist.MUR + mp_namelist.BLINR) / Int(2))
+            / exp((Int(3) + Int(2) * mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Int(3)) / Int(2) * log(mp_config.NORMR))
+            * exp((Int(1) + mp_namelist.MUR) / (mp_namelist.MUR + Int(3)) * log(mp_config.NORMR))
+            / gamma(Int(1) + mp_namelist.MUR)
+            * exp((-Int(1) - mp_namelist.BLINR) / Float(2.0) * log(mp_config.EXPOR))
         )
         crevp[3] = constants.TCOND * constants.RVGAS
         crevp[4] = constants.VDIFU
 
         mp_config.CSSUB[0] = (
-            2.0
+            Float(2.0)
             * constants.PI
             * constants.VDIFU
             * constants.TCOND
             * constants.RVGAS
             * mp_namelist.N0S_SIG
-            * gamma(1 + mp_namelist.MUS)
-            / exp((1 + mp_namelist.MUS) / (mp_namelist.MUS + 3) * log(mp_config.NORMS))
-            * exp(2.0 * log(mp_config.EXPOS))
+            * gamma(Int(1) + mp_namelist.MUS)
+            / exp((Int(1) + mp_namelist.MUS) / (mp_namelist.MUS + Int(3)) * log(mp_config.NORMS))
+            * exp(Float(2.0) * log(mp_config.EXPOS))
         )
-        mp_config.CSSUB[1] = 0.78
+        mp_config.CSSUB[1] = Float(0.78)
         mp_config.CSSUB[2] = (
-            0.31
+            Float(0.31)
             * scm3
             * sqrt(mp_namelist.ALINS / constants.VISK)
-            * gamma((3 + 2 * mp_namelist.MUS + mp_namelist.BLINS) / 2)
-            / exp((3 + 2 * mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + 3) / 2 * log(mp_config.NORMS))
-            * exp((1 + mp_namelist.MUS) / (mp_namelist.MUS + 3) * log(mp_config.NORMS))
-            / gamma(1 + mp_namelist.MUS)
-            * exp((-1 - mp_namelist.BLINS) / 2.0 * log(mp_config.EXPOS))
+            * gamma((Int(3) + Int(2) * mp_namelist.MUS + mp_namelist.BLINS) / Int(2))
+            / exp((Int(3) + Int(2) * mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Int(3)) / Int(2) * log(mp_config.NORMS))
+            * exp((Int(1) + mp_namelist.MUS) / (mp_namelist.MUS + Int(3)) * log(mp_config.NORMS))
+            / gamma(Int(1) + mp_namelist.MUS)
+            * exp((-Int(1) - mp_namelist.BLINS) / Float(2.0) * log(mp_config.EXPOS))
         )
         mp_config.CSSUB[3] = constants.TCOND * constants.RVGAS
         mp_config.CSSUB[4] = constants.VDIFU
 
         if mp_namelist.DO_HAIL:
             mp_config.CGSUB[0] = (
-                2.0
+                Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * constants.TCOND
                 * constants.RVGAS
                 * mp_namelist.N0H_SIG
-                * gamma(1 + mp_namelist.MUH)
-                / exp((1 + mp_namelist.MUH) / (mp_namelist.MUH + 3) * log(mp_config.NORMH))
-                * exp(2.0 * log(mp_config.EXPOH))
+                * gamma(Int(1) + mp_namelist.MUH)
+                / exp((Int(1) + mp_namelist.MUH) / (mp_namelist.MUH + Int(3)) * log(mp_config.NORMH))
+                * exp(Float(2.0) * log(mp_config.EXPOH))
             )
-            mp_config.CGSUB[1] = 0.78
+            mp_config.CGSUB[1] = Float(0.78)
             mp_config.CGSUB[2] = (
-                0.31
+                Float(0.31)
                 * scm3
                 * sqrt(mp_namelist.ALINH * hcon / constants.VISK)
-                * gamma((3 + 2 * mp_namelist.MUH + mp_namelist.BLINH) / 2)
-                / exp(1.0 / (mp_namelist.MUH + 3) * (3 + 2 * mp_namelist.MUH + mp_namelist.BLINH) / 2 * log(mp_config.NORMH))
-                * exp(1.0 / (mp_namelist.MUH + 3) * (1 + mp_namelist.MUH) * log(mp_config.NORMH))
-                / gamma(1 + mp_namelist.MUH)
-                * exp((-1 - mp_namelist.BLINH) / 2.0 * log(mp_config.EXPOH))
+                * gamma((Int(3) + Int(2) * mp_namelist.MUH + mp_namelist.BLINH) / Int(2))
+                / exp(Float(1.0) / (mp_namelist.MUH + Int(3)) * (Int(3) + Int(2) * mp_namelist.MUH + mp_namelist.BLINH) / Int(2) * log(mp_config.NORMH))
+                * exp(Float(1.0) / (mp_namelist.MUH + Int(3)) * (Int(1) + mp_namelist.MUH) * log(mp_config.NORMH))
+                / gamma(Int(1) + mp_namelist.MUH)
+                * exp((-Int(1) - mp_namelist.BLINH) / Float(2.0) * log(mp_config.EXPOH))
             )
         else:
             mp_config.CGSUB[0] = (
-                2.0
+                Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * constants.TCOND
                 * constants.RVGAS
                 * mp_namelist.N0G_SIG
-                * gamma(1 + mp_namelist.MUG)
-                / exp((1 + mp_namelist.MUG) / (mp_namelist.MUG + 3) * log(mp_config.NORMG))
-                * exp(2.0 * log(mp_config.EXPOG))
+                * gamma(Int(1) + mp_namelist.MUG)
+                / exp((Int(1) + mp_namelist.MUG) / (mp_namelist.MUG + Int(3)) * log(mp_config.NORMG))
+                * exp(Float(2.0) * log(mp_config.EXPOG))
             )
-            mp_config.CGSUB[1] = 0.78
+            mp_config.CGSUB[1] = Float(0.78)
             mp_config.CGSUB[2] = (
-                0.31
+                Float(0.31)
                 * scm3
                 * sqrt(mp_namelist.ALING * gcon / constants.VISK)
-                * gamma((3 + 2 * mp_namelist.MUG + mp_namelist.BLING) / 2)
-                / exp((3 + 2 * mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + 3) / 2 * log(mp_config.NORMG))
-                * exp((1 + mp_namelist.MUG) / (mp_namelist.MUG + 3) * log(mp_config.NORMG))
-                / gamma(1 + mp_namelist.MUG)
-                * exp((-1 - mp_namelist.BLING) / 2.0 * log(mp_config.EXPOG))
+                * gamma((Int(3) + Int(2) * mp_namelist.MUG + mp_namelist.BLING) / Int(2))
+                / exp((Int(3) + Int(2) * mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Int(3)) / Int(2) * log(mp_config.NORMG))
+                * exp((Int(1) + mp_namelist.MUG) / (mp_namelist.MUG + Int(3)) * log(mp_config.NORMG))
+                / gamma(Int(1) + mp_namelist.MUG)
+                * exp((-Int(1) - mp_namelist.BLING) / Float(2.0) * log(mp_config.EXPOG))
             )
         mp_config.CGSUB[3] = constants.TCOND * constants.RVGAS
         mp_config.CGSUB[4] = constants.VDIFU
@@ -674,22 +735,22 @@ class GFDLMPV3(NDSLRuntime):
         # snow melting, Lin et al. (1983)
 
         mp_config.CSMLT[0] = (
-            2.0
+            Float(2.0)
             * constants.PI
             * constants.TCOND
             * mp_namelist.N0S_SIG
-            * gamma(1 + mp_namelist.MUS)
-            / exp((1 + mp_namelist.MUS) / (mp_namelist.MUS + 3) * log(mp_config.NORMS))
-            * exp(2.0 * log(mp_config.EXPOS))
+            * gamma(Int(1) + mp_namelist.MUS)
+            / exp((Int(1) + mp_namelist.MUS) / (mp_namelist.MUS + Int(3)) * log(mp_config.NORMS))
+            * exp(Float(2.0) * log(mp_config.EXPOS))
         )
         mp_config.CSMLT[1] = (
-            2.0
+            Float(2.0)
             * constants.PI
             * constants.VDIFU
             * mp_namelist.N0S_SIG
-            * gamma(1 + mp_namelist.MUS)
-            / exp((1 + mp_namelist.MUS) / (mp_namelist.MUS + 3) * log(mp_config.NORMS))
-            * exp(2.0 * log(mp_config.EXPOS))
+            * gamma(Int(1) + mp_namelist.MUS)
+            / exp((Int(1) + mp_namelist.MUS) / (mp_namelist.MUS + Int(3)) * log(mp_config.NORMS))
+            * exp(Float(2.0) * log(mp_config.EXPOS))
         )
         mp_config.CSMLT[2] = mp_config.CGSUB[1]
         mp_config.CSMLT[3] = mp_config.CGSUB[2]
@@ -698,41 +759,41 @@ class GFDLMPV3(NDSLRuntime):
 
         if mp_namelist.DO_HAIL:
             mp_config.CGMLT[0] = (
-                2.0
+                Float(2.0)
                 * constants.PI
                 * constants.TCOND
                 * mp_namelist.N0H_SIG
-                * gamma(1 + mp_namelist.MUH)
-                / exp((1 + mp_namelist.MUH) / (mp_namelist.MUH + 3) * log(mp_config.NORMH))
-                * exp(2.0 * log(mp_config.EXPOH))
+                * gamma(Int(1) + mp_namelist.MUH)
+                / exp((Int(1) + mp_namelist.MUH) / (mp_namelist.MUH + Int(3)) * log(mp_config.NORMH))
+                * exp(Float(2.0) * log(mp_config.EXPOH))
             )
             mp_config.CGMLT[1] = (
-                2.0
+                Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * mp_namelist.N0H_SIG
-                * gamma(1 + mp_namelist.MUH)
-                / exp((1 + mp_namelist.MUH) / (mp_namelist.MUH + 3) * log(mp_config.NORMH))
-                * exp(2.0 * log(mp_config.EXPOH))
+                * gamma(Int(1) + mp_namelist.MUH)
+                / exp((Int(1) + mp_namelist.MUH) / (mp_namelist.MUH + Int(3)) * log(mp_config.NORMH))
+                * exp(Float(2.0) * log(mp_config.EXPOH))
             )
         else:
             mp_config.CGMLT[0] = (
-                2.0
+                Float(2.0)
                 * constants.PI
                 * constants.TCOND
                 * mp_namelist.N0G_SIG
-                * gamma(1 + mp_namelist.MUG)
-                / exp((1 + mp_namelist.MUG) / (mp_namelist.MUG + 3) * log(mp_config.NORMG))
-                * exp(2.0 * log(mp_config.EXPOG))
+                * gamma(Int(1) + mp_namelist.MUG)
+                / exp((Int(1) + mp_namelist.MUG) / (mp_namelist.MUG + Int(3)) * log(mp_config.NORMG))
+                * exp(Float(2.0) * log(mp_config.EXPOG))
             )
             mp_config.CGMLT[1] = (
-                2.0
+                Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * mp_namelist.N0G_SIG
-                * gamma(1 + mp_namelist.MUG)
-                / exp((1 + mp_namelist.MUG) / (mp_namelist.MUG + 3) * log(mp_config.NORMG))
-                * exp(2.0 * log(mp_config.EXPOG))
+                * gamma(Int(1) + mp_namelist.MUG)
+                / exp((Int(1) + mp_namelist.MUG) / (mp_namelist.MUG + Int(3)) * log(mp_config.NORMG))
+                * exp(Float(2.0) * log(mp_config.EXPOG))
             )
         mp_config.CGMLT[2] = mp_config.CGSUB[1]
         mp_config.CGMLT[3] = mp_config.CGSUB[2]
@@ -740,16 +801,16 @@ class GFDLMPV3(NDSLRuntime):
         # rain freezing, Lin et al. (1983)
 
         mp_config.CGFR[0] = (
-            1.0e2
-            / 36
+            Float(1.0e2)
+            / Int(36)
             * pisq
             * mp_namelist.N0R_SIG
             * constants.RHOR
-            * gamma(6 + mp_namelist.MUR)
-            / exp((6 + mp_namelist.MUR) / (mp_namelist.MUR + 3) * log(mp_config.NORMR))
-            * exp(-3.0 * log(mp_config.EXPOR))
+            * gamma(Int(6) + mp_namelist.MUR)
+            / exp((Int(6) + mp_namelist.MUR) / (mp_namelist.MUR + Int(3)) * log(mp_config.NORMR))
+            * exp(Float(-3.0) * log(mp_config.EXPOR))
         )
-        mp_config.CGFR[1] = 0.66
+        mp_config.CGFR[1] = Float(0.66)
 
     def check_config(self, namelist: GFDLMPV3NamelistConfig, config: GFDLMPV3CloudMPConfig):
         """Checks for any flags that are no meeting the expected value.
@@ -837,7 +898,7 @@ class GFDLMPV3(NDSLRuntime):
         self._set_value_2d(field=state.precipitation_at_surface.graupel, value=Float(0.0))
 
         # reset gfdl locals to zero
-        self._set_value_2d(field=locals.dcloud_fractiondt, value=Float(0.0))
+        self._set_value(field=locals.dcloud_fraction_dt, value=Float(0.0))
         self._set_value(field=state.non_anvil_large_scale.evaporation, value=Float(0.0))
         self._set_value(field=state.non_anvil_large_scale.sublimation, value=Float(0.0))
 

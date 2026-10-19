@@ -1,9 +1,9 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, log10, sqrt
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, log10, sqrt, float64
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64
 from ndsl.stencils.basic_operations import copy, set_value
-from ndsl.stencils.basic_operations_2d import copy_2d
+from ndsl.stencils.basic_operations_2d import copy_2d, set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
@@ -160,8 +160,8 @@ def cloud_fraction(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        cvm: FloatField64 = 0.0
-        total_energy: FloatField64 = 0.0
+        cvm: float64 = 0.0
+        total_energy: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         # calculate moist heat capacity and latent heat coefficients
@@ -355,7 +355,8 @@ def convert_temperature_start(
 
 def convert_temperature_end(
     t_state: FloatField,
-    t_local: FloatField,
+    t_local: FloatField64,
+    dz: FloatField,
     vapor: FloatField,
     ice: FloatField,
     liquid: FloatField,
@@ -369,16 +370,16 @@ def convert_temperature_end(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        c8: FloatField64 = 0.0
-        cp8: FloatField64 = 0.0
-        con_r8: FloatField64 = 0.0
+        c8: float64 = 0.0
+        cp8: float64 = 0.0
+        con_r8: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         if DO_INLINE_MP:
             total_condensate = liquid + rain + ice + snow + graupel
             if CP_HEATING:
                 con_r8 = ONE_R8 - (vapor + total_condensate)
-                c8 = moist_heat_capacity_4(con_r8, vapor, total_liquid, total_solid) * C_AIR
+                c8 = moist_heat_capacity_4(con_r8, vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
                 cp8 = con_r8 * CP_AIR + vapor * CP_VAP + total_liquid * C_LIQ + total_solid * C_ICE
                 dz = dz / t_state
                 t_state = t_state + (t_local * ((1.0 + ZVIR * vapor) * (1.0 - total_condensate)) - t_state) * c8 / cp8
@@ -458,8 +459,8 @@ def fix_negative_water_species(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        cvm: FloatField64 = 0.0
-        total_energy: FloatField64 = 0.0
+        cvm: float64 = 0.0
+        total_energy: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         # calculate moist heat capacity and latent heat coefficients
@@ -482,7 +483,7 @@ def fix_negative_water_species(
             T_WFR=T_WFR,
         )
 
-    with computation(PARALLEL), interval(...):  # dqv, dql, dqr, dqi, dqs, dqg
+    with computation(FORWARD), interval(...):  # dqv, dql, dqr, dqi, dqs, dqg
         ## fix negative solid-phase hydrometeors
         # if cloud ice < 0, borrow from snow
         if ice < 0.0:
@@ -692,7 +693,7 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
 
     # initialize 64 bit internal field
     with computation(PARALLEL), interval(...):
-        con_r8: FloatField64 = 0.0
+        con_r8: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         local_vapor = vapor
@@ -808,7 +809,7 @@ def radar_reflectivity(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        z_e: FloatField64 = 0.0
+        z_e: float64 = 0.0
 
     with computation(FORWARD), interval(0, 1):
         # initialize internal constants
@@ -1024,8 +1025,8 @@ def restore_and_update_humidities(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        con_r8: FloatField64 = 0.0
-        c8: FloatField64 = 0.0
+        con_r8: float64 = 0.0
+        c8: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         # 1. Calculate the NEW total-to-dry mass ratio
@@ -1123,8 +1124,8 @@ def sedi_momentum_part_1(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        c: FloatField64 = 0.0
-        t_uv: FloatField64 = 0.0
+        c: float64 = 0.0
+        t_uv: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         c = moist_heat_capacity_6(vapor, ice, liquid, graupel, rain, snow, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
@@ -1160,8 +1161,8 @@ def sedi_momentum_part_2(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        c: FloatField64 = 0.0
-        t_w: FloatField64 = 0.0
+        c: float64 = 0.0
+        t_w: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         c = moist_heat_capacity_6(vapor, ice, liquid, graupel, rain, snow, C1_VAP, C1_LIQ, C1_ICE) * C_AIR
@@ -1169,7 +1170,7 @@ def sedi_momentum_part_2(
         t = t + t_w
 
 
-def set_value_64_bit(field: FloatField64, value: Float64) -> None:
+def set_value_2d_64_bit(field: FloatFieldIJ64, value: Float64) -> None:
     """
     Sets every element of a field to a single value.
 
@@ -1177,7 +1178,7 @@ def set_value_64_bit(field: FloatField64, value: Float64) -> None:
         field: output field
         value: value of Float type
     """
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(0, 1):
         field = value
 
 
@@ -1210,12 +1211,12 @@ def total_energy_and_water(
     save_te_loss: Bool,
     total_energy_loss: FloatFieldIJ64,
 ):
-    from __externals__ import C_AIR, DT, HYDROSTATIC, LI00, LV00
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, DT, HYDROSTATIC, LI00, LV00
 
     # initialize 64 bit internal fields
     with computation(PARALLEL), interval(...):
-        cvm: FloatField64 = 0.0
-        con_r8: FloatField64 = 0.0
+        cvm: float64 = 0.0
+        con_r8: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         total_liquid = cloud_liquid + precip_rain
@@ -1223,9 +1224,9 @@ def total_energy_and_water(
         total_condensate = total_liquid + total_solid
         con_r8 = ONE_R8 - (cloud_vapor + total_condensate)
         if moist_q:
-            cvm = moist_heat_capacity_4(con_r8, cloud_vapor, total_liquid, total_solid)
+            cvm = moist_heat_capacity_4(con_r8, cloud_vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
         else:
-            cvm = moist_heat_capacity_3(cloud_vapor, total_liquid, total_solid)
+            cvm = moist_heat_capacity_3(cloud_vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
 
         total_energy = (cvm * t_local + LV00 * cloud_vapor - LI00 * total_solid) * C_AIR
         if HYDROSTATIC:
@@ -1235,13 +1236,14 @@ def total_energy_and_water(
         total_energy = RGRAV * total_energy * dp
         total_water = RGRAV * (cloud_vapor + total_condensate) * dp
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         total_energy_b = dtotal_energy + (LV00 * C_AIR * precip_vapor - LI00 * C_AIR * (precip_ice + precip_snow + precip_graupel)) * DT / 86400 + sen * DT + stress * DT
         total_water_b = (precip_vapor + precip_liquid + precip_rain + precip_ice + precip_snow + precip_graupel) * DT / 86400
 
-    if save_te_loss:
-        # total energy change due to sedimentation and its heating
-        total_energy_loss = dtotal_energy
+    with computation(FORWARD), interval(0, 1):
+        if save_te_loss:
+            # total energy change due to sedimentation and its heating
+            total_energy_loss = dtotal_energy
 
 
 class GFDLMPV3Driver(NDSLRuntime):
@@ -1361,7 +1363,11 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._eis_factor_and_rates = stencil_factory.from_dims_halo(
             func=eis_factor_and_rates,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"CPAUT0": mp_config.CPAUT0},
+            externals={
+                "CPAUT0": mp_config.CPAUT0,
+                "RTHRESHS": mp_namelist.RTHRESHS,
+                "RTHRESHU": mp_namelist.RTHRESHU,
+            },
         )
         self._fix_negative_water_species = stencil_factory.from_dims_halo(
             func=fix_negative_water_species,
@@ -1485,65 +1491,72 @@ class GFDLMPV3Driver(NDSLRuntime):
             func=set_value,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-        self._set_value_64_bit = stencil_factory.from_dims_halo(
-            func=set_value_64_bit,
+        self._set_value_2d = stencil_factory.from_dims_halo(
+            func=set_value_2d,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+        self._set_value_2d_64_bit = stencil_factory.from_dims_halo(
+            func=set_value_2d_64_bit,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._total_energy_and_water = stencil_factory.from_dims_halo(
             func=total_energy_and_water,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
+                "C_AIR": mp_config.C_AIR,
                 "DT": gfdl_1m_config.DT,
                 "HYDROSTATIC": gfdl_1m_config.PHYS_HYDROSTATIC,
                 "LI00": mp_config.LI00,
                 "LV00": mp_config.LV00,
-                "C_AIR": mp_config.C_AIR,
             },
         )
 
         # dummy fields that are used as placeholders for optional inputs to stencils that are not called
         # they exist only as a thing to pass to stencils, since all inputs must always be supplied,
         # regardless of whether the associated option is enabled, and Float(0.0) cannot be supplied as an input
-        self._dummy_field_no_read_no_write_2d_64_bit = quantity_factory.zeros([I_DIM, J_DIM], units="NOREADWRITE", dtype=Float64)
+        self._dummy_field_no_read_no_write_2d_64_bit = quantity_factory.zeros([I_DIM, J_DIM], units="NOREADWRITE", dtype=Float64, allow_mismatch_float_precision=True)
         self._all_zeros_no_write_3d = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], units="NOWRITE", dtype=Float)
 
     def __call__(self, state: GFDL1MState, gfdl_1m_locals: GFDL1MLocals):
         # -----------------------------------------------------------------------
         # reset mp locals to zero
         # -----------------------------------------------------------------------
-        self._set_value(field=self._gfdl_mp_v3_locals.mppcw, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppew, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppe1, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mpper, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppdi, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppd1, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppds, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppdg, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppsi, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mpps1, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppss, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppsg, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppfw, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppfr, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppar, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppas, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppag, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mpprs, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mpprg, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppxr, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppxs, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppxg, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppmi, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppms, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppmg, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppm1, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppm2, value=Float(0.0))
-        self._set_value(field=self._gfdl_mp_v3_locals.mppm3, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppcw, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppew, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppe1, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mpper, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppdi, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppd1, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppds, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppdg, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppsi, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mpps1, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppss, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppsg, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppfw, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppfr, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppar, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppas, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppag, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mpprs, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mpprg, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppxr, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppxs, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppxg, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppmi, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppms, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppmg, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppm1, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppm2, value=Float(0.0))
+        self._set_value_2d(field=self._gfdl_mp_v3_locals.mppm3, value=Float(0.0))
 
         # -----------------------------------------------------------------------
         # initialization of total energy difference
         # -----------------------------------------------------------------------
-        self._set_value_64_bit(field=self._gfdl_mp_v3_locals.total_energy.delta, value=Float64(0.0))
+        self._set_value_2d_64_bit(field=self._gfdl_mp_v3_locals.total_energy.delta, value=Float64(0.0))
         self._set_value(field=self._gfdl_mp_v3_locals.tracer_dilution_adjustment, value=Float(1.0))
 
         # -----------------------------------------------------------------------
@@ -1667,7 +1680,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             local_u=self._gfdl_mp_v3_locals.u,
             v=state.v,
             local_v=self._gfdl_mp_v3_locals.v,
-            w=state.w,
+            w=state.vertical_motion.velocity,
             local_w=self._gfdl_mp_v3_locals.w,
         )
 
@@ -1839,7 +1852,7 @@ class GFDLMPV3Driver(NDSLRuntime):
                 graupel=self._gfdl_mp_v3_locals.mixing_ratio.graupel,
                 rain=self._gfdl_mp_v3_locals.mixing_ratio.rain,
                 snow=self._gfdl_mp_v3_locals.mixing_ratio.snow,
-                w=state.w,
+                w=state.vertical_motion.velocity,
                 local_w=self._gfdl_mp_v3_locals.w,
             )
 
@@ -1931,7 +1944,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             self._copy(input=self._gfdl_mp_v3_locals.v, output=state.v)
 
         if self._mp_namelist.DO_SEDI_W:
-            self._copy(input=self._gfdl_mp_v3_locals.w, output=state.w)
+            self._copy(input=self._gfdl_mp_v3_locals.w, output=state.vertical_motion.velocity)
 
         # -----------------------------------------------------------------------
         # total_energy_checker
@@ -1988,6 +2001,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._convert_temperature_end(
             t_state=state.t,
             t_local=self._gfdl_mp_v3_locals.t,
+            dz=self._gfdl_mp_v3_locals.dz,
             vapor=self._gfdl_mp_v3_locals.mixing_ratio.vapor,
             ice=self._gfdl_mp_v3_locals.mixing_ratio.ice,
             liquid=self._gfdl_mp_v3_locals.mixing_ratio.liquid,

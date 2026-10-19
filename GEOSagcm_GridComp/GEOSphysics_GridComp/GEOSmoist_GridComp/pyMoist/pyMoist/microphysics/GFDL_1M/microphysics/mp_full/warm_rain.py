@@ -339,7 +339,6 @@ def autoconversion_part_2(
     cloud_fraction: FloatField,
     liquid_internal: FloatField,
     cloud_fraction_internal: FloatField,
-    h_var: FloatField,
     ccn: FloatField,
     mppar: FloatFieldIJ,
     cpaut: FloatFieldIJ,
@@ -358,7 +357,6 @@ def autoconversion_part_2(
         rain (FloatField)
         snow (FloatField)
         cloud_fraction (FloatField)
-        h_var (FloatField)
         ccn (FloatField)
         mppar (FloatFieldIJ)
         cpaut (FloatFieldIJ)
@@ -641,7 +639,8 @@ class WarmRain(NDSLRuntime):
             rain=gfdl_mp_v3_locals.mixing_ratio.rain,
             snow=gfdl_mp_v3_locals.mixing_ratio.snow,
             cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            h_var=gfdl_mp_v3_locals.h_var,
+            liquid_internal=self._warm_rain_locals.liquid_internal,
+            cloud_fraction_internal=self._warm_rain_locals.cloud_fraction_internal,
             ccn=gfdl_mp_v3_locals.ccn,
             mppar=gfdl_mp_v3_locals.mppar,
             cpaut=gfdl_mp_v3_locals.cpaut,

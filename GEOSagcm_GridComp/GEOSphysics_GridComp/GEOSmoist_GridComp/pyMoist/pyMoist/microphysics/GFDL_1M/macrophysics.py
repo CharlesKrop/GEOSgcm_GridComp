@@ -5,6 +5,7 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.basic_operations import add, copy
+from ndsl.stencils.basic_operations_2d import set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
@@ -18,9 +19,9 @@ def compute_macrophysics_factors(
     estimated_inversion_strength: FloatFieldIJ,
     surface_type: IntFieldIJ,
     p_mb: FloatField,
-    boundary_layer_level_for_uw_shallow_conv: IntFieldIJ,
-    minrhcrit: FloatFieldIJ,
-    turnrhcrit: FloatFieldIJ,
+    boundary_layer_level_for_uw_shallow_conv: FloatFieldIJ,
+    min_rh_crit: FloatFieldIJ,
+    turn_rh_crit: FloatFieldIJ,
 ):
     """Compute macrophysics factors based on estimated inversion strength and surface conditions.
 
@@ -28,21 +29,21 @@ def compute_macrophysics_factors(
         estimated_inversion_strength (FloatFieldIJ)
         surface_type (IntFieldIJ)
         p_mb (FloatField)
-        boundary_layer_level_for_uw_shallow_conv (IntFieldIJ)
-        minrhcrit (FloatFieldIJ)
-        turnrhcrit (FloatFieldIJ)
+        boundary_layer_level_for_uw_shallow_conv (FloatFieldIJ)
+        min_rh_crit (FloatFieldIJ)
+        turn_rh_crit (FloatFieldIJ)
     """
     from __externals__ import MIN_RH_STABLE, MIN_RH_UNSTABLE, TURNRHCRIT_PARAM
 
     with computation(FORWARD), interval(0, 1):
         fac_eis = compute_estimated_inversion_strength_factor(estimated_inversion_strength)
-        minrhcrit = MIN_RH_UNSTABLE * (1.0 - fac_eis) + MIN_RH_STABLE * fac_eis
-        minrhcrit = max(0.7, minrhcrit)
+        min_rh_crit = MIN_RH_UNSTABLE * (1.0 - fac_eis) + MIN_RH_STABLE * fac_eis
+        min_rh_crit = max(0.7, min_rh_crit)
 
         if TURNRHCRIT_PARAM <= 0.0:
-            turnrhcrit = p_mb.at(K=boundary_layer_level_for_uw_shallow_conv) - 50
+            turn_rh_crit = p_mb.at(K=int(boundary_layer_level_for_uw_shallow_conv)) - 50
         else:
-            turnrhcrit = TURNRHCRIT_PARAM
+            turn_rh_crit = TURNRHCRIT_PARAM
 
 
 def compute_critical_relative_humidity(
@@ -143,6 +144,14 @@ class GFDL1MMacrophysicsLocals(LocalState):
             "dtype": Float,
         }
     )
+    temporary_2d: Local = dataclasses.field(
+        metadata={
+            "name": "temporary_2d",
+            "dims": [I_DIM, J_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
     temporary_3d: Local = dataclasses.field(
         metadata={
             "name": "temporary_3d",
@@ -189,6 +198,16 @@ class GFDL1MMacrophysics(NDSLRuntime):
         # initialize class specific locals
         self._locals = GFDL1MMacrophysicsLocals.make_locals(quantity_factory)
 
+        # construct stencils
+        self._add = stencil_factory.from_dims_halo(
+            func=add,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+        self._compute_critical_relative_humidity = stencil_factory.from_dims_halo(
+            func=compute_critical_relative_humidity,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"MAX_RH_CRIT": config.MAX_RH_CRIT},
+        )
         self._compute_macrophysics_factors = stencil_factory.from_dims_halo(
             func=compute_macrophysics_factors,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -198,23 +217,27 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 "TURNRHCRIT_PARAM": config.TURNRHCRIT,
             },
         )
-
-        self._fix_up_clouds = stencil_factory.from_dims_halo(
-            func=fix_up_clouds,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-        )
-
-        self._compute_critical_relative_humidity = stencil_factory.from_dims_halo(
-            func=compute_critical_relative_humidity,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"MAX_RH_CRIT": config.MAX_RH_CRIT},
-        )
-
         self._copy = stencil_factory.from_dims_halo(
             func=copy,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-
+        self._evaporate = stencil_factory.from_dims_halo(
+            func=evaporate,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={
+                "DTIME": config.DT,
+                "CCW_EVAP_EFF": config.CCW_EVAP_EFF,
+            },
+        )
+        self._fill_negative_q = stencil_factory.from_dims_halo(
+            func=fill_negative_q,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"DTIME": config.DT},
+        )
+        self._fix_up_clouds = stencil_factory.from_dims_halo(
+            func=fix_up_clouds,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
         self._hydrostatic_pdf = stencil_factory.from_dims_halo(
             func=hydrostatic_pdf,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -224,22 +247,15 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 "USE_BERGERON": config.USE_BERGERON,
             },
         )
-
         self._melt_freeze = stencil_factory.from_dims_halo(
             func=melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DTIME": config.DT},
         )
-
-        self._evaporate = stencil_factory.from_dims_halo(
-            func=evaporate,
+        self._set_value_2d = stencil_factory.from_dims_halo(
+            func=set_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={
-                "DTIME": config.DT,
-                "CCW_EVAP_EFF": config.CCW_EVAP_EFF,
-            },
         )
-
         self._sublimate = stencil_factory.from_dims_halo(
             func=sublimate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -248,22 +264,10 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 "CCI_EVAP_EFF": config.CCI_EVAP_EFF,
             },
         )
-
         self._update_output_by_dt = stencil_factory.from_dims_halo(
             func=update_output_by_dt,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DTIME": config.DT},
-        )
-
-        self._fill_negative_q = stencil_factory.from_dims_halo(
-            func=fill_negative_q,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DTIME": config.DT},
-        )
-
-        self._add = stencil_factory.from_dims_halo(
-            func=add,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
     def __call__(self, state: GFDL1MState, locals: GFDL1MLocals):
@@ -274,7 +278,8 @@ class GFDL1MMacrophysics(NDSLRuntime):
             surface_type=state.surface_type,
             p_mb=locals.p_mb,
             boundary_layer_level_for_uw_shallow_conv=state.boundary_layer_level_for_uw_shallow_conv,
-            turnrhcrit=locals.turnrhcrit,
+            min_rh_crit=self._locals.min_rh_crit,
+            turn_rh_crit=self._locals.turn_rh_crit,
         )
 
         # ensure physically reasonable values before macrophysics
@@ -346,9 +351,11 @@ class GFDL1MMacrophysics(NDSLRuntime):
         )
 
         # melt/freeze particles if enabled
-        if self._config.MELT_FREEZE_CLOUD_MACRO:
+        if self._config.MELTFRZ_CLDMACRO:
+            # since we are explicitly operating on convective types pass convection_fraction always as 1.0
+            self._set_value_2d(field=self._locals.temporary_2d, value=Float(1.0))
             self._melt_freeze(
-                convection_fraction=Float(1.0),  # since we are explicitly operating on convective types pass convection_fraction always as 1.0
+                convection_fraction=self._locals.temporary_2d,
                 surface_type=state.surface_type,
                 t=state.t,
                 liquid=state.mixing_ratio.convective_liquid,
@@ -418,11 +425,11 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._update_output_by_dt(input=state.v, output=state.tendencies.dv_dt_macro)
         self._update_output_by_dt(input=state.t, output=state.tendencies.dt_dt_macro)
         self._update_output_by_dt(input=state.mixing_ratio.vapor, output=state.tendencies.dvapor_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, output=self._locals.temporary_3d)
+        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
         self._update_output_by_dt(input=self._locals.temporary_3d, output=state.tendencies.dliquid_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, output=self._locals.temporary_3d)
+        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
         self._update_output_by_dt(input=self._locals.temporary_3d, output=state.tendencies.dice_dt_macro)
-        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, output=self._locals.temporary_3d)
+        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
         self._update_output_by_dt(input=self._locals.temporary_3d, output=state.tendencies.dcloud_fraction_dt_macro)
         self._update_output_by_dt(input=state.mixing_ratio.graupel, output=state.tendencies.dgraupel_dt_macro)
         self._update_output_by_dt(input=state.mixing_ratio.rain, output=state.tendencies.drain_dt_macro)
