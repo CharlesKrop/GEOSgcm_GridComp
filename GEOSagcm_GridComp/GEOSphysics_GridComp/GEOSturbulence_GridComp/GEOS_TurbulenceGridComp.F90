@@ -25,6 +25,9 @@ module GEOS_TurbulenceGridCompMod
 #endif
 
   implicit none
+
+  logical :: USE_PYTURB_SHOC = .false.
+
   private
 
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -3286,6 +3289,11 @@ end if
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
+      call MAPL_GetResource(MAPL, USE_PYTURB_SHOC, 'USE_PYTURB_SHOC:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+      if (USE_PYTURB_SHOC) then
+       call MAPL_ConfigSetAttribute(CF, DT, 'DSL__SHOC_DT:', RC=STATUS); VERIFY_(STATUS)
+       call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
+      else
        call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
@@ -3298,6 +3306,7 @@ end if
        call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
+      endif ! ENDIF USE_PYTURB_SHOC
      else
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , RC=STATUS); VERIFY_(STATUS)
      end if
@@ -3975,49 +3984,61 @@ end if
         DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
         DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
 
-        call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
-                       !== Inputs ==
-                       SH(:,:),               &
-                       LOBUKHOV(:,:),         &
-                       PLO(:,:,1:LM),         &
-                       ZL0(:,:,0:LM),         &
-                       Z(:,:,1:LM),           &
-                       U(:,:,1:LM),           &
-                       V(:,:,1:LM),           &
-                       OMEGA(:,:,1:LM),       &
-                       T(:,:,1:LM),           &
-                       Q(:,:,1:LM),           &
-                       QI(:,:,1:LM),          &
-                       QL(:,:,1:LM),          &
-                       QPI(:,:,1:LM),         &
-                       QPL(:,:,1:LM),         &
-                       QA(:,:,1:LM),          &
-                       WTHV2(:,:,1:LM),       &
-                       BUOYF(:,:,1:LM),       &
-                       MFTKE(:,:,0:LM),       &
-                       DRYCBLH(:,:),          &    
-                       !== Input-Outputs ==
-                       TKESHOC(:,:,1:LM),     &
-                       TKH(:,:,1:LM),         &
-                       !== Outputs ==
-                       KM(:,:,1:LM),          &
-                       ISOTROPY(:,:,1:LM),    &
-                       TKEDISS,               &
-                       !== Diagnostics ==  ! not used elsewhere
-                       TKEBUOY,               &
-                       TKESHEAR,              &
-                       LSHOC,                 &
-                       LSHOC1,                &
-                       LSHOC2,                &
-                       LSHOC3,                &
-                       BRUNTSHOC,             &
-                       RI,                    &
-                       SHOCPRNUM,             &
-                       !== Tuning params ==
-                       SHOCPARAMS )
+        if (USE_PYTURB_SHOC) then
+      
+          call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
 
-        if (associated(TKEDISSx)) TKEDISSx = TKEDISS
-        KH(:,:,1:LM) = TKH(:,:,1:LM)
+        else
+
+          call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
+                        !== Inputs ==
+                        SH(:,:),               &
+                        LOBUKHOV(:,:),         &
+                        PLO(:,:,1:LM),         &
+                        ZL0(:,:,0:LM),         &
+                        Z(:,:,1:LM),           &
+                        U(:,:,1:LM),           &
+                        V(:,:,1:LM),           &
+                        OMEGA(:,:,1:LM),       &
+                        T(:,:,1:LM),           &
+                        Q(:,:,1:LM),           &
+                        QI(:,:,1:LM),          &
+                        QL(:,:,1:LM),          &
+                        QPI(:,:,1:LM),         &
+                        QPL(:,:,1:LM),         &
+                        QA(:,:,1:LM),          &
+                        WTHV2(:,:,1:LM),       &
+                        BUOYF(:,:,1:LM),       &
+                        MFTKE(:,:,0:LM),       &
+                        DRYCBLH(:,:),          &    
+                        !== Input-Outputs ==
+                        TKESHOC(:,:,1:LM),     &
+                        TKH(:,:,1:LM),         &
+                        !== Outputs ==
+                        KM(:,:,1:LM),          &
+                        ISOTROPY(:,:,1:LM),    &
+                        TKEDISS,               &
+                        !== Diagnostics ==  ! not used elsewhere
+                        TKEBUOY,               &
+                        TKESHEAR,              &
+                        LSHOC,                 &
+                        LSHOC1,                &
+                        LSHOC2,                &
+                        LSHOC3,                &
+                        BRUNTSHOC,             &
+                        RI,                    &
+                        SHOCPRNUM,             &
+                        !== Tuning params ==
+                        SHOCPARAMS )
+
+          if (associated(TKEDISSx)) TKEDISSx = TKEDISS
+          KH(:,:,1:LM) = TKH(:,:,1:LM)
+
+        endif ! ENDIF USE_PYTURB_SHOC
+
+        if (USE_PYTURB_SHOC) then
+         call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
+        endif
 
         call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
         VERIFY_(STATUS)
