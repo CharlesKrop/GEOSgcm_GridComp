@@ -6,8 +6,6 @@ from ndsl import Quantity, ndsl_log
 from ndsl.dsl.gt4py import GlobalTable
 from ndsl.dsl.typing import Bool, Float, Float64, Int
 
-import pyMoist.microphysics.GFDL_1M.microphysics.constants as constants
-
 
 @dataclasses.dataclass
 class GFDLMPV3NamelistConfig:
@@ -563,7 +561,7 @@ class GFDLMPV3NamelistConfig:
         """Instantiate config from the gfdl_mp_nml group of a Fortran namelist file.
 
         For fields present in gfdl_mp_nml, cast and use that value.
-        Otherwise, fall back to the default constant in constants.py.
+        Otherwise, use the default value defined by the dataclass.
         """
         if not os.path.isfile(nml_path):
             ndsl_log.error(f"[GFDL1M Microphysics: {nml_path} does not exist")
@@ -600,14 +598,8 @@ class GFDLMPV3NamelistConfig:
                 # Value came from the namelist file - cast to the declared field type
                 value = mp_nml[key]
                 kwargs[name] = field.type(value)
-            else:
-                # Not overridden in the namelist - fall back to constants.py
-                if not hasattr(constants, "_" + name):
-                    msg = f"[GFDL1M Microphysics]: '{name}' does not have a fallback value specified, " f"it must be included in the namelist"
-                    ndsl_log.error(msg)
-                    raise AttributeError(msg)
-                kwargs[name] = getattr(constants, "_" + name)
 
+        # Fields not overridden by the namelist retain their dataclass defaults.
         return cls(**kwargs)
 
 

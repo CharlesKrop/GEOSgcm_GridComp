@@ -1,19 +1,19 @@
 import dataclasses
 
-from ndsl import Local, LocalState, QuantityFactory, StencilFactory, ndsl_log
+from ndsl import Local, LocalState, QuantityFactory, StencilFactory, ndsl_log, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, log10, max
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, log10, max, float64
 from ndsl.dsl.typing import BoolFieldIJ, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64, Int
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full_locals import MPFullLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc_wrapper, moist_total_energy, terminal_velocity_graupel_rain_snow_wrapper
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 
 
 def terminal_velocity_ice(
@@ -115,72 +115,6 @@ def set_heights(
             zt[0, 0, 1] = zt - DZ_MIN
 
 
-@function
-def implicit_fall(
-    ze: FloatField,
-    terminal_velocity: FloatField,
-    dry_dp: FloatField,
-    condensate: FloatField,
-    precip: FloatField,
-    precip_at_surface: FloatFieldIJ,
-    DT: Float,
-    k_end: Int,
-    # temporaries that must be provided by the stencil
-    dd: FloatField,
-    dz: FloatField,
-    condensate_modified: FloatField,
-):
-    """Compute precipitation throughout the colmun and at the surface.
-
-    This function must be called with a interval(0, 1) statement for the indexing to work properly
-
-    Args:
-        ze (FloatField)
-        terminal_velocity (FloatField)
-        dry_dp (FloatField)
-        condensate (FloatField)
-        precip_at_surface (FloatFieldIJ)
-        precip (FloatField)
-        DT (Float)
-        k_end (Int)
-        dd (FloatField)
-        dz (FloatField)
-        condensate_modified (FloatField)
-    """
-
-    level = 0
-    while level <= k_end:
-        dz[0, 0, level] = ze[0, 0, level] - ze[0, 0, level + 1]
-        dd = DT * terminal_velocity
-        condensate[0, 0, level] = condensate[0, 0, level] * dry_dp
-        level += 1
-
-    condensate_modified = condensate / (dz + dd)
-    level = 1
-    while level <= k_end:
-        condensate_modified[0, 0, level] = (condensate[0, 0, level] + condensate_modified[0, 0, level - 1] * dd[0, 0, level - 1]) / (dz[0, 0, level] + dd[0, 0, level])
-        level += 1
-
-    level = 0
-    while level <= k_end:
-        condensate_modified[0, 0, level] = condensate_modified[0, 0, level] * dz[0, 0, level]
-        level += 1
-
-    precip = condensate - condensate_modified
-    level = 1
-    while level < k_end:
-        precip[0, 0, level] = precip[0, 0, level - 1] + condensate[0, 0, level] - condensate_modified[0, 0, level]
-        level += 1
-    precip = precip + precip[0, 0, k_end]
-
-    level = 0
-    while level <= k_end:
-        condensate[0, 0, level] = condensate_modified[0, 0, level] / dry_dp[0, 0, level]
-        level += 1
-
-    return condensate, precip, precip_at_surface
-
-
 def terminal_fall(
     t: FloatField64,
     ze: FloatField,
@@ -208,10 +142,10 @@ def terminal_fall(
     with computation(FORWARD), interval(0, 1):
         # initialize 2d internals
         precip_fall: BoolFieldIJ = False
-        total_energy_1: FloatField64 = 0.0
-        total_energy_2: FloatField64 = 0.0
-        sum_total_energy_1: FloatField64 = 0.0
-        sum_total_energy_2: FloatField64 = 0.0
+        total_energy_1: float64 = 0.0
+        total_energy_2: float64 = 0.0
+        sum_total_energy_1: float64 = 0.0
+        sum_total_energy_2: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         # initialize 3d internals
@@ -237,7 +171,7 @@ def terminal_fall(
         if mode == 5:
             internal_condensate = snow
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         # check if precip will fall anywhere in the column
         # check_column function in original Fortran - inlined here as it was a three line function used only once
         if internal_condensate > QFMIN:
@@ -274,25 +208,51 @@ def terminal_fall(
     with computation(FORWARD), interval(0, 1):
         # NOTE once it is possible to call stencils from stencils this section (primarially functions called)
         # can be rewritten to interval(...) instead of manual k loops
+        # this can technically be done now, but it requires either blowing this single computation/interval statement into an incomprehensible number of statements
+        # or splitting the terminal_fall stencil into a part one (everything before this) part two (this statement, still potentially
+        # broken into multiple smaller statments), and part three (everything after this statement)
+        # more fundamentally, this "condtional between the I/J loop and K loop" pattern does not currently fit NDSL well. further tooling is required
+        # ckrop 10/2026
         if precip_fall:
             if SEDFLAG == 1:
-                implicit_fall(
-                    ze,
-                    terminal_velocity,
-                    dry_dp,
-                    internal_condensate,
-                    precip,
-                    precip_at_surface,
-                    DT,
-                    k_end,
-                    internal_dd,
-                    internal_dz,
-                    internal_condensate_modified,
-                )
+                level = 0
+                while level <= k_end:
+                    internal_dz[0, 0, level] = ze[0, 0, level] - ze[0, 0, level + 1]
+                    internal_dd = DT * terminal_velocity
+                    internal_condensate[0, 0, level] = internal_condensate[0, 0, level] * dry_dp
+                    level += 1
+
+                internal_condensate_modified = internal_condensate / (internal_dz + internal_dd)
+                level = 1
+                while level <= k_end:
+                    internal_condensate_modified[0, 0, level] = (
+                        internal_condensate[0, 0, level] + internal_condensate_modified[0, 0, level - 1] * internal_dd[0, 0, level - 1]
+                    ) / (internal_dz[0, 0, level] + internal_dd[0, 0, level])
+                    level += 1
+
+                level = 0
+                while level <= k_end:
+                    internal_condensate_modified[0, 0, level] = internal_condensate_modified[0, 0, level] * internal_dz[0, 0, level]
+                    level += 1
+
+                precip = internal_condensate - internal_condensate_modified
+                level = 1
+                while level < k_end:
+                    precip[0, 0, level] = precip[0, 0, level - 1] + internal_condensate[0, 0, level] - internal_condensate_modified[0, 0, level]
+                    level += 1
+                precip = precip + precip[0, 0, k_end]
+
+                level = 0
+                while level <= k_end:
+                    internal_condensate[0, 0, level] = internal_condensate_modified[0, 0, level] / dry_dp[0, 0, level]
+                    level += 1
+
             if SEDFLAG == 2:
                 option_not_implemented = True
+
             if SEDFLAG == 3:
                 option_not_implemented = True
+
             if SEDFLAG == 4:
                 option_not_implemented = True
 
@@ -371,7 +331,7 @@ def terminal_fall(
             dtotal_energy = dtotal_energy + sum_total_energy_1 - sum_total_energy_2
 
 
-def ensure_non_negative_at_toa(field):
+def ensure_non_negative_at_toa(field: FloatField):
     with computation(FORWARD), interval(0, 1):
         field = max(0.0, field)
 
@@ -382,6 +342,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "cvm",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -389,6 +350,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "icpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -396,6 +358,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "lcpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -403,6 +366,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "tcpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -410,6 +374,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "tcp3",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -417,6 +382,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "total_energy",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -424,6 +390,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "total_liquid",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -431,6 +398,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "total_solid",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -438,6 +406,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "ze",
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -445,6 +414,7 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "zs",
             "dims": [I_DIM, J_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -452,21 +422,24 @@ class SedimentationLocals(LocalState):
         metadata={
             "name": "zt",
             "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
 
 
-class Sedimentation:
+class Sedimentation(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
-        gfdl_1m_config: GFDL1MConfig,
         mp_config: GFDLMPV3CloudMPConfig,
         mp_namelist: GFDLMPV3NamelistConfig,
-        CONV_FACTOR: Float,
+        DRIVER_DT: Float,
     ):
+        # initialize NDSLRuntime parent class
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
+
         self._set_value_2d = stencil_factory.from_dims_halo(
             func=set_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -519,7 +492,7 @@ class Sedimentation:
         self._set_heights = stencil_factory.from_dims_halo(
             func=set_heights,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"DT": gfdl_1m_config.DT},
+            externals={"DT": DRIVER_DT},
         )
         self._terminal_fall = stencil_factory.from_dims_halo(
             func=terminal_fall,
@@ -532,7 +505,7 @@ class Sedimentation:
                 "DO_SEDI_HEAT": mp_namelist.DO_SEDI_HEAT,
                 "DO_SEDI_UV": mp_namelist.DO_SEDI_UV,
                 "DO_SEDI_W": mp_namelist.DO_SEDI_W,
-                "DT": gfdl_1m_config.DT,
+                "DT": DRIVER_DT,
                 "SEDFLAG": mp_namelist.SEDFLAG,
             },
         )

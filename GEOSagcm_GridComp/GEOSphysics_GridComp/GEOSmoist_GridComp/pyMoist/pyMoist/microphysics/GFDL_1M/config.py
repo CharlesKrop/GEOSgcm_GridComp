@@ -10,6 +10,7 @@ class GFDL1MConfig:
     CCW_EVAP_EFF: Float
     CNV_FRACTION_MAX: Float
     CNV_FRACTION_MIN: Float
+    CWD: str
     DO_GFDL_REFLECTIVITY: Bool
     DT: Int
     FAC_RI: Float

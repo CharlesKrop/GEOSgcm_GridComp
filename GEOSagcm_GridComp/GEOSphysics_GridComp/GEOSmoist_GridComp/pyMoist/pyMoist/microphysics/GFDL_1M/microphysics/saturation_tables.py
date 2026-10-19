@@ -1,11 +1,11 @@
 from mpi4py import MPI
 from ndsl import QuantityFactory, StencilFactory, SubtileGridSizer, ndsl_log
-from ndsl.dsl.gt4py import FORWARD, GlobalTable, K, computation, exp, interval, log, log10
-from ndsl.dsl.typing import Bool, Float, Float32, FloatField, FloatField64, FloatFieldIJ, Int
+from ndsl.dsl.gt4py import FORWARD, GlobalTable, K, computation, exp, interval, log, log10, float64, float32
+from ndsl.dsl.typing import Bool, Float, FloatField, FloatFieldIJ, Int
+from ndsl.constants import I_DIM, J_DIM, K_DIM
 
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import D2_ICE, DC_VAP, DELT, E00, LI2, LV0, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, TICE
 from pyMoist.shared.cloud_processes import ice_fraction
-
 
 GFDLMPV3SaturationTable = GlobalTable[(Float, (int(SATURATION_TABLE_LENGTH)))]
 
@@ -15,10 +15,10 @@ def compute_table_0(
 ):
     with computation(FORWARD), interval(...):
         # ensure all temporaries are 64 bit
-        tem: FloatField64 = 0.0
-        fac0: FloatField64 = 0.0
-        fac1: FloatField64 = 0.0
-        fac2: FloatField64 = 0.0
+        tem: float64 = 0.0
+        fac0: float64 = 0.0
+        fac1: float64 = 0.0
+        fac2: float64 = 0.0
 
     with computation(FORWARD), interval(...):
         tem = SATURATION_TABLE_TMIN + DELT * K
@@ -66,7 +66,7 @@ def compute_table_core(
     with computation(FORWARD), interval(...):
         if K <= N_MIN:
             if do_smith_table:
-                tem = tmin + DELT * Float32(K)
+                tem = tmin + DELT * float32(K)
                 a = -9.09718 * (TICE / tem - 1.0)
                 b = -3.56654 * log10(TICE / tem)
                 c = 0.876793 * (1.0 - tem / TICE)
@@ -83,7 +83,7 @@ def compute_table_core(
     with computation(FORWARD), interval(...):
         if K <= k_end - N_MIN + n_blend:
             if do_smith_table:
-                tem = TICE + DELT * Float32(K - n_blend)
+                tem = TICE + DELT * float32(K - n_blend)
                 a = -7.90298 * (tbasw / tem - 1.0)
                 b = 5.02808 * log10(tbasw / tem)
                 c = -1.3816e-7 * (exp((1.0 - tem / tbasw) * 11.344 * log(10.0)) - 1.0)
@@ -93,9 +93,10 @@ def compute_table_core(
                 if K <= n_blend:
                     esupc = esh
                 else:
-                    table[K + N_MIN - n_blend] = esh
+                    shift = K + N_MIN - n_blend
+                    table[0, 0, shift] = esh
             else:
-                tem = TICE + DELT * Float32(K - n_blend)
+                tem = TICE + DELT * float32(K - n_blend)
                 fac0 = (tem - TICE) / (tem * TICE)
                 fac1 = fac0 * LV0
                 fac2 = (DC_VAP * log(tem / TICE) + fac1) / RVGAS
@@ -103,23 +104,25 @@ def compute_table_core(
                 if K <= n_blend:
                     esupc = esh
                 else:
-                    table[K + N_MIN - n_blend] = esh
+                    shift = K + N_MIN - n_blend
+                    table[0, 0, shift] = esh
 
     # derive blended es over ice and supercooled water between - (n_blend * delt) deg C and 0 deg C
     with computation(FORWARD), interval(...):
         if K <= n_blend:
-            tem = TICE + DELT * Float32(K - n_blend)
+            tem = TICE + DELT * float32(K - n_blend)
             # WMP impose CALIPSO ice polynomial for mixed phase
-            ifrac = ice_fraction(Float32(tem), 0.0, 0.0)
+            ifrac = ice_fraction(float32(tem), 0.0, 0.0)
             wice = ifrac
             wh2o = 1.0 - wice
-            table[K + N_MIN - n_blend] = wice * table[K + N_MIN - n_blend] + wh2o * esupc
+            shift = K + N_MIN - n_blend
+            table[0, 0, shift] = wice * table[0, 0, shift] + wh2o * esupc
 
 
 def compute_dtable(table: FloatField, dtable: FloatField):
     from __externals__ import k_end
 
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, -1):
         if K < k_end:
             dtable = max(0.0, table[0, 0, 1])
 
@@ -138,7 +141,7 @@ class GFDLMPV3Tables:
 
     def __init__(self, stencil_factory: StencilFactory) -> None:
         # enforce an absolute minimum size for tables
-        N_MIN = 1600
+        N_MIN = Int(1600)
         if SATURATION_TABLE_LENGTH < N_MIN:
             ndsl_log.error("FATAL ERROR in GFDLMPV3Tables:" "  n     = ", SATURATION_TABLE_LENGTH, "  n_min = ", N_MIN, "  Table length n must be >= n_min")
             raise ValueError("Table length n must be >= n_min")
@@ -156,16 +159,16 @@ class GFDLMPV3Tables:
         quantity_factory = QuantityFactory(sizer, backend=stencil_factory.backend)
 
         # create table quantities
-        self._table_0 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._table_1 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._table_2 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._table_3 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._table_4 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._dtable_0 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._dtable_1 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._dtable_2 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._dtable_3 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
-        self._dtable_4 = quantity_factory.zeros([1, 1, SATURATION_TABLE_LENGTH], "n/a")
+        self._table_0 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._table_1 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._table_2 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._table_3 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._table_4 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._dtable_0 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._dtable_1 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._dtable_2 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._dtable_3 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
+        self._dtable_4 = quantity_factory.zeros([I_DIM, J_DIM, K_DIM], "n/a")
 
         # Cancel multi-node compile for tables
         # TODO: this should come for free with the rewrite of the gt:X stencils
@@ -182,16 +185,20 @@ class GFDLMPV3Tables:
             func=compute_table_core,
             origin=(0, 0, 0),
             domain=table_compute_domain,
-            externals={"N_MIN": N_MIN},
+            externals={
+                "N_MIN": N_MIN,
+                "k_end": SATURATION_TABLE_LENGTH - 1,
+            },
         )
         self._compute_dtable = stencil_factory.from_origin_domain(
             func=compute_dtable,
             origin=(0, 0, 0),
             domain=table_compute_domain,
+            externals={"k_end": SATURATION_TABLE_LENGTH - 1},
         )
 
         # set up n_blend values for tables 1-4
-        n_blend = [200, 0, 200, 0]
+        n_blend = [Int(200), Int(0), Int(200), Int(0)]
 
         failing_tables = []
         for i, x in enumerate(n_blend):
@@ -243,6 +250,7 @@ _cached_table: GFDLMPV3Tables | None = None
 def get_saturation_vapor_pressure_tables(
     stencil_factory: StencilFactory,
 ) -> GFDLMPV3Tables:
+    global _cached_table
     if _cached_table is None:
         _cached_table = GFDLMPV3Tables(stencil_factory)
     return _cached_table

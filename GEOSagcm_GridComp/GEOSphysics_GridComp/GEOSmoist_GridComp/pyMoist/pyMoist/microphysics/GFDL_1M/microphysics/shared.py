@@ -1,8 +1,8 @@
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, function, interval, log, sqrt
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, function, interval, log, sqrt, float64
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL4, GFDLMPV3TableL5
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, DT_FR, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
 from pyMoist.shared.cloud_processes import ice_fraction
@@ -131,8 +131,8 @@ def calc_mhc_lhc(
         tcp3 (Float64): combined ice + liquid latent heat coefficient
     """
     # ensure 64 bit
-    cvm: Float64 = 0.0
-    total_energy: Float64 = 0.0
+    cvm: float64 = 0.0
+    total_energy: float64 = 0.0
 
     total_liquid = liquid + rain
     total_solid = ice + snow + graupel
@@ -251,50 +251,50 @@ def linear_prof(
         dm (FloatField)
         h_var (FloatField)
     """
-    from __externals__ import IRAIN_F, Z_SLOPE, k_end
+    from __externals__ import Z_SLOPE, k_end
 
     with computation(FORWARD), interval(...):
-        if IRAIN_F == 0 and Z_SLOPE and K >= 1:
+        if Z_SLOPE and K >= 1:
             dprecipitate = 0.5 * (precipitate - precipitate[0, 0, -1])
 
     with computation(FORWARD), interval(0, 1):
-        if IRAIN_F == 0 and Z_SLOPE:
+        if Z_SLOPE:
             dm = 0.0
 
     with computation(FORWARD), interval(...):
-        if IRAIN_F == 0 and Z_SLOPE:
+        if Z_SLOPE:
             # use twice the strength of the positive definiteness limiter (Lin et al. 1994)
             dm = 0.5 * min(abs(dprecipitate + dprecipitate[0, 0, 1]), 0.5 * precipitate)
             if dprecipitate * dprecipitate[0, 0, 1] <= 0.0:
                 if dprecipitate > 0.0:
-                    dm = min(dm, dprecipitate, -dprecipitate[0, 0, 1])
+                    dm = min(dm, min(dprecipitate, -dprecipitate[0, 0, 1]))
                 else:
                     dm = 0.0
 
     with computation(FORWARD), interval(-1, None):
-        if IRAIN_F == 0 and Z_SLOPE:
+        if Z_SLOPE:
             dm = 0.0
 
     with computation(FORWARD), interval(...):
-        if IRAIN_F == 0 and Z_SLOPE:
+        if Z_SLOPE:
             # impose a presumed background horizontal variability that is proportional to the value itself
-            dm = max(dm, 0.0, h_var * precipitate)
+            dm = max(dm, max(0.0, h_var * precipitate))
 
     with computation(FORWARD), interval(...):
-        if not (IRAIN_F == 0 and Z_SLOPE):
+        if not Z_SLOPE:
             dm = max(0.0, h_var * precipitate)
 
 
 @function
 def moist_heat_capacity_3(vapor: Float, total_liquid: Float, total_solid: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
     """moist heat capacity, three input variables"""
-    return Float64(ONE_R8 + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
+    return float64(ONE_R8 + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
 
 
 @function
 def moist_heat_capacity_4(dry: Float64, vapor: Float, total_liquid: Float, total_solid: Float, C1_VAP: Float64, C1_LIQ: Float64, C1_ICE: Float64):
     """moist heat capacity, four input variables"""
-    return Float64(dry + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
+    return float64(dry + vapor * C1_VAP + total_liquid * C1_LIQ + total_solid * C1_ICE)
 
 
 @function
@@ -310,12 +310,12 @@ def moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dp, C_AIR: Fl
     total_liquid = liquid + rain
     total_solid = ice + snow + graupel
     total_condensates = total_liquid + total_solid
-    con_r8 = Float64(ONE_R8 - (vapor + total_condensates))
+    con_r8 = float64(ONE_R8 - (vapor + total_condensates))
     if moist_q:
         cvm = moist_heat_capacity_4(con_r8, vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
     else:
         cvm = moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
-    return Float64(RGRAV * cvm * C_AIR * t * dp)
+    return float64(RGRAV * cvm * C_AIR * t * dp)
 
 
 @function
@@ -386,7 +386,7 @@ def p_bigg(
         total_energy (FloatField64)
         mppfw (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_BIGG, DO_PSD_WATER_NUM, DO_QA, DT, LI00, LI20, LV00, MUW, PCAW, PCBW, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_BIGG, DO_PSD_WATER_NUM, DO_QA, DT, LI00, LI20, LV00, MUW, PCAW, PCBW, T_WFR
 
     with computation(PARALLEL), interval(...):
         if DO_BIGG:
@@ -405,7 +405,7 @@ def p_bigg(
                     # Warmer than -40C: Calculate probabilistic Bigg freezing normally
                     sink = 100.0 / (RHOW * ccn) * DT * (exp(0.66 * tc) - 1.0) * liquid**2
 
-                sink = min(liquid, sink, tc / icpk)
+                sink = min(liquid, min(sink, tc / icpk))
                 mppfw = mppfw + sink * dry_dp * CONV_FACTOR
 
                 t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -422,6 +422,8 @@ def p_bigg(
                     dgraupel=0.0,
                     drain=0.0,
                     dsnow=0.0,
+                    t=t,
+                    total_energy=total_energy,
                     DO_QA=DO_QA,
                     D1_VAP=D1_VAP,
                     D1_ICE=D1_ICE,
@@ -429,6 +431,9 @@ def p_bigg(
                     LI20=LI20,
                     LV00=LV00,
                     T_WFR=T_WFR,
+                    C1_VAP=C1_VAP,
+                    C1_LIQ=C1_LIQ,
+                    C1_ICE=C1_ICE,
                 )
 
 
@@ -470,14 +475,14 @@ def p_complete_freezing(
         total_energy (FloatField64)
         mppfw (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, LI00, LI20, LV00, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, LI00, LI20, LV00, T_WFR
 
     with computation(PARALLEL), interval(...):
         tc = T_WFR - t
 
         if tc > 0.0 and liquid > QCMIN:
             sink = liquid * tc / DT_FR
-            sink = min(liquid, sink, tc / icpk)
+            sink = min(liquid, min(sink, tc / icpk))
             mppfw = mppfw + sink * dry_dp * CONV_FACTOR
 
             t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -494,6 +499,8 @@ def p_complete_freezing(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -501,6 +508,9 @@ def p_complete_freezing(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -555,7 +565,7 @@ def p_graupel_deposition_and_sublimation(
         table_2 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import BLING, BLINH, CONV_FACTOR, D1_ICE, D1_VAP, DO_HAIL, DO_QA, DT, GS_FAC, LI00, LI20, LV00, MUG, MUH, T_SUB, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLING, BLINH, CONV_FACTOR, D1_ICE, D1_VAP, DO_HAIL, DO_QA, DT, GS_FAC, LI00, LI20, LV00, MUG, MUH, T_SUB, T_WFR
 
     with computation(PARALLEL), interval(...):
         if graupel > QPMIN:
@@ -601,7 +611,7 @@ def p_graupel_deposition_and_sublimation(
             else:
                 sink = 0.0
                 if t <= TICE:
-                    sink = max(pgsub, dq, (t - TICE) / tcpk)
+                    sink = max(pgsub, max(dq, (t - TICE) / tcpk))
                 mppdg = mppdg - sink * dry_dp * CONV_FACTOR
 
             t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -618,6 +628,8 @@ def p_graupel_deposition_and_sublimation(
                 dgraupel=-sink,
                 drain=0.0,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -625,6 +637,9 @@ def p_graupel_deposition_and_sublimation(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -682,6 +697,9 @@ def p_ice_deposition_and_sublimation(
         dtable_2 (GFDLMPV3SaturationTable)
     """
     from __externals__ import (
+        C1_ICE,
+        C1_LIQ,
+        C1_VAP,
         CONV_FACTOR,
         D1_ICE,
         D1_VAP,
@@ -750,7 +768,7 @@ def p_ice_deposition_and_sublimation(
                 mppdi = mppdi + sink * dry_dp * CONV_FACTOR
             else:
                 pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
-                sink = max(pidep, tmp, -ice)
+                sink = max(pidep, max(tmp, -ice))
                 sink = sink * one_minus_sigma  # resolution dependent subl 0:1 coarse:fine
                 mppsi = mppsi - sink * dry_dp * CONV_FACTOR
                 # 3D ice sublimation export
@@ -770,6 +788,8 @@ def p_ice_deposition_and_sublimation(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -777,6 +797,9 @@ def p_ice_deposition_and_sublimation(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -852,7 +875,7 @@ def p_snow_deposition_and_sublimation(
         table_2 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import BLINS, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUS, SS_FAC, T_SUB, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLINS, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUS, SS_FAC, T_SUB, T_WFR
 
     with computation(PARALLEL), interval(...):
         if snow > QPMIN:
@@ -899,6 +922,8 @@ def p_snow_deposition_and_sublimation(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=-sink,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -906,6 +931,9 @@ def p_snow_deposition_and_sublimation(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -1002,7 +1030,7 @@ def p_wbf(
         dtable_0 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DO_WBF, DT, LI00, LI20, LV00, PWBF_QI_CRT, T_WFR, TAU_WBF
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DO_WBF, DT, LI00, LI20, LV00, PWBF_QI_CRT, T_WFR, TAU_WBF
 
     with computation(FORWARD), interval(0, 1):
         if DO_WBF:
@@ -1067,6 +1095,8 @@ def p_wbf(
                     dgraupel=0.0,
                     drain=0.0,
                     dsnow=sink - tmp,
+                    t=t,
+                    total_energy=total_energy,
                     DO_QA=DO_QA,
                     D1_VAP=D1_VAP,
                     D1_ICE=D1_ICE,
@@ -1074,6 +1104,9 @@ def p_wbf(
                     LI20=LI20,
                     LV00=LV00,
                     T_WFR=T_WFR,
+                    C1_VAP=C1_VAP,
+                    C1_LIQ=C1_LIQ,
+                    C1_ICE=C1_ICE,
                 )
 
 
@@ -1152,7 +1185,6 @@ def terminal_velocity_graupel_rain_snow_wrapper(
             condensate,
             density,
             density_factor,
-            terminal_velocity,
             tva,
             tvb,
             blin,
@@ -1226,6 +1258,9 @@ def update_hydrometeors_and_temperature(
     LI20: Float64,
     LV00: Float64,
     T_WFR: Float,
+    C1_VAP: Float64,
+    C1_LIQ: Float64,
+    C1_ICE: Float64,
 ):
 
     # save previous total condensate
@@ -1243,7 +1278,7 @@ def update_hydrometeors_and_temperature(
     if not DO_QA:
         cloud_fraction = max(0.0, min(1.0, cloud_fraction * (liquid + ice) / initial_condensate))
 
-    cvm = moist_heat_capacity_6(vapor, ice, liquid, graupel, rain, snow)
+    cvm = moist_heat_capacity_6(vapor, ice, liquid, graupel, rain, snow, C1_VAP, C1_LIQ, C1_ICE)
     t = (total_energy - LV00 * vapor + LI00 * (ice + snow + graupel)) / cvm
 
     lcpk = (LV00 + D1_VAP * t) / cvm

@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import function
+from ndsl.dsl.gt4py import function, trunc, int32
 from ndsl.dsl.typing import Float, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import RDELT, RDGAS, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, ZVIR
@@ -20,9 +20,9 @@ def saturation_specific_humidity(t: Float, density: Float, table: GFDLMPV3Satura
         dtable (GFDLMPV3SaturationTable): derivative of the saturation table
     """
     ap1 = RDELT * max(t - SATURATION_TABLE_TMIN, 0.0) + 1.0
-    ap1 = min(Float(SATURATION_TABLE_LENGTH), ap1)
+    ap1 = min(SATURATION_TABLE_LENGTH, ap1)
     sat_p = saturation_water_pressure(t, table, dtable) / (RVGAS * t * density)
-    index: Int = Int(ap1 - 0.5)
+    index = int32(trunc(ap1 - 0.5))
     # Apply protections (bounds checking)
     # Ensures index is >= 0 AND it+1 <= es_table_length - 1
     index = max(0, min(index, SATURATION_TABLE_LENGTH - 2))
@@ -65,8 +65,8 @@ def saturation_water_pressure(t: Float, table: GFDLMPV3SaturationTable, dtable: 
         dtable (GFDLMPV3SaturationTable): derivative of the saturation table
     """
     ap1 = RDELT * max(t - SATURATION_TABLE_TMIN, 0.0) + 1.0
-    ap1 = min(Float(SATURATION_TABLE_LENGTH), ap1)
-    index: Int = Int(ap1)
+    ap1 = min(SATURATION_TABLE_LENGTH, ap1)
+    index = int32(trunc(ap1))
     # Apply protections (bounds checking)
     # Ensures index is >= 0 AND index+1 <= es_table_length - 1
     index = max(0, min(index, SATURATION_TABLE_LENGTH - 2))

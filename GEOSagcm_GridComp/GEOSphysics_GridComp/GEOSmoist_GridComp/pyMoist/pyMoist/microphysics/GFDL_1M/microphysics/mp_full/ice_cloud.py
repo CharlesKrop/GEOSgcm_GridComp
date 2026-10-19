@@ -1,6 +1,6 @@
 import dataclasses
 
-from ndsl import Local, LocalState, QuantityFactory, StencilFactory
+from ndsl import Local, LocalState, QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
@@ -30,6 +30,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     update_hydrometeors,
     update_hydrometeors_and_temperature,
 )
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 
 
 def p_graupel_accretion_to_cloud_water_and_rain(
@@ -53,17 +54,39 @@ def p_graupel_accretion_to_cloud_water_and_rain(
     terminal_velocity_graupel: FloatField,
     terminal_velocity_liquid: FloatField,
     terminal_velocity_rain: FloatField,
-    mppxg: FloatFieldIJ,
+    mpprg: FloatFieldIJ,
     one_minus_sigma: FloatFieldIJ,
     ACC: GFDLMPV3TableL20,
     ACCO: GFDLMPV3TableL3xL10,
 ):
-    from __externals__ import BLING, BLINH, CGACR, CGACW, CONV_FACTOR, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_HAIL, DO_QA, DT, LI00, LI20, LV00, MUG, MUH, T_WFR, VDIFFFLAG
+    from __externals__ import (
+        C1_ICE,
+        C1_LIQ,
+        C1_VAP,
+        BLING,
+        BLINH,
+        CGACR,
+        CGACW,
+        CONV_FACTOR,
+        D1_ICE,
+        D1_VAP,
+        DO_3D_ACC_CLIQ,
+        DO_HAIL,
+        DO_QA,
+        DT,
+        LI00,
+        LI20,
+        LV00,
+        MUG,
+        MUH,
+        T_WFR,
+        VDIFFFLAG,
+    )
 
     with computation(FORWARD), interval(0, 1):
         scaled_CGACW = CGACW * (1.0e-2 * (1.0 - one_minus_sigma) + one_minus_sigma)
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t < TICE and graupel > QPMIN:
 
             tc = t - TICE
@@ -160,6 +183,8 @@ def p_graupel_accretion_to_cloud_water_and_rain(
                 dgraupel=sink,
                 drain=-pgacr,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -167,6 +192,9 @@ def p_graupel_accretion_to_cloud_water_and_rain(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -208,9 +236,9 @@ def p_graupel_accretion_to_ice(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import BLING, BLINH, CGACI, CONV_FACTOR, DO_3D_ACC_CICE, DO_HAIL, DT, FI2G_FAC, MUG, MUH, VDIFFFLAG
+    from __externals__ import BLING, BLINH, CGACI, CONV_FACTOR, DO_3D_ACC_CICE, DO_HAIL, DO_QA, DT, FI2G_FAC, MUG, MUH, VDIFFFLAG
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t < TICE and ice > QCMIN:
             tc = t - TICE
 
@@ -254,19 +282,20 @@ def p_graupel_accretion_to_ice(
             mppxg = mppxg + sink * dry_dp * CONV_FACTOR
 
             vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
-                cloud_fraction,
-                vapor,
-                ice,
-                liquid,
-                graupel,
-                rain,
-                snow,
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
                 dvapor=0.0,
                 dice=-sink,
                 dliquid=0.0,
                 dgraupel=sink,
                 drain=0.0,
                 dsnow=0.0,
+                DO_QA=DO_QA,
             )
 
 
@@ -306,9 +335,9 @@ def p_graupel_accretion_to_snow(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import CGACS, CONV_FACTOR, DT, FS2G_FAC, VDIFFFLAG
+    from __externals__ import CGACS, CONV_FACTOR, DO_QA, DT, FS2G_FAC, VDIFFFLAG
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t < TICE and snow > QPMIN and graupel > QPMIN:
             tc = t - TICE
 
@@ -330,19 +359,20 @@ def p_graupel_accretion_to_snow(
             mppxg = mppxg + sink * dry_dp * CONV_FACTOR
 
             vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
-                cloud_fraction,
-                vapor,
-                ice,
-                liquid,
-                graupel,
-                rain,
-                snow,
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
                 dvapor=0.0,
                 dice=0.0,
                 dliquid=0.0,
                 dgraupel=sink,
                 drain=0.0,
                 dsnow=-sink,
+                DO_QA=DO_QA,
             )
 
 
@@ -406,12 +436,34 @@ def p_graupel_melt(
         dtable_2 (GFDLMPV3SaturationTable)
     """
 
-    from __externals__ import BLING, BLINH, CGACR, CGACW, CONV_FACTOR, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_HAIL, DO_QA, DT, LI00, LI20, LV00, MUG, MUH, T_WFR, VDIFFFLAG
+    from __externals__ import (
+        C1_ICE,
+        C1_LIQ,
+        C1_VAP,
+        BLING,
+        BLINH,
+        CGACR,
+        CGACW,
+        CONV_FACTOR,
+        D1_ICE,
+        D1_VAP,
+        DO_3D_ACC_CLIQ,
+        DO_HAIL,
+        DO_QA,
+        DT,
+        LI00,
+        LI20,
+        LV00,
+        MUG,
+        MUH,
+        T_WFR,
+        VDIFFFLAG,
+    )
 
     with computation(FORWARD), interval(0, 1):
         scaled_CGACW: FloatFieldIJ = CGACW * (1.0e-2 * (1.0 - one_minus_sigma) + one_minus_sigma)
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t >= TICE and graupel > QPMIN:
             tc = t - TICE
 
@@ -512,7 +564,7 @@ def p_graupel_melt(
                     ),
                 )
 
-            sink = min(graupel, sink * DT, tc / icpk)
+            sink = min(graupel, min(sink * DT, tc / icpk))
             mppmg = mppmg + sink * dry_dp * CONV_FACTOR
 
             t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -529,6 +581,8 @@ def p_graupel_melt(
                 dgraupel=-sink,
                 drain=sink,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -536,6 +590,9 @@ def p_graupel_melt(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -588,7 +645,25 @@ def p_ice_melt_freeze(
         convection_fraction (FloatFieldIJ)
         surface_type (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DT, IN_CLOUD_ICE, LI00, LI20, LV00, PSAUT_QI_CRT, QL_MLT, T_WFR, TAU_FREZ, TAU_IMLT
+    from __externals__ import (
+        C1_ICE,
+        C1_LIQ,
+        C1_VAP,
+        CONV_FACTOR,
+        D1_ICE,
+        D1_VAP,
+        DO_QA,
+        DT,
+        IN_CLOUD_ICE,
+        LI00,
+        LI20,
+        LV00,
+        PSAUT_QI_CRT,
+        QL_MLT,
+        T_WFR,
+        TAU_FREZ,
+        TAU_IMLT,
+    )
 
     # psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     # account for this using onemsig to convert more ice to snow at coarser resolutions
@@ -598,7 +673,7 @@ def p_ice_melt_freeze(
         fac_imlt: FloatFieldIJ = 1.0 - exp(-DT / TAU_IMLT)
         fac_frez: FloatFieldIJ = 1.0 - exp(-DT / TAU_FREZ)
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t > TICE and ice > QCMIN:
             # Use In-Cloud condensates with scale-aware blending
             if IN_CLOUD_ICE:
@@ -611,7 +686,7 @@ def p_ice_melt_freeze(
 
             tmp = t
             newliq = new_liquid_condensate(t=tmp, liquid=liquid_internal, ice=ice_internal, convection_fraction=convection_fraction, surface_type=surface_type)
-            sink = fac_imlt * min(ice_internal, newliq, (t - TICE) / icpk / cloud_fraction_bounded)
+            sink = fac_imlt * min(ice_internal, min(newliq, (t - TICE) / icpk / cloud_fraction_bounded))
             tmp = min(sink, max(QL_MLT / cloud_fraction_bounded - liquid_internal, 0.0))
 
             tmp = tmp * cloud_fraction_bounded
@@ -632,6 +707,8 @@ def p_ice_melt_freeze(
                 dgraupel=0.0,
                 drain=sink - tmp,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -639,6 +716,9 @@ def p_ice_melt_freeze(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
         elif t <= TICE and liquid > QCMIN:
@@ -653,7 +733,7 @@ def p_ice_melt_freeze(
 
             tmp = t
             newice = new_ice_condensate(t=tmp, liquid=liquid_internal, ice=ice_internal, convection_fraction=convection_fraction, surface_type=surface_type)
-            sink = fac_frez * min(liquid_internal, newice, (TICE - t) / icpk / cloud_fraction_bounded)
+            sink = fac_frez * min(liquid_internal, min(newice, (TICE - t) / icpk / cloud_fraction_bounded))
             ice_modified = critical_ice_factor / density
             tmp = min(sink, max(ice_modified / cloud_fraction_bounded - ice_internal, 0.0))
 
@@ -675,6 +755,8 @@ def p_ice_melt_freeze(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=sink - tmp,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -682,6 +764,9 @@ def p_ice_melt_freeze(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -717,14 +802,14 @@ def p_ice_to_snow_autoconversion(
         mppas (FloatFieldIJ)
         one_minus_sigma (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, DT, IN_CLOUD_ICE, PSAUT_QI_CRT, TAU_I2S
+    from __externals__ import CONV_FACTOR, DO_QA, DT, IN_CLOUD_ICE, PSAUT_QI_CRT, TAU_I2S
 
     with computation(FORWARD), interval(0, 1):
         critical_ice_factor: FloatFieldIJ = PSAUT_QI_CRT * (1.0e-1 * (1.0 - one_minus_sigma) + one_minus_sigma)
 
         fac_i2s: FloatFieldIJ = 1.0 - exp(-DT / TAU_I2S)
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
 
         if t < TICE and ice > QCMIN:
 
@@ -756,19 +841,20 @@ def p_ice_to_snow_autoconversion(
             mppas = mppas + sink * dry_dp * CONV_FACTOR
 
             vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
-                cloud_fraction,
-                vapor,
-                ice,
-                liquid,
-                graupel,
-                rain,
-                snow,
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
                 dvapor=0.0,
                 dice=-sink,
                 dliquid=0.0,
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=sink,
+                DO_QA=DO_QA,
             )
 
 
@@ -810,9 +896,9 @@ def p_snow_accretion_to_ice(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import BLINS, CONV_FACTOR, CSACI, DO_3D_ACC_CICE, DT, FI2S_FAC, MUS, VDIFFFLAG
+    from __externals__ import BLINS, CONV_FACTOR, CSACI, DO_3D_ACC_CICE, DO_QA, DT, FI2S_FAC, MUS, VDIFFFLAG
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t < TICE and ice > QCMIN:
             sink = 0.0
             snow_x_density = snow * density
@@ -845,19 +931,20 @@ def p_snow_accretion_to_ice(
             mppxs = mppxs + sink * dry_dp * CONV_FACTOR
 
             vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
-                cloud_fraction,
-                vapor,
-                ice,
-                liquid,
-                graupel,
-                rain,
-                snow,
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
                 dvapor=0.0,
                 dice=-sink,
                 dliquid=0.0,
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=sink,
+                DO_QA=DO_QA,
             )
 
 
@@ -913,9 +1000,9 @@ def p_snow_accretion_to_rain_and_graupel(
         ACCO (GFDLMPV3TableL3xL10)
         CGFR (GFDLMPV3TableL2)
     """
-    from __externals__ import CONV_FACTOR, CSACR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUR, T_WFR, VDIFFFLAG
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, CSACR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUR, T_WFR, VDIFFFLAG
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t < TICE and rain > QPMIN:
             tc = t - TICE
 
@@ -947,7 +1034,7 @@ def p_snow_accretion_to_rain_and_graupel(
             # --- Apply Mass and Thermal Limits ---
             sink = psacr + pgfr
             if sink > QCMIN:
-                factor = min(sink, rain, max(0.0, -tc / icpk)) / sink
+                factor = min(sink, min(rain, max(0.0, -tc / icpk))) / sink
                 psacr = factor * psacr
                 pgfr = factor * pgfr
 
@@ -970,6 +1057,8 @@ def p_snow_accretion_to_rain_and_graupel(
                 dgraupel=pgfr,
                 drain=-sink,
                 dsnow=psacr,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -977,6 +1066,9 @@ def p_snow_accretion_to_rain_and_graupel(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -1039,9 +1131,30 @@ def p_snow_melt(
         dtable_2 (GFDLMPV3SaturationTable)
 
     """
-    from __externals__ import BLINS, CONV_FACTOR, CRACS, CSACR, CSACW, D1_ICE, D1_VAP, DO_3D_ACC_CLIQ, DO_QA, DT, LI00, LI20, LV00, MUS, QS_MLT, T_WFR, VDIFFFLAG
+    from __externals__ import (
+        C1_ICE,
+        C1_LIQ,
+        C1_VAP,
+        BLINS,
+        CONV_FACTOR,
+        CRACS,
+        CSACR,
+        CSACW,
+        D1_ICE,
+        D1_VAP,
+        DO_3D_ACC_CLIQ,
+        DO_QA,
+        DT,
+        LI00,
+        LI20,
+        LV00,
+        MUS,
+        QS_MLT,
+        T_WFR,
+        VDIFFFLAG,
+    )
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t >= TICE and snow > QPMIN:
 
             tc = t - TICE
@@ -1088,7 +1201,7 @@ def p_snow_melt(
                         acc2=ACC.A[3],
                         acco=ACCO,
                         acco_column=1,
-                        VDIFFLAG=VDIFFFLAG,
+                        VDIFFFLAG=VDIFFFLAG,
                     ),
                     rain / DT,
                 )
@@ -1103,7 +1216,7 @@ def p_snow_melt(
                     acc2=ACC.A[1],
                     acco=ACCO,
                     acco_column=0,
-                    VDIFFLAG=VDIFFFLAG,
+                    VDIFFFLAG=VDIFFFLAG,
                 )
 
             t_in = t
@@ -1128,7 +1241,7 @@ def p_snow_melt(
                 ),
             )
 
-            sink = min(snow, (sink + pracs) * DT, tc / icpk)
+            sink = min(snow, min((sink + pracs) * DT, tc / icpk))
             tmp = min(sink, max(QS_MLT - liquid, 0.0))
             mppms = mppms + sink * dry_dp * CONV_FACTOR
 
@@ -1146,6 +1259,8 @@ def p_snow_melt(
                 dgraupel=0.0,
                 drain=sink - tmp,
                 dsnow=-sink,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -1153,6 +1268,9 @@ def p_snow_melt(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
 
@@ -1184,9 +1302,9 @@ def p_snow_to_graupel_autoconversion(
         cloud_fraction (FloatField)
         mppag (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, DT, FS2G_FAC, PGAUT_QS_CRT
+    from __externals__ import CONV_FACTOR, DO_QA, DT, FS2G_FAC, PGAUT_QS_CRT
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t < TICE and snow > QPMIN:
             tc = t - TICE
 
@@ -1200,19 +1318,20 @@ def p_snow_to_graupel_autoconversion(
             mppag = mppag + sink * dry_dp * CONV_FACTOR
 
             vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
-                cloud_fraction,
-                vapor,
-                ice,
-                liquid,
-                graupel,
-                rain,
-                snow,
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
                 dvapor=0.0,
                 dice=0.0,
                 dliquid=0.0,
                 dgraupel=sink,
                 drain=0.0,
                 dsnow=-sink,
+                DO_QA=DO_QA,
             )
 
 
@@ -1222,6 +1341,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "cvm",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -1229,6 +1349,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "dice",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -1236,6 +1357,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "icpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -1243,6 +1365,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "lcpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -1250,6 +1373,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "tcpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -1257,6 +1381,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "tcp3",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -1264,6 +1389,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "total_energy",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -1271,6 +1397,7 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "total_liquid",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -1278,12 +1405,13 @@ class IceCloudLocals(LocalState):
         metadata={
             "name": "total_solid",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
 
 
-class IceCloud:
+class IceCloud(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -1294,6 +1422,9 @@ class IceCloud:
         CONV_FACTOR: Float,
         DRIVER_DT: Float,
     ):
+        # initialize NDSLRuntime parent class
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
+
         # make config visible at runtime
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
@@ -1322,6 +1453,9 @@ class IceCloud:
             func=p_graupel_accretion_to_cloud_water_and_rain,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "BLINH": mp_namelist.BLINH,
                 "BLING": mp_namelist.BLING,
                 "CGACR": mp_config.CGACR,
@@ -1352,6 +1486,7 @@ class IceCloud:
                 "CONV_FACTOR": CONV_FACTOR,
                 "DO_3D_ACC_CICE": mp_namelist.DO_3D_ACC_CICE,
                 "DO_HAIL": mp_namelist.DO_HAIL,
+                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FI2G_FAC": mp_namelist.FI2G_FAC,
                 "MUH": mp_namelist.MUH,
@@ -1365,6 +1500,7 @@ class IceCloud:
             externals={
                 "CGACS": mp_config.CGACS,
                 "CONV_FACTOR": CONV_FACTOR,
+                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FS2G_FAC": mp_namelist.FS2G_FAC,
                 "VDIFFFLAG": mp_namelist.VDIFFFLAG,
@@ -1375,6 +1511,9 @@ class IceCloud:
             func=p_graupel_melt,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "BLINH": mp_namelist.BLINH,
                 "BLING": mp_namelist.BLING,
                 "CGACR": mp_config.CGACR,
@@ -1399,6 +1538,9 @@ class IceCloud:
             func=p_ice_melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
@@ -1420,10 +1562,11 @@ class IceCloud:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONV_FACTOR": CONV_FACTOR,
+                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "IN_CLOUD_ICE": mp_namelist.IN_CLOUD_ICE,
                 "PSAUT_QI_CRT": mp_namelist.PSAUT_QI_CRT,
-                "TSU_I2S": mp_namelist.TAU_I2S,
+                "TAU_I2S": mp_namelist.TAU_I2S,
             },
         )
         self._linear_prof = stencil_factory.from_dims_halo(
@@ -1439,6 +1582,7 @@ class IceCloud:
                 "CONV_FACTOR": CONV_FACTOR,
                 "CSACI": mp_config.CSACI,
                 "DO_3D_ACC_CICE": mp_namelist.DO_3D_ACC_CICE,
+                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FI2S_FAC": mp_namelist.FI2S_FAC,
                 "MUS": mp_namelist.MUS,
@@ -1449,6 +1593,9 @@ class IceCloud:
             func=p_snow_accretion_to_rain_and_graupel,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "CONV_FACTOR": CONV_FACTOR,
                 "CSACR": mp_config.CSACR,
                 "D1_ICE": mp_config.D1_ICE,
@@ -1467,6 +1614,9 @@ class IceCloud:
             func=p_snow_melt,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "BLINS": mp_namelist.BLINS,
                 "CONV_FACTOR": CONV_FACTOR,
                 "CRACS": mp_config.CRACS,
@@ -1491,6 +1641,7 @@ class IceCloud:
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONV_FACTOR": CONV_FACTOR,
+                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FS2G_FAC": mp_namelist.FS2G_FAC,
                 "PGAUT_QS_CRT": mp_namelist.PGAUT_QS_CRT,
@@ -1776,7 +1927,7 @@ class IceCloud:
                 terminal_velocity_graupel=mp_full_locals.terminal_velocity.graupel,
                 terminal_velocity_liquid=mp_full_locals.terminal_velocity.liquid,
                 terminal_velocity_rain=mp_full_locals.terminal_velocity.rain,
-                mppxg=gfdl_mp_v3_locals.mppxg,
+                mpprg=gfdl_mp_v3_locals.mpprg,
                 one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
                 ACC=self._mp_config.ACC,
                 ACCO=self._mp_config.ACCO,

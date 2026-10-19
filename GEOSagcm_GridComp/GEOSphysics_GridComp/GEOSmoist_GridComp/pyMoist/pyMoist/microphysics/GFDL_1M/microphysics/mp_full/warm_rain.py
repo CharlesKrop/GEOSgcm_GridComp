@@ -1,8 +1,8 @@
 import dataclasses
 
-from ndsl import Local, LocalState, QuantityFactory, StencilFactory
+from ndsl import Local, LocalState, QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, float64
 from ndsl.dsl.typing import Float, FloatField, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig, GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL20
@@ -23,6 +23,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     update_hydrometeors_and_temperature,
 )
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 
 
 def evaporation(
@@ -94,8 +95,8 @@ def evaporation(
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
-        cvm: FloatField64 = 0.0
-        total_energy: FloatField64 = 0.0
+        cvm: float64 = 0.0
+        total_energy: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         # calculate moist heat capacity and latent heat coefficients
@@ -118,9 +119,9 @@ def evaporation(
             T_WFR=T_WFR,
         )
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t > T_WFR and rain > QPMIN:
-            mhc = moist_heat_capacity_3(vapor + liquid, rain, total_solid)
+            mhc = moist_heat_capacity_3(vapor + liquid, rain, total_solid, C1_VAP, C1_LIQ, C1_ICE)
             t_in = (t * cvm - LV00 * liquid) / mhc
 
             # calculate supersaturation and subgrid variability of water
@@ -156,7 +157,7 @@ def evaporation(
                     cvm,
                     CREVP,
                 )
-                sink = min(rain, DT * fac_revp * sink, dvapor / (1.0 + lcpk * dsat_spec_humiditydt))
+                sink = min(rain, min(DT * fac_revp * sink, dvapor / (1.0 + lcpk * dsat_spec_humiditydt)))
 
                 # -----------------------------------------------------------------------
                 # Enhanced scale-aware rain evaporation in dry environmental air.
@@ -204,6 +205,8 @@ def evaporation(
                     dgraupel=0.0,
                     drain=-sink,
                     dsnow=0.0,
+                    t=t,
+                    total_energy=total_energy,
                     DO_QA=DO_QA,
                     D1_VAP=D1_VAP,
                     D1_ICE=D1_ICE,
@@ -211,6 +214,9 @@ def evaporation(
                     LI20=LI20,
                     LV00=LV00,
                     T_WFR=T_WFR,
+                    C1_VAP=C1_VAP,
+                    C1_LIQ=C1_LIQ,
+                    C1_ICE=C1_ICE,
                 )
 
 
@@ -254,7 +260,7 @@ def accretion(
     """
     from __externals__ import BLINR, CONV_FACTOR, CRACW, DO_3D_ACC_CLIQ, DO_QA, DT, MUR, T_WFR, VDIFFFLAG
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if t > T_WFR and rain > QPMIN and liquid > QCMIN:
 
             condensate_x_density = rain * density
@@ -291,11 +297,11 @@ def accretion(
                 graupel=graupel,
                 rain=rain,
                 snow=snow,
-                dvapor=-sink,
+                dvapor=0.0,
                 dice=0.0,
-                dliquid=sink,
+                dliquid=-sink,
                 dgraupel=0.0,
-                drain=0.0,
+                drain=sink,
                 dsnow=0.0,
                 DO_QA=DO_QA,
             )
@@ -369,7 +375,7 @@ def autoconversion_part_2(
         # initialize internal temporary
         dliquid = 0.0
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if IRAIN_F == 0:
 
             if t > T_WFR and liquid_internal > QCMIN:
@@ -406,7 +412,7 @@ def autoconversion_part_2(
                         DO_QA=DO_QA,
                     )
 
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         if IRAIN_F == 1:
             if t > T_WFR and liquid_internal > QCMIN:
 
@@ -420,7 +426,7 @@ def autoconversion_part_2(
                 if dcondensate > 0.0:
                     c_praut = cpaut * exp(so1 * log(ccn * RHOW))
                     sink = min(dcondensate, DT * c_praut * density * exp(so3 * log(liquid_internal)))
-                    sink = min(QL0_MAX / cloud_fraction_internal, liquid_internal, sink) * cloud_fraction_internal
+                    sink = min(QL0_MAX / cloud_fraction_internal, min(liquid_internal, sink)) * cloud_fraction_internal
                     mppar = mppar + sink * dry_dp * CONV_FACTOR
 
                     vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
@@ -447,6 +453,7 @@ class WarmRainLocals(LocalState):
         metadata={
             "name": "cloud_fraction_internal",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -454,6 +461,7 @@ class WarmRainLocals(LocalState):
         metadata={
             "name": "dliquid_internal",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -461,12 +469,13 @@ class WarmRainLocals(LocalState):
         metadata={
             "name": "liquid_internal",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
 
 
-class WarmRain:
+class WarmRain(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -477,8 +486,12 @@ class WarmRain:
         CONV_FACTOR: Float,
         DRIVER_DT: Float,
     ):
+        # initialize NDSLRuntime parent class
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
+
         # make config and tables visible at runtime
         self._mp_config = mp_config
+        self._mp_namelist = mp_namelist
         self._saturation_tables = saturation_tables
 
         # initialize locals for warm rain
@@ -532,7 +545,7 @@ class WarmRain:
         self._linear_prof = stencil_factory.from_dims_halo(
             func=linear_prof,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"IRAIN_F": mp_namelist.IRAIN_F, "Z_SLOPE": mp_namelist.Z_SLOPE_LIQ},
+            externals={"Z_SLOPE": mp_namelist.Z_SLOPE_LIQ},
         )
         self._autoconversion_part_2 = stencil_factory.from_dims_halo(
             func=autoconversion_part_2,
@@ -610,11 +623,12 @@ class WarmRain:
             cloud_fraction_internal=self._warm_rain_locals.cloud_fraction_internal,
         )
 
-        self._linear_prof(
-            precipitate=self._warm_rain_locals.liquid_internal,
-            dm=self._warm_rain_locals.dliquid_internal,
-            h_var=gfdl_mp_v3_locals.h_var,
-        )
+        if self._mp_namelist.IRAIN_F == 0:
+            self._linear_prof(
+                precipitate=self._warm_rain_locals.liquid_internal,
+                dm=self._warm_rain_locals.dliquid_internal,
+                h_var=gfdl_mp_v3_locals.h_var,
+            )
 
         self._autoconversion_part_2(
             t=gfdl_mp_v3_locals.t,

@@ -156,7 +156,7 @@ class TranslateGFDL1M(TranslateFortranData2Py):
 
     def compute(self, inputs):
         # initialize constants
-        config = GFDL1MConfig(**self.constants)
+        config = GFDL1MConfig(CWD="/Users/ckropiew/GEOS/v11.10.1/run/experiments/GCM_C24_L72_NX1_NY1/scratch", **self.constants)
 
         # initialize state
         state = GFDL1MState.zeros(self.quantity_factory)

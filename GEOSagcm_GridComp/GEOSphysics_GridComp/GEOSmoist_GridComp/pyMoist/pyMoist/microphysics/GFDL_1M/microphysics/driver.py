@@ -8,6 +8,7 @@ from ndsl.stencils.basic_operations_2d import copy_2d
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import (
     C_ICE,
     C_LIQ,
@@ -541,6 +542,8 @@ def fix_negative_water_species(
                 dgraupel=sink,
                 drain=-sink,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -548,6 +551,9 @@ def fix_negative_water_species(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
             )
 
             ## fix negative liquid-phase hydrometeors
@@ -589,6 +595,8 @@ def fix_negative_water_species(
                     dgraupel=0.0,
                     drain=0.0,
                     dsnow=0.0,
+                    t=t,
+                    total_energy=total_energy,
                     DO_QA=DO_QA,
                     D1_VAP=D1_VAP,
                     D1_ICE=D1_ICE,
@@ -596,6 +604,9 @@ def fix_negative_water_species(
                     LI20=LI20,
                     LV00=LV00,
                     T_WFR=T_WFR,
+                    C1_VAP=C1_VAP,
+                    C1_LIQ=C1_LIQ,
+                    C1_ICE=C1_ICE,
                 )
 
     ## fix negative water vapor
@@ -1244,14 +1255,14 @@ class GFDLMPV3Driver(NDSLRuntime):
         mp_config: GFDLMPV3CloudMPConfig,
     ):
         # initialize NDSLRuntime parent class
-        super.__init__(stencil_factory)
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
         # compute driver specific constants
         # timesteps
-        DRIVER_DT = gfdl_1m_config.DT_MOIST / mp_namelist.NTIMES
-        DT_INVERSE = 1 / gfdl_1m_config.DT_MOIST
+        DRIVER_DT = gfdl_1m_config.DT / mp_namelist.NTIMES
+        DT_INVERSE = 1 / gfdl_1m_config.DT
         # conversion factor to mm/day
-        CONV_FACTOR = 86400.0 * RGRAV / gfdl_1m_config.DT_MOIST
+        CONV_FACTOR = 86400.0 * RGRAV / gfdl_1m_config.DT
 
         # initialize class specific locals
         self._gfdl_mp_v3_locals = GFDLMPV3Locals.make_locals(quantity_factory)
@@ -1303,7 +1314,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONSV_TE": mp_config.CONSV_TE,
-                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+                "HYDROSTATIC": gfdl_1m_config.PHYS_HYDROSTATIC,
                 "C_AIR": mp_config.C_AIR,
                 "C1_VAP": mp_config.C1_VAP,
                 "C1_LIQ": mp_config.C1_LIQ,
@@ -1315,7 +1326,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONSV_TE": mp_config.CONSV_TE,
-                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+                "HYDROSTATIC": gfdl_1m_config.PHYS_HYDROSTATIC,
                 "C_AIR": mp_config.C_AIR,
                 "C1_VAP": mp_config.C1_VAP,
                 "C1_LIQ": mp_config.C1_LIQ,
@@ -1383,7 +1394,7 @@ class GFDLMPV3Driver(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "DO_INLINE_MP": mp_config.DO_INLINE_MP,
-                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+                "HYDROSTATIC": gfdl_1m_config.PHYS_HYDROSTATIC,
             },
         )
         self._radar_reflectivity = stencil_factory.from_dims_halo(
@@ -1482,8 +1493,8 @@ class GFDLMPV3Driver(NDSLRuntime):
             func=total_energy_and_water,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
-                "DT": gfdl_1m_config.DT_MOIST,
-                "HYDROSTATIC": gfdl_1m_config.LHYDROSTATIC,
+                "DT": gfdl_1m_config.DT,
+                "HYDROSTATIC": gfdl_1m_config.PHYS_HYDROSTATIC,
                 "LI00": mp_config.LI00,
                 "LV00": mp_config.LV00,
                 "C_AIR": mp_config.C_AIR,

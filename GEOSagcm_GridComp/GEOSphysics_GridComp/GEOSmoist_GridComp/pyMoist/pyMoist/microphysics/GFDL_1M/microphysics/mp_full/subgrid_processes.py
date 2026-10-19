@@ -1,6 +1,6 @@
 import dataclasses
 
-from ndsl import Local, LocalState, QuantityFactory, StencilFactory
+from ndsl import Local, LocalState, QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
@@ -22,6 +22,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
     update_hydrometeors_and_temperature,
 )
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 
 
 def p_instant(
@@ -81,6 +82,9 @@ def p_instant(
         dtable_2 (GFDLMPV3SaturationTable)
     """
     from __externals__ import (
+        C1_ICE,
+        C1_LIQ,
+        C1_VAP,
         CONV_FACTOR,
         D1_ICE,
         D1_VAP,
@@ -127,6 +131,8 @@ def p_instant(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -134,6 +140,9 @@ def p_instant(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_ICE=C1_ICE,
+                C1_LIQ=C1_LIQ,
             )
 
             # [WMP] avoid high cloud fractions for high troposhere cirrus clouds
@@ -158,6 +167,8 @@ def p_instant(
                         dgraupel=0.0,
                         drain=0.0,
                         dsnow=0.0,
+                        t=t,
+                        total_energy=total_energy,
                         DO_QA=DO_QA,
                         D1_VAP=D1_VAP,
                         D1_ICE=D1_ICE,
@@ -165,6 +176,9 @@ def p_instant(
                         LI20=LI20,
                         LV00=LV00,
                         T_WFR=T_WFR,
+                        C1_VAP=C1_VAP,
+                        C1_ICE=C1_ICE,
+                        C1_LIQ=C1_LIQ,
                     )
 
         # -----------------------------------------------------------------------
@@ -231,6 +245,8 @@ def p_instant(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
                 DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
@@ -238,6 +254,9 @@ def p_instant(
                 LI20=LI20,
                 LV00=LV00,
                 T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_ICE=C1_ICE,
+                C1_LIQ=C1_LIQ,
             )
 
 
@@ -247,6 +266,7 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "cvm",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -254,6 +274,7 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "icpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -261,6 +282,7 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "lcpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -268,6 +290,7 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "tcpk",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -275,6 +298,7 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "tcp3",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -282,6 +306,7 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "total_energy",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -289,6 +314,7 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "total_liquid",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
@@ -296,12 +322,13 @@ class SubgridProcessesLocals(LocalState):
         metadata={
             "name": "total_solid",
             "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
             "dtype": Float64,
         }
     )
 
 
-class SubgridProcesses:
+class SubgridProcesses(NDSLRuntime):
     def __init__(
         self,
         stencil_factory: StencilFactory,
@@ -312,6 +339,9 @@ class SubgridProcesses:
         CONV_FACTOR: Float,
         DRIVER_DT: Float,
     ):
+        # initialize NDSLRuntime parent class
+        super().__init__(stencil_factory, get_optimization_config(stencil_factory))
+
         # make config visible at runtime
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
@@ -340,6 +370,9 @@ class SubgridProcesses:
             func=p_bigg,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
@@ -360,6 +393,9 @@ class SubgridProcesses:
             func=p_complete_freezing,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
@@ -374,6 +410,9 @@ class SubgridProcesses:
             func=p_graupel_deposition_and_sublimation,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "BLING": mp_namelist.BLING,
                 "BLINH": mp_namelist.BLINH,
                 "CONV_FACTOR": CONV_FACTOR,
@@ -396,6 +435,9 @@ class SubgridProcesses:
             func=p_ice_deposition_and_sublimation,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
@@ -421,6 +463,9 @@ class SubgridProcesses:
             func=p_instant,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
@@ -444,6 +489,9 @@ class SubgridProcesses:
             func=p_snow_deposition_and_sublimation,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "BLINS": mp_namelist.BLINS,
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
@@ -463,6 +511,9 @@ class SubgridProcesses:
             func=p_wbf,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "C1_ICE": mp_config.C1_ICE,
+                "C1_LIQ": mp_config.C1_LIQ,
+                "C1_VAP": mp_config.C1_VAP,
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,

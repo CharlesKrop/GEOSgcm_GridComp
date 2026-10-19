@@ -95,20 +95,20 @@ class GFDLMPV3(NDSLRuntime):
         # NOTE this was taken from the old microphysics, which worked on GPU
         # but how did this work? isn't np.array incompatable? shouldn't this be cupy/xumpy?
         # did the init always happen on cpu?
-        mp_config.ACC = quantity_factory.from_array(np.array(20, dtype=Float), ["LEN20_TABLE"], "n/a")
-        mp_config.ACCO = quantity_factory.from_array(np.array((3, 20), dtype=Float), ["LEN3_TABLE", "LEN20_TABLE"], "n/a")
-        mp_config.CGFR = quantity_factory.from_array(np.array(2, dtype=Float), ["LEN2_TABLE"], "n/a")
-        mp_config.CGMLT = quantity_factory.from_array(np.array(4, dtype=Float), ["LEN4_TABLE"], "n/a")
-        mp_config.CGSUB = quantity_factory.from_array(np.array(5, dtype=Float), ["LEN5_TABLE"], "n/a")
-        mp_config.CREVP = quantity_factory.from_array(np.array(5, dtype=Float), ["LEN5_TABLE"], "n/a")
-        mp_config.CSMLT = quantity_factory.from_array(np.array(4, dtype=Float), ["LEN4_TABLE"], "n/a")
-        mp_config.CSSUB = quantity_factory.from_array(np.array(5, dtype=Float), ["LEN5_TABLE"], "n/a")
+        mp_config.ACC = quantity_factory.from_array(np.zeros(20, dtype=Float), ["LEN20_TABLE"], "n/a")
+        mp_config.ACCO = quantity_factory.from_array(np.zeros((3, 10), dtype=Float), ["LEN3_TABLE", "LEN10_TABLE"], "n/a")
+        mp_config.CGFR = quantity_factory.from_array(np.zeros(2, dtype=Float), ["LEN2_TABLE"], "n/a")
+        mp_config.CGMLT = quantity_factory.from_array(np.zeros(4, dtype=Float), ["LEN4_TABLE"], "n/a")
+        mp_config.CGSUB = quantity_factory.from_array(np.zeros(5, dtype=Float), ["LEN5_TABLE"], "n/a")
+        mp_config.CREVP = quantity_factory.from_array(np.zeros(5, dtype=Float), ["LEN5_TABLE"], "n/a")
+        mp_config.CSMLT = quantity_factory.from_array(np.zeros(4, dtype=Float), ["LEN4_TABLE"], "n/a")
+        mp_config.CSSUB = quantity_factory.from_array(np.zeros(5, dtype=Float), ["LEN5_TABLE"], "n/a")
 
         # generate numpy arrays for internal tables
-        ace = np.array(20, dtype=Float)
-        act = np.array(20, dtype=Float)
-        occ = np.array(3, dtype=Float)
-        crevp = np.array(5, dtype=Float)
+        ace = np.zeros(20, dtype=Float)
+        act = np.zeros(20, dtype=Float)
+        occ = np.zeros(3, dtype=Float)
+        crevp = np.zeros(5, dtype=Float)
 
         # these options are inputs in the original GFDL version
         # GEOS does not support them, so set them manually here
@@ -123,29 +123,27 @@ class GFDLMPV3(NDSLRuntime):
         # --------------------------------------------------
         # heat capacities and related parameters
         # --------------------------------------------------
-        if gfdl_1m_config.LHYDROSTATIC:
+        if gfdl_1m_config.PHYS_HYDROSTATIC:
             mp_config.C_AIR = constants.CP_AIR
             mp_config.C_VAP = constants.CP_VAP
             mp_namelist.DO_SEDI_W = False
         else:
             mp_config.C_AIR = constants.CV_AIR
             mp_config.C_VAP = constants.CV_VAP
+        d0_vap = mp_config.C_VAP - constants.C_LIQ
 
         # scaled constants (to reduce float point errors for 32-bit)
 
-        mp_config.D1_VAP = mp_config.D0_VAP / mp_config.C_AIR
+        mp_config.D1_VAP = d0_vap / mp_config.C_AIR
         mp_config.D1_ICE = constants.DC_ICE / mp_config.C_AIR
 
-        if gfdl_1m_config.LHYDROSTATIC:
-            LV00 = (constants.HLV - mp_config.D0_VAP * constants.TICE) / mp_config.C_AIR
+        if gfdl_1m_config.PHYS_HYDROSTATIC:
+            mp_config.LV00 = (constants.HLV - d0_vap * constants.TICE) / mp_config.C_AIR
         else:
-            if gfdl_1m_config.ENG_CNV_OLD:
-                LV00 = (constants.HLV - mp_config.D0_VAP * constants.TICE) / mp_config.C_AIR
-            else:
-                LV00 = (constants.HLV - mp_config.D0_VAP * constants.TICE - constants.RVGAS * constants.TICE) / mp_config.C_AIR
+            mp_config.LV00 = (constants.HLV - d0_vap * constants.TICE - constants.RVGAS * constants.TICE) / mp_config.C_AIR
 
         mp_config.LI00 = (constants.HLF - constants.DC_ICE * constants.TICE) / mp_config.C_AIR
-        mp_config.LI20 = LV00 + mp_config.LI00
+        mp_config.LI20 = mp_config.LV00 + mp_config.LI00
 
         mp_config.C1_VAP = mp_config.C_VAP / mp_config.C_AIR
         mp_config.C1_LIQ = constants.C_LIQ / mp_config.C_AIR
@@ -406,7 +404,7 @@ class GFDLMPV3(NDSLRuntime):
                 * mp_namelist.ALINH
                 * gamma(2 + mp_namelist.MUH + mp_namelist.BLINH)
                 * hcon
-                / (4.0 * exp((2 + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + 3) * log(mp_namelist.NORMH)))
+                / (4.0 * exp((2 + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + 3) * log(mp_config.NORMH)))
                 * exp((1 - mp_namelist.BLINH) * log(mp_config.EXPOH))
             )
             mp_config.CGACI = (
@@ -415,7 +413,7 @@ class GFDLMPV3(NDSLRuntime):
                 * mp_namelist.ALINH
                 * gamma(2 + mp_namelist.MUH + mp_namelist.BLINH)
                 * hcon
-                / (4.0 * exp((2 + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + 3) * log(mp_namelist.NORMH)))
+                / (4.0 * exp((2 + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + 3) * log(mp_config.NORMH)))
                 * exp((1 - mp_namelist.BLINH) * log(mp_config.EXPOH))
             )
         else:
@@ -425,7 +423,7 @@ class GFDLMPV3(NDSLRuntime):
                 * mp_namelist.ALING
                 * gamma(2 + mp_namelist.MUG + mp_namelist.BLING)
                 * gcon
-                / (4.0 * exp((2 + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + 3) * log(mp_namelist.NORMG)))
+                / (4.0 * exp((2 + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + 3) * log(mp_config.NORMG)))
                 * exp((1 - mp_namelist.BLING) * log(mp_config.EXPOG))
             )
             mp_config.CGACI = (
@@ -434,7 +432,7 @@ class GFDLMPV3(NDSLRuntime):
                 * mp_namelist.ALING
                 * gamma(2 + mp_namelist.MUG + mp_namelist.BLING)
                 * gcon
-                / (4.0 * exp((2 + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + 3) * log(mp_namelist.NORMG)))
+                / (4.0 * exp((2 + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + 3) * log(mp_config.NORMG)))
                 * exp((1 - mp_namelist.BLING) * log(mp_config.EXPOG))
             )
 
@@ -537,36 +535,39 @@ class GFDLMPV3(NDSLRuntime):
         else:
             mp_config.ACC[5] = mp_namelist.MUG
         mp_config.ACC[6] = mp_config.ACC[0]
-        mp_config.ACC[8] = mp_config.ACC[5]
-        mp_config.ACC[9] = mp_namelist.MUW
-        mp_config.ACC[10] = mp_config.ACC[1]
-        mp_config.ACC[11] = mp_namelist.MUI
-        mp_config.ACC[12] = mp_config.ACC[1]
-        mp_config.ACC[13] = mp_config.ACC[8]
-        mp_config.ACC[14] = mp_config.ACC[0]
-        mp_config.ACC[15] = mp_config.ACC[10]
-        mp_config.ACC[16] = mp_config.ACC[0]
-        mp_config.ACC[17] = mp_config.ACC[8]
-        mp_config.ACC[18] = mp_config.ACC[5]
-        mp_config.ACC[19] = mp_config.ACC[10]
-        mp_config.ACC[20] = mp_config.ACC[5]
+        mp_config.ACC[7] = mp_config.ACC[5]
+        mp_config.ACC[8] = mp_namelist.MUW
+        mp_config.ACC[9] = mp_config.ACC[1]
+        mp_config.ACC[10] = mp_namelist.MUI
+        mp_config.ACC[11] = mp_config.ACC[1]
+        mp_config.ACC[12] = mp_config.ACC[8]
+        mp_config.ACC[13] = mp_config.ACC[0]
+        mp_config.ACC[14] = mp_config.ACC[10]
+        mp_config.ACC[15] = mp_config.ACC[0]
+        mp_config.ACC[16] = mp_config.ACC[8]
+        mp_config.ACC[17] = mp_config.ACC[5]
+        mp_config.ACC[18] = mp_config.ACC[10]
+        mp_config.ACC[19] = mp_config.ACC[5]
 
         occ[0] = 1.0
         occ[1] = 2.0
         occ[2] = 1.0
 
-        for i in range(mp_config.ACCO.shape[0]):
-            for k in range(mp_config.ACCO.shape[1]):
+        for i in range(3):
+            fi = i + 1  # add one to index to replicate fortran indexing
+            for k in range(10):
+                fk = k + 1  # add one to index to replicate fortran indexing
+
                 mp_config.ACCO[i, k] = (
                     occ[i]
-                    * gamma(6 + mp_config.ACC(2 * (k + 1) - 1) - i + 1)
-                    * gamma(mp_config.ACC(2 * (k + 1)) + i)
+                    * gamma(6 + mp_config.ACC[2 * fk - 1 - 1] - fi)
+                    * gamma(mp_config.ACC[2 * fk - 1] + fi - 1)
                     / (
-                        exp((6 + mp_config.ACC(2 * (k + 1) - 1) - i + 1) / (mp_config.ACC(2 * (k + 1) - 1) + 3) * log(mp_config.ACC(2 * (k + 1) - 1)))
-                        * exp((mp_config.ACC(2 * (k + 1)) + i) / (mp_config.ACC(2 * (k + 1)) + 3) * log(mp_config.ACC(2 * (k + 1))))
+                        exp((6 + mp_config.ACC[2 * fk - 1 - 1] - fi) / (mp_config.ACC[2 * fk - 1 - 1] + 3) * log(act[2 * fk - 1 - 1]))
+                        * exp((mp_config.ACC[2 * fk - 1] + fi - 1) / (mp_config.ACC[2 * fk - 1] + 3) * log(act[2 * fk - 1]))
                     )
-                    * exp((i - 3) * log(ace(2 * (k + 1) - 1)))
-                    * exp((4 - i) * log(ace(2 * (k + 1))))
+                    * exp((fi - 3) * log(ace[2 * fk - 1 - 1]))
+                    * exp((4 - fi) * log(ace[2 * fk - 1]))
                 )
 
         # rain evaporation, snow sublimation, and graupel or hail sublimation, Lin et al. (1983)
