@@ -640,21 +640,22 @@ def hydrostatic_pdf(
             # default value
             iteration_method_internal: IntFieldIJ = 1
 
-        inverse_large_scale_cloud_fraction: FloatFieldIJ = 0.0
-        if large_scale_cloud_fraction != 0.0:
-            inverse_large_scale_cloud_fraction = 1.0 / (1.0 - large_scale_cloud_fraction)
+    with computation(PARALLEL), interval(...):
+        inverse_convective_cloud_fraction = 0.0
+        if convective_cloud_fraction < 1.0:
+            inverse_convective_cloud_fraction = 1.0 / (1.0 - convective_cloud_fraction)
 
-        large_scale_cloud_fraction_internal = large_scale_cloud_fraction * inverse_large_scale_cloud_fraction
-        large_scale_condensate_internal = (large_scale_liquid + large_scale_ice) * inverse_large_scale_cloud_fraction
-        large_scale_ice_internal = large_scale_ice * inverse_large_scale_cloud_fraction
-        t_internal = t
+        internal_cloud_fraction = large_scale_cloud_fraction * inverse_convective_cloud_fraction
+        internal_condensate = (large_scale_liquid + large_scale_ice) * inverse_convective_cloud_fraction
+        internal_large_scale_ice = large_scale_ice * inverse_convective_cloud_fraction
+        internal_t = t
 
         # calculate available environmental water vapor by subtracting vapor assumed to be locked inside the parameterized cloud
-        qsat, dqsat = saturation_specific_humidity(t_internal, p_mb, esx)
-        vapor_internal = (vapor - qsat * large_scale_cloud_fraction) * inverse_large_scale_cloud_fraction
+        qsat, dqsat = saturation_specific_humidity(internal_t, p_mb*100.0, esx)
+        internal_vapor = (vapor - qsat * convective_cloud_fraction) * inverse_convective_cloud_fraction
 
         # total environmental water (can be negative due to CN saturation assumptions)
-        total_water_internal = large_scale_condensate_internal + vapor_internal
+        internal_total_water = internal_condensate + internal_vapor
 
     with computation(PARALLEL), interval(...):
         # PHASE 2: pre-calculate Double Gaussian PDF (if applicable)
@@ -664,21 +665,20 @@ def hydrostatic_pdf(
         # PHASE 3: Iteration to Thermodynamic Equilibrium
         # adjust temperature, saturation, and condensate until stable
         max_iterations = 20
-        count = 0
-        while count < max_iterations:
+        count = 1
+        while count <= max_iterations:
             # store state from previous iteration
-            vapor_internal_old = vapor_internal
-            large_scale_condensate_internal_old = large_scale_condensate_internal
-            large_scale_cloud_fraction_internal_old = large_scale_cloud_fraction_internal
-            t_internal_old = t_internal
+            internal_vapor_old = internal_vapor
+            internal_condensate_old = internal_condensate
+            internal_t_old = internal_t
 
-            qsat_iteration, dqsat_iteration = saturation_specific_humidity(t_internal, p_mb, esx)
+            qsat_iteration, dqsat_iteration = saturation_specific_humidity(internal_t, p_mb * 100.0, esx)
 
             if use_sc_ice:
                 sc_ice_internal = min(max(sc_ice, 1.0), 1.7)
-                qsxsc = qsat_iteration * sc_ice_internal
-                if large_scale_ice_internal >= 0.0 and qsat_iteration > total_water_internal:
-                    qsat_iteration = qsxsc
+                qs_x_sc = qsat_iteration * sc_ice_internal
+                if internal_large_scale_ice >= 0.0 and qsat_iteration > internal_total_water:
+                    qsat_iteration = qs_x_sc
 
             # setup PDF width (sigma) based on shape
             if PDFSHAPE < 3:
@@ -692,8 +692,8 @@ def hydrostatic_pdf(
             # evaluate PDF to find new condensate (large_scale_condensate_internal) and fraction (large_scale_cloud_fraction_internal)
 
             if PDFSHAPE < 5:
-                large_scale_cloud_fraction_internal = pdffrac(PDFSHAPE, total_water_internal, sigmaqt1, sigmaqt2, qsat_iteration)
-                large_scale_condensate_internal = pdfcondensate(PDFSHAPE, total_water_internal, sigmaqt1, sigmaqt2, qsat_iteration)
+                internal_cloud_fraction = pdffrac(PDFSHAPE, internal_total_water, sigmaqt1, sigmaqt2, qsat_iteration)
+                internal_condensate = pdfcondensate(PDFSHAPE, internal_total_water, sigmaqt1, sigmaqt2, qsat_iteration)
 
             elif PDFSHAPE == 5:
                 option_not_implemented = True
@@ -701,15 +701,15 @@ def hydrostatic_pdf(
                 option_not_implemented = True
 
             if USE_BERGERON:
-                delta_condensate = large_scale_condensate_internal - large_scale_condensate_internal_old
-                large_scale_cloud_fraction = large_scale_cloud_fraction_internal * (1.0 - convective_cloud_fraction)
-                n_fac = 100.0 * p_mb * R_AIR / t_internal
+                delta_condensate = internal_condensate - internal_condensate_old
+                large_scale_cloud_fraction = internal_cloud_fraction * (1.0 - convective_cloud_fraction)
+                n_fac = 100.0 * p_mb * R_AIR / internal_t
 
                 fraction_ice = bergeron_partition(
                     DTIME=DTIME,
                     p_mb=p_mb,
-                    t=t,
-                    vapor=vapor,
+                    t=internal_t,
+                    vapor=internal_total_water,
                     large_scale_ice=large_scale_ice,
                     large_scale_liquid=large_scale_liquid,
                     convective_ice=convective_ice,
@@ -724,62 +724,64 @@ def hydrostatic_pdf(
                     lqu=estlqu,
                     needs_preexisting=bergeron_needs_preexisting,
                 )
+            else:
+                fraction_ice = ice_fraction(internal_t, convection_fraction, surface_type)
 
             # relax the condensate update to prevent oscillation during iteration
             latent_heeat_factor = (1.0 - fraction_ice) * ALHLBCP + fraction_ice * ALHSBCP
             if PDFSHAPE == 1:
-                large_scale_condensate_internal = large_scale_condensate_internal_old + (large_scale_condensate_internal - large_scale_condensate_internal_old) / (
-                    1.0 - (large_scale_cloud_fraction_internal * (alpha - 1.0) - (large_scale_condensate_internal / qsat)) * dqsat * latent_heeat_factor
+                internal_condensate = internal_condensate_old + (internal_condensate - internal_condensate_old) / (
+                    1.0 - (internal_cloud_fraction * (alpha - 1.0) - (internal_condensate / qsat_iteration)) * dqsat_iteration * latent_heeat_factor
                 )
             elif PDFSHAPE == 2:
-                large_scale_condensate_internal = large_scale_condensate_internal_old + 0.5 * (large_scale_condensate_internal - large_scale_condensate_internal_old) / (
-                    1.0 - (large_scale_cloud_fraction_internal * (alpha - 1.0) - (large_scale_condensate_internal / qsat)) * dqsat * latent_heeat_factor
+                internal_condensate = internal_condensate_old + 0.5 * (internal_condensate - internal_condensate_old) / (
+                    1.0 - (internal_cloud_fraction * (alpha - 1.0) - (internal_condensate / qsat_iteration)) * dqsat_iteration * latent_heeat_factor
                 )
             elif PDFSHAPE >= 5:
-                large_scale_condensate_internal = large_scale_condensate_internal_old + 0.7 * (large_scale_condensate_internal - large_scale_condensate_internal_old)
+                internal_condensate = internal_condensate_old + 0.7 * (internal_condensate - internal_condensate_old)
 
             # update vapor based on condensation changes
-            vapor_internal = vapor_internal_old - (large_scale_condensate_internal - large_scale_condensate_internal_old)
+            internal_vapor = internal_vapor_old - (internal_condensate - internal_condensate_old)
 
             # temperature update methods
             if iteration_method_internal == 1:
                 # use fixed-point iteration
-                t_internal = (
-                    t_internal_old
-                    + (1.0 - fraction_ice) * ALHLBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
-                    + fraction_ice * ALHSBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
+                internal_t = (
+                    internal_t_old
+                    + (1.0 - fraction_ice) * ALHLBCP * (internal_condensate - internal_condensate_old) * (1.0 - convective_cloud_fraction)
+                    + fraction_ice * ALHSBCP * (internal_condensate - internal_condensate_old) * (1.0 - convective_cloud_fraction)
                 )
 
-                PDFITERS = count
-                if abs(t_internal - t_internal_old) < 0.00001:
+                hydrostatic_pdf_iterations = count
+                if abs(internal_t - internal_t_old) < 0.00001:
                     count += max_iterations + 1  # stop the count
 
             else:
                 # secant method
                 f_t_internal = (
-                    t_internal_old
-                    + (1.0 - fraction_ice) * ALHLBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
-                    + fraction_ice * ALHSBCP * (large_scale_condensate_internal - large_scale_condensate_internal_old) * (1.0 - large_scale_cloud_fraction)
+                    internal_t_old
+                    + (1.0 - fraction_ice) * ALHLBCP * (internal_condensate - internal_condensate_old) * (1.0 - convective_cloud_fraction)
+                    + fraction_ice * ALHSBCP * (internal_condensate - internal_condensate_old) * (1.0 - convective_cloud_fraction)
                 )
 
-                PDFITERS = count
-                if abs(f_t_internal - t_internal_old) < 1.0e-6:
-                    t_internal = f_t_internal
+                hydrostatic_pdf_iterations = count
+                if abs(f_t_internal - internal_t_old) < 1.0e-6:
+                    internal_t = f_t_internal
                     count = max_iterations + 1  # stop the count
 
                 if count > 1:
                     # prevent division by zero
-                    denom = (f_t_internal - t_internal_old) - (t_internal_previous - f_t_internal_previous)
+                    denom = (f_t_internal - internal_t_old) - (t_internal_previous - f_t_internal_previous)
                     if abs(denom) > 1.0e-10:
-                        t_internal = t_internal_old - (f_t_internal - t_internal_old) * (t_internal_old - t_internal_previous) / denom
+                        internal_t = internal_t_old - (f_t_internal - internal_t_old) * (internal_t_old - t_internal_previous) / denom
                     else:
-                        t_internal = f_t_internal
+                        internal_t = f_t_internal
                         count = max_iterations + 1  # stop the count
                 else:
-                    t_internal = t_internal_old  # first iteration, use initial guess
+                    internal_t = internal_t_old  # first iteration, use initial guess
 
                 # store values for next secant iteration step
-                t_internal_previous = t_internal_old
+                t_internal_previous = internal_t_old
                 f_t_internal_previous = f_t_internal
 
             count += 1
@@ -791,11 +793,11 @@ def hydrostatic_pdf(
         # scale the environmental values back down to grid-box absolutes,
         # partition into ice/liquid, and update prognostic variables.
 
-        large_scale_cloud_fraction = large_scale_cloud_fraction_internal * (1.0 - convective_cloud_fraction)
-        large_scale_condensate_internal = large_scale_condensate_internal * (1.0 - convective_cloud_fraction)
+        large_scale_cloud_fraction = internal_cloud_fraction * (1.0 - convective_cloud_fraction)
+        internal_condensate = internal_condensate * (1.0 - convective_cloud_fraction)
 
         # determine net change in total resolved condensate
-        excess_condensate = large_scale_condensate_internal - (large_scale_liquid + large_scale_ice)
+        excess_condensate = internal_condensate - (large_scale_liquid + large_scale_ice)
 
         if excess_condensate < 0.0:
             # net evaporation: liquid evaporates first, then ice

@@ -1,6 +1,6 @@
 from mpi4py import MPI
 from ndsl import QuantityFactory, StencilFactory, SubtileGridSizer, ndsl_log
-from ndsl.dsl.gt4py import FORWARD, GlobalTable, K, computation, exp, interval, log, log10, float64, float32
+from ndsl.dsl.gt4py import FORWARD, GlobalTable, K, computation, exp, interval, log, log10, float64, float32, PARALLEL
 from ndsl.dsl.typing import Bool, Float, FloatField, FloatFieldIJ, Int
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 
@@ -35,36 +35,32 @@ def compute_table_core(
 ):
     from __externals__ import N_MIN, k_end
 
-    with computation(FORWARD), interval(0, 1):
+    with computation(PARALLEL), interval(...):
         # initialize internal constants
-        esbasw: FloatFieldIJ = 1013246.0
-        tbasw: FloatFieldIJ = TICE + 100.0
-        esbasi: FloatFieldIJ = 6107.1
-        tmin: FloatFieldIJ = TICE - N_MIN * DELT
+        esbasw: float64 = 1013246.0
+        tbasw: float64 = TICE + 100.0
+        esbasi: float64 = 6107.1
+        tmin: float64 = TICE - N_MIN * DELT
 
     with computation(FORWARD), interval(...):
         # enforce 64 bit precision on certain fields
-        tmin = 0.0
-        tem = 0.0
-        esh = 0.0
-        wice = 0.0
-        wh2o = 0.0
-        fac0 = 0.0
-        fac1 = 0.0
-        fac2 = 0.0
-        esbasw = 0.0
-        tbasw = 0.0
-        esbasi = 0.0
-        a = 0.0
-        b = 0.0
-        c = 0.0
-        d = 0.0
-        e = 0.0
-        esupc = 0.0
+        tem: float64 = 0.0
+        esh: float64 = 0.0
+        wice: float64 = 0.0
+        wh2o: float64 = 0.0
+        fac0: float64 = 0.0
+        fac1: float64 = 0.0
+        fac2: float64 = 0.0
+        a: float64 = 0.0
+        b: float64 = 0.0
+        c: float64 = 0.0
+        d: float64 = 0.0
+        e: float64 = 0.0
+        esupc: float64 = 0.0
 
     # compute es over ice between - (N_MIN * DELT) deg C and 0 deg C
     with computation(FORWARD), interval(...):
-        if K <= N_MIN:
+        if K < N_MIN:
             if do_smith_table:
                 tem = tmin + DELT * float32(K)
                 a = -9.09718 * (TICE / tem - 1.0)
@@ -81,7 +77,7 @@ def compute_table_core(
 
     # compute es over water between - (n_blend * DELT) deg C and [ (n - n_min - 1) * DELT] deg C
     with computation(FORWARD), interval(...):
-        if K <= k_end - N_MIN + n_blend:
+        if K < k_end - N_MIN + n_blend:
             if do_smith_table:
                 tem = TICE + DELT * float32(K - n_blend)
                 a = -7.90298 * (tbasw / tem - 1.0)
@@ -90,10 +86,10 @@ def compute_table_core(
                 d = 8.1328e-3 * (exp((tbasw / tem - 1.0) * (-3.49149) * log(10.0)) - 1.0)
                 e = log10(esbasw)
                 esh = 0.1 * exp((a + b + c + d + e) * log(10.0))
-                if K <= n_blend:
+                if K < n_blend:
                     esupc = esh
                 else:
-                    shift = K + N_MIN - n_blend
+                    shift = N_MIN - n_blend
                     table[0, 0, shift] = esh
             else:
                 tem = TICE + DELT * float32(K - n_blend)
@@ -101,7 +97,7 @@ def compute_table_core(
                 fac1 = fac0 * LV0
                 fac2 = (DC_VAP * log(tem / TICE) + fac1) / RVGAS
                 esh = E00 * exp(fac2)
-                if K <= n_blend:
+                if K < n_blend:
                     esupc = esh
                 else:
                     shift = K + N_MIN - n_blend
@@ -109,7 +105,7 @@ def compute_table_core(
 
     # derive blended es over ice and supercooled water between - (n_blend * delt) deg C and 0 deg C
     with computation(FORWARD), interval(...):
-        if K <= n_blend:
+        if K < n_blend:
             tem = TICE + DELT * float32(K - n_blend)
             # WMP impose CALIPSO ice polynomial for mixed phase
             ifrac = ice_fraction(float32(tem), 0.0, 0.0)
@@ -124,7 +120,7 @@ def compute_dtable(table: FloatField, dtable: FloatField):
 
     with computation(FORWARD), interval(0, -1):
         if K < k_end:
-            dtable = max(0.0, table[0, 0, 1])
+            dtable = max(0.0, table[0, 0, 1] - table)
 
     with computation(FORWARD), interval(-1, None):
         dtable = dtable[0, 0, -1]
