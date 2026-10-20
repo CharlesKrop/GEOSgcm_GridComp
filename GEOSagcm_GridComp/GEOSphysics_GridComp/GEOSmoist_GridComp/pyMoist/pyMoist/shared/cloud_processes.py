@@ -241,6 +241,7 @@ def cloud_effective_radius_ice(
     p: Float,
     t: Float,
     ice_mixing_ratio: Float,
+    ice_radii_param: Int = ICE_RADII_PARAM,
 ) -> Float:
     """
     Calculate the effective radius of ice particles in clouds
@@ -260,7 +261,7 @@ def cloud_effective_radius_ice(
     # ice water content
     wc = 1.0e3 * rho * ice_mixing_ratio  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
     # radius in meters
-    if ICE_RADII_PARAM == 1:
+    if ice_radii_param == 1:
         # ------ice cloud effective radius ----- [klaus wyser, 1998]
         if t > MAPL_TICE or ice_mixing_ratio < 1.0e-9:
             bb = -2.0
@@ -288,6 +289,7 @@ def cloud_effective_radius_liquid(
     temperature: Float,
     liquid_mixing_ratio: Float,
     liquid_concentration: Float,
+    liquid_radii_param: Int = LIQ_RADII_PARAM,
 ) -> Float:
     """
     Calculate the effective radius of liquid droplets clouds
@@ -301,8 +303,9 @@ def cloud_effective_radius_liquid(
     Returns:
         radius (Float): drop radius
     """
-    # Calculate liquid water content
-    rho = 1.0e3 * air_density(pressure, temperature) * liquid_mixing_ratio  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
+    # LDRADIUS4 first computes air density in kg/m3, then converts the
+    # in-cloud liquid content to g/m3 exactly once.
+    rho = air_density(pressure, temperature)
 
     # liquid water content
     wc = 1.0e3 * rho * liquid_mixing_ratio  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
@@ -310,7 +313,7 @@ def cloud_effective_radius_liquid(
     # from the aerosol model + ....
     nnx = max(liquid_concentration * 1.0e-6, 10.0)
     # radius in meters
-    if LIQ_RADII_PARAM == 1:
+    if liquid_radii_param == 1:
         # Jason Version
         radius = min(60.0e-6, max(2.5e-6, 1.0e-6 * BX * (wc / nnx) ** R13BBETA * ABETA * 6.92))
     else:
@@ -457,24 +460,17 @@ def fix_up_clouds(
         lid_level (IntFieldIJ): the level above which clouds are removed (note 0 = TOA). set to a number < 0 to disable
     """
 
-    with computation(FORWARD), interval(0, 1):
-        if lid_level < 0:
-            remove_clouds: BoolFieldIJ = False
-        else:
-            remove_clouds: BoolFieldIJ = True
-
     with computation(PARALLEL), interval(...):
-        if remove_clouds:
+        if lid_level >= 0 and K < lid_level:
             # remove all cloud quantities above the lid level
-            if K < lid_level:
-                vapor = vapor + type_one_ice + type_one_liquid + type_two_ice + type_two_liquid
-                t = t - ALHLBCP * (type_one_liquid + type_two_liquid) - ALHSBCP * (type_one_ice + type_two_ice)
-                type_one_ice = 0.0
-                type_one_liquid = 0.0
-                type_one_cloud_fraction = 0.0
-                type_two_ice = 0.0
-                type_two_liquid = 0.0
-                type_two_cloud_fraction = 0.0
+            vapor = vapor + type_two_liquid + type_two_ice + type_one_liquid + type_one_ice
+            t = t - ALHLBCP * (type_two_liquid + type_one_liquid) - ALHSBCP * (type_two_ice + type_one_ice)
+            type_one_ice = 0.0
+            type_one_liquid = 0.0
+            type_one_cloud_fraction = 0.0
+            type_two_ice = 0.0
+            type_two_liquid = 0.0
+            type_two_cloud_fraction = 0.0
 
         else:
             # ensure physical values for cloud quantities
@@ -485,14 +481,6 @@ def fix_up_clouds(
                 type_one_cloud_fraction = type_one_cloud_fraction * (1.0 / total_cloud_fraction)
                 type_two_cloud_fraction = type_two_cloud_fraction * (1.0 / total_cloud_fraction)
 
-            # fix if type one cloud fraction too small
-            if type_one_cloud_fraction < CFMIN:
-                vapor = vapor + type_one_liquid + type_two_liquid
-                t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_two_liquid
-                type_one_ice = 0.0
-                type_one_liquid = 0.0
-                type_one_cloud_fraction = 0.0
-
             # fix if type two cloud fraction too small
             if type_two_cloud_fraction < CFMIN:
                 vapor = vapor + type_two_liquid + type_two_ice
@@ -500,6 +488,14 @@ def fix_up_clouds(
                 type_two_ice = 0.0
                 type_two_liquid = 0.0
                 type_two_cloud_fraction = 0.0
+
+            # fix if type one cloud fraction too small
+            if type_one_cloud_fraction < CFMIN:
+                vapor = vapor + type_one_liquid + type_one_ice
+                t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_one_ice
+                type_one_ice = 0.0
+                type_one_liquid = 0.0
+                type_one_cloud_fraction = 0.0
 
             # fix if type one liquid is too small
             if type_one_liquid < QCMIN:
@@ -525,14 +521,6 @@ def fix_up_clouds(
                 t = t - ALHSBCP * type_two_ice
                 type_two_ice = 0.0
 
-            # fix all type one quantities if liquid + ice is too small
-            if (type_one_liquid + type_two_liquid) < QCMIN:
-                vapor = vapor + type_one_liquid + type_two_liquid
-                t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_two_liquid
-                type_two_ice = 0.0
-                type_one_liquid = 0.0
-                type_one_cloud_fraction = 0.0
-
             # fix all type two quantities if liquid + ice is too small
             if (type_two_liquid + type_two_ice) < QCMIN:
                 vapor = vapor + type_two_liquid + type_two_ice
@@ -540,6 +528,14 @@ def fix_up_clouds(
                 type_two_cloud_fraction = 0.0
                 type_two_liquid = 0.0
                 type_two_ice = 0.0
+
+            # fix all type one quantities if liquid + ice is too small
+            if (type_one_liquid + type_one_ice) < QCMIN:
+                vapor = vapor + type_one_liquid + type_one_ice
+                t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_one_ice
+                type_one_ice = 0.0
+                type_one_liquid = 0.0
+                type_one_cloud_fraction = 0.0
 
 
 def hydrostatic_pdf(
@@ -1237,7 +1233,7 @@ def sublimate(
     cloud_fraction: FloatField,
     saturation_specific_humidity: FloatField,
 ):
-    from __externals__ import CCI_EVAP_EFF, DTIME
+    from __externals__ import CCI_EVAP_EFF, DTIME, ICE_RADII_PARAM
 
     # SUBLIMATION OF CLOUD WATER - DelGenio et al (1996, J. Clim., 9, 270-303) formulation (Eq.s 15-17)
 
@@ -1246,10 +1242,9 @@ def sublimate(
 
         rh_limited = min(vapor / saturation_specific_humidity, 1.00)
 
-        # NOTE MAPL_ALHS is MAPL_ALHL in the fortran. this is a bug
-        # it has been fixed in a newer version of the Fortran,
-        # so it is being fixed in the python right now
-        k1 = (MAPL_ALHS**2) * RHO_I / (K_COND * MAPL_RVAP * (t**2))
+        # Match SUBL3 in the v11.10.1 reference, which uses liquid latent
+        # heat in this resistance term (but sublimation heat for cooling).
+        k1 = (MAPL_ALHL**2) * RHO_I / (K_COND * MAPL_RVAP * (t**2))
 
         # DIFFU is given for 1000 mb, so 1000.0/p_mb accounts for increased diffusivity at lower pressure
         k2 = MAPL_RVAP * t * RHO_I / (DIFFU * (1000.0 / p_mb) * es)
@@ -1259,7 +1254,7 @@ def sublimate(
         else:
             ice_modified = 0.0
 
-        radius = cloud_effective_radius_ice(p_mb, t, ice_modified)
+        radius = cloud_effective_radius_ice(p_mb, t, ice_modified, ICE_RADII_PARAM)
 
         if rh_limited < rh_crit and radius > 0.0:
             subl = CCI_EVAP_EFF * ice * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)

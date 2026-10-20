@@ -317,11 +317,11 @@ def redistribute_precipitation_fluxes(
         # source (internal) fields (tmp_val) are grid center (K levels)
         # model state fields (LHS) are grid edge (K+1 levels)
         # must adjust reads accordingly, do not update level 0 of LHS
-        tmp_val = min(1.0, max(convective_liquid[0,0,-1] / max(radiation_liquid[0,0,-1], 1.0e-8), 0.0))
+        tmp_val = min(1.0, max(convective_liquid[0, 0, -1] / max(radiation_liquid[0, 0, -1], 1.0e-8), 0.0))
         anvil_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) * tmp_val
         non_anvil_large_scale_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) - anvil_liquid_precip_flux
 
-        tmp_val = min(1.0, max(convective_ice[0,0,-1] / max(radiation_ice[0,0,-1], 1.0e-8), 0.0))
+        tmp_val = min(1.0, max(convective_ice[0, 0, -1] / max(radiation_ice[0, 0, -1], 1.0e-8), 0.0))
         anvil_ice_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux) * tmp_val
         non_anvil_large_scale_ice_precip_flux = (
             non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux
@@ -420,6 +420,7 @@ class GFDL1M(NDSLRuntime):
             quantity_factory=quantity_factory,
             config=config,
             saturation_tables=saturation_tables,
+            lid_level=self._setup.lid_level,
         )
 
         self._add = stencil_factory.from_dims_halo(
@@ -546,6 +547,17 @@ class GFDL1M(NDSLRuntime):
             locals=self._locals,
         )
 
+        self._run_macrophysics(state)
+        self._run_microphysics(state)
+        self._run_diagnostics(state)
+
+    def _run_macrophysics(self, state: GFDL1MState):
+        """Run macrophysics using already initialized state and locals.
+
+        Setup must have run, or the phase-boundary state, locals and initial
+        tendency snapshots must have been supplied by a translate test.
+        This does not rerun setup, microphysics or final driver diagnostics.
+        """
         # --------------------------------------------------
         # MACROPHYSICS
         # --------------------------------------------------
@@ -556,6 +568,12 @@ class GFDL1M(NDSLRuntime):
             locals=self._locals,
         )
 
+    def _run_microphysics(self, state: GFDL1MState):
+        """Run the complete CLDMICRO section using already initialized locals.
+
+        This boundary matches the GFDL1M-Microphysics savepoints: setup and
+        macrophysics have already run, while final driver diagnostics have not.
+        """
         # --------------------------------------------------
         # MICROPHYSICS
         # --------------------------------------------------
@@ -810,6 +828,7 @@ class GFDL1M(NDSLRuntime):
             vapor=state.mixing_ratio.vapor,
         )
 
+    def _run_diagnostics(self, state: GFDL1MState):
         # --------------------------------------------------
         # DIAGNOSTICS
         # --------------------------------------------------

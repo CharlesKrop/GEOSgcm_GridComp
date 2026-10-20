@@ -194,6 +194,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
+        lid_level: int,
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
@@ -210,7 +211,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
         # construct stencils
 
         # Fortran runs cloud macro only at/below the pressure lid.
-        macro_factory = stencil_factory.restrict_vertical(k_start=max(0, int(config.GFDL_MP_KLID)))
+        macro_factory = stencil_factory.restrict_vertical(k_start=lid_level)
 
         self._add = stencil_factory.from_dims_halo(
             func=add,
@@ -279,6 +280,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             externals={
                 "DTIME": config.DT,
                 "CCI_EVAP_EFF": config.CCI_EVAP_EFF,
+                "ICE_RADII_PARAM": config.ICE_RADII_PARAM,
             },
         )
         self._update_output_by_dt = stencil_factory.from_dims_halo(

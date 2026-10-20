@@ -7,6 +7,7 @@ from ndsl.stencils.testing.grid import Grid
 from ndsl.stencils.testing.savepoint import DataLoader
 from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
+from ndsl.dsl.typing import Int
 
 from pyMoist import GFDL1M, GFDL1MConfig, GFDL1MState
 from pyMoist.saturation_tables.tables.main import SaturationVaporPressureTable
@@ -32,8 +33,6 @@ class TranslateGFDL1M(TranslateFortranData2Py):
         else:
             self._ts = 0
 
-        # NOTE not all fields are associated in v11.5.2. fields which are not associated are not serialized,
-        # and not output by the parameterization, and have therefore been manually disabled within this test
         self.in_vars["data_vars"] = {
             "AN_PRCP": {},
             "AN_SNR": {},
@@ -156,7 +155,11 @@ class TranslateGFDL1M(TranslateFortranData2Py):
 
     def compute(self, inputs):
         # initialize constants
-        config = GFDL1MConfig(CWD="/Users/ckropiew/GEOS/v11.10.1/run/experiments/GCM_C24_L72_NX1_NY1/scratch", **self.constants)
+        constants = self.constants.copy()
+        # shift GFDL_MP_KLID to be zero-based for Python
+        lid = constants["GFDL_MP_KLID"]
+        constants["GFDL_MP_KLID"] = lid - Int(1) if lid > 0 else Int(0)
+        config = GFDL1MConfig(CWD="/Users/ckropiew/GEOS/v11.10.1/run/experiments/GCM_C24_L72_NX1_NY1/scratch", **constants)
 
         # initialize state
         state = GFDL1MState.zeros(self.quantity_factory)

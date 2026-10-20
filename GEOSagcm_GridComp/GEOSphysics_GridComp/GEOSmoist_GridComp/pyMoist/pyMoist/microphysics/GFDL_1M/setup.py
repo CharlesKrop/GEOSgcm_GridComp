@@ -150,6 +150,9 @@ class GFDL1MSetup(NDSLRuntime):
         # make configuration and saturation tables visible at runtime
         self.config = config
         self.saturation_tables = saturation_tables
+        
+        # Configuration supplies a zero-based lid; nonpositive values use TOA.
+        self.lid_level = max(0, int(config.GFDL_MP_KLID))
 
         # initialize class specific locals
         self._locals = GFDL1MSetupLocals.make_locals(quantity_factory)
@@ -249,10 +252,7 @@ class GFDL1MSetup(NDSLRuntime):
             lcl_level=locals.lcl_level,
         )
 
-        if self.config.GFDL_MP_KLID > 0.0:
-            self._set_value_2d_int(field=locals.lid_level, value=Int(self.config.GFDL_MP_KLID))
-        else:
-            self._set_value_2d_int(field=locals.lid_level, value=Int(1))
+        self._set_value_2d_int(field=locals.lid_level, value=Int(self.lid_level))
 
         # set unused exports to zero
         self._set_value_2d(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))

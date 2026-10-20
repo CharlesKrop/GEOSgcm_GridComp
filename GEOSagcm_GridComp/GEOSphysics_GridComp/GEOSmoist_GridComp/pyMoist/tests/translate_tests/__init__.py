@@ -332,26 +332,14 @@
 # from .convection.UW.UW_translate_tests.translate_update_output_variables1 import TranslateUpdateOutputVars1
 # from .convection.UW.UW_translate_tests.translate_update_output_variables2 import TranslateUpdateOutputVars2
 from .microphysics.GFDL_1M.translate_GFDL1M import TranslateGFDL1M
+from .microphysics.GFDL_1M.translate_GFDL1M_Macrophysics import TranslateGFDL1M_Macrophysics
+from .microphysics.GFDL_1M.translate_GFDL1M_Microphysics import TranslateGFDL1M_Microphysics
 from .translate_saturation_specific_humidity_functions import Translatesaturation_specific_humidity_functions
 
 __all__ = [
-    "TranslateGFDL_1M_Driver",
-    "TranslateGFDL_1M_DriverFinish",
-    "TranslateGFDL_1M_DriverSetup",
-    "TranslateGFDL_1M_FallSpeed",
-    "TranslateGFDL_1M_IceCloud",
-    "TranslateGFDL_1M_TerminalFall",
-    "TranslateGFDL_1M_WarmRain",
-    "TranslateGFDL_1M_DriverTables",
-    "TranslateGFDL_1M_Evaporate",
-    "TranslateGFDL_1M_HydrostaticPDF",
-    "TranslateGFDL_1M_MeltFreeze",
-    "TranslateGFDL_1M_PhaseChange",
-    "TranslateGFDL_1M_RHCalculations",
-    "TranslateGFDL_1M_Sublimate",
-    "TranslateGFDL_1M_Finalize",
-    "TranslateGFDL_1M_RadiationCoupling",
-    "TranslateGFDL_1M_RedistributeClouds",
-    "TranslateGFDL_1M_Setup",
-    "TranslateComputeUwshcuInv",
+    "TranslateGFDL1M",
+    "TranslateGFDL1M_Macrophysics",
+    "TranslateGFDL1M_Microphysics",
+    "Translatesaturation_specific_humidity_functions",
+    # "TranslateComputeUwshcuInv",
 ]
