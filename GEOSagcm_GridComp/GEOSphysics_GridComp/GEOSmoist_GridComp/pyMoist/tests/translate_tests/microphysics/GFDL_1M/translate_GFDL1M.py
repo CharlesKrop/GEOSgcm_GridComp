@@ -194,7 +194,7 @@ class TranslateGFDL1M(TranslateFortranData2Py):
         safe_assign_array(state.shallow_convection_snow.field[:], inputs["SHLW_SNO3"])
         safe_assign_array(state.critical_relative_humidity_for_pdf.field[:], inputs["RHCRIT"])
         safe_assign_array(state.liquid_water_path.field[:], inputs["LWP"])
-        safe_assign_array(state.boundary_layer_level_for_uw_shallow_conv.field[:], inputs["KPBLSC"])
+        safe_assign_array(state.boundary_layer_level_for_uw_shallow_conv.field[:], inputs["KPBLSC"] - 1)
 
         # state.vertical_motion
         safe_assign_array(state.vertical_motion.velocity.field[:], inputs["W"])
@@ -348,7 +348,7 @@ class TranslateGFDL1M(TranslateFortranData2Py):
             "SHLW_SNO3": state.shallow_convection_snow.field[:],
             "RHCRIT": state.critical_relative_humidity_for_pdf.field[:],
             "LWP": state.liquid_water_path.field[:],
-            "KPBLSC": state.boundary_layer_level_for_uw_shallow_conv.field[:],
+            "KPBLSC": state.boundary_layer_level_for_uw_shallow_conv.field[:] + 1,
             "W": state.vertical_motion.velocity.field[:],
             "W2": state.vertical_motion.variance.field[:],
             "W3": state.vertical_motion.third_moment.field[:],
