@@ -10,7 +10,7 @@ from ndsl.stencils.basic_operations_2d import set_value_2d
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
-from pyMoist.saturation_tables import SaturationVaporPressureTable
+from pyMoist.saturation_tables import SaturationVaporPressureTable, GlobalTable_saturation_tables, saturation_specific_humidity
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, fill_negative_q
 from pyMoist.shared.cloud_processes import evaporate, fix_up_clouds, hydrostatic_pdf, melt_freeze, sublimate
 
@@ -41,7 +41,8 @@ def compute_macrophysics_factors(
         min_rh_crit = max(0.7, min_rh_crit)
 
         if TURNRHCRIT_PARAM <= 0.0:
-            turn_rh_crit = p_mb.at(K=int(boundary_layer_level_for_uw_shallow_conv)) - 50
+            # Level indices are positive, so truncation after +0.5 matches NINT.
+            turn_rh_crit = p_mb.at(K=int(boundary_layer_level_for_uw_shallow_conv + 0.5)) - 50
         else:
             turn_rh_crit = TURNRHCRIT_PARAM
 
@@ -49,6 +50,7 @@ def compute_macrophysics_factors(
 def compute_critical_relative_humidity(
     area: FloatFieldIJ,
     p_mb: FloatField,
+    p_interface_mb: FloatField,
     min_rh_crit: FloatFieldIJ,
     turn_rh_crit: FloatFieldIJ,
     rh_crit: FloatField,
@@ -60,6 +62,7 @@ def compute_critical_relative_humidity(
     Args:
         area (FloatFieldIJ)
         p_mb (FloatField)
+        p_interface_mb (FloatField)
         min_rh_crit (FloatFieldIJ)
         turn_rh_crit (FloatFieldIJ)
         rh_crit (FloatField)
@@ -68,25 +71,31 @@ def compute_critical_relative_humidity(
     """
     from __externals__ import MAX_RH_CRIT, k_end
 
-    with computation(FORWARD), interval(0, 1):
+    with computation(PARALLEL), interval(...):
         # use Slingo-Ritter (1985) formulation for critical relative humidity
         # ensure the max is never lower than the min
         safe_max_rh_crit = max(MAX_RH_CRIT, min_rh_crit)
         if p_mb <= turn_rh_crit:
-            min_rh_crit = min_rh_crit
+            minimum_rh = min_rh_crit
         elif K == k_end:
-            min_rh_crit = safe_max_rh_crit
+            minimum_rh = safe_max_rh_crit
         else:
-            x_norm = (p_mb - turn_rh_crit) / (p_mb.at(K=k_end) - turn_rh_crit)
+            x_norm = (p_mb - turn_rh_crit) / (p_interface_mb.at(K=k_end + 1) - turn_rh_crit)
             # cubic smoothstep S-curve: x^2 * (3 - 2x)
-            min_rh_crit = min_rh_crit + (safe_max_rh_crit - min_rh_crit) * (x_norm * x_norm * (3.0 - 2.0 * x_norm))
+            minimum_rh = min_rh_crit + (safe_max_rh_crit - min_rh_crit) * (x_norm * x_norm * (3.0 - 2.0 * x_norm))
 
     # scale-aware blending for rhcrit
     with computation(PARALLEL), interval(...):
-        rh_crit = MAX_RH_CRIT + (min_rh_crit - MAX_RH_CRIT) * sqrt(sqrt(area / 1.0e10))
+        rh_crit = MAX_RH_CRIT + (minimum_rh - MAX_RH_CRIT) * sqrt(sqrt(area / 1.0e10))
         # limit alpha to < 30 %
         alpha = max(0.0, min(0.30, (1.0 - rh_crit)))
         one_minus_alpha = 1.0 - alpha
+
+
+def relative_humidity_after_pdf(t: FloatField, p_mb: FloatField, vapor: FloatField, esx: GlobalTable_saturation_tables, rh: FloatField):
+    with computation(PARALLEL), interval(...):
+        qsat, dqsat = saturation_specific_humidity(t, p_mb * 100.0, esx)
+        rh = vapor / qsat
 
 
 def update_output_by_dt(input: FloatField, output: FloatField):
@@ -199,6 +208,10 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._locals = GFDL1MMacrophysicsLocals.make_locals(quantity_factory)
 
         # construct stencils
+
+        # Fortran runs cloud macro only at/below the pressure lid.
+        macro_factory = stencil_factory.restrict_vertical(k_start=max(0, int(config.GFDL_MP_KLID)))
+
         self._add = stencil_factory.from_dims_halo(
             func=add,
             compute_dims=[I_DIM, J_DIM, K_DIM],
@@ -221,7 +234,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             func=copy,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-        self._evaporate = stencil_factory.from_dims_halo(
+        self._evaporate = macro_factory.from_dims_halo(
             func=evaporate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
@@ -238,7 +251,11 @@ class GFDL1MMacrophysics(NDSLRuntime):
             func=fix_up_clouds,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-        self._hydrostatic_pdf = stencil_factory.from_dims_halo(
+        self._relative_humidity_after_pdf = macro_factory.from_dims_halo(
+            func=relative_humidity_after_pdf,
+            compute_dims=[I_DIM, J_DIM, K_DIM],
+        )
+        self._hydrostatic_pdf = macro_factory.from_dims_halo(
             func=hydrostatic_pdf,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
@@ -247,7 +264,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 "USE_BERGERON": config.USE_BERGERON,
             },
         )
-        self._melt_freeze = stencil_factory.from_dims_halo(
+        self._melt_freeze = macro_factory.from_dims_halo(
             func=melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DTIME": config.DT},
@@ -256,7 +273,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             func=set_value_2d,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-        self._sublimate = stencil_factory.from_dims_halo(
+        self._sublimate = macro_factory.from_dims_halo(
             func=sublimate,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
@@ -298,6 +315,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._compute_critical_relative_humidity(
             area=state.area,
             p_mb=locals.p_mb,
+            p_interface_mb=locals.p_interface_mb,
             min_rh_crit=self._locals.min_rh_crit,
             turn_rh_crit=self._locals.turn_rh_crit,
             rh_crit=self._locals.rh_crit,
@@ -348,6 +366,14 @@ class GFDL1MMacrophysics(NDSLRuntime):
             esx=self._saturation_tables.esx,
             estfrz=self._saturation_tables.frz,
             estlqu=self._saturation_tables.lqu,
+        )
+
+        self._relative_humidity_after_pdf(
+            t=state.t,
+            p_mb=locals.p_mb,
+            vapor=state.mixing_ratio.vapor,
+            esx=self._saturation_tables.esx,
+            rh=state.relative_humidity_after_pdf,
         )
 
         # melt/freeze particles if enabled

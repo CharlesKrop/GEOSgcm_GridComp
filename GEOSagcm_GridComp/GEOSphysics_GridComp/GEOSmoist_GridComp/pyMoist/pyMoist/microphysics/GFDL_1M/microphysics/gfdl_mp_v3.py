@@ -42,7 +42,7 @@ class GFDLMPV3(NDSLRuntime):
         self._gfdl_1m_config = gfdl_1m_config
 
         # initialize namelist parameters. will be read from namelist where available, otherwise use defaults
-        self._mp_namelist = GFDLMPV3NamelistConfig.init_from_namelist(os.path.join(gfdl_1m_config.CWD, namelist))
+        self._mp_namelist = GFDLMPV3NamelistConfig.init_from_namelist(os.path.join(gfdl_1m_config.CWD, namelist), dt=gfdl_1m_config.DT)
 
         # initialize cloud microphysics configuration
         # NOTE currently a two step process so that it is abundantly clear that the calculations required to fully initialize

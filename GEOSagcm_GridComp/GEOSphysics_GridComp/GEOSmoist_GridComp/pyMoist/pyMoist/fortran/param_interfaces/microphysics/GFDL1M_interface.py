@@ -342,15 +342,15 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("fill_negative_tendency_cloud_macro.vapor", "DQVDT_FILL_CLDMICRO", export_repository)
 
         # system to alert that radar diag is requested, but not yet implemented. remove when implemented
-        do_radar_diagnostic = (
-            export_repository.associated("DBZ")
-            or export_repository.associated("DBZ_MAX")
-            or export_repository.associated("DBZ_1KM")
-            or export_repository.associated("DBZ_TOP")
-            or export_repository.associated("DBZ_M10C")
-        )
+        # do_radar_diagnostic = (
+        #     export_repository.associated("DBZ")
+        #     or export_repository.associated("DBZ_MAX")
+        #     or export_repository.associated("DBZ_1KM")
+        #     or export_repository.associated("DBZ_TOP")
+        #     or export_repository.associated("DBZ_M10C")
+        # )
 
-        self._get_code().post_init(do_radar_diagnostic)
+        # self._get_code().post_init(do_radar_diagnostic)
 
     def run(
         self,
@@ -372,6 +372,9 @@ class GFDL1MInterface(UserCode):
         with TimedCUDAProfiler("GFDL 1M", {}):
             with TimedCUDAProfiler("GFDL 1M - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
+
+                # adjust levels to python indexing
+                self._managed_state.ndsl_state.boundary_layer_level_for_uw_shallow_conv.field[:] -= 1
 
             with TimedCUDAProfiler("GFDL 1M Numerics", {}):
                 self._get_code()(self._managed_state.ndsl_state)

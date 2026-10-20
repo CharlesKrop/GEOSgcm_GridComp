@@ -25,8 +25,9 @@ def saturation_specific_humidity(t: Float, density: Float, table: GFDLMPV3Satura
     index = int32(trunc(ap1 - 0.5))
     # Apply protections (bounds checking)
     # Ensures index is >= 0 AND it+1 <= es_table_length - 1
-    index = max(0, min(index, SATURATION_TABLE_LENGTH - 2))
-    dsat_p = RDELT * (dtable.A[index] + (ap1 - index) * (dtable.A[index + 1] - dtable.A[index])) / (RVGAS * t * density)
+    # Keep Fortran's one-based interpolation coordinate; convert only the array index.
+    index = max(1, min(index, SATURATION_TABLE_LENGTH - 1))
+    dsat_p = RDELT * (dtable.A[index - 1] + (ap1 - index) * (dtable.A[index] - dtable.A[index - 1])) / (RVGAS * t * density)
     return sat_p, dsat_p
 
 
@@ -69,5 +70,5 @@ def saturation_water_pressure(t: Float, table: GFDLMPV3SaturationTable, dtable: 
     index = int32(trunc(ap1))
     # Apply protections (bounds checking)
     # Ensures index is >= 0 AND index+1 <= es_table_length - 1
-    index = max(0, min(index, SATURATION_TABLE_LENGTH - 2))
-    return table.A[index] + (ap1 - index) * dtable.A[index]
+    index = max(1, min(index, SATURATION_TABLE_LENGTH - 1))
+    return table.A[index - 1] + (ap1 - index) * dtable.A[index - 1]

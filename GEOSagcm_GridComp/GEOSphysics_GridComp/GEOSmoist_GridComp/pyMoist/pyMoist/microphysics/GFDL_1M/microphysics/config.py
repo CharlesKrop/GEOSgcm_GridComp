@@ -557,7 +557,7 @@ class GFDLMPV3NamelistConfig:
         return cls()
 
     @classmethod
-    def init_from_namelist(cls, nml_path: str) -> "GFDLMPV3NamelistConfig":
+    def init_from_namelist(cls, nml_path: str, dt: float | None = None) -> "GFDLMPV3NamelistConfig":
         """Instantiate config from the gfdl_mp_nml group of a Fortran namelist file.
 
         For fields present in gfdl_mp_nml, cast and use that value.
@@ -590,6 +590,9 @@ class GFDLMPV3NamelistConfig:
 
         # Construct the set of keyword arguments to initialize the dataclass instance
         kwargs = {}
+        if dt is not None:
+            # update default ntimes
+            kwargs["NTIMES"] = Int(max(1, int(dt / min(dt, float(cls.MP_TIME)))))
         for field in dataclasses.fields(cls):
             name = field.name
             key = name.lower()

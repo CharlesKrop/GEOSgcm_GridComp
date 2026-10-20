@@ -168,10 +168,10 @@ def bergeron_partition(
         if needs_preexisting:
             # explicit microphysics handles nucleation; no deposition growth allowed here
             stop_calculation = True
-    else:
-        # fall back to temperature-based diagnostic fraction
-        fraction_ice = ice_fraction(t, convection_fraction, surface_type)
-        stop_calculation = True
+        else:
+            # fall back to temperature-based diagnostic fraction
+            fraction_ice = ice_fraction(t, convection_fraction, surface_type)
+            stop_calculation = True
 
     if not stop_calculation:
         # calculate saturation thresholds
@@ -651,7 +651,7 @@ def hydrostatic_pdf(
         internal_t = t
 
         # calculate available environmental water vapor by subtracting vapor assumed to be locked inside the parameterized cloud
-        qsat, dqsat = saturation_specific_humidity(internal_t, p_mb*100.0, esx)
+        qsat, dqsat = saturation_specific_humidity(internal_t, p_mb * 100.0, esx)
         internal_vapor = (vapor - qsat * convective_cloud_fraction) * inverse_convective_cloud_fraction
 
         # total environmental water (can be negative due to CN saturation assumptions)
@@ -714,7 +714,7 @@ def hydrostatic_pdf(
                     large_scale_liquid=large_scale_liquid,
                     convective_ice=convective_ice,
                     convective_liquid=convective_liquid,
-                    concentration_ice=concentration_ice,
+                    concentration_ice=concentration_ice / n_fac,
                     delta_condensate=delta_condensate,
                     convection_fraction=convection_fraction,
                     surface_type=surface_type,

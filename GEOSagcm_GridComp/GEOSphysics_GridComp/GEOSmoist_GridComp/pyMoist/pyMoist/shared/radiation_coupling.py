@@ -86,4 +86,4 @@ def radiation_coupling_scale_aware(
         if radiation_ice > 0.0:
             cloud_particle_effective_radius_ice = max(MIN_RI, min(cloud_effective_radius_ice(p_mb, t, radiation_ice) * FAC_RI, MAX_RI))
         else:
-            radiation_ice = MAPL_UNDEF
+            cloud_particle_effective_radius_ice = MAPL_UNDEF

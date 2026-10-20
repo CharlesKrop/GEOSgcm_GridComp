@@ -11,111 +11,12 @@ from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConf
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full_locals import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc_wrapper, moist_total_energy, terminal_velocity_graupel_rain_snow_wrapper
+from pyMoist.microphysics.GFDL_1M.microphysics.shared import calc_mhc_lhc_wrapper, moist_total_energy, compute_terminal_velocity_graupel_rain_snow_wrapper
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
 from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 
 
-def terminal_velocity_ice(
-    t: FloatField64,
-    ice: FloatField,
-    density: FloatField,
-    terminal_velocity_ice: FloatField,
-    convection_fraction: FloatFieldIJ,
-):
-    """terminal velocity for cloud ice
-
-    Args:
-        t (FloatField64)
-        ice (FloatField)
-        density (FloatField)
-        terminal_velocity_ice (FloatField)
-        convection_fraction (FloatFieldIJ)
-    """
-    from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
-
-    with computation(PARALLEL), interval(...):
-        if CONST_VI:
-            terminal_velocity_ice = 0.5 * (VI_MIN + VI_MAX)
-        else:
-            t_internal = t - TICE
-
-            # 1. Calculate Base Fall Speeds based on chosen formulation
-            if IFFLAG == 1:
-                # Pure Deng and Mace (2008)
-                ice_density = ice * density * 1.0e3
-                viLSC = 10.0 ** (log10(ice_density) * (t_internal * (aaL * t_internal + bbL) + ccL) + ddL * t_internal + eeL)
-                viCNV = 10.0 ** (log10(ice_density) * (t_internal * (aaC * t_internal + bbC) + ccC) + ddC * t_internal + eeC)
-                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
-
-            elif IFFLAG == 2:
-                # Pure Heymsfield and Donner (1990)
-                ice_density = ice * density
-                terminal_velocity_ice = 3.29 * exp(0.16 * log(ice_density))
-
-            elif IFFLAG == 3:
-                # Pure Mishra et al (2014, JGR)
-                ice_density = ice * density * 1.0e3
-                # Synoptic Vm: a=1.411, b=11.71, c=82.35
-                viLSC = max(10.0, (1.411 * t_internal + 11.71 * log10(ice_density * 1.0e3) + 82.35))
-                # Anvil Vm: a=1.119, b=14.21, c=68.85
-                viCNV = max(10.0, (1.119 * t_internal + 14.21 * log10(ice_density * 1.0e3) + 68.85))
-                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
-
-            elif IFFLAG == 4:
-                # Combination: Deng & Mace (2008) LSC + Mishra et al (2014) Anvil CNV
-                ice_density = ice * density * 1.0e3
-                viLSC = 10.0 ** (log10(ice_density) * (t_internal * (aaL * t_internal + bbL) + ccL) + ddL * t_internal + eeL)
-                # Anvil Vm: a=1.119, b=14.21, c=68.85
-                viCNV = max(10.0, (1.119 * t_internal + 14.21 * log10(ice_density * 1.0e3) + 68.85))
-                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
-
-            # 2. Apply Universal Pressure Scaling (Accelerates high-alt ice)
-            if DO_ICE_PRES_SCALING:
-                p_dry = density * RDGAS * t  # dry air pressure
-                diam = 2.0 * cloud_effective_radius_ice(p_dry / 100.0, t, ice) * 1.0e6  # microns
-                ln_p = log(p_dry / 100.0)
-                c0 = -1.04 + 0.298 * ln_p
-                c1 = 0.67 - 0.097 * ln_p
-                # Apply pressure scaling multiplier
-                terminal_velocity_ice = terminal_velocity_ice * (c0 + c1 * log(diam))
-
-            # 3. Apply user multiplier and safety caps
-            terminal_velocity_ice = VI_FAC * terminal_velocity_ice
-            terminal_velocity_ice = min(VI_MAX, max(VI_MIN, terminal_velocity_ice))
-
-
-def set_heights(
-    ze: FloatField,
-    zs: FloatFieldIJ,
-    zt: FloatField,
-    dz: FloatField,
-    terminal_velocity: FloatField,
-):
-    from __externals__ import DT
-
-    with computation(FORWARD), interval(1, None):
-        half_dt: FloatFieldIJ = 0.5 * DT
-        zs = 0.0
-        ze[0, 0, 1] = zs
-    with computation(BACKWARD), interval(...):
-        ze = ze[0, 0, 1] - dz
-
-    with computation(FORWARD), interval(0, 1):
-        zt = ze
-
-    with computation(FORWARD), interval(1, None):
-        zt = ze - half_dt * (terminal_velocity[0, 0, -1] + terminal_velocity)
-
-    with computation(FORWARD), interval(1, None):
-        zt[0, 0, 1] = zs - DT * terminal_velocity
-
-    with computation(FORWARD), interval(...):
-        if zt[0, 0, 1] >= zt:
-            zt[0, 0, 1] = zt - DZ_MIN
-
-
-def terminal_fall(
+def compute_terminal_fall(
     t: FloatField64,
     ze: FloatField,
     zs: FloatFieldIJ,
@@ -205,48 +106,50 @@ def terminal_fall(
             if mode == 5:
                 internal_condensate = snow
 
-    with computation(FORWARD), interval(0, 1):
-        # NOTE once it is possible to call stencils from stencils this section (primarially functions called)
-        # can be rewritten to interval(...) instead of manual k loops
-        # this can technically be done now, but it requires either blowing this single computation/interval statement into an incomprehensible number of statements
-        # or splitting the terminal_fall stencil into a part one (everything before this) part two (this statement, still potentially
-        # broken into multiple smaller statments), and part three (everything after this statement)
-        # more fundamentally, this "condtional between the I/J loop and K loop" pattern does not currently fit NDSL well. further tooling is required
-        # ckrop 10/2026
+    with computation(PARALLEL), interval(...):
         if precip_fall:
             if SEDFLAG == 1:
-                level = 0
-                while level <= k_end:
-                    internal_dz[0, 0, level] = ze[0, 0, level] - ze[0, 0, level + 1]
-                    internal_dd = DT * terminal_velocity
-                    internal_condensate[0, 0, level] = internal_condensate[0, 0, level] * dry_dp
-                    level += 1
+                internal_dz = ze - ze[0, 0, 1]
+                internal_dd = DT * terminal_velocity
+                internal_condensate = internal_condensate * dry_dp
 
+    with computation(FORWARD), interval(0, 1):
+        if precip_fall:
+            if SEDFLAG == 1:
                 internal_condensate_modified = internal_condensate / (internal_dz + internal_dd)
-                level = 1
-                while level <= k_end:
-                    internal_condensate_modified[0, 0, level] = (
-                        internal_condensate[0, 0, level] + internal_condensate_modified[0, 0, level - 1] * internal_dd[0, 0, level - 1]
-                    ) / (internal_dz[0, 0, level] + internal_dd[0, 0, level])
-                    level += 1
 
-                level = 0
-                while level <= k_end:
-                    internal_condensate_modified[0, 0, level] = internal_condensate_modified[0, 0, level] * internal_dz[0, 0, level]
-                    level += 1
+    with computation(FORWARD), interval(1, None):
+        if precip_fall:
+            if SEDFLAG == 1:
+                internal_condensate_modified = (internal_condensate + internal_condensate_modified[0, 0, -1] * internal_dd[0, 0, -1]) / (internal_dz + internal_dd)
 
+    with computation(PARALLEL), interval(...):
+        if precip_fall:
+            if SEDFLAG == 1:
+                internal_condensate_modified = internal_condensate_modified * internal_dz
+
+    with computation(FORWARD), interval(0, 1):
+        if precip_fall:
+            if SEDFLAG == 1:
                 precip = internal_condensate - internal_condensate_modified
-                level = 1
-                while level < k_end:
-                    precip[0, 0, level] = precip[0, 0, level - 1] + internal_condensate[0, 0, level] - internal_condensate_modified[0, 0, level]
-                    level += 1
-                precip = precip + precip[0, 0, k_end]
 
-                level = 0
-                while level <= k_end:
-                    internal_condensate[0, 0, level] = internal_condensate_modified[0, 0, level] / dry_dp[0, 0, level]
-                    level += 1
+    with computation(FORWARD), interval(1, None):
+        if precip_fall:
+            if SEDFLAG == 1:
+                precip = precip[0, 0, -1] + internal_condensate - internal_condensate_modified
 
+    with computation(FORWARD), interval(-1, None):
+        if precip_fall:
+            if SEDFLAG == 1:
+                precip_at_surface = precip_at_surface + precip
+
+    with computation(PARALLEL), interval(...):
+        if precip_fall:
+            if SEDFLAG == 1:
+                internal_condensate = internal_condensate_modified / dry_dp
+
+    with computation(PARALLEL), interval(...):
+        if precip_fall:
             if SEDFLAG == 2:
                 option_not_implemented = True
 
@@ -258,18 +161,17 @@ def terminal_fall(
 
     with computation(PARALLEL), interval(...):
         if precip_fall:
-            internal_condensate = 0.0
-            # determine which precipitate is being considered in this call
+            # Copy the sedimented species back before momentum and energy updates.
             if mode == 1:
-                internal_condensate = ice
+                ice = internal_condensate
             if mode == 2:
-                internal_condensate = liquid
+                liquid = internal_condensate
             if mode == 3:
-                internal_condensate = graupel
+                graupel = internal_condensate
             if mode == 4:
-                internal_condensate = rain
+                rain = internal_condensate
             if mode == 5:
-                internal_condensate = snow
+                snow = internal_condensate
 
     with computation(PARALLEL), interval(...):
         if precip_fall:
@@ -331,9 +233,110 @@ def terminal_fall(
             dtotal_energy = dtotal_energy + sum_total_energy_1 - sum_total_energy_2
 
 
+def compute_terminal_velocity_ice(
+    t: FloatField64,
+    ice: FloatField,
+    density: FloatField,
+    terminal_velocity_ice: FloatField,
+    convection_fraction: FloatFieldIJ,
+):
+    """terminal velocity for cloud ice
+
+    Args:
+        t (FloatField64)
+        ice (FloatField)
+        density (FloatField)
+        terminal_velocity_ice (FloatField)
+        convection_fraction (FloatFieldIJ)
+    """
+    from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
+
+    with computation(PARALLEL), interval(...):
+        if CONST_VI:
+            terminal_velocity_ice = 0.5 * (VI_MIN + VI_MAX)
+        elif ice < QFMIN:
+            terminal_velocity_ice = 0.0
+        else:
+            t_internal = t - TICE
+
+            # 1. Calculate Base Fall Speeds based on chosen formulation
+            if IFFLAG == 1:
+                # Pure Deng and Mace (2008)
+                ice_density = ice * density * 1.0e3
+                viLSC = 10.0 ** (log10(ice_density) * (t_internal * (aaL * t_internal + bbL) + ccL) + ddL * t_internal + eeL)
+                viCNV = 10.0 ** (log10(ice_density) * (t_internal * (aaC * t_internal + bbC) + ccC) + ddC * t_internal + eeC)
+                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
+
+            elif IFFLAG == 2:
+                # Pure Heymsfield and Donner (1990)
+                ice_density = ice * density
+                terminal_velocity_ice = 3.29 * exp(0.16 * log(ice_density))
+
+            elif IFFLAG == 3:
+                # Pure Mishra et al (2014, JGR)
+                ice_density = ice * density * 1.0e3
+                # Synoptic Vm: a=1.411, b=11.71, c=82.35
+                viLSC = max(10.0, (1.411 * t_internal + 11.71 * log10(ice_density * 1.0e3) + 82.35))
+                # Anvil Vm: a=1.119, b=14.21, c=68.85
+                viCNV = max(10.0, (1.119 * t_internal + 14.21 * log10(ice_density * 1.0e3) + 68.85))
+                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
+
+            elif IFFLAG == 4:
+                # Combination: Deng & Mace (2008) LSC + Mishra et al (2014) Anvil CNV
+                ice_density = ice * density * 1.0e3
+                viLSC = 10.0 ** (log10(ice_density) * (t_internal * (aaL * t_internal + bbL) + ccL) + ddL * t_internal + eeL)
+                # Anvil Vm: a=1.119, b=14.21, c=68.85
+                viCNV = max(10.0, (1.119 * t_internal + 14.21 * log10(ice_density * 1.0e3) + 68.85))
+                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
+
+            # 2. Apply Universal Pressure Scaling (Accelerates high-alt ice)
+            if DO_ICE_PRES_SCALING:
+                p_dry = density * RDGAS * t  # dry air pressure
+                diam = 2.0 * cloud_effective_radius_ice(p_dry / 100.0, t, ice) * 1.0e6  # microns
+                ln_p = log(p_dry / 100.0)
+                c0 = -1.04 + 0.298 * ln_p
+                c1 = 0.67 - 0.097 * ln_p
+                # Apply pressure scaling multiplier
+                terminal_velocity_ice = terminal_velocity_ice * (c0 + c1 * log(diam))
+
+            # 3. Apply user multiplier and safety caps
+            terminal_velocity_ice = VI_FAC * terminal_velocity_ice
+            terminal_velocity_ice = min(VI_MAX, max(VI_MIN, terminal_velocity_ice))
+
+
 def ensure_non_negative_at_toa(field: FloatField):
     with computation(FORWARD), interval(0, 1):
         field = max(0.0, field)
+
+
+def set_heights(
+    ze: FloatField,
+    zs: FloatFieldIJ,
+    zt: FloatField,
+    dz: FloatField,
+    terminal_velocity: FloatField,
+):
+    from __externals__ import DT
+
+    with computation(FORWARD), interval(1, None):
+        half_dt: FloatFieldIJ = 0.5 * DT
+        zs = 0.0
+        ze[0, 0, 1] = zs
+    with computation(BACKWARD), interval(...):
+        ze = ze[0, 0, 1] - dz
+
+    with computation(FORWARD), interval(0, 1):
+        zt = ze
+
+    with computation(FORWARD), interval(1, None):
+        zt = ze - half_dt * (terminal_velocity[0, 0, -1] + terminal_velocity)
+
+    with computation(FORWARD), interval(1, None):
+        zt[0, 0, 1] = zs - DT * terminal_velocity
+
+    with computation(FORWARD), interval(...):
+        if zt[0, 0, 1] >= zt:
+            zt[0, 0, 1] = zt - DZ_MIN
 
 
 @dataclasses.dataclass
@@ -463,12 +466,12 @@ class Sedimentation(NDSLRuntime):
                 "T_WFR": mp_config.T_WFR,
             },
         )
-        self._terminal_velocity_graupel_rain_snow_wrapper = stencil_factory.from_dims_halo(
-            func=terminal_velocity_graupel_rain_snow_wrapper,
+        self._compute_terminal_velocity_graupel_rain_snow_wrapper = stencil_factory.from_dims_halo(
+            func=compute_terminal_velocity_graupel_rain_snow_wrapper,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
-        self._terminal_velocity_ice = stencil_factory.from_dims_halo(
-            func=terminal_velocity_ice,
+        self._compute_terminal_velocity_ice = stencil_factory.from_dims_halo(
+            func=compute_terminal_velocity_ice,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONST_VI": mp_namelist.CONST_VI,
@@ -494,8 +497,8 @@ class Sedimentation(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DT": DRIVER_DT},
         )
-        self._terminal_fall = stencil_factory.from_dims_halo(
-            func=terminal_fall,
+        self._compute_terminal_fall = stencil_factory.from_dims_halo(
+            func=compute_terminal_fall,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "C_AIR": mp_config.C_AIR,
@@ -567,7 +570,7 @@ class Sedimentation(NDSLRuntime):
         # terminal fall and melting of falling cloud ice into rain
         # --------------------------------------------------
         if self._mp_namelist.DO_PSD_ICE_FALL:
-            self._terminal_velocity_graupel_rain_snow_wrapper(
+            self._compute_terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.mixing_ratio.ice,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -581,14 +584,14 @@ class Sedimentation(NDSLRuntime):
                 v_fac=self._mp_namelist.VI_FAC,
                 const_v=self._mp_namelist.CONST_VI,
             )
-        # else:
-        #     self._terminal_velocity_ice(
-        #         t=gfdl_mp_v3_locals.t,
-        #         ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-        #         density=gfdl_mp_v3_locals.density,
-        #         terminal_velocity_ice=mp_full_locals.terminal_velocity.ice,
-        #         convection_fraction=gfdl_mp_v3_locals.convection_fraction,
-        #     )
+        else:
+            self._compute_terminal_velocity_ice(
+                t=gfdl_mp_v3_locals.t,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                density=gfdl_mp_v3_locals.density,
+                terminal_velocity_ice=mp_full_locals.terminal_velocity.ice,
+                convection_fraction=gfdl_mp_v3_locals.convection_fraction,
+            )
 
         if self._mp_namelist.DO_SEDI_MELT_QI:
             ndsl_log.error(
@@ -608,7 +611,7 @@ class Sedimentation(NDSLRuntime):
             terminal_velocity=mp_full_locals.terminal_velocity.ice,
         )
 
-        self._terminal_fall(
+        self._compute_terminal_fall(
             t=gfdl_mp_v3_locals.t,
             ze=self._sedimentation_locals.ze,
             zs=self._sedimentation_locals.zs,
@@ -636,7 +639,7 @@ class Sedimentation(NDSLRuntime):
         # --------------------------------------------------
         # terminal fall and melting of falling snow into rain
         # --------------------------------------------------
-        self._terminal_velocity_graupel_rain_snow_wrapper(
+        self._compute_terminal_velocity_graupel_rain_snow_wrapper(
             condensate=gfdl_mp_v3_locals.mixing_ratio.snow,
             density=gfdl_mp_v3_locals.density,
             density_factor=gfdl_mp_v3_locals.density_factor,
@@ -669,7 +672,7 @@ class Sedimentation(NDSLRuntime):
             terminal_velocity=mp_full_locals.terminal_velocity.snow,
         )
 
-        self._terminal_fall(
+        self._compute_terminal_fall(
             t=gfdl_mp_v3_locals.t,
             ze=self._sedimentation_locals.ze,
             zs=self._sedimentation_locals.zs,
@@ -698,7 +701,7 @@ class Sedimentation(NDSLRuntime):
         # terminal fall and melting of falling graupel into rain
         # --------------------------------------------------
         if self._mp_namelist.DO_HAIL:
-            self._terminal_velocity_graupel_rain_snow_wrapper(
+            self._compute_terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.mixing_ratio.graupel,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -713,7 +716,7 @@ class Sedimentation(NDSLRuntime):
                 const_v=self._mp_namelist.CONST_VG,
             )
         else:
-            self._terminal_velocity_graupel_rain_snow_wrapper(
+            self._compute_terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.mixing_ratio.graupel,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -746,7 +749,7 @@ class Sedimentation(NDSLRuntime):
             terminal_velocity=mp_full_locals.terminal_velocity.graupel,
         )
 
-        self._terminal_fall(
+        self._compute_terminal_fall(
             t=gfdl_mp_v3_locals.t,
             ze=self._sedimentation_locals.ze,
             zs=self._sedimentation_locals.zs,
@@ -775,7 +778,7 @@ class Sedimentation(NDSLRuntime):
         # terminal fall of cloud water
         # --------------------------------------------------
         if self._mp_namelist.DO_PSD_WATER_FALL:
-            self._terminal_velocity_graupel_rain_snow_wrapper(
+            self._compute_terminal_velocity_graupel_rain_snow_wrapper(
                 condensate=gfdl_mp_v3_locals.mixing_ratio.liquid,
                 density=gfdl_mp_v3_locals.density,
                 density_factor=gfdl_mp_v3_locals.density_factor,
@@ -798,7 +801,7 @@ class Sedimentation(NDSLRuntime):
             terminal_velocity=mp_full_locals.terminal_velocity.liquid,
         )
 
-        self._terminal_fall(
+        self._compute_terminal_fall(
             t=gfdl_mp_v3_locals.t,
             ze=self._sedimentation_locals.ze,
             zs=self._sedimentation_locals.zs,
@@ -826,7 +829,7 @@ class Sedimentation(NDSLRuntime):
         # --------------------------------------------------
         # terminal fall of rain
         # --------------------------------------------------
-        self._terminal_velocity_graupel_rain_snow_wrapper(
+        self._compute_terminal_velocity_graupel_rain_snow_wrapper(
             condensate=gfdl_mp_v3_locals.mixing_ratio.rain,
             density=gfdl_mp_v3_locals.density,
             density_factor=gfdl_mp_v3_locals.density_factor,
@@ -849,7 +852,7 @@ class Sedimentation(NDSLRuntime):
             terminal_velocity=mp_full_locals.terminal_velocity.rain,
         )
 
-        self._terminal_fall(
+        self._compute_terminal_fall(
             t=gfdl_mp_v3_locals.t,
             ze=self._sedimentation_locals.ze,
             zs=self._sedimentation_locals.zs,

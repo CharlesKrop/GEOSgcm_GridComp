@@ -80,7 +80,8 @@ def convert_mm_per_day_to_kg_per_m2_per_s(field: FloatField):
         field (FloatField)
     """
     with computation(PARALLEL), interval(...):
-        field = field * 1.0e-3 / 86400.0
+        # One millimeter of liquid water is one kg per square meter.
+        field = field / 86400.0
 
 
 def flip_sign(input: FloatField, output: FloatField):
@@ -317,13 +318,13 @@ def redistribute_precipitation_fluxes(
         # model state fields (LHS) are grid edge (K+1 levels)
         # must adjust reads accordingly, do not update level 0 of LHS
         tmp_val = min(1.0, max(convective_liquid[0,0,-1] / max(radiation_liquid[0,0,-1], 1.0e-8), 0.0))
-        anvil_liquid_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_rain_precip_flux) * tmp_val
-        non_anvil_large_scale_ice_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_rain_precip_flux) - anvil_liquid_precip_flux
+        anvil_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) * tmp_val
+        non_anvil_large_scale_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) - anvil_liquid_precip_flux
 
         tmp_val = min(1.0, max(convective_ice[0,0,-1] / max(radiation_ice[0,0,-1], 1.0e-8), 0.0))
-        anvil_ice_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux) * tmp_val
-        non_anvil_large_scale_liquid_precip_flux = (
-            non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux
+        anvil_ice_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux) * tmp_val
+        non_anvil_large_scale_ice_precip_flux = (
+            non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux
         ) - anvil_ice_precip_flux
 
 

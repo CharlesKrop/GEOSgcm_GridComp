@@ -1150,7 +1150,7 @@ def terminal_velocity_graupel_rain_snow(
     return terminal_velocity
 
 
-def terminal_velocity_graupel_rain_snow_wrapper(
+def compute_terminal_velocity_graupel_rain_snow_wrapper(
     condensate: FloatField,
     density: FloatField,
     density_factor: FloatField,

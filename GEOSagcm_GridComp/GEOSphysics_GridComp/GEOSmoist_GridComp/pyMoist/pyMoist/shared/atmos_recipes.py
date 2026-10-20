@@ -5,7 +5,7 @@ meteorological quantities"""
 from ndsl.dsl.gt4py import exp, function, computation, FORWARD, PARALLEL, interval, sqrt
 from ndsl.dsl.typing import Float, Bool, FloatField, FloatFieldIJ
 
-from pyMoist.constants import MAPL_GRAV, MAPL_CP
+from pyMoist.constants import MAPL_CP, MAPL_RGAS
 from pyMoist.shared.constants import SIGMA_DX, SIGMA_EXP
 
 
@@ -21,7 +21,7 @@ def air_density(PL: Float, TE: Float) -> Float:
     Returns:
     Float: Calculated air density.
     """
-    air_density = (100.0 * PL) / (MAPL_GRAV * TE)
+    air_density = (100.0 * PL) / (MAPL_RGAS * TE)
     return air_density
 
 
