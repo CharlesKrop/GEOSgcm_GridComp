@@ -840,6 +840,45 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !$ser data DVDT_macro=DVDT_macro
       !$ser data DTDT_macro=DTDT_macro
 
+      !$ser savepoint GFDL1M-Macrophysics-In_part_1
+      !$ser data Q=Q
+      !$ser data QRAIN=QRAIN
+      !$ser data QSNOW=QSNOW
+      !$ser data QGRAUPEL=QGRAUPEL
+      !$ser data QLLS=QLLS
+      !$ser data QLCN=QLCN
+      !$ser data QILS=QILS
+      !$ser data QICN=QICN
+      !$ser data CLLS=CLLS
+      !$ser data CLCN=CLCN
+      !$ser data T=T
+      !$ser data U=U
+      !$ser data V=V
+      !$ser data NACTL=NACTL
+      !$ser data NACTI=NACTI
+      !$ser data AREA=AREA
+      !$ser data PLmb=PLmb
+      !$ser data PLEmb=PLEmb
+      !$ser data ZL0=ZL0
+      !$ser data MASS=MASS
+      !$ser data QST3=QST3
+      !$ser data EIS=EIS
+      !$ser data SRF_TYPE=SRF_TYPE
+      !$ser data CNV_FRC=CNV_FRC
+      !$ser data KPBLSC=KPBLSC
+      !$ser data PDF_A=PDF_A
+      !$ser data WSL=WSL
+      !$ser data WQT=WQT
+      !$ser data SL2=SL2
+      !$ser data QT2=QT2
+      !$ser data SLQT=SLQT
+      !$ser data W3=W3
+      !$ser data W2=W2
+      !$ser data QT3=QT3
+      !$ser data SL3=SL3
+      !$ser data WTHV2=WTHV2
+      !$ser data WQL=WQL
+
       !$OMP parallel do default(none) &
       !$OMP shared(LM, JM, IM, DUDT_macro, DVDT_macro, DTDT_macro, DQVDT_macro, &
       !$OMP        DQLDT_macro, DQIDT_macro, DQADT_macro, DQRDT_macro, DQSDT_macro, &
@@ -873,6 +912,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) then
           !$ser savepoint GFDL1M-In_part_10
           !$ser data SHLW_PRC3=PTR3D
+          !$ser savepoint GFDL1M-Macrophysics-In_part_2
+          !$ser data SHLW_PRC3=PTR3D
           !$OMP parallel do default(none) &
           !$OMP shared(LM, JM, IM, QRAIN, PTR3D, DT_MOIST) &
           !$OMP private(I, J, L)
@@ -885,11 +926,15 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           enddo
           !$ser savepoint GFDL1M-Out_part_7
           !$ser data SHLW_PRC3=PTR3D
+          !$ser savepoint GFDL1M-Macrophysics-Out_part_2
+          !$ser data SHLW_PRC3=PTR3D
         endif
         
         call MAPL_GetPointer(EXPORT, PTR3D,  'SHLW_SNO3', ALLOC=.TRUE., RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then 
           !$ser savepoint GFDL1M-In_part_11
+          !$ser data SHLW_SNO3=PTR3D
+          !$ser savepoint GFDL1M-Macrophysics-In_part_3
           !$ser data SHLW_SNO3=PTR3D
           !$OMP parallel do default(none) &
           !$OMP shared(LM, JM, IM, QSNOW, PTR3D, DT_MOIST) &
@@ -902,6 +947,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
              enddo
           enddo
           !$ser savepoint GFDL1M-Out_part_8
+          !$ser data SHLW_SNO3=PTR3D
+          !$ser savepoint GFDL1M-Macrophysics-Out_part_3
           !$ser data SHLW_SNO3=PTR3D
         endif
 
@@ -1130,6 +1177,60 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     enddo
     call MAPL_TimerOff(MAPL,"---CLDMACRO",RC=STATUS); VERIFY_(STATUS)
 
+    !$ser savepoint GFDL1M-Macrophysics-Out_part_1
+    !$ser data U=U
+    !$ser data V=V
+    !$ser data NACTL=NACTL
+    !$ser data NACTI=NACTI
+    !$ser data AREA=AREA
+    !$ser data PLmb=PLmb
+    !$ser data PLEmb=PLEmb
+    !$ser data ZL0=ZL0
+    !$ser data MASS=MASS
+    !$ser data QST3=QST3
+    !$ser data EIS=EIS
+    !$ser data SRF_TYPE=SRF_TYPE
+    !$ser data CNV_FRC=CNV_FRC
+    !$ser data KPBLSC=KPBLSC
+    !$ser data WSL=WSL
+    !$ser data WQT=WQT
+    !$ser data SL2=SL2
+    !$ser data QT2=QT2
+    !$ser data SLQT=SLQT
+    !$ser data W3=W3
+    !$ser data W2=W2
+    !$ser data QT3=QT3
+    !$ser data SL3=SL3
+    !$ser data Q=Q
+    !$ser data QRAIN=QRAIN
+    !$ser data QSNOW=QSNOW
+    !$ser data QGRAUPEL=QGRAUPEL
+    !$ser data QLLS=QLLS
+    !$ser data QLCN=QLCN
+    !$ser data QILS=QILS
+    !$ser data QICN=QICN
+    !$ser data CLLS=CLLS
+    !$ser data CLCN=CLCN
+    !$ser data T=T
+    !$ser data PDF_A=PDF_A
+    !$ser data WTHV2=WTHV2
+    !$ser data WQL=WQL
+    !$ser data EVAPC=EVAPC
+    !$ser data SUBLC=SUBLC
+    !$ser data PDFITERS=PDFITERS
+    !$ser data RHX=RHX
+    !$ser data RHCRIT=RHCRIT3D
+    !$ser data DQVDT_macro=DQVDT_macro
+    !$ser data DQIDT_macro=DQIDT_macro
+    !$ser data DQLDT_macro=DQLDT_macro
+    !$ser data DQADT_macro=DQADT_macro
+    !$ser data DQRDT_macro=DQRDT_macro
+    !$ser data DQSDT_macro=DQSDT_macro
+    !$ser data DQGDT_macro=DQGDT_macro
+    !$ser data DUDT_macro=DUDT_macro
+    !$ser data DVDT_macro=DVDT_macro
+    !$ser data DTDT_macro=DTDT_macro
+
     if (DEBUG_TQ_ERRORS) then
          do L = 1, LM
            do J = 1, JM
@@ -1182,6 +1283,36 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data DVDT_micro=DVDT_micro
     !$ser data DTDT_micro=DTDT_micro
 
+    !$ser savepoint GFDL1M-Microphysics-In
+    !$ser data Q=Q
+    !$ser data QRAIN=QRAIN
+    !$ser data QSNOW=QSNOW
+    !$ser data QGRAUPEL=QGRAUPEL
+    !$ser data QLLS=QLLS
+    !$ser data QLCN=QLCN
+    !$ser data QILS=QILS
+    !$ser data QICN=QICN
+    !$ser data CLLS=CLLS
+    !$ser data CLCN=CLCN
+    !$ser data T=T
+    !$ser data U=U
+    !$ser data V=V
+    !$ser data W=W
+    !$ser data NACTL=NACTL
+    !$ser data NACTI=NACTI
+    !$ser data DZET=DZET
+    !$ser data DP=DP
+    !$ser data PLmb=PLmb
+    !$ser data ZLE0=ZLE0
+    !$ser data MASS=MASS
+    !$ser data RHCRIT=RHCRIT3D
+    !$ser data PHIS=PHIS
+    !$ser data CNV_FRC=CNV_FRC
+    !$ser data EIS=EIS
+    !$ser data AREA=AREA
+    !$ser data SRF_TYPE=SRF_TYPE
+    !$ser data FRLAND=FRLAND
+    !$ser data PRCP_WATER=PRCP_WATER
 
     !$OMP parallel do default(none) &
     !$OMP shared(LM, JM, IM, Q, QLLS, QLCN, QILS, QICN, QRAIN, QSNOW, QGRAUPEL, &
@@ -1562,6 +1693,78 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         enddo
      enddo
         call MAPL_TimerOff(MAPL,"---CLDMICRO",RC=STATUS); VERIFY_(STATUS)
+
+    !$ser savepoint GFDL1M-Microphysics-Out
+    ! Include unchanged inputs to verify that the section preserves them.
+    !$ser data NACTL=NACTL
+    !$ser data NACTI=NACTI
+    !$ser data DZET=DZET
+    !$ser data DP=DP
+    !$ser data PLmb=PLmb
+    !$ser data ZLE0=ZLE0
+    !$ser data MASS=MASS
+    !$ser data RHCRIT=RHCRIT3D
+    !$ser data PHIS=PHIS
+    !$ser data CNV_FRC=CNV_FRC
+    !$ser data EIS=EIS
+    !$ser data AREA=AREA
+    !$ser data SRF_TYPE=SRF_TYPE
+    !$ser data FRLAND=FRLAND
+    !$ser data Q=Q
+    !$ser data QRAIN=QRAIN
+    !$ser data QSNOW=QSNOW
+    !$ser data QGRAUPEL=QGRAUPEL
+    !$ser data QLLS=QLLS
+    !$ser data QLCN=QLCN
+    !$ser data QILS=QILS
+    !$ser data QICN=QICN
+    !$ser data CLLS=CLLS
+    !$ser data CLCN=CLCN
+    !$ser data T=T
+    !$ser data U=U
+    !$ser data V=V
+    !$ser data W=W
+    !$ser data RAD_CF=RAD_CF
+    !$ser data RAD_QV=RAD_QV
+    !$ser data RAD_QL=RAD_QL
+    !$ser data RAD_QI=RAD_QI
+    !$ser data RAD_QR=RAD_QR
+    !$ser data RAD_QS=RAD_QS
+    !$ser data RAD_QG=RAD_QG
+    !$ser data CLDREFFL=CLDREFFL
+    !$ser data CLDREFFI=CLDREFFI
+    !$ser data PRCP_WATER=PRCP_WATER
+    !$ser data PRCP_RAIN=PRCP_RAIN
+    !$ser data PRCP_SNOW=PRCP_SNOW
+    !$ser data PRCP_ICE=PRCP_ICE
+    !$ser data PRCP_GRAUPEL=PRCP_GRAUPEL
+    !$ser data LS_PRCP=LS_PRCP
+    !$ser data LS_SNR=LS_SNR
+    !$ser data ICE=ICE
+    !$ser data FRZR=FRZR
+    !$ser data REV_LS=REV_LS
+    !$ser data RSU_LS=RSU_LS
+    !$ser data PFL_AN=PFL_AN
+    !$ser data PFL_LS=PFL_LS
+    !$ser data PFI_AN=PFI_AN
+    !$ser data PFI_LS=PFI_LS
+    !$ser data PFR_LS=PFR_LS
+    !$ser data PFS_LS=PFS_LS
+    !$ser data PFG_LS=PFG_LS
+    !$ser data VFALL_ICE=VFALL_ICE
+    !$ser data VFALL_SNOW=VFALL_SNOW
+    !$ser data VFALL_GRAUPEL=VFALL_GRAUPEL
+    !$ser data VFALL_RAIN=VFALL_RAIN
+    !$ser data DQVDT_micro=DQVDT_micro
+    !$ser data DQIDT_micro=DQIDT_micro
+    !$ser data DQLDT_micro=DQLDT_micro
+    !$ser data DQADT_micro=DQADT_micro
+    !$ser data DQRDT_micro=DQRDT_micro
+    !$ser data DQSDT_micro=DQSDT_micro
+    !$ser data DQGDT_micro=DQGDT_micro
+    !$ser data DUDT_micro=DUDT_micro
+    !$ser data DVDT_micro=DVDT_micro
+    !$ser data DTDT_micro=DTDT_micro
 
     if (DEBUG_TQ_ERRORS) then
          do L = 1, LM
