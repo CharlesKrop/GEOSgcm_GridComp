@@ -305,7 +305,7 @@ def redistribute_precipitation_fluxes(
 ):
     """Resistribute precipitation fluxes for chemistry
 
-    Runs on K_DIM, mapping cell k to interface flux k+1 (interface 0 is TOA).
+    Must be built with K_INTERFACE_DIM to function properly.
 
     Args:
         anvil_ice_precip_flux (FloatField)
@@ -313,20 +313,16 @@ def redistribute_precipitation_fluxes(
         non_anvil_large_scale_ice_precip_flux (FloatField)
         non_anvil_large_scale_liquid_precip_flux (FloatField)
     """
-    with computation(FORWARD), interval(...):
-        tmp_val = min(1.0, max(convective_liquid / max(radiation_liquid, 1.0e-8), 0.0))
-        anvil_liquid_precip_flux[0, 0, 1] = (non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + non_anvil_large_scale_rain_precip_flux[0, 0, 1]) * tmp_val
-        non_anvil_large_scale_liquid_precip_flux[0, 0, 1] = (
-            non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + non_anvil_large_scale_rain_precip_flux[0, 0, 1]
-        ) - anvil_liquid_precip_flux[0, 0, 1]
+    with computation(PARALLEL), interval(1, None):
+        tmp_val = min(1.0, max(convective_liquid[0, 0, -1] / max(radiation_liquid[0, 0, -1], 1.0e-8), 0.0))
+        anvil_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) * tmp_val
+        non_anvil_large_scale_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) - anvil_liquid_precip_flux
 
-        tmp_val = min(1.0, max(convective_ice / max(radiation_ice, 1.0e-8), 0.0))
-        anvil_ice_precip_flux[0, 0, 1] = (
-            non_anvil_large_scale_ice_precip_flux[0, 0, 1] + non_anvil_large_scale_snow_precip_flux[0, 0, 1] + non_anvil_large_scale_graupel_precip_flux[0, 0, 1]
-        ) * tmp_val
-        non_anvil_large_scale_ice_precip_flux[0, 0, 1] = (
-            non_anvil_large_scale_ice_precip_flux[0, 0, 1] + non_anvil_large_scale_snow_precip_flux[0, 0, 1] + non_anvil_large_scale_graupel_precip_flux[0, 0, 1]
-        ) - anvil_ice_precip_flux[0, 0, 1]
+        tmp_val = min(1.0, max(convective_ice[0, 0, -1] / max(radiation_ice[0, 0, -1], 1.0e-8), 0.0))
+        anvil_ice_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux) * tmp_val
+        non_anvil_large_scale_ice_precip_flux = (
+            non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux
+        ) - anvil_ice_precip_flux
 
 
 def update_microphysics_tendencies(
@@ -518,7 +514,7 @@ class GFDL1M(NDSLRuntime):
 
         self._redistribute_precipitation_fluxes = stencil_factory.from_dims_halo(
             func=redistribute_precipitation_fluxes,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
+            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
         )
 
         self._set_value = stencil_factory.from_dims_halo(

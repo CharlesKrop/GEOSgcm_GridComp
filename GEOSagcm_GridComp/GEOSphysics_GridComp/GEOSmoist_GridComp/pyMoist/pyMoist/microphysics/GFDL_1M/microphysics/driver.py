@@ -690,7 +690,7 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
     w: FloatField,
     local_w: FloatField,
 ):
-    from __externals__ import DO_INLINE_MP, HYDROSTATIC
+    from __externals__ import DO_INLINE_MP, HYDROSTATIC, k_end
 
     # initialize 64 bit internal field
     with computation(PARALLEL), interval(...):
@@ -741,13 +741,8 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
         if not HYDROSTATIC:
             local_w = w
 
-    with computation(FORWARD), interval(-1, None):
-        # Capture the bottom of the active domain without mixing absolute and
-        # restricted-origin indices in an .at lookup.
-        bottom_density: FloatFieldIJ = local_density
-
     with computation(PARALLEL), interval(...):
-        local_density_factor = sqrt(bottom_density / local_density)
+        local_density_factor = sqrt(local_density.at(K=k_end) / local_density)
 
 
 def radar_reflectivity(
@@ -1285,8 +1280,13 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         # initialize subcomponents
         self._mp_full = MPFull(
-            stencil_factory, quantity_factory, saturation_tables, mp_config,
-            mp_namelist, CONV_FACTOR, DRIVER_DT,
+            stencil_factory,
+            quantity_factory,
+            saturation_tables,
+            mp_config,
+            mp_namelist,
+            CONV_FACTOR,
+            DRIVER_DT,
             ice_radii_param=gfdl_1m_config.ICE_RADII_PARAM,
         )
 
