@@ -328,7 +328,7 @@ def compute_one_minus_sigma(one_minus_sigma: FloatFieldIJ, area: FloatFieldIJ):
 
     with computation(FORWARD), interval(0, 1):
         if DO_SCALE_DEP:
-            one_minus_sigma = sigma(sqrt(area))
+            one_minus_sigma = 1.0 - sigma(sqrt(area))
         else:
             one_minus_sigma = 1.0
 
@@ -557,58 +557,59 @@ def fix_negative_water_species(
                 C1_ICE=C1_ICE,
             )
 
-            ## fix negative liquid-phase hydrometeors
-            # if rain < 0, borrow from cloud water
-            if rain < 0:
-                sink = min(-rain, max(0.0, liquid))
-                vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
-                    cloud_fraction=cloud_fraction,
-                    vapor=vapor,
-                    ice=ice,
-                    liquid=liquid,
-                    graupel=graupel,
-                    rain=rain,
-                    snow=snow,
-                    dvapor=0.0,
-                    dice=0.0,
-                    dliquid=-sink,
-                    dgraupel=0.0,
-                    drain=sink,
-                    dsnow=0.0,
-                    DO_QA=DO_QA,
-                )
+        ## fix negative liquid-phase hydrometeors
+        # These checks are independent of the graupel correction in gfdl_mp.
+        # if rain < 0, borrow from cloud water
+        if rain < 0:
+            sink = min(-rain, max(0.0, liquid))
+            vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=0.0,
+                dice=0.0,
+                dliquid=-sink,
+                dgraupel=0.0,
+                drain=sink,
+                dsnow=0.0,
+                DO_QA=DO_QA,
+            )
 
-            # if cloud water < 0, borrow from water vapor
-            if liquid < 0:
-                sink = min(-liquid, max(0.0, vapor))
-                mppcw = mppcw + sink * dry_dp * CONV_FACTOR
-                t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
-                    cloud_fraction=cloud_fraction,
-                    vapor=vapor,
-                    ice=ice,
-                    liquid=liquid,
-                    graupel=graupel,
-                    rain=rain,
-                    snow=snow,
-                    dvapor=-sink,
-                    dice=0.0,
-                    dliquid=sink,
-                    dgraupel=0.0,
-                    drain=0.0,
-                    dsnow=0.0,
-                    t=t,
-                    total_energy=total_energy,
-                    DO_QA=DO_QA,
-                    D1_VAP=D1_VAP,
-                    D1_ICE=D1_ICE,
-                    LI00=LI00,
-                    LI20=LI20,
-                    LV00=LV00,
-                    T_WFR=T_WFR,
-                    C1_VAP=C1_VAP,
-                    C1_LIQ=C1_LIQ,
-                    C1_ICE=C1_ICE,
-                )
+        # if cloud water < 0, borrow from water vapor
+        if liquid < 0:
+            sink = min(-liquid, max(0.0, vapor))
+            mppcw = mppcw + sink * dry_dp * CONV_FACTOR
+            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=-sink,
+                dice=0.0,
+                dliquid=sink,
+                dgraupel=0.0,
+                drain=0.0,
+                dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
+                DO_QA=DO_QA,
+                D1_VAP=D1_VAP,
+                D1_ICE=D1_ICE,
+                LI00=LI00,
+                LI20=LI20,
+                LV00=LV00,
+                T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
+            )
 
     ## fix negative water vapor
     with computation(FORWARD), interval(0, -1):
@@ -730,7 +731,7 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
 
         # dry air density and layer-mean pressure thickness
         local_dz = dz
-        local_density = -local_moist_dp_original / (GRAV * local_dz)
+        local_density = -local_dry_dp / (GRAV * local_dz)
         local_p = local_density * RDGAS * local_t
 
         # for sedi_momentum transport
@@ -739,6 +740,14 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
         local_v = v
         if not HYDROSTATIC:
             local_w = w
+
+    with computation(FORWARD), interval(-1, None):
+        # Capture the bottom of the active domain without mixing absolute and
+        # restricted-origin indices in an .at lookup.
+        bottom_density: FloatFieldIJ = local_density
+
+    with computation(PARALLEL), interval(...):
+        local_density_factor = sqrt(bottom_density / local_density)
 
 
 def radar_reflectivity(
@@ -1275,7 +1284,11 @@ class GFDLMPV3Driver(NDSLRuntime):
         self._saturation_tables = saturation_tables
 
         # initialize subcomponents
-        self._mp_full = MPFull(stencil_factory, quantity_factory, saturation_tables, mp_config, mp_namelist, CONV_FACTOR, DRIVER_DT)
+        self._mp_full = MPFull(
+            stencil_factory, quantity_factory, saturation_tables, mp_config,
+            mp_namelist, CONV_FACTOR, DRIVER_DT,
+            ice_radii_param=gfdl_1m_config.ICE_RADII_PARAM,
+        )
 
         # construct stencils
         self._cloud_fraction = stencil_factory.from_dims_halo(

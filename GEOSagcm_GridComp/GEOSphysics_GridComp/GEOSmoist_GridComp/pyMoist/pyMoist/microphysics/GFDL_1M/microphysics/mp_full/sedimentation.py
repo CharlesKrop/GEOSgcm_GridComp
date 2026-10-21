@@ -249,7 +249,7 @@ def compute_terminal_velocity_ice(
         terminal_velocity_ice (FloatField)
         convection_fraction (FloatFieldIJ)
     """
-    from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
+    from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, ICE_RADII_PARAM, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
 
     with computation(PARALLEL), interval(...):
         if CONST_VI:
@@ -292,7 +292,7 @@ def compute_terminal_velocity_ice(
             # 2. Apply Universal Pressure Scaling (Accelerates high-alt ice)
             if DO_ICE_PRES_SCALING:
                 p_dry = density * RDGAS * t  # dry air pressure
-                diam = 2.0 * cloud_effective_radius_ice(p_dry / 100.0, t, ice) * 1.0e6  # microns
+                diam = 2.0 * cloud_effective_radius_ice(p_dry / 100.0, t, ice, ICE_RADII_PARAM) * 1.0e6  # microns
                 ln_p = log(p_dry / 100.0)
                 c0 = -1.04 + 0.298 * ln_p
                 c1 = 0.67 - 0.097 * ln_p
@@ -439,6 +439,7 @@ class Sedimentation(NDSLRuntime):
         mp_config: GFDLMPV3CloudMPConfig,
         mp_namelist: GFDLMPV3NamelistConfig,
         DRIVER_DT: Float,
+        ice_radii_param: Int,
     ):
         # initialize NDSLRuntime parent class
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
@@ -476,6 +477,7 @@ class Sedimentation(NDSLRuntime):
             externals={
                 "CONST_VI": mp_namelist.CONST_VI,
                 "DO_ICE_PRES_SCALING": mp_namelist.DO_ICE_PRES_SCALING,
+                "ICE_RADII_PARAM": ice_radii_param,
                 "IFFLAG": mp_namelist.IFFLAG,
                 "VI_FAC": mp_namelist.VI_FAC,
                 "VI_MAX": mp_namelist.VI_MAX,

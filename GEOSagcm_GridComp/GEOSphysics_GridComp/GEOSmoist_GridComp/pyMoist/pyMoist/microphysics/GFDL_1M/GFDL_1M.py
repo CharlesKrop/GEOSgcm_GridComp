@@ -81,7 +81,7 @@ def convert_mm_per_day_to_kg_per_m2_per_s(field: FloatField):
     """
     with computation(PARALLEL), interval(...):
         # One millimeter of liquid water is one kg per square meter.
-        field = field / 86400.0
+            field = field * (1.0 / 86400.0)
 
 
 def flip_sign(input: FloatField, output: FloatField):
@@ -305,7 +305,7 @@ def redistribute_precipitation_fluxes(
 ):
     """Resistribute precipitation fluxes for chemistry
 
-    MUST be build with K_INTERFACE_DIM to work properly
+    Runs on K_DIM, mapping cell k to interface flux k+1 (interface 0 is TOA).
 
     Args:
         anvil_ice_precip_flux (FloatField)
@@ -313,19 +313,16 @@ def redistribute_precipitation_fluxes(
         non_anvil_large_scale_ice_precip_flux (FloatField)
         non_anvil_large_scale_liquid_precip_flux (FloatField)
     """
-    with computation(PARALLEL), interval(1, None):
-        # source (internal) fields (tmp_val) are grid center (K levels)
-        # model state fields (LHS) are grid edge (K+1 levels)
-        # must adjust reads accordingly, do not update level 0 of LHS
-        tmp_val = min(1.0, max(convective_liquid[0, 0, -1] / max(radiation_liquid[0, 0, -1], 1.0e-8), 0.0))
-        anvil_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) * tmp_val
-        non_anvil_large_scale_liquid_precip_flux = (non_anvil_large_scale_liquid_precip_flux + non_anvil_large_scale_rain_precip_flux) - anvil_liquid_precip_flux
+    with computation(FORWARD), interval(...):
+        tmp_val = min(1.0, max(convective_liquid / max(radiation_liquid, 1.0e-8), 0.0))
+        anvil_liquid_precip_flux[0, 0, 1] = (non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + non_anvil_large_scale_rain_precip_flux[0, 0, 1]) * tmp_val
+        non_anvil_large_scale_liquid_precip_flux[0, 0, 1] = (non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + non_anvil_large_scale_rain_precip_flux[0, 0, 1]) - anvil_liquid_precip_flux[0, 0, 1]
 
-        tmp_val = min(1.0, max(convective_ice[0, 0, -1] / max(radiation_ice[0, 0, -1], 1.0e-8), 0.0))
-        anvil_ice_precip_flux = (non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux) * tmp_val
-        non_anvil_large_scale_ice_precip_flux = (
-            non_anvil_large_scale_ice_precip_flux + non_anvil_large_scale_snow_precip_flux + non_anvil_large_scale_graupel_precip_flux
-        ) - anvil_ice_precip_flux
+        tmp_val = min(1.0, max(convective_ice / max(radiation_ice, 1.0e-8), 0.0))
+        anvil_ice_precip_flux[0, 0, 1] = (non_anvil_large_scale_ice_precip_flux[0, 0, 1] + non_anvil_large_scale_snow_precip_flux[0, 0, 1] + non_anvil_large_scale_graupel_precip_flux[0, 0, 1]) * tmp_val
+        non_anvil_large_scale_ice_precip_flux[0, 0, 1] = (
+            non_anvil_large_scale_ice_precip_flux[0, 0, 1] + non_anvil_large_scale_snow_precip_flux[0, 0, 1] + non_anvil_large_scale_graupel_precip_flux[0, 0, 1]
+        ) - anvil_ice_precip_flux[0, 0, 1]
 
 
 def update_microphysics_tendencies(
@@ -511,12 +508,13 @@ class GFDL1M(NDSLRuntime):
                 "MIN_RI": config.MIN_RI,
                 "MAX_RI": config.MAX_RI,
                 "FAC_RI": config.FAC_RI,
+                "ICE_RADII_PARAM": config.ICE_RADII_PARAM,
             },
         )
 
         self._redistribute_precipitation_fluxes = stencil_factory.from_dims_halo(
             func=redistribute_precipitation_fluxes,
-            compute_dims=[I_DIM, J_DIM, K_INTERFACE_DIM],
+            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
         self._set_value = stencil_factory.from_dims_halo(
@@ -840,8 +838,8 @@ class GFDL1M(NDSLRuntime):
             self._add(summand_1=state.tendencies.dv_dt_macro, summand_2=state.tendencies.dv_dt_micro, sum=self._locals.temporary_3d_2)
             self._dissipative_kinetic_energy_heating(
                 mass=self._locals.mass,
-                u=state.u,
-                v=state.v,
+                u=self._locals.u_unmodified,
+                v=self._locals.v_unmodified,
                 du=self._locals.temporary_3d,
                 dv=self._locals.temporary_3d_2,
                 dt=state.tendencies.dt_dt_friction_pressure_weighted,

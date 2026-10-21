@@ -72,7 +72,8 @@ class GFDLMPV3(NDSLRuntime):
 
         # initialize the driver
         self._driver = GFDLMPV3Driver(
-            stencil_factory=stencil_factory,
+            # if GFDL_MP_KLID is non-negative (default value is -999), microphysics will be restricted to start at that vertical level
+            stencil_factory=stencil_factory.restrict_vertical(k_start=max(0, int(gfdl_1m_config.GFDL_MP_KLID))),
             quantity_factory=quantity_factory,
             saturation_tables=_saturation_tables,
             gfdl_1m_config=self._gfdl_1m_config,
@@ -109,7 +110,6 @@ class GFDLMPV3(NDSLRuntime):
         ace = np.zeros(20, dtype=Float)
         act = np.zeros(20, dtype=Float)
         occ = np.zeros(3, dtype=Float)
-        crevp = np.zeros(5, dtype=Float)
 
         # these options are inputs in the original GFDL version
         # GEOS does not support them, so set them manually here
@@ -633,7 +633,7 @@ class GFDLMPV3(NDSLRuntime):
 
         # rain evaporation, snow sublimation, and graupel or hail sublimation, Lin et al. (1983)
 
-        crevp[0] = (
+        mp_config.CREVP[0] = (
             Float(2.0)
             * constants.PI
             * constants.VDIFU
@@ -644,8 +644,8 @@ class GFDLMPV3(NDSLRuntime):
             / exp((Int(1) + mp_namelist.MUR) / (mp_namelist.MUR + Int(3)) * log(mp_config.NORMR))
             * exp(Float(2.0) * log(mp_config.EXPOR))
         )
-        crevp[1] = Float(0.78)
-        crevp[2] = (
+        mp_config.CREVP[1] = Float(0.78)
+        mp_config.CREVP[2] = (
             Float(0.31)
             * scm3
             * sqrt(mp_namelist.ALINR / constants.VISK)
@@ -655,8 +655,8 @@ class GFDLMPV3(NDSLRuntime):
             / gamma(Int(1) + mp_namelist.MUR)
             * exp((-Int(1) - mp_namelist.BLINR) / Float(2.0) * log(mp_config.EXPOR))
         )
-        crevp[3] = constants.TCOND * constants.RVGAS
-        crevp[4] = constants.VDIFU
+        mp_config.CREVP[3] = constants.TCOND * constants.RVGAS
+        mp_config.CREVP[4] = constants.VDIFU
 
         mp_config.CSSUB[0] = (
             Float(2.0)
@@ -752,8 +752,8 @@ class GFDLMPV3(NDSLRuntime):
             / exp((Int(1) + mp_namelist.MUS) / (mp_namelist.MUS + Int(3)) * log(mp_config.NORMS))
             * exp(Float(2.0) * log(mp_config.EXPOS))
         )
-        mp_config.CSMLT[2] = mp_config.CGSUB[1]
-        mp_config.CSMLT[3] = mp_config.CGSUB[2]
+        mp_config.CSMLT[2] = mp_config.CSSUB[1]
+        mp_config.CSMLT[3] = mp_config.CSSUB[2]
 
         # graupel or hail melting, Lin et al. (1983)
 

@@ -1,7 +1,7 @@
 from ndsl import QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
-from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
+from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full_locals import MPFullLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
@@ -48,8 +48,7 @@ def update_precip_fluxes(
         surface_precip_snow = surface_precip_snow + internal_surface_precip_snow * CONV_FACTOR
 
     with computation(FORWARD), interval(...):
-        # all LHS fields are k-interface fields, while RHS (internal_precip_*) are k-center fields
-        # do not update bottom layer (TOA), offset all read/writes up one
+        # map non-interface fields to interface at level k+1
         non_anvil_large_scale_ice_precip_flux[0, 0, 1] = non_anvil_large_scale_ice_precip_flux[0, 0, 1] + internal_precip_ice * CONV_FACTOR
         non_anvil_large_scale_liquid_precip_flux[0, 0, 1] = non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + internal_precip_liquid * CONV_FACTOR
         non_anvil_large_scale_graupel_precip_flux[0, 0, 1] = non_anvil_large_scale_graupel_precip_flux[0, 0, 1] + internal_precip_graupel * CONV_FACTOR
@@ -67,12 +66,16 @@ class MPFull(NDSLRuntime):
         mp_namelist: GFDLMPV3NamelistConfig,
         CONV_FACTOR: Float,
         DRIVER_DT: Float,
+        ice_radii_param: Int,
     ):
         # initialize NDSLRuntime parent class
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
         # initialize subcomponents
-        self._sedimentation = Sedimentation(stencil_factory, quantity_factory, mp_config, mp_namelist, DRIVER_DT)
+        self._sedimentation = Sedimentation(
+            stencil_factory, quantity_factory, mp_config, mp_namelist, DRIVER_DT,
+            ice_radii_param=ice_radii_param,
+        )
         self._update_precip_fluxes = stencil_factory.from_dims_halo(
             func=update_precip_fluxes,
             compute_dims=[I_DIM, J_DIM, K_DIM],

@@ -529,7 +529,7 @@ def p_graupel_melt(
                 sink = max(
                     0.0,
                     p_melt(
-                        t=t,
+                        t=tc,
                         dcondensate=dq,
                         condensate_x_density=graupel_x_density,
                         pxacw=pgacw,
@@ -548,7 +548,7 @@ def p_graupel_melt(
                 sink = max(
                     0.0,
                     p_melt(
-                        t=t,
+                        t=tc,
                         dcondensate=dq,
                         condensate_x_density=graupel_x_density,
                         pxacw=pgacw,
@@ -1225,7 +1225,7 @@ def p_snow_melt(
             sink = max(
                 0.0,
                 p_melt(
-                    t=t,
+                    t=tc,
                     dcondensate=dq,
                     condensate_x_density=snow_x_density,
                     pxacw=psacw,
@@ -1308,7 +1308,7 @@ def p_snow_to_graupel_autoconversion(
         if t < TICE and snow > QPMIN:
             tc = t - TICE
 
-            sink = 0
+            sink = 0.0
             qsm = PGAUT_QS_CRT / density
             if snow > qsm:
                 factor = DT * 1.0e-3 * exp(0.09 * tc)
@@ -1572,7 +1572,10 @@ class IceCloud(NDSLRuntime):
         self._linear_prof = stencil_factory.from_dims_halo(
             func=linear_prof,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"IRAIN_F": mp_namelist.IRAIN_F, "Z_SLOPE": mp_namelist.Z_SLOPE_LIQ},
+            externals={
+                "IRAIN_F": mp_namelist.IRAIN_F,
+                "Z_SLOPE": mp_namelist.Z_SLOPE_ICE,
+            },
         )
         self._p_snow_accretion_to_ice = stencil_factory.from_dims_halo(
             func=p_snow_accretion_to_ice,

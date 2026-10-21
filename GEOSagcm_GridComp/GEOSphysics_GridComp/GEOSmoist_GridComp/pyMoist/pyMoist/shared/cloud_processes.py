@@ -647,7 +647,7 @@ def hydrostatic_pdf(
         internal_t = t
 
         # calculate available environmental water vapor by subtracting vapor assumed to be locked inside the parameterized cloud
-        qsat, dqsat = saturation_specific_humidity(internal_t, p_mb * 100.0, esx)
+        qsat, dqsat = saturation_specific_humidity(internal_t, p_mb * 100.0, esx, use_dqsat_order=True)
         internal_vapor = (vapor - qsat * convective_cloud_fraction) * inverse_convective_cloud_fraction
 
         # total environmental water (can be negative due to CN saturation assumptions)
@@ -668,7 +668,7 @@ def hydrostatic_pdf(
             internal_condensate_old = internal_condensate
             internal_t_old = internal_t
 
-            qsat_iteration, dqsat_iteration = saturation_specific_humidity(internal_t, p_mb * 100.0, esx)
+            qsat_iteration, dqsat_iteration = saturation_specific_humidity(internal_t, p_mb * 100.0, esx, use_dqsat_order=True)
 
             if use_sc_ice:
                 sc_ice_internal = min(max(sc_ice, 1.0), 1.7)

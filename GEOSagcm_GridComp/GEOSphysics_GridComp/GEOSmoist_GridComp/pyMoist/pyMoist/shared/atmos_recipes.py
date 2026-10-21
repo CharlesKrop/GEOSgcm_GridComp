@@ -79,6 +79,8 @@ def dissipative_kinetic_energy_heating(
         ke = sqrt(du * du + dv * dv)
         fpi = fpi + ke * mass
 
+    # Distribute using completed column integrals, not running partial sums.
+    with computation(PARALLEL), interval(...):
         if fpi > 0.0:
             dt = (ke / fpi) * dts * (1.0 / MAPL_CP)
 
@@ -124,13 +126,12 @@ def fill_negative_q(
 
     with computation(FORWARD), interval(0, 1):
         dtpw = total_precipitable_water_before - total_precipitable_water_after  # > 0 means mass was removed
+        positive_mass: FloatFieldIJ = 0.0
 
     # redistribute delta TPW to positive layers only
     with computation(FORWARD), interval(...):
-        if abs(dtpw) > 1.0e-15:
-            positive_mass = 0.0
-            if q > 0.0:
-                positive_mass = positive_mass + mass
+        if abs(dtpw) > 1.0e-15 and q > 0.0:
+            positive_mass = positive_mass + mass
 
     with computation(FORWARD), interval(...):
         if abs(dtpw) > 1.0e-15:

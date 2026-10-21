@@ -29,7 +29,7 @@ def radiation_coupling_scale_aware(
     snow: FloatField,
     vapor: FloatField,
 ):
-    from __externals__ import MIN_RL, MAX_RL, FAC_RL, MIN_RI, MAX_RI, FAC_RI
+    from __externals__ import MIN_RL, MAX_RL, FAC_RL, MIN_RI, MAX_RI, FAC_RI, ICE_RADII_PARAM
 
     with computation(PARALLEL), interval(...):
         # 1. Pass through water vapor
@@ -84,6 +84,6 @@ def radiation_coupling_scale_aware(
 
         # 5. ICE RADII (BRAMS formulation with limits)
         if radiation_ice > 0.0:
-            cloud_particle_effective_radius_ice = max(MIN_RI, min(cloud_effective_radius_ice(p_mb, t, radiation_ice) * FAC_RI, MAX_RI))
+            cloud_particle_effective_radius_ice = max(MIN_RI, min(cloud_effective_radius_ice(p_mb, t, radiation_ice, ICE_RADII_PARAM) * FAC_RI, MAX_RI))
         else:
             cloud_particle_effective_radius_ice = MAPL_UNDEF

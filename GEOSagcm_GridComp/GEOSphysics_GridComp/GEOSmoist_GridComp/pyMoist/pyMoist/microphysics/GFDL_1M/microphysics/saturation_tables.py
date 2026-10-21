@@ -77,7 +77,7 @@ def compute_table_core(
 
     # compute es over water between - (n_blend * DELT) deg C and [ (n - n_min - 1) * DELT] deg C
     with computation(FORWARD), interval(...):
-        if K < k_end - N_MIN + n_blend:
+        if K < k_end + 1 - N_MIN + n_blend:
             if do_smith_table:
                 tem = TICE + DELT * float32(K - n_blend)
                 a = -7.90298 * (tbasw / tem - 1.0)
@@ -100,7 +100,7 @@ def compute_table_core(
                 if K < n_blend:
                     esupc = esh
                 else:
-                    shift = K + N_MIN - n_blend
+                    shift = N_MIN - n_blend
                     table[0, 0, shift] = esh
 
     # derive blended es over ice and supercooled water between - (n_blend * delt) deg C and 0 deg C
@@ -111,7 +111,7 @@ def compute_table_core(
             ifrac = ice_fraction(float32(tem), 0.0, 0.0)
             wice = ifrac
             wh2o = 1.0 - wice
-            shift = K + N_MIN - n_blend
+            shift = N_MIN - n_blend
             table[0, 0, shift] = wice * table[0, 0, shift] + wh2o * esupc
 
 

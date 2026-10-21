@@ -48,10 +48,10 @@ def accretion_3d(
 
     accretion = c * vdiff / density
 
-    tmp = 0
+    tmp = 0.0
     i = 0
     while i <= 2:
-        tmp = tmp + acco.A[i, acco_column] * exp((6 + acc1 - i + 1) * log(t1)) * exp((acc2 + i) * log(t2))
+        tmp = tmp + acco.A[i, acco_column] * exp((5 + acc1 - i) * log(t1)) * exp((acc2 + i) * log(t2))
         i += 1
 
     return accretion * tmp
@@ -731,7 +731,7 @@ def p_ice_deposition_and_sublimation(
 
             if ice > QCMIN:
                 if DO_PSD_ICE_NUM:
-                    cin = calc_particle_concentration(liquid, density, MUI, PCAI, PCBI)
+                    cin = calc_particle_concentration(ice, density, MUI, PCAI, PCBI)
                     cin = cin / density
                 elif not PROG_CIN:
                     if INFLAG == 1:
@@ -766,41 +766,41 @@ def p_ice_deposition_and_sublimation(
                     qi_crt = max(qi_gen, 1.82e-6) * min(QI_LIM, 0.1 * tc) / density
                 sink = min(tmp, min(max(qi_crt - ice, pidep), tc / tcpk))
                 mppdi = mppdi + sink * dry_dp * CONV_FACTOR
-            # else:
-            #     pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
-            #     sink = max(pidep, max(tmp, -ice))
-            #     sink = sink * one_minus_sigma  # resolution dependent subl 0:1 coarse:fine
-            #     mppsi = mppsi - sink * dry_dp * CONV_FACTOR
-            #     # 3D ice sublimation export
-            #     rsubl = rsubl - sink * dry_dp * CONV_FACTOR
+            else:
+                pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
+                sink = max(pidep, max(tmp, -ice))
+                sink = sink * one_minus_sigma # resolution dependent subl 0:1 coarse:fine
+                mppsi = mppsi - sink * dry_dp * CONV_FACTOR
+                # 3D ice sublimation export
+                rsubl = rsubl - sink * dry_dp * CONV_FACTOR
 
-            # t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
-            #     cloud_fraction=cloud_fraction,
-            #     vapor=vapor,
-            #     ice=ice,
-            #     liquid=liquid,
-            #     graupel=graupel,
-            #     rain=rain,
-            #     snow=snow,
-            #     dvapor=-sink,
-            #     dice=sink,
-            #     dliquid=0.0,
-            #     dgraupel=0.0,
-            #     drain=0.0,
-            #     dsnow=0.0,
-            #     t=t,
-            #     total_energy=total_energy,
-            #     DO_QA=DO_QA,
-            #     D1_VAP=D1_VAP,
-            #     D1_ICE=D1_ICE,
-            #     LI00=LI00,
-            #     LI20=LI20,
-            #     LV00=LV00,
-            #     T_WFR=T_WFR,
-            #     C1_VAP=C1_VAP,
-            #     C1_LIQ=C1_LIQ,
-            #     C1_ICE=C1_ICE,
-            # )
+            t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
+                cloud_fraction=cloud_fraction,
+                vapor=vapor,
+                ice=ice,
+                liquid=liquid,
+                graupel=graupel,
+                rain=rain,
+                snow=snow,
+                dvapor=-sink,
+                dice=sink,
+                dliquid=0.0,
+                dgraupel=0.0,
+                drain=0.0,
+                dsnow=0.0,
+                t=t,
+                total_energy=total_energy,
+                DO_QA=DO_QA,
+                D1_VAP=D1_VAP,
+                D1_ICE=D1_ICE,
+                LI00=LI00,
+                LI20=LI20,
+                LV00=LV00,
+                T_WFR=T_WFR,
+                C1_VAP=C1_VAP,
+                C1_LIQ=C1_LIQ,
+                C1_ICE=C1_ICE,
+            )
 
 
 @function
@@ -900,7 +900,7 @@ def p_snow_deposition_and_sublimation(
             pssub = DT * pssub
             dq = dq / (1.0 + tcpk * dice_saturation_humidity)
             if pssub > 0.0:
-                sink = min(pssub * min(1.0, max(t, T_SUB) * SS_FAC), snow)
+                sink = min(pssub * min(1.0, max(t - T_SUB, 0.0) * SS_FAC), snow)
                 mppss = mppss + sink * dry_dp * CONV_FACTOR
             else:
                 sink = 0.0
@@ -974,7 +974,7 @@ def p_sublimation(
         * t_squared
         * dcondensate
         * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density))
-        * vent_coeff(condensate_x_density, c.A[1], c.A[2], density_factor, blin, mu)
+        * vent_coeff(density_factor, condensate_x_density, c.A[1], c.A[2], blin, mu)
         / (c.A[3] * t_squared + c.A[4] * (cpk * cvm) ** 2 * saturation_specific_humidity * density)
     )
 
@@ -1143,6 +1143,8 @@ def terminal_velocity_graupel_rain_snow(
         terminal_velocity = 0.5 * (v_min + v_max)
     else:
         if condensate < QFMIN:
+            terminal_velocity = 0.0
+        else:
             terminal_velocity = calc_mass_weighted_terminal_velocity(condensate, density, mu, tva, tvb, blin)
             terminal_velocity = v_fac * terminal_velocity * density_factor
             terminal_velocity = min(v_max, max(v_min, terminal_velocity))

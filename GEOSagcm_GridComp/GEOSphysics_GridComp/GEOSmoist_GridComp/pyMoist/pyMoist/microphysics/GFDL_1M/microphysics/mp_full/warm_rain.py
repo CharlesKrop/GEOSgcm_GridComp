@@ -91,7 +91,7 @@ def evaporation(
         # time-scale factor
         fac_revp: FloatFieldIJ = 1.0
         if TAU_REVP > 1e-6:
-            fac_revp = 1.0 - exp(DT / TAU_REVP)
+            fac_revp = 1.0 - exp(-DT / TAU_REVP)
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
@@ -338,6 +338,7 @@ def autoconversion_part_2(
     snow: FloatField,
     cloud_fraction: FloatField,
     liquid_internal: FloatField,
+    dliquid_internal: FloatField,
     cloud_fraction_internal: FloatField,
     ccn: FloatField,
     mppar: FloatFieldIJ,
@@ -369,10 +370,6 @@ def autoconversion_part_2(
         so1: FloatFieldIJ = -1.0 / 3.0
         so3: FloatFieldIJ = 7.0 / 3.0
 
-    with computation(PARALLEL), interval(...):
-        # initialize internal temporary
-        dliquid = 0.0
-
     with computation(FORWARD), interval(...):
         if IRAIN_F == 0:
 
@@ -383,13 +380,13 @@ def autoconversion_part_2(
                     ccn = ccn / density
 
                 condensate = factor_rc * ccn
-                dliquid = min(max(QCMIN, dliquid), 0.5 * liquid_internal)
-                dcondensate = 0.5 * (liquid_internal + dliquid - condensate)
+                dliquid_internal = min(max(QCMIN, dliquid_internal), 0.5 * liquid_internal)
+                dcondensate = 0.5 * (liquid_internal + dliquid_internal - condensate)
 
                 if dcondensate > 0.0:
 
                     c_praut = cpaut * exp(so1 * log(ccn * RHOW))
-                    sink = min(1.0, dcondensate / dliquid) * DT * c_praut * density * exp(so3 * log(liquid_internal))
+                    sink = min(1.0, dcondensate / dliquid_internal) * DT * c_praut * density * exp(so3 * log(liquid_internal))
                     sink = min(QL0_MAX / cloud_fraction_internal, min(liquid_internal, sink)) * cloud_fraction_internal
                     mppar = mppar + sink * dry_dp * CONV_FACTOR
 
@@ -640,6 +637,7 @@ class WarmRain(NDSLRuntime):
             snow=gfdl_mp_v3_locals.mixing_ratio.snow,
             cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
             liquid_internal=self._warm_rain_locals.liquid_internal,
+            dliquid_internal=self._warm_rain_locals.dliquid_internal,
             cloud_fraction_internal=self._warm_rain_locals.cloud_fraction_internal,
             ccn=gfdl_mp_v3_locals.ccn,
             mppar=gfdl_mp_v3_locals.mppar,
