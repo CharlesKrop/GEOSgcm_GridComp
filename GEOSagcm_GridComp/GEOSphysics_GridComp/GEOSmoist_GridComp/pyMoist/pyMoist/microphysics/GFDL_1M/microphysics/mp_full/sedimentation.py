@@ -794,39 +794,38 @@ class Sedimentation(NDSLRuntime):
                 v_fac=self._mp_namelist.VW_FAC,
                 const_v=self._mp_namelist.CONST_VW,
             )
+            self._set_heights(
+                ze=self._sedimentation_locals.ze,
+                zs=self._sedimentation_locals.zs,
+                zt=self._sedimentation_locals.zt,
+                dz=gfdl_mp_v3_locals.dz,
+                terminal_velocity=mp_full_locals.terminal_velocity.liquid,
+            )
 
-        self._set_heights(
-            ze=self._sedimentation_locals.ze,
-            zs=self._sedimentation_locals.zs,
-            zt=self._sedimentation_locals.zt,
-            dz=gfdl_mp_v3_locals.dz,
-            terminal_velocity=mp_full_locals.terminal_velocity.liquid,
-        )
+            self._compute_terminal_fall(
+                t=gfdl_mp_v3_locals.t,
+                ze=self._sedimentation_locals.ze,
+                zs=self._sedimentation_locals.zs,
+                zt=self._sedimentation_locals.zt,
+                dz=gfdl_mp_v3_locals.dz,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                terminal_velocity=mp_full_locals.terminal_velocity.liquid,
+                precip_at_surface=mp_full_locals.surface_precip.liquid,
+                precip=mp_full_locals.precip.liquid,
+                dtotal_energy=gfdl_mp_v3_locals.total_energy.delta,
+                u=gfdl_mp_v3_locals.u,
+                v=gfdl_mp_v3_locals.v,
+                w=gfdl_mp_v3_locals.w,
+                mode=Int(2),
+            )
 
-        self._compute_terminal_fall(
-            t=gfdl_mp_v3_locals.t,
-            ze=self._sedimentation_locals.ze,
-            zs=self._sedimentation_locals.zs,
-            zt=self._sedimentation_locals.zt,
-            dz=gfdl_mp_v3_locals.dz,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            terminal_velocity=mp_full_locals.terminal_velocity.liquid,
-            precip_at_surface=mp_full_locals.surface_precip.liquid,
-            precip=mp_full_locals.precip.liquid,
-            dtotal_energy=gfdl_mp_v3_locals.total_energy.delta,
-            u=gfdl_mp_v3_locals.u,
-            v=gfdl_mp_v3_locals.v,
-            w=gfdl_mp_v3_locals.w,
-            mode=Int(2),
-        )
-
-        self._ensure_non_negative_at_toa(field=mp_full_locals.precip.liquid)
+            self._ensure_non_negative_at_toa(field=mp_full_locals.precip.liquid)
 
         # --------------------------------------------------
         # terminal fall of rain
