@@ -81,7 +81,7 @@ def convert_mm_per_day_to_kg_per_m2_per_s(field: FloatField):
     """
     with computation(PARALLEL), interval(...):
         # One millimeter of liquid water is one kg per square meter.
-            field = field * (1.0 / 86400.0)
+        field = field * (1.0 / 86400.0)
 
 
 def flip_sign(input: FloatField, output: FloatField):
@@ -316,10 +316,14 @@ def redistribute_precipitation_fluxes(
     with computation(FORWARD), interval(...):
         tmp_val = min(1.0, max(convective_liquid / max(radiation_liquid, 1.0e-8), 0.0))
         anvil_liquid_precip_flux[0, 0, 1] = (non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + non_anvil_large_scale_rain_precip_flux[0, 0, 1]) * tmp_val
-        non_anvil_large_scale_liquid_precip_flux[0, 0, 1] = (non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + non_anvil_large_scale_rain_precip_flux[0, 0, 1]) - anvil_liquid_precip_flux[0, 0, 1]
+        non_anvil_large_scale_liquid_precip_flux[0, 0, 1] = (
+            non_anvil_large_scale_liquid_precip_flux[0, 0, 1] + non_anvil_large_scale_rain_precip_flux[0, 0, 1]
+        ) - anvil_liquid_precip_flux[0, 0, 1]
 
         tmp_val = min(1.0, max(convective_ice / max(radiation_ice, 1.0e-8), 0.0))
-        anvil_ice_precip_flux[0, 0, 1] = (non_anvil_large_scale_ice_precip_flux[0, 0, 1] + non_anvil_large_scale_snow_precip_flux[0, 0, 1] + non_anvil_large_scale_graupel_precip_flux[0, 0, 1]) * tmp_val
+        anvil_ice_precip_flux[0, 0, 1] = (
+            non_anvil_large_scale_ice_precip_flux[0, 0, 1] + non_anvil_large_scale_snow_precip_flux[0, 0, 1] + non_anvil_large_scale_graupel_precip_flux[0, 0, 1]
+        ) * tmp_val
         non_anvil_large_scale_ice_precip_flux[0, 0, 1] = (
             non_anvil_large_scale_ice_precip_flux[0, 0, 1] + non_anvil_large_scale_snow_precip_flux[0, 0, 1] + non_anvil_large_scale_graupel_precip_flux[0, 0, 1]
         ) - anvil_ice_precip_flux[0, 0, 1]
