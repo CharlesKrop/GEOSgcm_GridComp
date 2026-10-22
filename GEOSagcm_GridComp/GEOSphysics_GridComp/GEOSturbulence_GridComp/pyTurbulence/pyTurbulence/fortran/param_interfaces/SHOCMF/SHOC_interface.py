@@ -65,8 +65,8 @@ class SHOCGEOSInterface(UserCode):
 
         assert self._managed_state  # type: ignore[unreachable]
         self._managed_state.register_2D("input.SH", "SH", import_repository)
-        self._managed_state.register("input.PLE", "PLE", import_repository)
-        self._managed_state.register("input.ZLE", "ZLE", import_repository)
+        self._managed_state.register_K_interface("input.PLE", "PLE", import_repository)
+        self._managed_state.register_K_interface("input.ZLE", "ZLE", import_repository)
         self._managed_state.register("input.U", "U", import_repository)
         self._managed_state.register("input.V", "V", import_repository)
         self._managed_state.register("input.OMEGA", "OMEGA", import_repository)
@@ -87,7 +87,7 @@ class SHOCGEOSInterface(UserCode):
         self._managed_state.register("output.KH", "KH", export_repository,alloc=True)
         self._managed_state.register("output.KM", "KM", export_repository, alloc=True)
         self._managed_state.register("output.ISOTROPY", "ISOTROPY", export_repository, alloc=True)
-        self._managed_state.register("output.TKEDISS", "TKEDISS", export_repository)
+        self._managed_state.register("output.TKEDISS", "TKEDISS", internal_repository)
         self._managed_state.register("output.TKEBUOY", "TKEBUOY", export_repository)    
         self._managed_state.register("output.TKESHEAR", "TKESHEAR", export_repository) 
         self._managed_state.register("output.LSHOC", "LSHOC", export_repository)     
@@ -109,6 +109,7 @@ class SHOCGEOSInterface(UserCode):
         with TimedCUDAProfiler("SHOC", {}):
             with TimedCUDAProfiler("SHOC - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
+                # self._managed_state.record("SHOC-Fortran-In")
 
             with TimedCUDAProfiler("SHOC Numerics", {}):
                 self._shoc(self._managed_state.ndsl_state)
