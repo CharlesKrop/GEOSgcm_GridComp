@@ -34,7 +34,7 @@ class GFDLMPV3(NDSLRuntime):
     NDSL integration: Kropiewnicki September 2026
     """
 
-    def __init__(self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, gfdl_1m_config: GFDL1MConfig, namelist: str = "input.nml"):
+    def __init__(self, stencil_factory: StencilFactory, quantity_factory: QuantityFactory, gfdl_1m_config: GFDL1MConfig, lid_level: Int, namelist: str = "input.nml"):
         # initialize NDSLRuntime parent class
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
@@ -73,7 +73,7 @@ class GFDLMPV3(NDSLRuntime):
         # initialize the driver
         self._driver = GFDLMPV3Driver(
             # if GFDL_MP_KLID is non-negative (default value is -999), microphysics will be restricted to start at that vertical level
-            stencil_factory=stencil_factory.restrict_vertical(k_start=max(0, int(gfdl_1m_config.GFDL_MP_KLID))),
+            stencil_factory=stencil_factory.restrict_vertical(k_start=lid_level)),
             quantity_factory=quantity_factory,
             saturation_tables=_saturation_tables,
             gfdl_1m_config=self._gfdl_1m_config,

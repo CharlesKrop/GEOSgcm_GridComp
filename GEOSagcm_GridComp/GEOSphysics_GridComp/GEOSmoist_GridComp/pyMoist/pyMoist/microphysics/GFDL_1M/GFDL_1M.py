@@ -533,7 +533,12 @@ class GFDL1M(NDSLRuntime):
             externals={"DT": config.DT},
         )
 
-        self._gfdl_microphysics_v3 = GFDLMPV3(stencil_factory=stencil_factory, quantity_factory=quantity_factory, gfdl_1m_config=config)
+        self._gfdl_microphysics_v3 = GFDLMPV3(
+            stencil_factory=stencil_factory,
+            quantity_factory=quantity_factory,
+            gfdl_1m_config=config,
+            lid_level=self._setup.lid_level,
+        )
 
     def __call__(
         self,
