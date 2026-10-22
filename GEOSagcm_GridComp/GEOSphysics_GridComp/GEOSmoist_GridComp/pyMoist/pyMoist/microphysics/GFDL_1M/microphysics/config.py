@@ -577,7 +577,10 @@ class GFDLMPV3NamelistConfig:
             raise e
 
         mp_nml = full_nml.get("gfdl_mp_nml", {})
-        ndsl_log.info(f"[GFDL1M Microphysics]: full microphysics namelist:\n{mp_nml}")
+        if mp_nml:
+            ndsl_log.info(f"[GFDL1M Microphysics]: overwriting parameters with values from namelist: {', '.join(mp_nml.keys())}")
+        else:
+            ndsl_log.info("[GFDL1M Microphysics]: no relevant parameters present in the namelist file, using default value for all parameters")
 
         # Validate that all namelist keys exist in the configuration
         valid_keys = {f.name.lower() for f in dataclasses.fields(cls)}
