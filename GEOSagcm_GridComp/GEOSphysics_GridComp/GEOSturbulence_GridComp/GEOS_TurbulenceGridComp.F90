@@ -3144,7 +3144,6 @@ end if
      integer :: NTR, K, LTOP, LMAX
      real :: maxaero
      real :: eis_stable, kh_thresh
-
      real, pointer, dimension(:,:,:) :: DSL__BUOYF, DSL__MFTKE
      real, pointer, dimension(:,:) :: DSL__DRYCBLH
 
@@ -3289,24 +3288,24 @@ end if
 
      call MAPL_GetResource (MAPL, DO_SHOC,      trim(COMP_NAME)//"_DO_SHOC:",       default=0,           RC=STATUS); VERIFY_(STATUS)
      if (DO_SHOC /= 0) then
-      call MAPL_GetResource(MAPL, USE_PYTURB_SHOC, 'USE_PYTURB_SHOC:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
-      if (USE_PYTURB_SHOC) then
-       call MAPL_ConfigSetAttribute(CF, DT, 'DSL__SHOC_DT:', RC=STATUS); VERIFY_(STATUS)
-       call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
-      else
-       call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=5.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   RC=STATUS); VERIFY_(STATUS)       
-       call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
-       call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
-      endif ! ENDIF USE_PYTURB_SHOC
+        call MAPL_GetResource(MAPL, USE_PYTURB_SHOC, 'USE_PYTURB_SHOC:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
+        if (USE_PYTURB_SHOC) then
+           call MAPL_ConfigSetAttribute(CF, DT, 'DSL__SHOC_DT:', RC=STATUS); VERIFY_(STATUS)
+           call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
+        else
+            call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=5.,   RC=STATUS); VERIFY_(STATUS)       
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   RC=STATUS); VERIFY_(STATUS)       
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
+         endif !ENDIF USE_PYTURB_SHOC
      else
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , RC=STATUS); VERIFY_(STATUS)
      end if
@@ -3814,7 +3813,6 @@ end if
     awqi3  = 0.0
 
     IF(DOMF /= 0) then
-
       call RUN_EDMF(1, IM, 1, JM, 1, LM, DT,  &
                     !== Inputs ==
                     PHIS,                     &
@@ -3954,96 +3952,88 @@ end if
 
       drycblh = 0.     
    ENDIF
-
-
-
    
    call MAPL_TimerOff(MAPL,"---MASSFLUX")
 
-   
-   if (associated(lobukhov)) then
-      lobukhov = -ustar**3 * thv(:,:,LM) / (0.4*MAPL_GRAV*(sh+mapl_epsilon*thv(:,:,LM)*evap)/(MAPL_CP*rhoe(:,:,LM)))
-   end if
+   ! Uncomment this after talking to Nathan KMF 10/21/26
+   ! if (associated(lobukhov)) then
+   !    lobukhov = -ustar**3 * thv(:,:,LM) / (0.4*MAPL_GRAV*(sh+mapl_epsilon*thv(:,:,LM)*evap)/(MAPL_CP*rhoe(:,:,LM)))
+   ! end if
    
 !!!=================================================================
 !!!===========================  SHOC  ==============================
 !!!=================================================================
 
-      if ( DO_SHOC /= 0 ) then
+   if ( DO_SHOC /= 0 ) then
 
-        LOCK_ON = 0
-        ISOTROPY = 600.
+      LOCK_ON = 0
+      ISOTROPY = 600.
+      call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
+      VERIFY_(STATUS)
 
-        call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
-        VERIFY_(STATUS)
 
-        call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', RC=STATUS); VERIFY_(STATUS)
-        call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', RC=STATUS); VERIFY_(STATUS)
-        DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
-        DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
-        DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
+      call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', RC=STATUS); VERIFY_(STATUS)
+      DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
+      DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
+      DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
 
-        if (USE_PYTURB_SHOC) then
-      
-          call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+      if (USE_PYTURB_SHOC) then
+   
+         call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
 
-        else
+      else
+      call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
+                  !== Inputs ==
+                  SH(:,:),               &
+                  LOBUKHOV(:,:),         &
+                  PLO(:,:,1:LM),         &
+                  ZL0(:,:,0:LM),         &
+                  Z(:,:,1:LM),           &
+                  U(:,:,1:LM),           &
+                  V(:,:,1:LM),           &
+                  OMEGA(:,:,1:LM),       &
+                  T(:,:,1:LM),           &
+                  Q(:,:,1:LM),           &
+                  QI(:,:,1:LM),          &
+                  QL(:,:,1:LM),          &
+                  QPI(:,:,1:LM),         &
+                  QPL(:,:,1:LM),         &
+                  QA(:,:,1:LM),          &
+                  WTHV2(:,:,1:LM),       &
+                  BUOYF(:,:,1:LM),       &
+                  MFTKE(:,:,0:LM),       &
+                  DRYCBLH(:,:),          &    
+                  !== Input-Outputs ==
+                  TKESHOC(:,:,1:LM),     &
+                  TKH(:,:,1:LM),         &
+                  !== Outputs ==
+                  KM(:,:,1:LM),          &
+                  ISOTROPY(:,:,1:LM),    &
+                  TKEDISS,               &
+                  !== Diagnostics ==  ! not used elsewhere
+                  TKEBUOY,               &
+                  TKESHEAR,              &
+                  LSHOC,                 &
+                  LSHOC1,                &
+                  LSHOC2,                &
+                  LSHOC3,                &
+                  BRUNTSHOC,             &
+                  RI,                    &
+                  SHOCPRNUM,             &
+                  !== Tuning params ==
+                  SHOCPARAMS )
 
-          call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
-                        !== Inputs ==
-                        SH(:,:),               &
-                        LOBUKHOV(:,:),         &
-                        PLO(:,:,1:LM),         &
-                        ZL0(:,:,0:LM),         &
-                        Z(:,:,1:LM),           &
-                        U(:,:,1:LM),           &
-                        V(:,:,1:LM),           &
-                        OMEGA(:,:,1:LM),       &
-                        T(:,:,1:LM),           &
-                        Q(:,:,1:LM),           &
-                        QI(:,:,1:LM),          &
-                        QL(:,:,1:LM),          &
-                        QPI(:,:,1:LM),         &
-                        QPL(:,:,1:LM),         &
-                        QA(:,:,1:LM),          &
-                        WTHV2(:,:,1:LM),       &
-                        BUOYF(:,:,1:LM),       &
-                        MFTKE(:,:,0:LM),       &
-                        DRYCBLH(:,:),          &    
-                        !== Input-Outputs ==
-                        TKESHOC(:,:,1:LM),     &
-                        TKH(:,:,1:LM),         &
-                        !== Outputs ==
-                        KM(:,:,1:LM),          &
-                        ISOTROPY(:,:,1:LM),    &
-                        TKEDISS,               &
-                        !== Diagnostics ==  ! not used elsewhere
-                        TKEBUOY,               &
-                        TKESHEAR,              &
-                        LSHOC,                 &
-                        LSHOC1,                &
-                        LSHOC2,                &
-                        LSHOC3,                &
-                        BRUNTSHOC,             &
-                        RI,                    &
-                        SHOCPRNUM,             &
-                        !== Tuning params ==
-                        SHOCPARAMS )
+      if (associated(TKEDISSx)) TKEDISSx = TKEDISS
+      KH(:,:,1:LM) = TKH(:,:,1:LM)
 
-          if (associated(TKEDISSx)) TKEDISSx = TKEDISS
-          KH(:,:,1:LM) = TKH(:,:,1:LM)
+      endif ! ENDIF USE_PYTURB_SHOC
 
-        endif ! ENDIF USE_PYTURB_SHOC
+      call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
+      VERIFY_(STATUS)
 
-        if (USE_PYTURB_SHOC) then
-         call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
-        endif
-
-        call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
-        VERIFY_(STATUS)
-
-      end if  ! DOSHOC condition
+   end if  ! DOSHOC condition
 
 !   Refresh diffusivities: First compute Louis...
 !   ---------------------------------------------
@@ -4635,8 +4625,8 @@ end if
             do J = 1, JM
                temparray(1:LM+1) = KH(I,J,0:LM)
                do L = LM,2,-1
-                  locmax = maxloc(temparray,1)
-                  minlval = max(0.001,0.0001*maxval(temparray))
+                  locmax = maxloc(temparray(1:LM),1)
+                  minlval = max(0.001,0.0001*maxval(temparray(1:LM)))
                   if(temparray(locmax-1)<minlval.and.temparray(locmax+1)<minlval) temparray(locmax) = minlval
                enddo
                maxkh = temparray(LM)
