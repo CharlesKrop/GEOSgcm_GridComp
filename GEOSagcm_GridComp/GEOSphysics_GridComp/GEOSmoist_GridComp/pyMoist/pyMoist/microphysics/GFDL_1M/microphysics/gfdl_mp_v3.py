@@ -73,7 +73,7 @@ class GFDLMPV3(NDSLRuntime):
         # initialize the driver
         self._driver = GFDLMPV3Driver(
             # if GFDL_MP_KLID is non-negative (default value is -999), microphysics will be restricted to start at that vertical level
-            stencil_factory=stencil_factory.restrict_vertical(k_start=lid_level)),
+            stencil_factory=stencil_factory.restrict_vertical(k_start=lid_level),
             quantity_factory=quantity_factory,
             saturation_tables=_saturation_tables,
             gfdl_1m_config=self._gfdl_1m_config,
