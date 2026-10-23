@@ -2,7 +2,7 @@ import dataclasses
 
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, ndsl_log, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, log10, max, float64
+from ndsl.dsl.gt4py import BACKWARD, FORWARD, PARALLEL, computation, exp, function, interval, log, log10, max, float32, float64
 from ndsl.dsl.typing import BoolFieldIJ, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64, Int
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
@@ -43,16 +43,16 @@ def compute_terminal_fall(
     with computation(FORWARD), interval(0, 1):
         # initialize 2d internals
         precip_fall: BoolFieldIJ = False
-        total_energy_1: float64 = 0.0
-        total_energy_2: float64 = 0.0
-        sum_total_energy_1: float64 = 0.0
-        sum_total_energy_2: float64 = 0.0
+        sum_total_energy_1: FloatFieldIJ64 = 0.0
+        sum_total_energy_2: FloatFieldIJ64 = 0.0
 
     with computation(PARALLEL), interval(...):
         # initialize 3d internals
         internal_dd = 0.0
         internal_dz = 0.0
         internal_condensate_modified = 0.0
+        total_energy_1: float64 = 0.0
+        total_energy_2: float64 = 0.0
 
     with computation(PARALLEL), interval(...):
         # reset 3D precip
@@ -87,7 +87,7 @@ def compute_terminal_fall(
                 dm = dry_dp * (1.0 + vapor + ice + liquid + graupel + rain + snow)
 
             # energy change during sedimentation
-            total_energy_1 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False) * GRAV
+            total_energy_1 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False)
 
     # sedimentation
 
@@ -176,7 +176,7 @@ def compute_terminal_fall(
     with computation(PARALLEL), interval(...):
         if precip_fall:
             # energy change during sedimentation
-            total_energy_2 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False) * GRAV
+            total_energy_2 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False)
 
     with computation(FORWARD), interval(...):
         if precip_fall:
@@ -207,19 +207,23 @@ def compute_terminal_fall(
     with computation(PARALLEL), interval(...):
         if precip_fall:
             # energy change during sedimentation heating
-            total_energy_1 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False) * GRAV
+            total_energy_1 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False)
+
+    with computation(FORWARD), interval(0, 1):
+        sum_total_energy_1 = 0.0
+        sum_total_energy_2 = 0.0
 
     with computation(FORWARD), interval(1, None):
         if precip_fall and DO_SEDI_HEAT:
             dgz = -0.5 * GRAV * (dz[0, 0, -1] + dz)
-            cv0 = dm * (CV_AIR + vapor * CV_VAP + (rain + liquid) * C_LIQ + (ice + snow + graupel) * C_ICE) + C_ICE * (precip - precip[0, 0, -1])
+            cv0 = dry_dp * (CV_AIR + vapor * CV_VAP + (rain + liquid) * C_LIQ + (ice + snow + graupel) * C_ICE) + C_ICE * (precip - precip[0, 0, -1])
 
             t = (cv0 * t + precip[0, 0, -1] * (C_ICE * t[0, 0, -1] + dgz)) / (cv0 + C_ICE * precip[0, 0, -1])
 
     with computation(PARALLEL), interval(...):
-        if precip_fall and DO_SEDI_HEAT:
+        if precip_fall:
             # energy change during sedimentation heating
-            total_energy_2 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False) * GRAV
+            total_energy_2 = moist_total_energy(t, vapor, liquid, rain, ice, snow, graupel, dry_dp, C_AIR, C1_VAP, C1_LIQ, C1_ICE, False)
 
     with computation(FORWARD), interval(...):
         if precip_fall:
@@ -250,6 +254,12 @@ def compute_terminal_velocity_ice(
         convection_fraction (FloatFieldIJ)
     """
     from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, ICE_RADII_PARAM, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
+
+    with computation(PARALLEL), interval(...):
+        # initialize t_internal and p_dry manually so that it gets the correct precision
+        # NOTE once Float is a valid typehint, can use "t_internal: Float = t - TICE" below instead of initializing here
+        t_internal = 0.0
+        p_dry = 0.0
 
     with computation(PARALLEL), interval(...):
         if CONST_VI:
@@ -292,7 +302,7 @@ def compute_terminal_velocity_ice(
             # 2. Apply Universal Pressure Scaling (Accelerates high-alt ice)
             if DO_ICE_PRES_SCALING:
                 p_dry = density * RDGAS * t  # dry air pressure
-                diam = 2.0 * cloud_effective_radius_ice(p_dry / 100.0, t, ice, ICE_RADII_PARAM) * 1.0e6  # microns
+                diam = 2.0 * cloud_effective_radius_ice(p_dry / 100.0, float32(t), ice, ICE_RADII_PARAM) * 1.0e6  # microns
                 ln_p = log(p_dry / 100.0)
                 c0 = -1.04 + 0.298 * ln_p
                 c1 = 0.67 - 0.097 * ln_p

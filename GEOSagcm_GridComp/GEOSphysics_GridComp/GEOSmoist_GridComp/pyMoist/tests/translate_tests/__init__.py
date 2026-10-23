@@ -334,12 +334,14 @@
 from .microphysics.GFDL_1M.translate_GFDL1M import TranslateGFDL1M
 from .microphysics.GFDL_1M.translate_GFDL1M_Macrophysics import TranslateGFDL1M_Macrophysics
 from .microphysics.GFDL_1M.translate_GFDL1M_Microphysics import TranslateGFDL1M_Microphysics
+from .microphysics.GFDL_1M.translate_GFDL1M_Sedimentation import TranslateGFDL1M_Sedimentation
 from .translate_saturation_specific_humidity_functions import Translatesaturation_specific_humidity_functions
 
 __all__ = [
     "TranslateGFDL1M",
     "TranslateGFDL1M_Macrophysics",
     "TranslateGFDL1M_Microphysics",
+    "TranslateGFDL1M_Sedimentation",
     "Translatesaturation_specific_humidity_functions",
     # "TranslateComputeUwshcuInv",
 ]

@@ -361,61 +361,67 @@ class GFDLMPV3(NDSLRuntime):
         mp_config.RRBH = float64(exp((mp_namelist.MUH + Int(6)) / (mp_namelist.MUH + Int(3)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Int(3)))))
 
         mp_config.TVAW = float64(
-            exp(-mp_namelist.BLINW / (mp_namelist.MUW + Int(3)) * log(mp_namelist.N0W_SIG))
+            Float(exp(-mp_namelist.BLINW / (mp_namelist.MUW + Float(3.0)) * Float(log(mp_namelist.N0W_SIG))))
             * mp_namelist.ALINW
-            * gamma(mp_namelist.MUW + mp_namelist.BLINW + Int(3))
-            * exp(-mp_namelist.BLINW * mp_namelist.N0W_EXP / (mp_namelist.MUW + Int(3)) * log(Float(10.0)))
+            * Float(gamma(mp_namelist.MUW + mp_namelist.BLINW + Float(3.0)))
+            * Float(exp(-mp_namelist.BLINW * mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.TVAI = float64(
-            exp(-mp_namelist.BLINI / (mp_namelist.MUI + Int(3)) * log(mp_namelist.N0I_SIG))
+            Float(exp(-mp_namelist.BLINI / (mp_namelist.MUI + Float(3.0)) * Float(log(mp_namelist.N0I_SIG))))
             * mp_namelist.ALINI
-            * gamma(mp_namelist.MUI + mp_namelist.BLINI + Int(3))
-            * exp(-mp_namelist.BLINI * mp_namelist.N0I_EXP / (mp_namelist.MUI + Int(3)) * log(Float(10.0)))
+            * Float(gamma(mp_namelist.MUI + mp_namelist.BLINI + Float(3.0)))
+            * Float(exp(-mp_namelist.BLINI * mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.TVAR = float64(
-            exp(-mp_namelist.BLINR / (mp_namelist.MUR + Int(3)) * log(mp_namelist.N0R_SIG))
+            Float(exp(-mp_namelist.BLINR / (mp_namelist.MUR + Float(3.0)) * Float(log(mp_namelist.N0R_SIG))))
             * mp_namelist.ALINR
-            * gamma(mp_namelist.MUR + mp_namelist.BLINR + Int(3))
-            * exp(-mp_namelist.BLINR * mp_namelist.N0R_EXP / (mp_namelist.MUR + Int(3)) * log(Float(10.0)))
+            * Float(gamma(mp_namelist.MUR + mp_namelist.BLINR + Float(3.0)))
+            * Float(exp(-mp_namelist.BLINR * mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.TVAS = float64(
-            exp(-mp_namelist.BLINS / (mp_namelist.MUS + Int(3)) * log(mp_namelist.N0S_SIG))
+            Float(exp(-mp_namelist.BLINS / (mp_namelist.MUS + Float(3.0)) * Float(log(mp_namelist.N0S_SIG))))
             * mp_namelist.ALINS
-            * gamma(mp_namelist.MUS + mp_namelist.BLINS + Int(3))
-            * exp(-mp_namelist.BLINS * mp_namelist.N0S_EXP / (mp_namelist.MUS + Int(3)) * log(Float(10.0)))
+            * Float(gamma(mp_namelist.MUS + mp_namelist.BLINS + Float(3.0)))
+            * Float(exp(-mp_namelist.BLINS * mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.TVAG = float64(
-            exp(-mp_namelist.BLING / (mp_namelist.MUG + Int(3)) * log(mp_namelist.N0G_SIG))
+            Float(exp(-mp_namelist.BLING / (mp_namelist.MUG + Float(3.0)) * Float(log(mp_namelist.N0G_SIG))))
             * mp_namelist.ALING
-            * gamma(mp_namelist.MUG + mp_namelist.BLING + Int(3))
-            * exp(-mp_namelist.BLING * mp_namelist.N0G_EXP / (mp_namelist.MUG + Int(3)) * log(Float(10.0)))
+            * Float(gamma(mp_namelist.MUG + mp_namelist.BLING + Float(3.0)))
+            * Float(exp(-mp_namelist.BLING * mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * Float(log(Float(10.0)))))
             * gcon
         )
         mp_config.TVAH = float64(
-            exp(-mp_namelist.BLINH / (mp_namelist.MUH + Int(3)) * log(mp_namelist.N0H_SIG))
+            Float(exp(-mp_namelist.BLINH / (mp_namelist.MUH + Float(3.0)) * Float(log(mp_namelist.N0H_SIG))))
             * mp_namelist.ALINH
-            * gamma(mp_namelist.MUH + mp_namelist.BLINH + Int(3))
-            * exp(-mp_namelist.BLINH * mp_namelist.N0H_EXP / (mp_namelist.MUH + Int(3)) * log(Float(10.0)))
+            * Float(gamma(mp_namelist.MUH + mp_namelist.BLINH + Float(3.0)))
+            * Float(exp(-mp_namelist.BLINH * mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * Float(log(Float(10.0)))))
             * hcon
         )
 
         mp_config.TVBW = float64(
-            exp(mp_namelist.BLINW / (mp_namelist.MUW + Int(3)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Int(3)))) * gamma(mp_namelist.MUW + Int(3))
+            Float(exp(mp_namelist.BLINW / (mp_namelist.MUW + Float(3.0)) * Float(log(constants.PI * constants.RHOW * Float(gamma(mp_namelist.MUW + Float(3.0)))))))
+            * Float(gamma(mp_namelist.MUW + Float(3.0)))
         )
         mp_config.TVBI = float64(
-            exp(mp_namelist.BLINI / (mp_namelist.MUI + Int(3)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Int(3)))) * gamma(mp_namelist.MUI + Int(3))
+            Float(exp(mp_namelist.BLINI / (mp_namelist.MUI + Float(3.0)) * Float(log(constants.PI * constants.RHOI * Float(gamma(mp_namelist.MUI + Float(3.0)))))))
+            * Float(gamma(mp_namelist.MUI + Float(3.0)))
         )
         mp_config.TVBR = float64(
-            exp(mp_namelist.BLINR / (mp_namelist.MUR + Int(3)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Int(3)))) * gamma(mp_namelist.MUR + Int(3))
+            Float(exp(mp_namelist.BLINR / (mp_namelist.MUR + Float(3.0)) * Float(log(constants.PI * constants.RHOR * Float(gamma(mp_namelist.MUR + Float(3.0)))))))
+            * Float(gamma(mp_namelist.MUR + Float(3.0)))
         )
         mp_config.TVBS = float64(
-            exp(mp_namelist.BLINS / (mp_namelist.MUS + Int(3)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Int(3)))) * gamma(mp_namelist.MUS + Int(3))
+            Float(exp(mp_namelist.BLINS / (mp_namelist.MUS + Float(3.0)) * Float(log(constants.PI * constants.RHOS * Float(gamma(mp_namelist.MUS + Float(3.0)))))))
+            * Float(gamma(mp_namelist.MUS + Float(3.0)))
         )
         mp_config.TVBG = float64(
-            exp(mp_namelist.BLING / (mp_namelist.MUG + Int(3)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Int(3)))) * gamma(mp_namelist.MUG + Int(3))
+            Float(exp(mp_namelist.BLING / (mp_namelist.MUG + Float(3.0)) * Float(log(constants.PI * constants.RHOG * Float(gamma(mp_namelist.MUG + Float(3.0)))))))
+            * Float(gamma(mp_namelist.MUG + Float(3.0)))
         )
         mp_config.TVBH = float64(
-            exp(mp_namelist.BLINH / (mp_namelist.MUH + Int(3)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Int(3)))) * gamma(mp_namelist.MUH + Int(3))
+            Float(exp(mp_namelist.BLINH / (mp_namelist.MUH + Float(3.0)) * Float(log(constants.PI * constants.RHOH * Float(gamma(mp_namelist.MUH + Float(3.0)))))))
+            * Float(gamma(mp_namelist.MUH + Float(3.0)))
         )
 
         # Schmidt number, Sc ** (1 / 3) in Lin et al. (1983)
