@@ -769,7 +769,7 @@ def p_ice_deposition_and_sublimation(
             else:
                 pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
                 sink = max(pidep, max(tmp, -ice))
-                sink = sink * one_minus_sigma # resolution dependent subl 0:1 coarse:fine
+                sink = sink * one_minus_sigma  # resolution dependent subl 0:1 coarse:fine
                 mppsi = mppsi - sink * dry_dp * CONV_FACTOR
                 # 3D ice sublimation export
                 rsubl = rsubl - sink * dry_dp * CONV_FACTOR
