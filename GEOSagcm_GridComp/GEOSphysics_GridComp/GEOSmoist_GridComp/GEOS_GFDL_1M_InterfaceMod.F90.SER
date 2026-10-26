@@ -840,7 +840,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
       !$ser data DVDT_macro=DVDT_macro
       !$ser data DTDT_macro=DTDT_macro
 
-      !$ser savepoint GFDL1M-Macrophysics-In_part_1
+      !$ser savepoint GFDL1M_Macrophysics-In_part_1
       !$ser data Q=Q
       !$ser data QRAIN=QRAIN
       !$ser data QSNOW=QSNOW
@@ -912,7 +912,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) then
           !$ser savepoint GFDL1M-In_part_10
           !$ser data SHLW_PRC3=PTR3D
-          !$ser savepoint GFDL1M-Macrophysics-In_part_2
+          !$ser savepoint GFDL1M_Macrophysics-In_part_2
           !$ser data SHLW_PRC3=PTR3D
           !$OMP parallel do default(none) &
           !$OMP shared(LM, JM, IM, QRAIN, PTR3D, DT_MOIST) &
@@ -926,7 +926,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           enddo
           !$ser savepoint GFDL1M-Out_part_7
           !$ser data SHLW_PRC3=PTR3D
-          !$ser savepoint GFDL1M-Macrophysics-Out_part_2
+          !$ser savepoint GFDL1M_Macrophysics-Out_part_2
           !$ser data SHLW_PRC3=PTR3D
         endif
         
@@ -934,7 +934,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         if (associated(PTR3D)) then 
           !$ser savepoint GFDL1M-In_part_11
           !$ser data SHLW_SNO3=PTR3D
-          !$ser savepoint GFDL1M-Macrophysics-In_part_3
+          !$ser savepoint GFDL1M_Macrophysics-In_part_3
           !$ser data SHLW_SNO3=PTR3D
           !$OMP parallel do default(none) &
           !$OMP shared(LM, JM, IM, QSNOW, PTR3D, DT_MOIST) &
@@ -948,7 +948,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           enddo
           !$ser savepoint GFDL1M-Out_part_8
           !$ser data SHLW_SNO3=PTR3D
-          !$ser savepoint GFDL1M-Macrophysics-Out_part_3
+          !$ser savepoint GFDL1M_Macrophysics-Out_part_3
           !$ser data SHLW_SNO3=PTR3D
         endif
 
@@ -1177,7 +1177,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     enddo
     call MAPL_TimerOff(MAPL,"---CLDMACRO",RC=STATUS); VERIFY_(STATUS)
 
-    !$ser savepoint GFDL1M-Macrophysics-Out_part_1
+    !$ser savepoint GFDL1M_Macrophysics-Out_part_1
     !$ser data U=U
     !$ser data V=V
     !$ser data NACTL=NACTL
@@ -1283,7 +1283,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data DVDT_micro=DVDT_micro
     !$ser data DTDT_micro=DTDT_micro
 
-    !$ser savepoint GFDL1M-Microphysics-In
+    !$ser savepoint GFDL1M_Microphysics-In
     !$ser data Q=Q
     !$ser data QRAIN=QRAIN
     !$ser data QSNOW=QSNOW
@@ -1694,7 +1694,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      enddo
         call MAPL_TimerOff(MAPL,"---CLDMICRO",RC=STATUS); VERIFY_(STATUS)
 
-    !$ser savepoint GFDL1M-Microphysics-Out
+    !$ser savepoint GFDL1M_Microphysics-Out
     ! Include unchanged inputs to verify that the section preserves them.
     !$ser data NACTL=NACTL
     !$ser data NACTI=NACTI
