@@ -29,6 +29,25 @@ def setup_preliminary_inputs(
     PLE: FloatField,
     PLO: FloatField,
 ):
+    """
+    Setup layer height, pressure, and virtual temperatures.
+
+    Arguments:
+        ZLE [FloatField]: Geopotential height [m]
+        ZL0 [FloatField]: Edge height above the surface [m]
+        QLTOT [FloatField]: Liquid condensate mixing ratio [kg kg-1]
+        QRTOT [FloatField]: Suspended rain mixing ratio [kg kg-1]
+        QL [FloatField]: ?
+        QI [FloatField]: ?
+        QITOT [FloatField]: Frozen condensate mixing ratio [kg kg-1]
+        QSTOT [FloatField]: Suspended snow mixing ratio [kg kg-1]
+        QGTOT [FloatField]: Suspended graupel mixing ratio [kg kg-1]
+        QA [FloatField]: ?
+        FCLD [FloatField]: Cloud fraction [1]
+        Z [FloatField]: Layer height above surface [m]
+        PLE [FloatField]: Air pressure [Pa]
+        PLO [FloatField]: Layer pressure above surface [Pa]
+    """
     from __externals__ import k_end
 
     with computation(FORWARD), interval(0,1):
@@ -52,7 +71,11 @@ def invert_interface_vars(
     phii_inv: FloatField,
 ):
     """
-    Map GEOS interface variables to those of SHOC
+    Map GEOS interface variables to those of SHOC.
+
+    Arguments:
+        zi [FloatField]: Height of the interface levels [m]
+        phii_inv [FloatField]: Interface geopotential height [m]
     """
     from __externals__ import k_end
 
@@ -93,6 +116,37 @@ def invert_inputs(
 ):
     """
     Map GEOS variables to those of SHOC
+
+    Arguments:
+        zl [FloatField]: Height of the pressure levels above surface [m]
+        phil_inv [FloatField]: Layer geopotential height [m]
+        phii_inv [FloatField]: Interface geopotential height [m]
+        tkh [FloatField]: Diffusivity for heat [?]
+        tkh_inv [FloatField]: Eddy scalar diffusivity [?]
+        prsl [FloatField]: Pressure [Pa]
+        prsl_inv [FloatField]: Mean layer pressure [Pa]
+        u [FloatField]: Zonal velocity [m/s]
+        v [FloatField]: Meridional velocity [m/s]
+        u_inv [FloatField]: U-wind [m/s]
+        v_inv [FloatField]: V-wind [m/s]
+        omega [FloatField]: Pressure velocity [Pa/s]
+        omega_inv [FloatField]: omega [Pa/s]
+        tabs [FloatField]: Absolute temperature [K]
+        tabs_inv [FloatField]: tabs [K]
+        qwv [FloatField]: Specific humidity [kg/kg]
+        qwv_inv [FloatField]: Water vapor mixing ratio [kg/kg]
+        qcl [FloatField]: Liquid water (condensate) [kg/kg]
+        qc_inv [FloatField]: Cloud water mixing ratio [kg/kg]
+        qci [FloatField]: Ice water (condensate) [kg/kg]
+        qi_inv [FloatField]: Cloud ice mixing ratio [kg/kg]
+        cld_sgs [FloatField]: Cloud fraction [1]
+        cld_sgs_inv [FloatField]: Cloud fraction [1]
+        tke [FloatField]: Turbulent kinetic energy [m2/s2]
+        tke_inv [FloatField]: Turbulent kinetic energy [m2/s2]
+        wthv_sec [FloatField]: Total buoyancy flux [?]
+        wthv_sec_inv [FloatField]: Total buoyancy flux [?]
+        wthv_mf [FloatField]: Buoyancy flux diagnosed from MF [?]
+        wthv_mf_inv [FloatField]: Buoyancy flux diagnosed from MF [?]
     """
     from __externals__ import k_end
 
@@ -132,7 +186,24 @@ def setup_derived_inputs(
     bet: FloatField,
 ):
     """
-    Calculate derived variables
+    Calculate derived variables.
+
+    Arguments:
+        prsl [FloatField]: Pressure [Pa]
+        qv [FloatField]: Water vapor [kg/kg]
+        qwv [FloatField]: Specific humidity [kg/kg]
+        thv [FloatField]: [?]
+        tabs [FloatField]: Absolute temperature [K]
+        qcl [FloatField]: Liquid water (condensate) [kg/kg]
+        qci [FloatField]: Ice water (condensate) [kg/kg]
+        omega [FloatField]: Pressure velocity [Pa/s]
+        qpl [FloatField]: Liquid precip [?]
+        qpi [FloatField]: Ice precip [?]
+        total_water [FloatField]: ?
+        gamaz [FloatField]: ggr/cp*z [?]
+        zl [FloatField]: Height of the pressure levels above surface [m]
+        hl [FloatField]: Liquid/ice water static energy [K]
+        bet [FloatField]: ggr/tv0 [?]
     """
     with computation(PARALLEL), interval(...):
         wrk = 1.0 / prsl
@@ -156,7 +227,13 @@ def define_vertical_grid_increments(
     zi: FloatField,
 ):
     """
-    Define vertical grid increments for later use in the vertical differentiation
+    Define vertical grid increments for later use in the vertical differentiation.
+
+    Arguments:
+        adzi [FloatField]: Level thickness (i.e. zl(k)-zl(k-1)) - defined at interface [m]
+        zl [FloatField]: Height of the pressure levels above surface [m]
+        adzl [FloatField]: Layer thickness (i.e. zi(k+1)-zi(k)) - defined at levels [m]
+        zi [FloatField]: Height of the interface levels [m]
     """
     from __externals__ import k_end
 
@@ -179,6 +256,12 @@ def tke_shear_prod(
 ):
     """
     Calculate shear production of TKE
+
+    Arguments:
+        def2 [FloatField]: ?
+        adzi [FloatField]: Level thickness (i.e. zl(k)-zl(k-1)) - defined at interface [m]
+        u [FloatField]: Zonal velocity [m/s]
+        v [FloatField]: Meridional velocity [m/s]
     """
 
     with computation(PARALLEL), interval(...):
@@ -218,6 +301,15 @@ def calc_numbers(
 ):
     """
     Defines Richardson number and Prandtl number on edges
+
+    Arguments:
+        u [FloatField]: Zonal velocity [m/s]
+        v [FloatField]: Meridional velocity [m/s]
+        adzi [FloatField]: Level thickness (i.e. zl(k)-zl(k-1)) - defined at interface [m]
+        RI [FloatField]: Local Richardson number
+        prnum [FloatField]: Prandtl number 
+        thv [FloatField]: ?
+        tke_mf [FloatField]: MF vertical velocity on edges [m/s]
     """
     from __externals__ import k_end, PRNUMBER
 
@@ -253,7 +345,15 @@ def reset_tke(
     tkesbshear: FloatField,
     tkesbbuoy: FloatField,
 ):
+    """
+    Reset TKE variables to zero
 
+    Arguments:
+        tke [FloatField]: Turbulent kinetic energy [m2/s2]
+        tkesbdiss [FloatField]: TKE tendency from dissipation
+        tkesbshear [FloatField]: TKE tendency from shear
+        tkesbbuoy [FloatField]: TKE tendency from buoyancy
+    """
     with computation(PARALLEL), interval(...):
         tke = max(constants.min_tke,tke)
         tkesbdiss = 0.
@@ -284,6 +384,34 @@ def eddy_length2(
     ese: GlobalTable_saturation_tables,
     esw: GlobalTable_saturation_tables,
 ):
+    """
+    Calculate turbulent length scale: Part I
+    Calculate Brunt-Vaisalla Frequency, latent heat of phase transformation, saturation
+    mixing ratio over ice/liq, and outside of cloud Brunt-Vaisalla frequency.
+
+    Arguments:
+        adzi [FloatField]: Level thickness (i.e. zl(k)-zl(k-1)) - defined at interface [m]
+        bet [FloatField]: ggr/tv0 [?]
+        qcl [FloatField]: Liquid water (condensate) [kg/kg]
+        qci [FloatField]: Ice water (condensate) [kg/kg]
+        tabs [FloatField]: Absolute temperature [K]
+        prsl [FloatField]: Pressure [Pa]
+        qpl [FloatField]: Liquid precip [?]
+        qpi [FloatField]: Ice precip [?]
+        cld_sgs [FloatField]: Cloud fraction [1]
+        hl [FloatField]: Liquid/ice water static energy [K]
+        total_water [FloatField]: ?
+        brunt [FloatField]: Moist Brunt-Vaisalla frequency [s^-1]
+        brunt2 [FloatField]: ?
+        brunt_edge [FloatField]: Brunt-Vaisalla frequency on edge ? [s^-1]
+        qv [FloatField]: Water vapor [kg/kg]
+        zl [FloatField]: Height of the pressure levels above surface [m]
+        dryzpbl [FloatFieldIJ]: Dry mass flux depth
+        frz [Float]: Saturation table value at -40 C [?]
+        lqu [Float]: Saturation table value at 0 C [?]
+        ese [GlobalTable_saturation_tables]: Saturation table [?]
+        esw [GlobalTable_saturation_tables]: Saturation table [?]
+    """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
@@ -363,6 +491,23 @@ def eddy_length3(
     smixt2: FloatField,
     smixt3: FloatField,
 ):
+    """
+    Calculate turbulent length scale: Part II
+
+    Calculate parcel mixing length, surface length scale, 
+    turbulent length scale, and stability length scale.
+
+    Arguments:
+        tke [FloatField]: Turbulent kinetic energy [m2/s2]
+        thv [FloatField]: ?
+        zl [FloatField]: Height of the pressure levels above surface [m]
+        dryzpbl [FloatFieldIJ]: Dry mass flux depth
+        brunt2 [FloatField]: ?
+        smixt [FloatField]: Total length scale [m]
+        smixt1 [FloatField]: Surface length scale [m]
+        smixt2 [FloatField]: Turbulent length scale [m]
+        smixt3 [FloatField]: Stability length scale [m]
+    """
     from __externals__ import k_end, LENOPT, LENFAC1, LENFAC2, LENFAC3
 
     with computation(PARALLEL), interval(0,-1):
@@ -458,6 +603,27 @@ def solve_tke(
     tkesbdiss: FloatField,
     tscale1: FloatField,
 ):
+    """
+    Finish solving TKE equation
+
+    Arguments:
+        adzl [FloatField]: Layer thickness (i.e. zi(k+1)-zi(k)) - defined at levels [m]
+        tkh [FloatField]: Diffusivity for heat [?]
+        wthv_sec [FloatField]: Total buoyancy flux [?]
+        wthv_mf [FloatField]: Buoyancy flux diagnosed from MF [?]
+        thv [FloatField]: ?
+        brunt [FloatField]: Moist Brunt-Vaisalla frequency [s^-1]
+        tke [FloatField]: Turbulent kinetic energy [m2/s2]
+        prnum [FloatField]: Prandtl number 
+        smixt [FloatField]: Total length scale [m]
+        def2 [FloatField]: ?
+        zl [FloatField]: Height of the pressure levels above surface [m]
+        tke_mf [FloatField]: MF vertical velocity on edges [m/s]
+        tkesbbuoy [FloatField]: TKE tendency from buoyancy
+        tkesbshear [FloatField]: TKE tendency from shear
+        tkesbdiss [FloatField]: TKE tendency from dissipation
+        tscale1 [FloatField]: ?
+    """
     from __externals__ import k_end, BUOYOPT, dtn, CeFAC, CesFAC, Ck
 
     with computation(PARALLEL), interval(...):
@@ -533,6 +699,20 @@ def environmental_tke(
     tkh: FloatField,
     isotropy: FloatField,
 ):
+    """
+    Average TKE from adjacent levels and subtract TKE diagnosed from EDMF 
+    updrafts to estimate an environmental TKE on edge.
+
+    Arguments:
+        tscale1 [FloatField]: ?
+        zl [FloatField]: Height of the pressure levels above surface [m]
+        tke [FloatField]: Turbulent kinetic energy [m2/s2]
+        dryzpbl [FloatFieldIJ]: Dry mass flux depth
+        brunt_edge [FloatField]: Brunt-Vaisalla frequency on edge ? [s^-1]
+        prnum [FloatField]: Prandtl number 
+        tkh [FloatField]: Diffusivity for heat [?]
+        isotropy [FloatField]: "Return-to-isotropy" eddy dissipation time scale [s]
+    """
     from __externals__ import shoc_lambda, Ck
 
     with computation(PARALLEL), interval(1,None):
@@ -567,6 +747,21 @@ def flip_and_export(
     tke: FloatField,
     tkesbdiss_inv: FloatField,
 ):
+    """
+    Assign exports and flip vertical.
+
+    Arguments:
+        tkh_inv [FloatField]: Eddy scalar diffusivity [?]
+        tkm_inv [FloatField]: Eddy momentum diffusivity [?]
+        isotropy_inv [FloatField]: Return to isotropy timescale [s]
+        tke_inv [FloatField]: Turbulent kinetic energy [m2/s2]
+        tkesbdiss [FloatField]: Dissipation [?]
+        tkh [FloatField]: Diffusivity for heat [?]
+        prnum [FloatField]: Prandtl number
+        isotropy [FloatField]: Return to isotropy timescale [s]
+        tke [FloatField]: Turbulent kinetic energy [m2/s2]
+        tkesbdiss_inv [FloatField]: TKE tendency from dissipation
+    """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
@@ -582,6 +777,13 @@ def flip_output_kinterface(
     input: FloatField,
     output: FloatField,
 ):
+    """
+    Assign and flip kinterface diagnostic outputs.
+
+    Arguments: 
+        input [FloatField]: Kinterface field to flip
+        output [FloatField]: Flipped field 
+    """
     from __externals__ import k_end
 
     with computation(FORWARD), interval(0,-1):
@@ -592,6 +794,13 @@ def flip_output(
     input: FloatField,
     output: FloatField,
 ):
+    """
+    Assign and flip diagnostic outputs.
+
+    Arguments: 
+        input [FloatField]: Field to flip
+        output [FloatField]: Flipped field 
+    """
     from __externals__ import k_end
 
     with computation(PARALLEL), interval(...):
@@ -602,7 +811,13 @@ def update_diffusivity(
     tkh_inv: FloatField,
     KH: FloatField,
 ):
-    
+    """
+    Update diffusivity
+
+    Arguments:
+        tkh_inv [FloatField]: Eddy scalar diffusivity [?]
+        KH [FloatField]: Diffusivity
+    """
     with computation(PARALLEL), interval(...):
         KH=tkh_inv
 
@@ -615,7 +830,9 @@ class RUN_SHOC(NDSLRuntime):
         formulation: SaturationFormulation = SaturationFormulation.Staars,
     ) -> None:
         """
-        RUN_SHOC
+        Implementation of the Simplified High Order Closure (SHOC) scheme
+        of Bogenschutz and Krueger (2013), J. Adv. Model. Earth Syst, 5, 195-211,
+        doi: 10.1002/jame.200118.
 
         Arguments:
             stencil_factory (StencilFactory): Factory for creating stencil computations.
@@ -730,9 +947,11 @@ class RUN_SHOC(NDSLRuntime):
         state: SHOCMFState,
         ):
         """
-        RUN_SHOC 
-        For NDSL-specific questions, email katrina.fandrich@nasa.gov
+        NDSL implementation of the Simplified High Order Closure (SHOC) scheme
+        of Bogenschutz and Krueger (2013), J. Adv. Model. Earth Syst, 5, 195-211,
+        doi: 10.1002/jame.200118. (further referred to as BK13)
 
+        For NDSL-specific questions, email katrina.fandrich@nasa.gov
         ##############################################################################
 
         Arguments:
@@ -744,8 +963,58 @@ class RUN_SHOC(NDSLRuntime):
         self.ese = saturation_vapor_pressure_table.ese
         self.frz = saturation_vapor_pressure_table.frz
         self.lqu = saturation_vapor_pressure_table.lqu
-        self.esx =  saturation_vapor_pressure_table.esx
+
         # Reset locals
+        # self.locals.zi[:]=0
+        # self.locals.zl[:]=0
+        # self.locals.tkh[:]=0
+        # self.locals.prsl[:]=0
+        # self.locals.u[:]=0
+        # self.locals.v[:]=0
+        # self.locals.tabs[:]=0
+        # self.locals.qwv[:]=0
+        # self.locals.qcl[:]=0
+        # self.locals.qci[:]=0
+        # self.locals.cld_sgs[:]=0
+        # self.locals.tke[:]=0
+        # self.locals.wthv_sec[:]=0
+        # self.locals.wthv_mf[:]=0
+        # self.locals.qv[:]=0
+        # self.locals.thv[:]=0
+        # self.locals.qpl[:]=0
+        # self.locals.qpi[:]=0
+        # self.locals.total_water[:]=0
+        # self.locals.prespot[:]=0
+        # self.locals.hl[:]=0
+        # self.locals.adzi[:]=0
+        # self.locals.adzl[:]=0
+        # self.locals.def2[:]=0
+        # self.locals.RI[:]=0
+        # self.locals.prnum[:]=0
+        # self.locals.tkesbdiss[:]=0
+        # self.locals.tkesbshear[:]=0
+        # self.locals.tkesbbuoy[:]=0
+        # self.locals.brunt2[:]=0
+        # self.locals.smixt[:]=0
+        # self.locals.smixt1[:]=0
+        # self.locals.smixt2[:]=0
+        # self.locals.smixt3[:]=0
+        # self.locals.brunt[:]=0
+        # self.locals.tscale1[:]=0
+        # self.locals.brunt_edge[:]=0
+        # self.locals.isotropy[:]=0
+        # self.locals.bet[:]=0
+        # self.locals.dtqw[:]=0
+        # self.locals.dtqi[:]=0
+        # self.locals.omega[:]=0
+        # self.locals.gamaz[:]=0
+        # self.locals.ZL0[:]=0
+        # self.locals.QL[:]=0
+        # self.locals.QI[:]=0
+        # self.locals.QA[:]=0
+        # self.locals.Z[:]=0
+        # self.locals.PLO[:]=0
+
 
         self._setup_preliminary_inputs(
             ZLE=state.input.ZLE,
