@@ -1,4 +1,4 @@
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, function, interval, log, sqrt, float64
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, float32, function, interval, log, sqrt, float64
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL4, GFDLMPV3TableL5
@@ -390,7 +390,7 @@ def p_bigg(
 
     with computation(FORWARD), interval(...):
         if DO_BIGG:
-            tc = TICE - t
+            tc = float32(TICE - t)
 
             if tc > 0 and liquid > QCMIN:
                 if DO_PSD_WATER_NUM:
@@ -478,7 +478,7 @@ def p_complete_freezing(
     from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, LI00, LI20, LV00, T_WFR
 
     with computation(FORWARD), interval(...):
-        tc = T_WFR - t
+        tc = float32(T_WFR - t)
 
         if tc > 0.0 and liquid > QCMIN:
             sink = liquid * tc / DT_FR
@@ -569,10 +569,10 @@ def p_graupel_deposition_and_sublimation(
 
     with computation(FORWARD), interval(...):
         if graupel > QPMIN:
-            t_in = t
+            t_in = float32(t)
             ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
             graupel_x_density = graupel * density
-            t_squared = t * t
+            t_squared = float32(t * t)
             dq = ice_saturation_humidity - vapor
             if DO_HAIL:
                 pgsub = p_sublimation(
@@ -606,12 +606,12 @@ def p_graupel_deposition_and_sublimation(
             pgsub = DT * pgsub
             dq = dq / (1.0 + tcpk * dice_saturation_humidity)
             if pgsub > 0.0:
-                sink = min(pgsub * min(1.0, max(t - T_SUB, 0.0) * GS_FAC), graupel)
+                sink = float32(min(pgsub * min(1.0, max(t - T_SUB, 0.0) * GS_FAC), graupel))
                 mppsg = mppsg + sink * dry_dp * CONV_FACTOR
             else:
                 sink = 0.0
                 if t <= TICE:
-                    sink = max(pgsub, max(dq, (t - TICE) / tcpk))
+                    sink = float32(max(pgsub, max(dq, (t - TICE) / tcpk)))
                 mppdg = mppdg - sink * dry_dp * CONV_FACTOR
 
             t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -723,8 +723,7 @@ def p_ice_deposition_and_sublimation(
 
     with computation(FORWARD), interval(...):
         if t < TICE:
-            pidep = 0.0
-            t_in = t
+            t_in = float32(t)
             ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
             dq = vapor - ice_saturation_humidity
             tmp = min(ice, dq / (1.0 + tcpk * dice_saturation_humidity))
@@ -737,14 +736,14 @@ def p_ice_deposition_and_sublimation(
                     if INFLAG == 1:
                         cin = 5.38e7 * exp(0.75 * log(ice * density))
                     if INFLAG == 2:
-                        cin = exp(-2.80 + 0.262 * (TICE - t)) * 1000.0
+                        cin = float32(exp(-2.80 + 0.262 * (TICE - t)) * 1000.0)
                     if INFLAG == 3:
                         cin = exp(-0.639 + 12.96 * (vapor / ice_saturation_humidity - 1.0)) * 1000.0
                     if INFLAG == 4:
-                        cin = 5.0e-3 * exp(0.304 * (TICE - t)) * 1000.0
+                        cin = float32(5.0e-3 * exp(0.304 * (TICE - t)) * 1000.0)
                     if INFLAG == 5:
-                        cin = 1.0e-5 * exp(0.5 * (TICE - t)) * 1000.0
-                pidep = (
+                        cin = float32(1.0e-5 * exp(0.5 * (TICE - t)) * 1000.0)
+                pidep = float32(
                     DT
                     * dq
                     * 4.0
@@ -754,7 +753,7 @@ def p_ice_deposition_and_sublimation(
                 )
 
             if dq > 0.0:
-                tc = TICE - t
+                tc = float32(TICE - t)
                 qi_gen = 4.92e-11 * exp(1.33 * log(1.0e3 * exp(0.1 * tc)))
                 if IGFLAG == 1:
                     qi_crt = qi_gen / density
@@ -767,7 +766,7 @@ def p_ice_deposition_and_sublimation(
                 sink = min(tmp, min(max(qi_crt - ice, pidep), tc / tcpk))
                 mppdi = mppdi + sink * dry_dp * CONV_FACTOR
             else:
-                pidep = pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC)
+                pidep = float32(pidep * min(1.0, max(t - T_SUB, 0.0) * IS_FAC))
                 sink = max(pidep, max(tmp, -ice))
                 sink = sink * one_minus_sigma  # resolution dependent subl 0:1 coarse:fine
                 mppsi = mppsi - sink * dry_dp * CONV_FACTOR
@@ -879,10 +878,10 @@ def p_snow_deposition_and_sublimation(
 
     with computation(FORWARD), interval(...):
         if snow > QPMIN:
-            t_in = t
+            t_in = float32(t)
             ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
             snow_x_density = snow * density
-            t_squared = t * t
+            t_squared = float32(t * t)
             dq = ice_saturation_humidity - vapor
             pssub = p_sublimation(
                 t_squared,
@@ -900,12 +899,12 @@ def p_snow_deposition_and_sublimation(
             pssub = DT * pssub
             dq = dq / (1.0 + tcpk * dice_saturation_humidity)
             if pssub > 0.0:
-                sink = min(pssub * min(1.0, max(t - T_SUB, 0.0) * SS_FAC), snow)
+                sink = float32(min(pssub * min(1.0, max(t - T_SUB, 0.0) * SS_FAC), snow))
                 mppss = mppss + sink * dry_dp * CONV_FACTOR
             else:
                 sink = 0.0
                 if t <= TICE:
-                    sink = max(pssub, max(dq, (t - TICE) / tcpk))
+                    sink = float32(max(pssub, max(dq, (t - TICE) / tcpk)))
                 mppds = mppds - sink * dry_dp * CONV_FACTOR
 
             t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -1035,7 +1034,7 @@ def p_wbf(
     with computation(FORWARD), interval(0, 1):
         if DO_WBF:
             # internal parameters
-            wbf_coarse_mult = 10.0  # how much slower WBF is at 50km vs 2km
+            wbf_coarse_mult: FloatFieldIJ = 10.0  # how much slower WBF is at 50km vs 2km
 
     with computation(FORWARD), interval(0, 1):
         if DO_WBF:
@@ -1044,16 +1043,16 @@ def p_wbf(
             # If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf
             # If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * wbf_coarse_mult
             # -------------------------------------------------------------------
-            tau_wbf_eff = TAU_WBF * (wbf_coarse_mult * (1.0 - one_minus_sigma) + one_minus_sigma)
+            tau_wbf_eff: FloatFieldIJ = TAU_WBF * (wbf_coarse_mult * (1.0 - one_minus_sigma) + one_minus_sigma)
 
             # Calculate the time-step fraction using the effective timescale
-            fac_wbf = 1.0 - exp(-DT / tau_wbf_eff)
+            fac_wbf: FloatFieldIJ = 1.0 - exp(-DT / tau_wbf_eff)
 
     with computation(FORWARD), interval(...):
         if DO_WBF:
-            tc = TICE - t
+            tc = float32(TICE - t)
 
-            t_in = t
+            t_in = float32(t)
             liquid_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_0, dtable_0)
             ice_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_2, dtable_2)
 
