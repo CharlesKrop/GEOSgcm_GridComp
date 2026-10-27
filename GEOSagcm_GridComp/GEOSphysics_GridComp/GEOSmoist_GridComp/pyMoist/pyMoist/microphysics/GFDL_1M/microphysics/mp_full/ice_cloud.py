@@ -2,7 +2,7 @@ import dataclasses
 
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, float32, interval, log
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
@@ -89,7 +89,7 @@ def p_graupel_accretion_to_cloud_water_and_rain(
     with computation(FORWARD), interval(...):
         if t < TICE and graupel > QPMIN:
 
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             pgacw = 0.0
             if liquid > QCMIN:
@@ -240,7 +240,7 @@ def p_graupel_accretion_to_ice(
 
     with computation(FORWARD), interval(...):
         if t < TICE and ice > QCMIN:
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             sink = 0.0
             graupel_x_density = graupel * density
@@ -339,7 +339,7 @@ def p_graupel_accretion_to_snow(
 
     with computation(FORWARD), interval(...):
         if t < TICE and snow > QPMIN and graupel > QPMIN:
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             sink = DT * accretion_3d(
                 v1=terminal_velocity_graupel,
@@ -465,7 +465,7 @@ def p_graupel_melt(
 
     with computation(FORWARD), interval(...):
         if t >= TICE and graupel > QPMIN:
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             pgacw = 0.0
             graupel_x_density = graupel * density
@@ -522,7 +522,7 @@ def p_graupel_melt(
                     rain / DT,
                 )
 
-            t_in = t
+            t_in = float32(t)
             sat_spec_humidity, dsat_spec_humiditydt = saturation_specific_humidity(t_in, density, table_2, dtable_2)
             dq = sat_spec_humidity - vapor
             if DO_HAIL:
@@ -684,10 +684,10 @@ def p_ice_melt_freeze(
             liquid_internal = liquid / cloud_fraction_bounded
             ice_internal = ice / cloud_fraction_bounded
 
-            tmp = t
+            tmp = float32(t)
             newliq = new_liquid_condensate(t=tmp, liquid=liquid_internal, ice=ice_internal, convection_fraction=convection_fraction, surface_type=surface_type)
-            sink = fac_imlt * min(ice_internal, min(newliq, (t - TICE) / icpk / cloud_fraction_bounded))
-            tmp = min(sink, max(QL_MLT / cloud_fraction_bounded - liquid_internal, 0.0))
+            sink = float32(fac_imlt * min(ice_internal, min(newliq, (t - TICE) / icpk / cloud_fraction_bounded)))
+            tmp = float32(min(sink, max(QL_MLT / cloud_fraction_bounded - liquid_internal, 0.0)))
 
             tmp = tmp * cloud_fraction_bounded
             sink = sink * cloud_fraction_bounded
@@ -731,11 +731,11 @@ def p_ice_melt_freeze(
             liquid_internal = liquid / cloud_fraction_bounded
             ice_internal = ice / cloud_fraction_bounded
 
-            tmp = t
+            tmp = float32(t)
             newice = new_ice_condensate(t=tmp, liquid=liquid_internal, ice=ice_internal, convection_fraction=convection_fraction, surface_type=surface_type)
-            sink = fac_frez * min(liquid_internal, min(newice, (TICE - t) / icpk / cloud_fraction_bounded))
+            sink = float32(fac_frez * min(liquid_internal, min(newice, (TICE - t) / icpk / cloud_fraction_bounded)))
             ice_modified = critical_ice_factor / density
-            tmp = min(sink, max(ice_modified / cloud_fraction_bounded - ice_internal, 0.0))
+            tmp = float32(min(sink, max(ice_modified / cloud_fraction_bounded - ice_internal, 0.0)))
 
             tmp = tmp * cloud_fraction_bounded
             sink = sink * cloud_fraction_bounded
@@ -813,7 +813,7 @@ def p_ice_to_snow_autoconversion(
 
         if t < TICE and ice > QCMIN:
 
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             # Use In-Cloud condensates with scale-aware blending
             if IN_CLOUD_ICE:
@@ -1004,7 +1004,7 @@ def p_snow_accretion_to_rain_and_graupel(
 
     with computation(FORWARD), interval(...):
         if t < TICE and rain > QPMIN:
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             psacr = 0.0
             if snow > QPMIN:
@@ -1157,7 +1157,7 @@ def p_snow_melt(
     with computation(FORWARD), interval(...):
         if t >= TICE and snow > QPMIN:
 
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             psacw = 0.0
             snow_x_density = snow * density
@@ -1219,7 +1219,7 @@ def p_snow_melt(
                     VDIFFFLAG=VDIFFFLAG,
                 )
 
-            t_in = t
+            t_in = float32(t)
             sat_spec_humidity, _ = saturation_specific_humidity(t_in, density, table_2, dtable_2)
             dq = sat_spec_humidity - vapor
             sink = max(
@@ -1306,7 +1306,7 @@ def p_snow_to_graupel_autoconversion(
 
     with computation(FORWARD), interval(...):
         if t < TICE and snow > QPMIN:
-            tc = t - TICE
+            tc = float32(t - TICE)
 
             sink = 0.0
             qsm = PGAUT_QS_CRT / density
