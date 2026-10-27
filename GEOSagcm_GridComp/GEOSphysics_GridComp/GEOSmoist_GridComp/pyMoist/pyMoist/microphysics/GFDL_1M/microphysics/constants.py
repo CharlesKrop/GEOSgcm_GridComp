@@ -15,7 +15,7 @@ GRAV = Float(9.80665)  # acceleration due to gravity (m/s^2), ref: IFS
 
 RGRAV = Float(1.0) / GRAV  # inversion of gravity acceleration (s^2/m)
 
-PI = Float(4.0) * math.atan(Float(1.0))  # ratio of circle circumference to diameter
+PI = Float(4.0) * Float(math.atan(Float(1.0)))  # ratio of circle circumference to diameter
 
 BOLTZMANN = Float(1.38064852e-23)  # boltzmann constant (J/K)
 AVOGADRO = Float(6.02214076e23)  # avogadro number (1/mol)

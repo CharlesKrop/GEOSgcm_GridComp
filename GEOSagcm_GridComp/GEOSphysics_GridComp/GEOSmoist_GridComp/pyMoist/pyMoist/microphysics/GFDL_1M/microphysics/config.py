@@ -531,9 +531,9 @@ class GFDLMPV3NamelistConfig:
     """minimum effective radius for rain (micron)"""
     RERMAX: Float = Float(10000.0)
     """maximum effective radius for rain (micron)"""
-    RESSMIN: Float = Float(150.0)
+    RESMIN: Float = Float(150.0)
     """minimum effective radius for snow (micron)"""
-    RESSMAX: Float = Float(10000.0)
+    RESMAX: Float = Float(10000.0)
     """maximum effective radius for snow (micron)"""
     REGMIN: Float = Float(150.0)
     """minimum effective radius for graupel (micron)"""

@@ -131,17 +131,17 @@ class GFDLMPV3(NDSLRuntime):
         else:
             mp_config.C_AIR = constants.CV_AIR
             mp_config.C_VAP = constants.CV_VAP
-        d0_vap = mp_config.C_VAP - constants.C_LIQ
+        mp_config.D0_VAP = mp_config.C_VAP - constants.C_LIQ
 
         # scaled constants (to reduce float point errors for 32-bit)
 
-        mp_config.D1_VAP = float64(d0_vap / mp_config.C_AIR)
+        mp_config.D1_VAP = float64(mp_config.D0_VAP / mp_config.C_AIR)
         mp_config.D1_ICE = float64(constants.DC_ICE / mp_config.C_AIR)
 
         if gfdl_1m_config.PHYS_HYDROSTATIC:
-            mp_config.LV00 = float64((constants.HLV - d0_vap * constants.TICE) / mp_config.C_AIR)
+            mp_config.LV00 = float64((constants.HLV - mp_config.D0_VAP * constants.TICE) / mp_config.C_AIR)
         else:
-            mp_config.LV00 = float64((constants.HLV - d0_vap * constants.TICE - constants.RVGAS * constants.TICE) / mp_config.C_AIR)
+            mp_config.LV00 = float64((constants.HLV - mp_config.D0_VAP * constants.TICE - constants.RVGAS * constants.TICE) / mp_config.C_AIR)
 
         mp_config.LI00 = float64((constants.HLF - constants.DC_ICE * constants.TICE) / mp_config.C_AIR)
         mp_config.LI20 = float64(mp_config.LV00 + mp_config.LI00)
@@ -163,213 +163,315 @@ class GFDLMPV3(NDSLRuntime):
 
         # cloud water autoconversion, Hong et al. (2004)
 
-        aone = Float(2.0) / Float(9.0) * (Float(3.0) / Float(4.0)) ** (Float(4.0) / Float(3.0)) / constants.PI ** (Float(1.0) / Float(3.0))
+        aone = Float(Float(2.0) / Float(9.0) * (Float(3.0) / Float(4.0)) ** (Float(4.0) / Float(3.0)) / constants.PI ** (Float(1.0) / Float(3.0)))
         mp_config.CPAUT0 = float64(mp_namelist.C_PAUT * aone * constants.GRAV / constants.VISD)
 
         # terminal velocities parameters, Lin et al. (1983)
 
-        gcon = (Float(4.0) * constants.GRAV * constants.RHOG / (Float(3.0) * constants.CDG * constants.RHO0)) ** Float(0.5)
-        hcon = (Float(4.0) * constants.GRAV * constants.RHOH / (Float(3.0) * constants.CDH * constants.RHO0)) ** Float(0.5)
+        gcon = Float((Float(4.0) * constants.GRAV * constants.RHOG / (Float(3.0) * constants.CDG * constants.RHO0)) ** Float(0.5))
+        hcon = Float((Float(4.0) * constants.GRAV * constants.RHOH / (Float(3.0) * constants.CDH * constants.RHO0)) ** Float(0.5))
 
         # part of the slope parameters
 
-        mp_config.NORMW = float64(constants.PI * constants.RHOW * mp_namelist.N0W_SIG * gamma(mp_namelist.MUW + Float(3.0)))
-        mp_config.NORMI = float64(constants.PI * constants.RHOI * mp_namelist.N0I_SIG * gamma(mp_namelist.MUI + Float(3.0)))
-        mp_config.NORMR = float64(constants.PI * constants.RHOR * mp_namelist.N0R_SIG * gamma(mp_namelist.MUR + Float(3.0)))
-        mp_config.NORMS = float64(constants.PI * constants.RHOS * mp_namelist.N0S_SIG * gamma(mp_namelist.MUS + Float(3.0)))
-        mp_config.NORMG = float64(constants.PI * constants.RHOG * mp_namelist.N0G_SIG * gamma(mp_namelist.MUG + Float(3.0)))
-        mp_config.NORMH = float64(constants.PI * constants.RHOH * mp_namelist.N0H_SIG * gamma(mp_namelist.MUH + Float(3.0)))
+        mp_config.NORMW = float64(constants.PI * constants.RHOW * mp_namelist.N0W_SIG * Float(gamma(mp_namelist.MUW + Float(3.0))))
+        mp_config.NORMI = float64(constants.PI * constants.RHOI * mp_namelist.N0I_SIG * Float(gamma(mp_namelist.MUI + Float(3.0))))
+        mp_config.NORMR = float64(constants.PI * constants.RHOR * mp_namelist.N0R_SIG * Float(gamma(mp_namelist.MUR + Float(3.0))))
+        mp_config.NORMS = float64(constants.PI * constants.RHOS * mp_namelist.N0S_SIG * Float(gamma(mp_namelist.MUS + Float(3.0))))
+        mp_config.NORMG = float64(constants.PI * constants.RHOG * mp_namelist.N0G_SIG * Float(gamma(mp_namelist.MUG + Float(3.0))))
+        mp_config.NORMH = float64(constants.PI * constants.RHOH * mp_namelist.N0H_SIG * Float(gamma(mp_namelist.MUH + Float(3.0))))
 
-        mp_config.EXPOW = float64(exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * log(Float(10.0))))
-        mp_config.EXPOI = float64(exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * log(Float(10.0))))
-        mp_config.EXPOR = float64(exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * log(Float(10.0))))
-        mp_config.EXPOS = float64(exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * log(Float(10.0))))
-        mp_config.EXPOG = float64(exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * log(Float(10.0))))
-        mp_config.EXPOH = float64(exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * log(Float(10.0))))
+        mp_config.EXPOW = float64(Float(exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * Float(log(Float(10.0))))))
+        mp_config.EXPOI = float64(Float(exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * Float(log(Float(10.0))))))
+        mp_config.EXPOR = float64(Float(exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * Float(log(Float(10.0))))))
+        mp_config.EXPOS = float64(Float(exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * Float(log(Float(10.0))))))
+        mp_config.EXPOG = float64(Float(exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * Float(log(Float(10.0))))))
+        mp_config.EXPOH = float64(Float(exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * Float(log(Float(10.0))))))
 
         # parameters for particle concentration (pc), effective diameter (ed), optical extinction (oe),
         # radar reflectivity factor (rr), and mass-weighted terminal velocity (tv)
 
         mp_config.PCAW = float64(
-            exp(Float(3.0) / (mp_namelist.MUW + Float(3.0)) * log(mp_namelist.N0W_SIG))
-            * gamma(mp_namelist.MUW)
-            * exp(Float(3.0) * mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * log(Float(10.0)))
+            Float(exp(Float(3.0) / (mp_namelist.MUW + Float(3.0)) * Float(log(mp_namelist.N0W_SIG))))
+            * Float(gamma(mp_namelist.MUW))
+            * Float(exp(Float(3.0) * mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.PCAI = float64(
-            exp(Float(3.0) / (mp_namelist.MUI + Float(3.0)) * log(mp_namelist.N0I_SIG))
-            * gamma(mp_namelist.MUI)
-            * exp(Float(3.0) * mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * log(Float(10.0)))
+            Float(exp(Float(3.0) / (mp_namelist.MUI + Float(3.0)) * Float(log(mp_namelist.N0I_SIG))))
+            * Float(gamma(mp_namelist.MUI))
+            * Float(exp(Float(3.0) * mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.PCAR = float64(
-            exp(Float(3.0) / (mp_namelist.MUR + Float(3.0)) * log(mp_namelist.N0R_SIG))
-            * gamma(mp_namelist.MUR)
-            * exp(Float(3.0) * mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * log(Float(10.0)))
+            Float(exp(Float(3.0) / (mp_namelist.MUR + Float(3.0)) * Float(log(mp_namelist.N0R_SIG))))
+            * Float(gamma(mp_namelist.MUR))
+            * Float(exp(Float(3.0) * mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.PCAS = float64(
-            exp(Float(3.0) / (mp_namelist.MUS + Float(3.0)) * log(mp_namelist.N0S_SIG))
-            * gamma(mp_namelist.MUS)
-            * exp(Float(3.0) * mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * log(Float(10.0)))
+            Float(exp(Float(3.0) / (mp_namelist.MUS + Float(3.0)) * Float(log(mp_namelist.N0S_SIG))))
+            * Float(gamma(mp_namelist.MUS))
+            * Float(exp(Float(3.0) * mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.PCAG = float64(
-            exp(Float(3.0) / (mp_namelist.MUG + Float(3.0)) * log(mp_namelist.N0G_SIG))
-            * gamma(mp_namelist.MUG)
-            * exp(Float(3.0) * mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * log(Float(10.0)))
+            Float(exp(Float(3.0) / (mp_namelist.MUG + Float(3.0)) * Float(log(mp_namelist.N0G_SIG))))
+            * Float(gamma(mp_namelist.MUG))
+            * Float(exp(Float(3.0) * mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.PCAH = float64(
-            exp(Float(3.0) / (mp_namelist.MUH + Float(3.0)) * log(mp_namelist.N0H_SIG))
-            * gamma(mp_namelist.MUH)
-            * exp(Float(3.0) * mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * log(Float(10.0)))
+            Float(exp(Float(3.0) / (mp_namelist.MUH + Float(3.0)) * Float(log(mp_namelist.N0H_SIG))))
+            * Float(gamma(mp_namelist.MUH))
+            * Float(exp(Float(3.0) * mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * Float(log(Float(10.0)))))
         )
 
-        mp_config.PCBW = float64(exp(mp_namelist.MUW / (mp_namelist.MUW + Float(3.0)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Float(3.0)))))
-        mp_config.PCBI = float64(exp(mp_namelist.MUI / (mp_namelist.MUI + Float(3.0)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Float(3.0)))))
-        mp_config.PCBR = float64(exp(mp_namelist.MUR / (mp_namelist.MUR + Float(3.0)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Float(3.0)))))
-        mp_config.PCBS = float64(exp(mp_namelist.MUS / (mp_namelist.MUS + Float(3.0)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Float(3.0)))))
-        mp_config.PCBG = float64(exp(mp_namelist.MUG / (mp_namelist.MUG + Float(3.0)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Float(3.0)))))
-        mp_config.PCBH = float64(exp(mp_namelist.MUH / (mp_namelist.MUH + Float(3.0)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Float(3.0)))))
+        mp_config.PCBW = float64(
+            Float(exp(mp_namelist.MUW / (mp_namelist.MUW + Float(3.0)) * Float(log(constants.PI * constants.RHOW * Float(gamma(mp_namelist.MUW + Float(3.0)))))))
+        )
+        mp_config.PCBI = float64(
+            Float(exp(mp_namelist.MUI / (mp_namelist.MUI + Float(3.0)) * Float(log(constants.PI * constants.RHOI * Float(gamma(mp_namelist.MUI + Float(3.0)))))))
+        )
+        mp_config.PCBR = float64(
+            Float(exp(mp_namelist.MUR / (mp_namelist.MUR + Float(3.0)) * Float(log(constants.PI * constants.RHOR * Float(gamma(mp_namelist.MUR + Float(3.0)))))))
+        )
+        mp_config.PCBS = float64(
+            Float(exp(mp_namelist.MUS / (mp_namelist.MUS + Float(3.0)) * Float(log(constants.PI * constants.RHOS * Float(gamma(mp_namelist.MUS + Float(3.0)))))))
+        )
+        mp_config.PCBG = float64(
+            Float(exp(mp_namelist.MUG / (mp_namelist.MUG + Float(3.0)) * Float(log(constants.PI * constants.RHOG * Float(gamma(mp_namelist.MUG + Float(3.0)))))))
+        )
+        mp_config.PCBH = float64(
+            Float(exp(mp_namelist.MUH / (mp_namelist.MUH + Float(3.0)) * Float(log(constants.PI * constants.RHOH * Float(gamma(mp_namelist.MUH + Float(3.0)))))))
+        )
 
         mp_config.EDAW = float64(
-            exp(-Float(1.0) / (mp_namelist.MUW + Float(3.0)) * log(mp_namelist.N0W_SIG))
+            Float(exp(-Float(1.0) / (mp_namelist.MUW + Float(3.0)) * Float(log(mp_namelist.N0W_SIG))))
             * (mp_namelist.MUW + Float(2.0))
-            * exp(-mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * log(Float(10.0)))
+            * Float(exp(-mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.EDAI = float64(
-            exp(-Float(1.0) / (mp_namelist.MUI + Float(3.0)) * log(mp_namelist.N0I_SIG))
+            Float(exp(-Float(1.0) / (mp_namelist.MUI + Float(3.0)) * Float(log(mp_namelist.N0I_SIG))))
             * (mp_namelist.MUI + Float(2.0))
-            * exp(-mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * log(Float(10.0)))
+            * Float(exp(-mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.EDAR = float64(
-            exp(-Float(1.0) / (mp_namelist.MUR + Float(3.0)) * log(mp_namelist.N0R_SIG))
+            Float(exp(-Float(1.0) / (mp_namelist.MUR + Float(3.0)) * Float(log(mp_namelist.N0R_SIG))))
             * (mp_namelist.MUR + Float(2.0))
-            * exp(-mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * log(Float(10.0)))
+            * Float(exp(-mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.EDAS = float64(
-            exp(-Float(1.0) / (mp_namelist.MUS + Float(3.0)) * log(mp_namelist.N0S_SIG))
+            Float(exp(-Float(1.0) / (mp_namelist.MUS + Float(3.0)) * Float(log(mp_namelist.N0S_SIG))))
             * (mp_namelist.MUS + Float(2.0))
-            * exp(-mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * log(Float(10.0)))
+            * Float(exp(-mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.EDAG = float64(
-            exp(-Float(1.0) / (mp_namelist.MUG + Float(3.0)) * log(mp_namelist.N0G_SIG))
+            Float(exp(-Float(1.0) / (mp_namelist.MUG + Float(3.0)) * Float(log(mp_namelist.N0G_SIG))))
             * (mp_namelist.MUG + Float(2.0))
-            * exp(-mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * log(Float(10.0)))
+            * Float(exp(-mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.EDAH = float64(
-            exp(-Float(1.0) / (mp_namelist.MUH + Float(3.0)) * log(mp_namelist.N0H_SIG))
+            Float(exp(-Float(1.0) / (mp_namelist.MUH + Float(3.0)) * Float(log(mp_namelist.N0H_SIG))))
             * (mp_namelist.MUH + Float(2.0))
-            * exp(-mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * log(Float(10.0)))
+            * Float(exp(-mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * Float(log(Float(10.0)))))
         )
 
-        mp_config.EDBW = float64(exp(Float(1.0) / (mp_namelist.MUW + Float(3.0)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Float(3.0)))))
-        mp_config.EDBI = float64(exp(Float(1.0) / (mp_namelist.MUI + Float(3.0)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Float(3.0)))))
-        mp_config.EDBR = float64(exp(Float(1.0) / (mp_namelist.MUR + Float(3.0)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Float(3.0)))))
-        mp_config.EDBS = float64(exp(Float(1.0) / (mp_namelist.MUS + Float(3.0)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Float(3.0)))))
-        mp_config.EDBG = float64(exp(Float(1.0) / (mp_namelist.MUG + Float(3.0)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Float(3.0)))))
-        mp_config.EDBH = float64(exp(Float(1.0) / (mp_namelist.MUH + Float(3.0)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Float(3.0)))))
+        mp_config.EDBW = float64(
+            Float(exp(Float(1.0) / (mp_namelist.MUW + Float(3.0)) * Float(log(constants.PI * constants.RHOW * Float(gamma(mp_namelist.MUW + Float(3.0)))))))
+        )
+        mp_config.EDBI = float64(
+            Float(exp(Float(1.0) / (mp_namelist.MUI + Float(3.0)) * Float(log(constants.PI * constants.RHOI * Float(gamma(mp_namelist.MUI + Float(3.0)))))))
+        )
+        mp_config.EDBR = float64(
+            Float(exp(Float(1.0) / (mp_namelist.MUR + Float(3.0)) * Float(log(constants.PI * constants.RHOR * Float(gamma(mp_namelist.MUR + Float(3.0)))))))
+        )
+        mp_config.EDBS = float64(
+            Float(exp(Float(1.0) / (mp_namelist.MUS + Float(3.0)) * Float(log(constants.PI * constants.RHOS * Float(gamma(mp_namelist.MUS + Float(3.0)))))))
+        )
+        mp_config.EDBG = float64(
+            Float(exp(Float(1.0) / (mp_namelist.MUG + Float(3.0)) * Float(log(constants.PI * constants.RHOG * Float(gamma(mp_namelist.MUG + Float(3.0)))))))
+        )
+        mp_config.EDBH = float64(
+            Float(exp(Float(1.0) / (mp_namelist.MUH + Float(3.0)) * Float(log(constants.PI * constants.RHOH * Float(gamma(mp_namelist.MUH + Float(3.0)))))))
+        )
 
         mp_config.OEAW = float64(
-            exp(Float(1.0) / (mp_namelist.MUW + Float(3.0)) * log(mp_namelist.N0W_SIG))
+            Float(exp(Float(1.0) / (mp_namelist.MUW + Float(3.0)) * Float(log(mp_namelist.N0W_SIG))))
             * constants.PI
-            * gamma(mp_namelist.MUW + Float(2.0))
-            * exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * log(10.0))
+            * Float(gamma(mp_namelist.MUW + Float(2.0)))
+            * Float(exp(mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.OEAI = float64(
-            exp(Float(1.0) / (mp_namelist.MUI + Float(3.0)) * log(mp_namelist.N0I_SIG))
+            Float(exp(Float(1.0) / (mp_namelist.MUI + Float(3.0)) * Float(log(mp_namelist.N0I_SIG))))
             * constants.PI
-            * gamma(mp_namelist.MUI + Float(2.0))
-            * exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * log(10.0))
+            * Float(gamma(mp_namelist.MUI + Float(2.0)))
+            * Float(exp(mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.OEAR = float64(
-            exp(Float(1.0) / (mp_namelist.MUR + Float(3.0)) * log(mp_namelist.N0R_SIG))
+            Float(exp(Float(1.0) / (mp_namelist.MUR + Float(3.0)) * Float(log(mp_namelist.N0R_SIG))))
             * constants.PI
-            * gamma(mp_namelist.MUR + Float(2.0))
-            * exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * log(10.0))
+            * Float(gamma(mp_namelist.MUR + Float(2.0)))
+            * Float(exp(mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.OEAS = float64(
-            exp(Float(1.0) / (mp_namelist.MUS + Float(3.0)) * log(mp_namelist.N0S_SIG))
+            Float(exp(Float(1.0) / (mp_namelist.MUS + Float(3.0)) * Float(log(mp_namelist.N0S_SIG))))
             * constants.PI
-            * gamma(mp_namelist.MUS + Float(2.0))
-            * exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * log(10.0))
+            * Float(gamma(mp_namelist.MUS + Float(2.0)))
+            * Float(exp(mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.OEAG = float64(
-            exp(Float(1.0) / (mp_namelist.MUG + Float(3.0)) * log(mp_namelist.N0G_SIG))
+            Float(exp(Float(1.0) / (mp_namelist.MUG + Float(3.0)) * Float(log(mp_namelist.N0G_SIG))))
             * constants.PI
-            * gamma(mp_namelist.MUG + Float(2.0))
-            * exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * log(10.0))
+            * Float(gamma(mp_namelist.MUG + Float(2.0)))
+            * Float(exp(mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.OEAH = float64(
-            exp(Float(1.0) / (mp_namelist.MUH + Float(3.0)) * log(mp_namelist.N0H_SIG))
+            Float(exp(Float(1.0) / (mp_namelist.MUH + Float(3.0)) * Float(log(mp_namelist.N0H_SIG))))
             * constants.PI
-            * gamma(mp_namelist.MUH + Float(2.0))
-            * exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * log(10.0))
+            * Float(gamma(mp_namelist.MUH + Float(2.0)))
+            * Float(exp(mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * Float(log(Float(10.0)))))
         )
 
         mp_config.OEBW = float64(
-            Float(2.0) * exp((mp_namelist.MUW + Float(2.0)) / (mp_namelist.MUW + Float(3.0)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Float(3.0))))
+            Float(2.0)
+            * Float(
+                exp(
+                    (mp_namelist.MUW + Float(2.0))
+                    / (mp_namelist.MUW + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOW * Float(gamma(mp_namelist.MUW + Float(3.0)))))
+                )
+            )
         )
         mp_config.OEBI = float64(
-            Float(2.0) * exp((mp_namelist.MUI + Float(2.0)) / (mp_namelist.MUI + Float(3.0)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Float(3.0))))
+            Float(2.0)
+            * Float(
+                exp(
+                    (mp_namelist.MUI + Float(2.0))
+                    / (mp_namelist.MUI + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOI * Float(gamma(mp_namelist.MUI + Float(3.0)))))
+                )
+            )
         )
         mp_config.OEBR = float64(
-            Float(2.0) * exp((mp_namelist.MUR + Float(2.0)) / (mp_namelist.MUR + Float(3.0)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Float(3.0))))
+            Float(2.0)
+            * Float(
+                exp(
+                    (mp_namelist.MUR + Float(2.0))
+                    / (mp_namelist.MUR + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOR * Float(gamma(mp_namelist.MUR + Float(3.0)))))
+                )
+            )
         )
         mp_config.OEBS = float64(
-            Float(2.0) * exp((mp_namelist.MUS + Float(2.0)) / (mp_namelist.MUS + Float(3.0)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Float(3.0))))
+            Float(2.0)
+            * Float(
+                exp(
+                    (mp_namelist.MUS + Float(2.0))
+                    / (mp_namelist.MUS + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOS * Float(gamma(mp_namelist.MUS + Float(3.0)))))
+                )
+            )
         )
         mp_config.OEBG = float64(
-            Float(2.0) * exp((mp_namelist.MUG + Float(2.0)) / (mp_namelist.MUG + Float(3.0)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Float(3.0))))
+            Float(2.0)
+            * Float(
+                exp(
+                    (mp_namelist.MUG + Float(2.0))
+                    / (mp_namelist.MUG + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOG * Float(gamma(mp_namelist.MUG + Float(3.0)))))
+                )
+            )
         )
         mp_config.OEBH = float64(
-            Float(2.0) * exp((mp_namelist.MUH + Float(2.0)) / (mp_namelist.MUH + Float(3.0)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Float(3.0))))
+            Float(2.0)
+            * Float(
+                exp(
+                    (mp_namelist.MUH + Float(2.0))
+                    / (mp_namelist.MUH + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOH * Float(gamma(mp_namelist.MUH + Float(3.0)))))
+                )
+            )
         )
 
         mp_config.RRAW = float64(
-            exp(-Float(3.0) / (mp_namelist.MUW + Float(3.0)) * log(mp_namelist.N0W_SIG))
-            * gamma(mp_namelist.MUW + Float(6.0))
-            * exp(-Float(3.0) * mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * log(Float(10.0)))
+            Float(exp(-Float(3.0) / (mp_namelist.MUW + Float(3.0)) * Float(log(mp_namelist.N0W_SIG))))
+            * Float(gamma(mp_namelist.MUW + Float(6.0)))
+            * Float(exp(-Float(3.0) * mp_namelist.N0W_EXP / (mp_namelist.MUW + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.RRAI = float64(
-            exp(-Float(3.0) / (mp_namelist.MUI + Float(3.0)) * log(mp_namelist.N0I_SIG))
-            * gamma(mp_namelist.MUI + Float(6.0))
-            * exp(-Float(3.0) * mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * log(Float(10.0)))
+            Float(exp(-Float(3.0) / (mp_namelist.MUI + Float(3.0)) * Float(log(mp_namelist.N0I_SIG))))
+            * Float(gamma(mp_namelist.MUI + Float(6.0)))
+            * Float(exp(-Float(3.0) * mp_namelist.N0I_EXP / (mp_namelist.MUI + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.RRAR = float64(
-            exp(-Float(3.0) / (mp_namelist.MUR + Float(3.0)) * log(mp_namelist.N0R_SIG))
-            * gamma(mp_namelist.MUR + Float(6.0))
-            * exp(-Float(3.0) * mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * log(Float(10.0)))
+            Float(exp(-Float(3.0) / (mp_namelist.MUR + Float(3.0)) * Float(log(mp_namelist.N0R_SIG))))
+            * Float(gamma(mp_namelist.MUR + Float(6.0)))
+            * Float(exp(-Float(3.0) * mp_namelist.N0R_EXP / (mp_namelist.MUR + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.RRAS = float64(
-            exp(-Float(3.0) / (mp_namelist.MUS + Float(3.0)) * log(mp_namelist.N0S_SIG))
-            * gamma(mp_namelist.MUS + Float(6.0))
-            * exp(-Float(3.0) * mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * log(Float(10.0)))
+            Float(exp(-Float(3.0) / (mp_namelist.MUS + Float(3.0)) * Float(log(mp_namelist.N0S_SIG))))
+            * Float(gamma(mp_namelist.MUS + Float(6.0)))
+            * Float(exp(-Float(3.0) * mp_namelist.N0S_EXP / (mp_namelist.MUS + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.RRAG = float64(
-            exp(-Float(3.0) / (mp_namelist.MUG + Float(3.0)) * log(mp_namelist.N0G_SIG))
-            * gamma(mp_namelist.MUG + Float(6.0))
-            * exp(-Float(3.0) * mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * log(Float(10.0)))
+            Float(exp(-Float(3.0) / (mp_namelist.MUG + Float(3.0)) * Float(log(mp_namelist.N0G_SIG))))
+            * Float(gamma(mp_namelist.MUG + Float(6.0)))
+            * Float(exp(-Float(3.0) * mp_namelist.N0G_EXP / (mp_namelist.MUG + Float(3.0)) * Float(log(Float(10.0)))))
         )
         mp_config.RRAH = float64(
-            exp(-Float(3.0) / (mp_namelist.MUH + Float(3.0)) * log(mp_namelist.N0H_SIG))
-            * gamma(mp_namelist.MUH + Float(6.0))
-            * exp(-Float(3.0) * mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * log(Float(10.0)))
+            Float(exp(-Float(3.0) / (mp_namelist.MUH + Float(3.0)) * Float(log(mp_namelist.N0H_SIG))))
+            * Float(gamma(mp_namelist.MUH + Float(6.0)))
+            * Float(exp(-Float(3.0) * mp_namelist.N0H_EXP / (mp_namelist.MUH + Float(3.0)) * Float(log(Float(10.0)))))
         )
 
         mp_config.RRBW = float64(
-            exp((mp_namelist.MUW + Float(6.0)) / (mp_namelist.MUW + Float(3.0)) * log(constants.PI * constants.RHOW * gamma(mp_namelist.MUW + Float(3.0))))
+            Float(
+                exp(
+                    (mp_namelist.MUW + Float(6.0))
+                    / (mp_namelist.MUW + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOW * Float(gamma(mp_namelist.MUW + Float(3.0)))))
+                )
+            )
         )
         mp_config.RRBI = float64(
-            exp((mp_namelist.MUI + Float(6.0)) / (mp_namelist.MUI + Float(3.0)) * log(constants.PI * constants.RHOI * gamma(mp_namelist.MUI + Float(3.0))))
+            Float(
+                exp(
+                    (mp_namelist.MUI + Float(6.0))
+                    / (mp_namelist.MUI + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOI * Float(gamma(mp_namelist.MUI + Float(3.0)))))
+                )
+            )
         )
         mp_config.RRBR = float64(
-            exp((mp_namelist.MUR + Float(6.0)) / (mp_namelist.MUR + Float(3.0)) * log(constants.PI * constants.RHOR * gamma(mp_namelist.MUR + Float(3.0))))
+            Float(
+                exp(
+                    (mp_namelist.MUR + Float(6.0))
+                    / (mp_namelist.MUR + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOR * Float(gamma(mp_namelist.MUR + Float(3.0)))))
+                )
+            )
         )
         mp_config.RRBS = float64(
-            exp((mp_namelist.MUS + Float(6.0)) / (mp_namelist.MUS + Float(3.0)) * log(constants.PI * constants.RHOS * gamma(mp_namelist.MUS + Float(3.0))))
+            Float(
+                exp(
+                    (mp_namelist.MUS + Float(6.0))
+                    / (mp_namelist.MUS + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOS * Float(gamma(mp_namelist.MUS + Float(3.0)))))
+                )
+            )
         )
         mp_config.RRBG = float64(
-            exp((mp_namelist.MUG + Float(6.0)) / (mp_namelist.MUG + Float(3.0)) * log(constants.PI * constants.RHOG * gamma(mp_namelist.MUG + Float(3.0))))
+            Float(
+                exp(
+                    (mp_namelist.MUG + Float(6.0))
+                    / (mp_namelist.MUG + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOG * Float(gamma(mp_namelist.MUG + Float(3.0)))))
+                )
+            )
         )
         mp_config.RRBH = float64(
-            exp((mp_namelist.MUH + Float(6.0)) / (mp_namelist.MUH + Float(3.0)) * log(constants.PI * constants.RHOH * gamma(mp_namelist.MUH + Float(3.0))))
+            Float(
+                exp(
+                    (mp_namelist.MUH + Float(6.0))
+                    / (mp_namelist.MUH + Float(3.0))
+                    * Float(log(constants.PI * constants.RHOH * Float(gamma(mp_namelist.MUH + Float(3.0)))))
+                )
+            )
         )
 
         mp_config.TVAW = float64(
@@ -438,123 +540,123 @@ class GFDLMPV3(NDSLRuntime):
 
         # Schmidt number, Sc ** (1 / 3) in Lin et al. (1983)
 
-        scm3 = exp(Float(1.0) / Float(3.0) * log(constants.VISK / constants.VDIFU))
+        scm3 = Float(exp(Float(1.0) / Float(3.0) * Float(log(constants.VISK / constants.VDIFU))))
 
         pisq = constants.PI * constants.PI
 
         # accretion between cloud water, cloud ice, rain, snow, and graupel or hail, Lin et al. (1983)
 
-        mp_config.CRACW = (
+        mp_config.CRACW = Float(
             constants.PI
             * mp_namelist.N0R_SIG
             * mp_namelist.ALINR
-            * gamma(Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR)
-            / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Float(3.0)) * log(mp_config.NORMR)))
-            * exp((Float(1.0) - mp_namelist.BLINR) * log(mp_config.EXPOR))
+            * Float(gamma(Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR))
+            / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Float(3.0)) * float64(log(mp_config.NORMR)))))
+            * float64(exp((Float(1.0) - mp_namelist.BLINR) * float64(log(mp_config.EXPOR))))
         )
-        mp_config.CRACI = (
+        mp_config.CRACI = Float(
             constants.PI
             * mp_namelist.N0R_SIG
             * mp_namelist.ALINR
-            * gamma(Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR)
-            / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Float(3.0)) * log(mp_config.NORMR)))
-            * exp((Float(1.0) - mp_namelist.BLINR) * log(mp_config.EXPOR))
+            * Float(gamma(Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR))
+            / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Float(3.0)) * float64(log(mp_config.NORMR)))))
+            * float64(exp((Float(1.0) - mp_namelist.BLINR) * float64(log(mp_config.EXPOR))))
         )
-        mp_config.CSACW = (
+        mp_config.CSACW = Float(
             constants.PI
             * mp_namelist.N0S_SIG
             * mp_namelist.ALINS
-            * gamma(Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS)
-            / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Float(3.0)) * log(mp_config.NORMS)))
-            * exp((Float(1.0) - mp_namelist.BLINS) * log(mp_config.EXPOS))
+            * Float(gamma(Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS))
+            / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Float(3.0)) * float64(log(mp_config.NORMS)))))
+            * float64(exp((Float(1.0) - mp_namelist.BLINS) * float64(log(mp_config.EXPOS))))
         )
-        mp_config.CSACI = (
+        mp_config.CSACI = Float(
             constants.PI
             * mp_namelist.N0S_SIG
             * mp_namelist.ALINS
-            * gamma(Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS)
-            / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Float(3.0)) * log(mp_config.NORMS)))
-            * exp((Float(1.0) - mp_namelist.BLINS) * log(mp_config.EXPOS))
+            * Float(gamma(Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS))
+            / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Float(3.0)) * float64(log(mp_config.NORMS)))))
+            * float64(exp((Float(1.0) - mp_namelist.BLINS) * float64(log(mp_config.EXPOS))))
         )
         if mp_namelist.DO_HAIL:
-            mp_config.CGACW = (
+            mp_config.CGACW = Float(
                 constants.PI
                 * mp_namelist.N0H_SIG
                 * mp_namelist.ALINH
-                * gamma(Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH)
+                * Float(gamma(Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH))
                 * hcon
-                / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + Float(3.0)) * log(mp_config.NORMH)))
-                * exp((Float(1.0) - mp_namelist.BLINH) * log(mp_config.EXPOH))
+                / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + Float(3.0)) * float64(log(mp_config.NORMH)))))
+                * float64(exp((Float(1.0) - mp_namelist.BLINH) * float64(log(mp_config.EXPOH))))
             )
-            mp_config.CGACI = (
+            mp_config.CGACI = Float(
                 constants.PI
                 * mp_namelist.N0H_SIG
                 * mp_namelist.ALINH
-                * gamma(Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH)
+                * Float(gamma(Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH))
                 * hcon
-                / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + Float(3.0)) * log(mp_config.NORMH)))
-                * exp((Float(1.0) - mp_namelist.BLINH) * log(mp_config.EXPOH))
+                / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUH + mp_namelist.BLINH) / (mp_namelist.MUH + Float(3.0)) * float64(log(mp_config.NORMH)))))
+                * float64(exp((Float(1.0) - mp_namelist.BLINH) * float64(log(mp_config.EXPOH))))
             )
         else:
-            mp_config.CGACW = (
+            mp_config.CGACW = Float(
                 constants.PI
                 * mp_namelist.N0G_SIG
                 * mp_namelist.ALING
-                * gamma(Float(2.0) + mp_namelist.MUG + mp_namelist.BLING)
+                * Float(gamma(Float(2.0) + mp_namelist.MUG + mp_namelist.BLING))
                 * gcon
-                / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Float(3.0)) * log(mp_config.NORMG)))
-                * exp((Float(1.0) - mp_namelist.BLING) * log(mp_config.EXPOG))
+                / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Float(3.0)) * float64(log(mp_config.NORMG)))))
+                * float64(exp((Float(1.0) - mp_namelist.BLING) * float64(log(mp_config.EXPOG))))
             )
-            mp_config.CGACI = (
+            mp_config.CGACI = Float(
                 constants.PI
                 * mp_namelist.N0G_SIG
                 * mp_namelist.ALING
-                * gamma(Float(2.0) + mp_namelist.MUG + mp_namelist.BLING)
+                * Float(gamma(Float(2.0) + mp_namelist.MUG + mp_namelist.BLING))
                 * gcon
-                / (Float(4.0) * exp((Float(2.0) + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Float(3.0)) * log(mp_config.NORMG)))
-                * exp((Float(1.0) - mp_namelist.BLING) * log(mp_config.EXPOG))
+                / (Float(4.0) * float64(exp((Float(2.0) + mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Float(3.0)) * float64(log(mp_config.NORMG)))))
+                * float64(exp((Float(1.0) - mp_namelist.BLING) * float64(log(mp_config.EXPOG))))
             )
 
         if mp_namelist.DO_3D_ACC_CLIQ:
 
-            mp_config.CRACW = pisq * mp_namelist.N0R_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
-            mp_config.CSACW = pisq * mp_namelist.N0S_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
+            mp_config.CRACW = Float(pisq * mp_namelist.N0R_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0))
+            mp_config.CSACW = Float(pisq * mp_namelist.N0S_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0))
             if mp_namelist.DO_HAIL:
-                mp_config.CGACW = pisq * mp_namelist.N0H_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
+                mp_config.CGACW = Float(pisq * mp_namelist.N0H_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0))
             else:
-                mp_config.CGACW = pisq * mp_namelist.N0G_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0)
+                mp_config.CGACW = Float(pisq * mp_namelist.N0G_SIG * mp_namelist.N0W_SIG * constants.RHOW / Float(24.0))
 
         if mp_namelist.DO_3D_ACC_CICE:
 
-            mp_config.CRACI = pisq * mp_namelist.N0R_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
-            mp_config.CSACI = pisq * mp_namelist.N0S_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
+            mp_config.CRACI = Float(pisq * mp_namelist.N0R_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0))
+            mp_config.CSACI = Float(pisq * mp_namelist.N0S_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0))
             if mp_namelist.DO_HAIL:
-                mp_config.CGACI = pisq * mp_namelist.N0H_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
+                mp_config.CGACI = Float(pisq * mp_namelist.N0H_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0))
             else:
-                mp_config.CGACI = pisq * mp_namelist.N0G_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0)
+                mp_config.CGACI = Float(pisq * mp_namelist.N0G_SIG * mp_namelist.N0I_SIG * constants.RHOI / Float(24.0))
 
-        mp_config.CRACW = mp_config.CRACW * mp_namelist.C_PRACW
-        mp_config.CRACI = mp_config.CRACI * mp_namelist.C_PRACI
-        mp_config.CSACW = mp_config.CSACW * mp_namelist.C_PSACW
-        mp_config.CSACI = mp_config.CSACI * mp_namelist.C_PSACI
-        mp_config.CGACW = mp_config.CGACW * mp_namelist.C_PGACW
-        mp_config.CGACI = mp_config.CGACI * mp_namelist.C_PGACI
+        mp_config.CRACW = Float(mp_config.CRACW * mp_namelist.C_PRACW)
+        mp_config.CRACI = Float(mp_config.CRACI * mp_namelist.C_PRACI)
+        mp_config.CSACW = Float(mp_config.CSACW * mp_namelist.C_PSACW)
+        mp_config.CSACI = Float(mp_config.CSACI * mp_namelist.C_PSACI)
+        mp_config.CGACW = Float(mp_config.CGACW * mp_namelist.C_PGACW)
+        mp_config.CGACI = Float(mp_config.CGACI * mp_namelist.C_PGACI)
 
         # accretion between cloud water, cloud ice, rain, snow, and graupel or hail, Lin et al. (1983)
 
-        mp_config.CRACS = pisq * mp_namelist.N0R_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0)
-        mp_config.CSACR = pisq * mp_namelist.N0S_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0)
+        mp_config.CRACS = Float(pisq * mp_namelist.N0R_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0))
+        mp_config.CSACR = Float(pisq * mp_namelist.N0S_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0))
         if mp_namelist.DO_HAIL:
-            mp_config.CGACR = pisq * mp_namelist.N0H_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0)
-            mp_config.CGACS = pisq * mp_namelist.N0H_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0)
+            mp_config.CGACR = Float(pisq * mp_namelist.N0H_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0))
+            mp_config.CGACS = Float(pisq * mp_namelist.N0H_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0))
         else:
-            mp_config.CGACR = pisq * mp_namelist.N0G_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0)
-            mp_config.CGACS = pisq * mp_namelist.N0G_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0)
+            mp_config.CGACR = Float(pisq * mp_namelist.N0G_SIG * mp_namelist.N0R_SIG * constants.RHOR / Float(24.0))
+            mp_config.CGACS = Float(pisq * mp_namelist.N0G_SIG * mp_namelist.N0S_SIG * constants.RHOS / Float(24.0))
 
-        mp_config.CRACS = mp_config.CRACS * mp_namelist.C_PRACS
-        mp_config.CSACR = mp_config.CSACR * mp_namelist.C_PSACR
-        mp_config.CGACR = mp_config.CGACR * mp_namelist.C_PGACR
-        mp_config.CGACS = mp_config.CGACS * mp_namelist.C_PGACS
+        mp_config.CRACS = Float(mp_config.CRACS * mp_namelist.C_PRACS)
+        mp_config.CSACR = Float(mp_config.CSACR * mp_namelist.C_PSACR)
+        mp_config.CGACR = Float(mp_config.CGACR * mp_namelist.C_PGACR)
+        mp_config.CGACS = Float(mp_config.CGACS * mp_namelist.C_PGACS)
 
         act[0] = mp_config.NORMS
         act[1] = mp_config.NORMR
@@ -637,138 +739,150 @@ class GFDLMPV3(NDSLRuntime):
             for k in range(10):
                 fk = k + 1  # add one to index to replicate fortran indexing
 
-                mp_config.ACCO[i, k] = (
+                mp_config.ACCO[i, k] = Float(
                     occ[i]
-                    * gamma(Float(6.0) + mp_config.ACC[2 * fk - 1 - 1] - fi)
-                    * gamma(mp_config.ACC[2 * fk - 1] + fi - Float(1.0))
+                    * Float(gamma(Float(6.0) + mp_config.ACC[2 * fk - 1 - 1] - Float(fi)))
+                    * Float(gamma(mp_config.ACC[2 * fk - 1] + Float(fi) - Float(1.0)))
                     / (
-                        exp((Float(6.0) + mp_config.ACC[2 * fk - 1 - 1] - fi) / (mp_config.ACC[2 * fk - 1 - 1] + Float(3.0)) * log(act[2 * fk - 1 - 1]))
-                        * exp((mp_config.ACC[2 * fk - 1] + fi - Float(1.0)) / (mp_config.ACC[2 * fk - 1] + Float(3.0)) * log(act[2 * fk - 1]))
+                        Float(
+                            exp((Float(6.0) + mp_config.ACC[2 * fk - 1 - 1] - Float(fi)) / (mp_config.ACC[2 * fk - 1 - 1] + Float(3.0)) * Float(log(act[2 * fk - 1 - 1])))
+                        )
+                        * Float(exp((mp_config.ACC[2 * fk - 1] + Float(fi) - Float(1.0)) / (mp_config.ACC[2 * fk - 1] + Float(3.0)) * Float(log(act[2 * fk - 1]))))
                     )
-                    * exp((fi - Float(3.0)) * log(ace[2 * fk - 1 - 1]))
-                    * exp((Float(4.0) - fi) * log(ace[2 * fk - 1]))
+                    * Float(exp((Float(fi) - Float(3.0)) * Float(log(ace[2 * fk - 1 - 1]))))
+                    * Float(exp((Float(4.0) - Float(fi)) * Float(log(ace[2 * fk - 1]))))
                 )
 
         # rain evaporation, snow sublimation, and graupel or hail sublimation, Lin et al. (1983)
 
-        mp_config.CREVP[0] = (
+        mp_config.CREVP[0] = Float(
             Float(2.0)
             * constants.PI
             * constants.VDIFU
             * constants.TCOND
             * constants.RVGAS
             * mp_namelist.N0R_SIG
-            * gamma(Float(1.0) + mp_namelist.MUR)
-            / exp((Float(1.0) + mp_namelist.MUR) / (mp_namelist.MUR + Float(3.0)) * log(mp_config.NORMR))
-            * exp(Float(2.0) * log(mp_config.EXPOR))
+            * Float(gamma(Float(1.0) + mp_namelist.MUR))
+            / float64(exp((Float(1.0) + mp_namelist.MUR) / (mp_namelist.MUR + Float(3.0)) * float64(log(mp_config.NORMR))))
+            * float64(exp(Float(2.0) * float64(log(mp_config.EXPOR))))
         )
         mp_config.CREVP[1] = Float(0.78)
-        mp_config.CREVP[2] = (
+        mp_config.CREVP[2] = Float(
             Float(0.31)
             * scm3
-            * sqrt(mp_namelist.ALINR / constants.VISK)
-            * gamma((Float(3.0) + Float(2.0) * mp_namelist.MUR + mp_namelist.BLINR) / Float(2.0))
-            / exp((Float(3.0) + Float(2.0) * mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Float(3.0)) / Float(2.0) * log(mp_config.NORMR))
-            * exp((Float(1.0) + mp_namelist.MUR) / (mp_namelist.MUR + Float(3.0)) * log(mp_config.NORMR))
-            / gamma(Float(1.0) + mp_namelist.MUR)
-            * exp((-Float(1.0) - mp_namelist.BLINR) / Float(2.0) * log(mp_config.EXPOR))
+            * Float(sqrt(mp_namelist.ALINR / constants.VISK))
+            * Float(gamma((Float(3.0) + Float(2.0) * mp_namelist.MUR + mp_namelist.BLINR) / Float(2.0)))
+            / float64(exp((Float(3.0) + Float(2.0) * mp_namelist.MUR + mp_namelist.BLINR) / (mp_namelist.MUR + Float(3.0)) / Float(2.0) * float64(log(mp_config.NORMR))))
+            * float64(exp((Float(1.0) + mp_namelist.MUR) / (mp_namelist.MUR + Float(3.0)) * float64(log(mp_config.NORMR))))
+            / Float(gamma(Float(1.0) + mp_namelist.MUR))
+            * float64(exp((-Float(1.0) - mp_namelist.BLINR) / Float(2.0) * float64(log(mp_config.EXPOR))))
         )
-        mp_config.CREVP[3] = constants.TCOND * constants.RVGAS
+        mp_config.CREVP[3] = Float(constants.TCOND * constants.RVGAS)
         mp_config.CREVP[4] = constants.VDIFU
 
-        mp_config.CSSUB[0] = (
+        mp_config.CSSUB[0] = Float(
             Float(2.0)
             * constants.PI
             * constants.VDIFU
             * constants.TCOND
             * constants.RVGAS
             * mp_namelist.N0S_SIG
-            * gamma(Float(1.0) + mp_namelist.MUS)
-            / exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * log(mp_config.NORMS))
-            * exp(Float(2.0) * log(mp_config.EXPOS))
+            * Float(gamma(Float(1.0) + mp_namelist.MUS))
+            / float64(exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * float64(log(mp_config.NORMS))))
+            * float64(exp(Float(2.0) * float64(log(mp_config.EXPOS))))
         )
         mp_config.CSSUB[1] = Float(0.78)
-        mp_config.CSSUB[2] = (
+        mp_config.CSSUB[2] = Float(
             Float(0.31)
             * scm3
-            * sqrt(mp_namelist.ALINS / constants.VISK)
-            * gamma((Float(3.0) + Float(2.0) * mp_namelist.MUS + mp_namelist.BLINS) / Float(2.0))
-            / exp((Float(3.0) + Float(2.0) * mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Float(3.0)) / Float(2.0) * log(mp_config.NORMS))
-            * exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * log(mp_config.NORMS))
-            / gamma(Float(1.0) + mp_namelist.MUS)
-            * exp((-Float(1.0) - mp_namelist.BLINS) / Float(2.0) * log(mp_config.EXPOS))
+            * Float(sqrt(mp_namelist.ALINS / constants.VISK))
+            * Float(gamma((Float(3.0) + Float(2.0) * mp_namelist.MUS + mp_namelist.BLINS) / Float(2.0)))
+            / float64(exp((Float(3.0) + Float(2.0) * mp_namelist.MUS + mp_namelist.BLINS) / (mp_namelist.MUS + Float(3.0)) / Float(2.0) * float64(log(mp_config.NORMS))))
+            * float64(exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * float64(log(mp_config.NORMS))))
+            / Float(gamma(Float(1.0) + mp_namelist.MUS))
+            * float64(exp((-Float(1.0) - mp_namelist.BLINS) / Float(2.0) * float64(log(mp_config.EXPOS))))
         )
-        mp_config.CSSUB[3] = constants.TCOND * constants.RVGAS
+        mp_config.CSSUB[3] = Float(constants.TCOND * constants.RVGAS)
         mp_config.CSSUB[4] = constants.VDIFU
 
         if mp_namelist.DO_HAIL:
-            mp_config.CGSUB[0] = (
+            mp_config.CGSUB[0] = Float(
                 Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * constants.TCOND
                 * constants.RVGAS
                 * mp_namelist.N0H_SIG
-                * gamma(Float(1.0) + mp_namelist.MUH)
-                / exp((Float(1.0) + mp_namelist.MUH) / (mp_namelist.MUH + Float(3.0)) * log(mp_config.NORMH))
-                * exp(Float(2.0) * log(mp_config.EXPOH))
+                * Float(gamma(Float(1.0) + mp_namelist.MUH))
+                / float64(exp((Float(1.0) + mp_namelist.MUH) / (mp_namelist.MUH + Float(3.0)) * float64(log(mp_config.NORMH))))
+                * float64(exp(Float(2.0) * float64(log(mp_config.EXPOH))))
             )
             mp_config.CGSUB[1] = Float(0.78)
-            mp_config.CGSUB[2] = (
+            mp_config.CGSUB[2] = Float(
                 Float(0.31)
                 * scm3
-                * sqrt(mp_namelist.ALINH * hcon / constants.VISK)
-                * gamma((Float(3.0) + Float(2.0) * mp_namelist.MUH + mp_namelist.BLINH) / Float(2.0))
-                / exp(Float(1.0) / (mp_namelist.MUH + Float(3.0)) * (Float(3.0) + Float(2.0) * mp_namelist.MUH + mp_namelist.BLINH) / Float(2.0) * log(mp_config.NORMH))
-                * exp(Float(1.0) / (mp_namelist.MUH + Float(3.0)) * (Float(1.0) + mp_namelist.MUH) * log(mp_config.NORMH))
-                / gamma(Float(1.0) + mp_namelist.MUH)
-                * exp((-Float(1.0) - mp_namelist.BLINH) / Float(2.0) * log(mp_config.EXPOH))
+                * Float(sqrt(mp_namelist.ALINH * hcon / constants.VISK))
+                * Float(gamma((Float(3.0) + Float(2.0) * mp_namelist.MUH + mp_namelist.BLINH) / Float(2.0)))
+                / float64(
+                    exp(
+                        Float(1.0)
+                        / (mp_namelist.MUH + Float(3.0))
+                        * (Float(3.0) + Float(2.0) * mp_namelist.MUH + mp_namelist.BLINH)
+                        / Float(2.0)
+                        * float64(log(mp_config.NORMH))
+                    )
+                )
+                * float64(exp(Float(1.0) / (mp_namelist.MUH + Float(3.0)) * (Float(1.0) + mp_namelist.MUH) * float64(log(mp_config.NORMH))))
+                / Float(gamma(Float(1.0) + mp_namelist.MUH))
+                * float64(exp((-Float(1.0) - mp_namelist.BLINH) / Float(2.0) * float64(log(mp_config.EXPOH))))
             )
         else:
-            mp_config.CGSUB[0] = (
+            mp_config.CGSUB[0] = Float(
                 Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * constants.TCOND
                 * constants.RVGAS
                 * mp_namelist.N0G_SIG
-                * gamma(Float(1.0) + mp_namelist.MUG)
-                / exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * log(mp_config.NORMG))
-                * exp(Float(2.0) * log(mp_config.EXPOG))
+                * Float(gamma(Float(1.0) + mp_namelist.MUG))
+                / float64(exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * float64(log(mp_config.NORMG))))
+                * float64(exp(Float(2.0) * float64(log(mp_config.EXPOG))))
             )
             mp_config.CGSUB[1] = Float(0.78)
-            mp_config.CGSUB[2] = (
+            mp_config.CGSUB[2] = Float(
                 Float(0.31)
                 * scm3
-                * sqrt(mp_namelist.ALING * gcon / constants.VISK)
-                * gamma((Float(3.0) + Float(2.0) * mp_namelist.MUG + mp_namelist.BLING) / Float(2.0))
-                / exp((Float(3.0) + Float(2.0) * mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Float(3.0)) / Float(2.0) * log(mp_config.NORMG))
-                * exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * log(mp_config.NORMG))
-                / gamma(Float(1.0) + mp_namelist.MUG)
-                * exp((-Float(1.0) - mp_namelist.BLING) / Float(2.0) * log(mp_config.EXPOG))
+                * Float(sqrt(mp_namelist.ALING * gcon / constants.VISK))
+                * Float(gamma((Float(3.0) + Float(2.0) * mp_namelist.MUG + mp_namelist.BLING) / Float(2.0)))
+                / float64(
+                    exp((Float(3.0) + Float(2.0) * mp_namelist.MUG + mp_namelist.BLING) / (mp_namelist.MUG + Float(3.0)) / Float(2.0) * float64(log(mp_config.NORMG)))
+                )
+                * float64(exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * float64(log(mp_config.NORMG))))
+                / Float(gamma(Float(1.0) + mp_namelist.MUG))
+                * float64(exp((-Float(1.0) - mp_namelist.BLING) / Float(2.0) * float64(log(mp_config.EXPOG))))
             )
-        mp_config.CGSUB[3] = constants.TCOND * constants.RVGAS
+        mp_config.CGSUB[3] = Float(constants.TCOND * constants.RVGAS)
         mp_config.CGSUB[4] = constants.VDIFU
 
         # snow melting, Lin et al. (1983)
 
-        mp_config.CSMLT[0] = (
+        mp_config.CSMLT[0] = Float(
             Float(2.0)
             * constants.PI
             * constants.TCOND
             * mp_namelist.N0S_SIG
-            * gamma(Float(1.0) + mp_namelist.MUS)
-            / exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * log(mp_config.NORMS))
-            * exp(Float(2.0) * log(mp_config.EXPOS))
+            * Float(gamma(Float(1.0) + mp_namelist.MUS))
+            / float64(exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * float64(log(mp_config.NORMS))))
+            * float64(exp(Float(2.0) * float64(log(mp_config.EXPOS))))
         )
-        mp_config.CSMLT[1] = (
+        mp_config.CSMLT[1] = Float(
             Float(2.0)
             * constants.PI
             * constants.VDIFU
             * mp_namelist.N0S_SIG
-            * gamma(Float(1.0) + mp_namelist.MUS)
-            / exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * log(mp_config.NORMS))
-            * exp(Float(2.0) * log(mp_config.EXPOS))
+            * Float(gamma(Float(1.0) + mp_namelist.MUS))
+            / float64(exp((Float(1.0) + mp_namelist.MUS) / (mp_namelist.MUS + Float(3.0)) * float64(log(mp_config.NORMS))))
+            * float64(exp(Float(2.0) * float64(log(mp_config.EXPOS))))
         )
         mp_config.CSMLT[2] = mp_config.CSSUB[1]
         mp_config.CSMLT[3] = mp_config.CSSUB[2]
@@ -776,57 +890,57 @@ class GFDLMPV3(NDSLRuntime):
         # graupel or hail melting, Lin et al. (1983)
 
         if mp_namelist.DO_HAIL:
-            mp_config.CGMLT[0] = (
+            mp_config.CGMLT[0] = Float(
                 Float(2.0)
                 * constants.PI
                 * constants.TCOND
                 * mp_namelist.N0H_SIG
-                * gamma(Float(1.0) + mp_namelist.MUH)
-                / exp((Float(1.0) + mp_namelist.MUH) / (mp_namelist.MUH + Float(3.0)) * log(mp_config.NORMH))
-                * exp(Float(2.0) * log(mp_config.EXPOH))
+                * Float(gamma(Float(1.0) + mp_namelist.MUH))
+                / float64(exp((Float(1.0) + mp_namelist.MUH) / (mp_namelist.MUH + Float(3.0)) * float64(log(mp_config.NORMH))))
+                * float64(exp(Float(2.0) * float64(log(mp_config.EXPOH))))
             )
-            mp_config.CGMLT[1] = (
+            mp_config.CGMLT[1] = Float(
                 Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * mp_namelist.N0H_SIG
-                * gamma(Float(1.0) + mp_namelist.MUH)
-                / exp((Float(1.0) + mp_namelist.MUH) / (mp_namelist.MUH + Float(3.0)) * log(mp_config.NORMH))
-                * exp(Float(2.0) * log(mp_config.EXPOH))
+                * Float(gamma(Float(1.0) + mp_namelist.MUH))
+                / float64(exp((Float(1.0) + mp_namelist.MUH) / (mp_namelist.MUH + Float(3.0)) * float64(log(mp_config.NORMH))))
+                * float64(exp(Float(2.0) * float64(log(mp_config.EXPOH))))
             )
         else:
-            mp_config.CGMLT[0] = (
+            mp_config.CGMLT[0] = Float(
                 Float(2.0)
                 * constants.PI
                 * constants.TCOND
                 * mp_namelist.N0G_SIG
-                * gamma(Float(1.0) + mp_namelist.MUG)
-                / exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * log(mp_config.NORMG))
-                * exp(Float(2.0) * log(mp_config.EXPOG))
+                * Float(gamma(Float(1.0) + mp_namelist.MUG))
+                / float64(exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * float64(log(mp_config.NORMG))))
+                * float64(exp(Float(2.0) * float64(log(mp_config.EXPOG))))
             )
-            mp_config.CGMLT[1] = (
+            mp_config.CGMLT[1] = Float(
                 Float(2.0)
                 * constants.PI
                 * constants.VDIFU
                 * mp_namelist.N0G_SIG
-                * gamma(Float(1.0) + mp_namelist.MUG)
-                / exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * log(mp_config.NORMG))
-                * exp(Float(2.0) * log(mp_config.EXPOG))
+                * Float(gamma(Float(1.0) + mp_namelist.MUG))
+                / float64(exp((Float(1.0) + mp_namelist.MUG) / (mp_namelist.MUG + Float(3.0)) * float64(log(mp_config.NORMG))))
+                * float64(exp(Float(2.0) * float64(log(mp_config.EXPOG))))
             )
         mp_config.CGMLT[2] = mp_config.CGSUB[1]
         mp_config.CGMLT[3] = mp_config.CGSUB[2]
 
         # rain freezing, Lin et al. (1983)
 
-        mp_config.CGFR[0] = (
+        mp_config.CGFR[0] = Float(
             Float(1.0e2)
             / Float(36.0)
             * pisq
             * mp_namelist.N0R_SIG
             * constants.RHOR
-            * gamma(Float(6.0) + mp_namelist.MUR)
-            / exp((Float(6.0) + mp_namelist.MUR) / (mp_namelist.MUR + Float(3.0)) * log(mp_config.NORMR))
-            * exp(Float(-3.0) * log(mp_config.EXPOR))
+            * Float(gamma(Float(6.0) + mp_namelist.MUR))
+            / float64(exp((Float(6.0) + mp_namelist.MUR) / (mp_namelist.MUR + Float(3.0)) * float64(log(mp_config.NORMR))))
+            * float64(exp(Float(-3.0) * float64(log(mp_config.EXPOR))))
         )
         mp_config.CGFR[1] = Float(0.66)
 
