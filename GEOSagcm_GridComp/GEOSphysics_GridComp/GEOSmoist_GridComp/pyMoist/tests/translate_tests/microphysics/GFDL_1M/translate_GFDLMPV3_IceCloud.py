@@ -14,11 +14,11 @@ from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.constants import GRAV
 
 
-class TranslateGFDL1M_Sedimentation(TranslateFortranData2Py):
-    """Test the implementatin of the GFDLMPV3 Sedimentation routine.
+class TranslateGFDLMPV3_IceCloud(TranslateFortranData2Py):
+    """Test the implementation of the GFDLMPV3 Ice Cloud routine.
 
     Loads the serialized Fortran fields, maps them to the GFDL1M runtime state,
-    runs the Sedimentation routine, and returns the resulting fields.
+    runs the IceCloud routine, and returns the resulting fields.
     """
 
     def __init__(self, grid: Grid, namelist: Namelist, stencil_factory: StencilFactory):
@@ -27,31 +27,43 @@ class TranslateGFDL1M_Sedimentation(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {
             name: {}
             for name in (
+                "DP_data_buffered",
                 "T_data_buffered",
+                "QA_data_buffered",
                 "QV_data_buffered",
                 "QL_data_buffered",
                 "QR_data_buffered",
                 "QI_data_buffered",
                 "QS_data_buffered",
                 "QG_data_buffered",
-                "DZ_data_buffered",
-                "DP_data_buffered",
-                "U_data_buffered",
-                "V_data_buffered",
-                "W_data_buffered",
                 "DEN_data_buffered",
                 "DENFAC_data_buffered",
-                "DTE_data_buffered",
-                "MPPM1_data_buffered",
-                "MPPM2_data_buffered",
-                "MPPM3_data_buffered",
+                "VTW_data_buffered",
+                "VTR_data_buffered",
+                "VTI_data_buffered",
+                "VTS_data_buffered",
+                "VTG_data_buffered",
+                "H_VAR_data_buffered",
+                "MPPFW_data_buffered",
+                "MPPFR_data_buffered",
+                "MPPMI_data_buffered",
+                "MPPMS_data_buffered",
+                "MPPMG_data_buffered",
+                "MPPAS_data_buffered",
+                "MPPAG_data_buffered",
+                "MPPRS_data_buffered",
+                "MPPRG_data_buffered",
+                "MPPXS_data_buffered",
+                "MPPXG_data_buffered",
+                "SRF_TYPE_data_buffered",
+                "CNV_FRACTION_data_buffered",
+                "ONEMSIG_data_buffered",
             )
         }
         self.out_vars = self.in_vars["data_vars"]
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL1M-Config")
-        self.microphysics_inputs = data_loader.load("GFDL1M_Microphysics-In", use_dynamic_i_call=True)
 
     def compute(self, inputs):
         # Serialized Fortran levels are one-based; Python configuration is zero-based.
@@ -82,28 +94,40 @@ class TranslateGFDL1M_Sedimentation(TranslateFortranData2Py):
 
         mp_full_locals = MPFullLocals.make_as_state(self.quantity_factory)
         code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals = mp_full_locals
-        safe_assign_array(gfdl_mp_v3_locals.convection_fraction.field[:], self.microphysics_inputs["CNV_FRC"])
 
         # map fortran serialbox names to python state names
         fields = {
+            "DP_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
             "T_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.t,
+            "QA_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cloud_fraction,
             "QV_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.vapor,
             "QL_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.liquid,
             "QR_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.rain,
             "QI_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.ice,
             "QS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.snow,
             "QG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.graupel,
-            "DZ_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dz,
-            "DP_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
-            "U_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.u,
-            "V_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.v,
-            "W_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.w,
             "DEN_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density,
             "DENFAC_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density_factor,
-            "DTE_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.total_energy.delta,
-            "MPPM1_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm1,
-            "MPPM2_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm2,
-            "MPPM3_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm3,
+            "VTW_data_buffered": code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals.terminal_velocity.liquid,
+            "VTR_data_buffered": code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals.terminal_velocity.rain,
+            "VTI_data_buffered": code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals.terminal_velocity.ice,
+            "VTS_data_buffered": code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals.terminal_velocity.snow,
+            "VTG_data_buffered": code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals.terminal_velocity.graupel,
+            "H_VAR_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.h_var,
+            "MPPFW_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppfw,
+            "MPPFR_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppfr,
+            "MPPMI_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppmi,
+            "MPPMS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppms,
+            "MPPMG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppmg,
+            "MPPAS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppas,
+            "MPPAG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppag,
+            "MPPRS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mpprs,
+            "MPPRG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mpprg,
+            "MPPXS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppxs,
+            "MPPXG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppxg,
+            "SRF_TYPE_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.surface_type,
+            "CNV_FRACTION_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.convection_fraction,
+            "ONEMSIG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.one_minus_sigma,
         }
 
         # Identify ntimes from the input data shape.
@@ -141,7 +165,7 @@ class TranslateGFDL1M_Sedimentation(TranslateFortranData2Py):
                     unpacked = source.reshape((ni, nj, nlevels), order="F")
                     safe_assign_array(destination[:, :, -nlevels:], unpacked)
 
-            code._gfdl_microphysics_v3._driver._mp_full._sedimentation(
+            code._gfdl_microphysics_v3._driver._mp_full._ice_cloud(
                 code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals,
                 code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals,
             )
