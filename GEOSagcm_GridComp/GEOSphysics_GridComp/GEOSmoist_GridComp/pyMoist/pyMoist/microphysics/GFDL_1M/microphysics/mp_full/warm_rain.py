@@ -2,7 +2,7 @@ import dataclasses
 
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, float64
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, float64, float32
 from ndsl.dsl.typing import Float, FloatField, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig, GFDLMPV3TableL3xL10, GFDLMPV3TableL5, GFDLMPV3TableL20
@@ -122,7 +122,7 @@ def evaporation(
     with computation(FORWARD), interval(...):
         if t > T_WFR and rain > QPMIN:
             mhc = moist_heat_capacity_3(vapor + liquid, rain, total_solid, C1_VAP, C1_LIQ, C1_ICE)
-            t_in = (t * cvm - LV00 * liquid) / mhc
+            t_in = float32((t * cvm - LV00 * liquid) / mhc)
 
             # calculate supersaturation and subgrid variability of water
             precipitation = vapor + liquid

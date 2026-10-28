@@ -1,6 +1,6 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, log10, sqrt, float64
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, log, log10, sqrt, float64, float32
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, FloatFieldIJ64
 from ndsl.stencils.basic_operations import copy, set_value
 from ndsl.stencils.basic_operations_2d import copy_2d, set_value_2d
@@ -205,7 +205,7 @@ def cloud_fraction(
 
         ice_internal = ice_internal - total_solid
         liquid_internal = liquid_internal - total_liquid
-        t_in = (total_energy - LV00 * total_water + LI00 * ice) / moist_heat_capacity_3(total_water, liquid_internal, ice, C1_VAP, C1_LIQ, C1_ICE)
+        t_in = float32((total_energy - LV00 * total_water + LI00 * ice) / moist_heat_capacity_3(total_water, liquid_internal, ice, C1_VAP, C1_LIQ, C1_ICE))
 
         # calculate saturated specific humidity
 
