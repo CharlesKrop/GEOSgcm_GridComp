@@ -1265,10 +1265,10 @@ class GFDLMPV3Driver(NDSLRuntime):
 
         # compute driver specific constants
         # timesteps
-        DRIVER_DT = gfdl_1m_config.DT / mp_namelist.NTIMES
-        DT_INVERSE = 1 / gfdl_1m_config.DT
+        DRIVER_DT = Float(gfdl_1m_config.DT / mp_namelist.NTIMES)
+        DT_INVERSE = Float(Float(1) / gfdl_1m_config.DT)
         # conversion factor to mm/day
-        CONV_FACTOR = 86400.0 * RGRAV / gfdl_1m_config.DT
+        CONV_FACTOR = Float(Float(86400.0) * RGRAV / gfdl_1m_config.DT)
 
         # initialize class specific locals
         self._gfdl_mp_v3_locals = GFDLMPV3Locals.make_locals(quantity_factory)
