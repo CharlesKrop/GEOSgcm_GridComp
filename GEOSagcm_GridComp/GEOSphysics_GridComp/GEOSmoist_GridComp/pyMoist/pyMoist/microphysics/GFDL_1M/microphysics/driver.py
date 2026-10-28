@@ -1773,11 +1773,11 @@ class GFDLMPV3Driver(NDSLRuntime):
         # -----------------------------------------------------------------------
         if self._mp_config.DO_MP_FAST:
             ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 fast microphysics with DO_MP_FAST = True has not been implemented, use DO_MP_FULL = True instead. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 fast microphysics with DO_MP_FAST = True has not been implemented, use DO_MP_FULL = True instead. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
             raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 fast microphysics with DO_MP_FAST = True has not been implemented, use DO_MP_FULL = True instead. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 fast microphysics with DO_MP_FAST = True has not been implemented, use DO_MP_FULL = True instead. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
 
@@ -1831,11 +1831,11 @@ class GFDLMPV3Driver(NDSLRuntime):
         # =======================================================================
         if self._mp_namelist.DO_MP_DIAG:
             ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_MP_DIAG = True option has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_MP_DIAG = True option has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
             raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_MP_DIAG = True option has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_MP_DIAG = True option has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
 
@@ -2030,7 +2030,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         # -----------------------------------------------------------------------
         if self._mp_namelist.CONSV_CHECKER:
             ndsl_log.debug(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with CONSV_CHECKER = True has a series of prints at the end of GFDLMPV3Driver (mpdrv in Fortran) "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with CONSV_CHECKER = True has a series of prints at the end of GFDLMPV3Driver (mpdrv in Fortran) "
                 "which have not been ported. NDSL has other debug tools which should replace this, but it can also be recreated using DaCe orchestration of "
                 "standard Python code. Contact the DSL support team for assistance."
             )

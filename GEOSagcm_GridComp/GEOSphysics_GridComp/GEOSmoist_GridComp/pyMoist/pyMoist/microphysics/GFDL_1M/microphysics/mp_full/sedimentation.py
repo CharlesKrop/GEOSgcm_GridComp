@@ -607,11 +607,11 @@ class Sedimentation(NDSLRuntime):
 
         if self._mp_namelist.DO_SEDI_MELT_QI:
             ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_SEDI_MELT_QI = True has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_SEDI_MELT_QI = True has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
             raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_SEDI_MELT_QI = True has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_SEDI_MELT_QI = True has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
 
@@ -668,11 +668,11 @@ class Sedimentation(NDSLRuntime):
 
         if self._mp_namelist.DO_SEDI_MELT_QS:
             ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_SEDI_MELT_QS = True has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_SEDI_MELT_QS = True has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
             raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_SEDI_MELT_QS = True has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_SEDI_MELT_QS = True has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
 
@@ -745,11 +745,11 @@ class Sedimentation(NDSLRuntime):
 
         if self._mp_namelist.DO_SEDI_MELT_QG:
             ndsl_log.error(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_SEDI_MELT_QG = True has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_SEDI_MELT_QG = True has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
             raise ValueError(
-                "[GFDL1M Microphysics]: NDSL version of GFDLMPV3 with DO_SEDI_MELT_QG = True has not been implemented. "
+                "[GFDL1M Microphysics] NDSL version of GFDLMPV3 with DO_SEDI_MELT_QG = True has not been implemented. "
                 "This value should have been caught by the configuration checker, and this error should never be triggered. Other problems exist."
             )
 

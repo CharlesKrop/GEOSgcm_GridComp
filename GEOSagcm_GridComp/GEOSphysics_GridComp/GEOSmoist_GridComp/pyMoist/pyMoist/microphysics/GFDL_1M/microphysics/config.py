@@ -571,23 +571,23 @@ class GFDLMPV3NamelistConfig:
             full_nml = f90nml.read(nml_path)
         except Exception as e:
             ndsl_log.error(
-                f"[GFDL1M Microphysics]: namelist exists at {nml_path} but read failed, bailing out",
+                f"[GFDL1M Microphysics] namelist exists at {nml_path} but read failed, bailing out",
                 exc_info=e,
             )
             raise e
 
         mp_nml = full_nml.get("gfdl_mp_nml", {})
         if mp_nml:
-            ndsl_log.info(f"[GFDL1M Microphysics]: overwriting parameters with values from namelist: {', '.join(mp_nml.keys())}")
+            ndsl_log.info(f"[GFDL1M Microphysics] overwriting parameters with values from namelist: {', '.join(mp_nml.keys())}")
         else:
-            ndsl_log.info("[GFDL1M Microphysics]: no relevant parameters present in the namelist file, using default value for all parameters")
+            ndsl_log.info("[GFDL1M Microphysics] no relevant parameters present in the namelist file, using default value for all parameters")
 
         # Validate that all namelist keys exist in the configuration
         valid_keys = {f.name.lower() for f in dataclasses.fields(cls)}
         unknown_keys = set(mp_nml.keys()) - valid_keys
 
         if unknown_keys:
-            msg = f"[GFDL1M Microphysics]: Unknown parameter(s) in namelist: " f"{', '.join(sorted(unknown_keys))}"
+            msg = f"[GFDL1M Microphysics] Unknown parameter(s) in namelist: " f"{', '.join(sorted(unknown_keys))}"
             ndsl_log.error(msg)
             raise KeyError(msg)
 
