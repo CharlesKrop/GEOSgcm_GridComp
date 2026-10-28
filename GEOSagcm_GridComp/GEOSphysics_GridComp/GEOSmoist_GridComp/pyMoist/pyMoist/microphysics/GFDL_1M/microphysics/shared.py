@@ -138,10 +138,10 @@ def calc_mhc_lhc(
     total_solid = ice + snow + graupel
     cvm = moist_heat_capacity_3(vapor, total_liquid, total_solid, C1_VAP, C1_LIQ, C1_ICE)
     total_energy = cvm * t + LV00 * vapor - LI00 * total_solid
-    lcpk = (LV00 + D1_VAP * t) / cvm
-    icpk = (LI00 + D1_ICE * t) / cvm
-    tcpk = (LI20 + (D1_VAP + D1_ICE) * t) / cvm
-    tcp3 = lcpk + icpk * min(1.0, max(TICE - t, 0.0) / (TICE - T_WFR))
+    lcpk = float32((LV00 + D1_VAP * t) / cvm)
+    icpk = float32((LI00 + D1_ICE * t) / cvm)
+    tcpk = float32((LI20 + (D1_VAP + D1_ICE) * t) / cvm)
+    tcp3 = float32(lcpk + icpk * min(1.0, max(TICE - t, 0.0) / (TICE - T_WFR)))
 
     return total_liquid, total_solid, cvm, total_energy, lcpk, icpk, tcpk, tcp3
 
@@ -723,6 +723,7 @@ def p_ice_deposition_and_sublimation(
 
     with computation(FORWARD), interval(...):
         if t < TICE:
+            pidep = 0.0
             t_in = float32(t)
             ice_saturation_humidity, dice_saturation_humidity = saturation_specific_humidity(t_in, density, table_2, dtable_2)
             dq = vapor - ice_saturation_humidity
