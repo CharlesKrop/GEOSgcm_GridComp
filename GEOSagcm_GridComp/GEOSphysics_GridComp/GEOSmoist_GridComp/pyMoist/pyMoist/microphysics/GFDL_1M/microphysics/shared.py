@@ -819,9 +819,12 @@ def p_melt(
     cvm: Float64,
     c: GFDLMPV3TableL4,
 ):
-    return (c.A[0] / (icpk * cvm) * t / density - c.A[1] * lcpk / icpk * dcondensate) * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density)) * vent_coeff(
-        density_factor, condensate_x_density, c.A[2], c.A[3], blin, mu
-    ) + C_LIQ / (icpk * cvm) * t * (pxacw + pxacr)
+    return float32(
+        (c.A[0] / (icpk * cvm) * t / density - c.A[1] * lcpk / icpk * dcondensate)
+        * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density))
+        * vent_coeff(density_factor, condensate_x_density, c.A[2], c.A[3], blin, mu)
+        + C_LIQ / (icpk * cvm) * t * (pxacw + pxacr)
+    )
 
 
 def p_snow_deposition_and_sublimation(
