@@ -84,7 +84,7 @@ def p_graupel_accretion_to_cloud_water_and_rain(
     )
 
     with computation(FORWARD), interval(0, 1):
-        scaled_CGACW = CGACW * (1.0e-2 * (1.0 - one_minus_sigma) + one_minus_sigma)
+        scaled_CGACW: FloatFieldIJ = CGACW * (1.0e-2 * (1.0 - one_minus_sigma) + one_minus_sigma)
 
     with computation(FORWARD), interval(...):
         if t < TICE and graupel > QPMIN:
