@@ -1459,9 +1459,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
     real (kind = r8), dimension (ks:ke) :: tz, tzuv, tzw
 
-    ! setup bounds for data_buffered savepoints
-    !$ser verbatim call ser_set_Dx(ie, 1, ke - ks + 1, 1)
-
     ! -----------------------------------------------------------------------
     ! time steps
     ! -----------------------------------------------------------------------
@@ -1493,8 +1490,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
     !$OMP         pcr, edr, oer, rrr, tvr, pcs, eds, oes, rrs, tvs, &
     !$OMP         pcg, edg, oeg, rrg, tvg, tz, tzuv, tzw)
     do i = is, ie
-        ! set serialbox d1 index
-        !$ser verbatim call ser_set_idx_d1(i)
 
         ! -----------------------------------------------------------------------
         ! diagnosed convective fraction and surface type (input)
@@ -1723,6 +1718,9 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
 
         if (do_mp_full) then
 
+            ! set D1 and idx_d1 outside mp_full, where i loop information is available
+            !$ser verbatim call ser_set_D1(ie)
+            !$ser verbatim call ser_set_idx_d1(i)
             call mp_full (ks, ke, ntimes, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dp, dz, &
                 u, v, w, den, denfac, ccn, cin, dts, h_var, dte (i), &
                 water (i), rain (i), ice (i), snow (i), graupel (i), &
@@ -1733,6 +1731,9 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 mppfw (i), mppfr (i), mppmi (i), mppms (i), mppmg (i), mppm1 (i), &
                 mppm2 (i), mppm3 (i), mppar (i), mppas (i), mppag (i), mpprs (i), &
                 mpprg (i), mppxr (i), mppxs (i), mppxg (i), convt, last_step)
+            ! reset serialbox indicies and dimensions
+            !$ser verbatim call ser_set_D1(1)
+            !$ser verbatim call ser_set_idx_d1(1)
 
         endif
 
@@ -2238,7 +2239,11 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
 
     !$ser verbatim integer :: k
 
+    ! set serialbox dimensions for everything other than D1, which is handled immediately before mp_full call
     !$ser verbatim call ser_set_D2(ntimes)
+    !$ser verbatim call ser_set_D3(ke - ks + 1)
+    ! ser_set_idx_d3 handled below, inside custom k loop (main k loops are deep inside subcomponent calls)
+    !$ser verbatim call ser_set_D4(1)
     !$ser verbatim call ser_set_idx_d4(1)
     do n = 1, ntimes
         !$ser verbatim call ser_set_idx_d2(n)
@@ -2531,6 +2536,13 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         endif
 
     enddo
+    ! reset serialbox indicies and dimensions
+    !$ser verbatim call ser_set_D2(1)
+    !$ser verbatim call ser_set_idx_d2(1)
+    !$ser verbatim call ser_set_D3(1)
+    !$ser verbatim call ser_set_idx_d3(1)
+    !$ser verbatim call ser_set_D4(1)
+    !$ser verbatim call ser_set_idx_d4(1)
 
 end subroutine mp_full
 
