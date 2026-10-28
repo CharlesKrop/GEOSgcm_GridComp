@@ -2,7 +2,7 @@ import dataclasses
 
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, float32
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig, GFDLMPV3TableL3xL10, GFDLMPV3TableL20
@@ -186,7 +186,9 @@ def p_instant(
         # -----------------------------------------------------------------------
 
         combined_precip = vapor + liquid + ice
-        t_in = (total_energy - LV00 * combined_precip + LI00 * (snow + graupel)) / moist_heat_capacity_3(combined_precip, rain, snow + graupel, C1_VAP, C1_LIQ, C1_ICE)
+        t_in = float32(
+            (total_energy - LV00 * combined_precip + LI00 * (snow + graupel)) / moist_heat_capacity_3(combined_precip, rain, snow + graupel, C1_VAP, C1_LIQ, C1_ICE)
+        )
 
         if t_in > T_SUB + 6.0:
 
@@ -203,7 +205,7 @@ def p_instant(
                 subl = ice
             else:
                 # partial evap of liquid
-                t_in = t
+                t_in = float32(t)
                 liquid_saturation_humidity, dliquid_saturation_humidity = saturation_specific_humidity(t_in, density, table_0, dtable_0)
                 dliquid = liquid_saturation_humidity - vapor
                 if dliquid > QVMIN:
