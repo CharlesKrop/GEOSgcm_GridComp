@@ -1029,6 +1029,14 @@ class GFDLMPV3(NDSLRuntime):
         self._set_value_2d(field=state.precipitation_at_surface.ice, value=Float(0.0))
         self._set_value_2d(field=state.precipitation_at_surface.graupel, value=Float(0.0))
 
+        # gfdl_mp_driver initializes all five default-REAL preflux outputs
+        # before mp_full accumulates this call's sedimentation fluxes.
+        self._set_value_k_interface(field=state.non_anvil_large_scale.liquid_precip_flux, value=Float(0.0))
+        self._set_value_k_interface(field=state.non_anvil_large_scale.rain_precip_flux, value=Float(0.0))
+        self._set_value_k_interface(field=state.non_anvil_large_scale.ice_precip_flux, value=Float(0.0))
+        self._set_value_k_interface(field=state.non_anvil_large_scale.snow_precip_flux, value=Float(0.0))
+        self._set_value_k_interface(field=state.non_anvil_large_scale.graupel_precip_flux, value=Float(0.0))
+
         # reset gfdl locals to zero
         self._set_value(field=locals.dcloud_fraction_dt, value=Float(0.0))
         self._set_value(field=state.non_anvil_large_scale.evaporation, value=Float(0.0))
