@@ -7,7 +7,6 @@ import math
 
 from ndsl.dsl.typing import Float, Float64, Int
 
-
 # -----------------------------------------------------------------------
 # physics constants
 # -----------------------------------------------------------------------
@@ -34,7 +33,11 @@ TICE = Float(273.15)  # freezing temperature (K): ref: GFDL, GFS
 
 SATURATION_TABLE_LENGTH = Int(2621)
 SATURATION_TABLE_TMIN = TICE - Float(160.0)
-DELT = Float64(0.1)
+
+# Fortran initializes literals as default precision, then casts to specified precision.
+# To replicate this behavior, we first cast to the default precision, then force 64 bit.
+# Not required for RDELT b/c 1.0 is exactly representable in both 32 and 64 bit
+DELT = Float64(Float(0.1))
 RDELT = Float64(1.0) / DELT
 
 CP_AIR = Float(1004.6)  # heat capacity of dry air at constant pressure (J/kg/K): ref: GFDL, GFS
@@ -68,7 +71,10 @@ LV0 = Float64(HLV - DC_VAP * TICE)  # 3148711.3338762247, evaporation latent hea
 LI0 = Float64(HLF - DC_ICE * TICE)  # - 242413.92000000004, fussion latent heat coeff. at 0 deg K (J/kg)
 LI2 = Float64(LV0 + LI0)  # 2906297.413876225, sublimation latent heat coeff. at 0 deg K (J/kg)
 
-E00 = Float64(611.21)  # saturation vapor pressure at 0 deg C (Pa), ref: IFS
+# Fortran initializes literals as default precision, then casts to specified precision.
+# To replicate this behavior, we first cast to the default precision, then force 64 bit.
+# Not required for RDELT b/c 1.0 is exactly representable in both 32 and 64 bit
+E00 = Float64(Float(611.21))  # saturation vapor pressure at 0 deg C (Pa), ref: IFS
 
 # -----------------------------------------------------------------------
 # predefined parameters
@@ -92,4 +98,7 @@ DT_FR = Float(8.0)  # t_wfr - dt_fr: minimum temperature water can exist (Moore 
 
 RC = (Float(4.0) / Float(3.0)) * PI * RHOR
 
+# Fortran initializes literals as default precision, then casts to specified precision.
+# To replicate this behavior, we first cast to the default precision, then force 64 bit.
+# Not required for RDELT b/c 1.0 is exactly representable in both 32 and 64 bit
 ONE_R8 = Float64(1.0)  # constant 1
