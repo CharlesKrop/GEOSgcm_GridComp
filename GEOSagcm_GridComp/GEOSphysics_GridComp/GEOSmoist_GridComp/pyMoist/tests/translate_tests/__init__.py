@@ -334,6 +334,7 @@
 from .microphysics.GFDL_1M.translate_GFDL1M import TranslateGFDL1M
 from .microphysics.GFDL_1M.translate_GFDL1M_Macrophysics import TranslateGFDL1M_Macrophysics
 from .microphysics.GFDL_1M.translate_GFDL1M_Microphysics import TranslateGFDL1M_Microphysics
+from .microphysics.GFDL_1M.translate_GFDLMPV3_MPFull import TranslateGFDLMPV3_MPFull
 from .microphysics.GFDL_1M.translate_GFDLMPV3_Sedimentation import TranslateGFDLMPV3_Sedimentation
 from .microphysics.GFDL_1M.translate_GFDLMPV3_WarmRain import TranslateGFDLMPV3_WarmRain
 from .microphysics.GFDL_1M.translate_GFDLMPV3_IceCloud import TranslateGFDLMPV3_IceCloud
@@ -345,6 +346,7 @@ __all__ = [
     "TranslateGFDL1M",
     "TranslateGFDL1M_Macrophysics",
     "TranslateGFDL1M_Microphysics",
+    "TranslateGFDLMPV3_MPFull",
     "TranslateGFDLMPV3_Sedimentation",
     "TranslateGFDLMPV3_WarmRain",
     "TranslateGFDLMPV3_IceCloud",
