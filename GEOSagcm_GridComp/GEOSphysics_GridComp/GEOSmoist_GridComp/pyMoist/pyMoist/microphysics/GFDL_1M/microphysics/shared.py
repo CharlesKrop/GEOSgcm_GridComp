@@ -969,7 +969,7 @@ def p_sublimation(
     Returns:
         (Float): sublimation or deposition rate
     """
-    return (
+    return float32(
         c.A[0]
         * t_squared
         * dcondensate
