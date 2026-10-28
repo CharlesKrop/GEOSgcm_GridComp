@@ -741,8 +741,16 @@ def pressure_derived_fields_mixing_ratio_conversion_copy_state(
         if not HYDROSTATIC:
             local_w = w
 
+    # # Capture den(ke) relative to this restricted column, not the full-grid
+    # # absolute K origin. Keep the Fortran default-REAL storage and arithmetic.
+    with computation(FORWARD), interval(-1, None):
+        bottom_density: FloatFieldIJ = local_density
+
     with computation(PARALLEL), interval(...):
-        local_density_factor = sqrt(local_density.at(K=k_end) / local_density)
+        local_density_factor = sqrt(bottom_density / local_density)
+
+    # with computation(PARALLEL), interval(...):
+    # local_density_factor = sqrt(local_density.at(K=k_end) / local_density)
 
 
 def radar_reflectivity(
