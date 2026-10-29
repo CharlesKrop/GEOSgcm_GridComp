@@ -470,6 +470,7 @@ class GFDL1M(NDSLRuntime):
         self._fix_up_clouds = stencil_factory.from_dims_halo(
             func=fix_up_clouds,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"LID_LEVEL": self._setup.lid_level},
         )
 
         self._flip_sign = stencil_factory.from_dims_halo(
@@ -753,7 +754,6 @@ class GFDL1M(NDSLRuntime):
                 type_two_ice=state.mixing_ratio.convective_ice,
                 type_two_liquid=state.mixing_ratio.convective_liquid,
                 type_two_cloud_fraction=state.cloud_fraction.convective,
-                lid_level=self._locals.lid_level,
             )
 
         # Get radiative properties

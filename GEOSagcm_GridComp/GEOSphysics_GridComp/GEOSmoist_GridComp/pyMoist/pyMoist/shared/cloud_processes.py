@@ -444,9 +444,9 @@ def fix_up_clouds(
     type_two_ice: FloatField,
     type_two_liquid: FloatField,
     type_two_cloud_fraction: FloatField,
-    lid_level: IntFieldIJ,
 ):
     """Fix up cloud variables to ensure physical consistency.
+    LID_LEVEL determines the level above which clouds are removed (note 0 = TOA). set to a number < 0 to disable
 
     Args:
         t (FloatField): temperature (Kelvin)
@@ -457,11 +457,11 @@ def fix_up_clouds(
         type_two_ice (FloatField): ice mixing ratio (type two, e.g. convective/large scale)
         type_two_liquid (FloatField): liquid mixing ratio (type two, e.g. convective/large scale)
         type_two_cloud_fraction (FloatField): cloud fraction (type two, e.g. convective/large scale)
-        lid_level (IntFieldIJ): the level above which clouds are removed (note 0 = TOA). set to a number < 0 to disable
     """
+    from __externals__ import LID_LEVEL
 
     with computation(PARALLEL), interval(...):
-        if lid_level >= 0 and K < lid_level:
+        if LID_LEVEL >= 0 and K < LID_LEVEL:
             # remove all cloud quantities above the lid level
             vapor = vapor + type_two_liquid + type_two_ice + type_one_liquid + type_one_ice
             t = t - ALHLBCP * (type_two_liquid + type_one_liquid) - ALHSBCP * (type_two_ice + type_one_ice)

@@ -251,6 +251,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._fix_up_clouds = stencil_factory.from_dims_halo(
             func=fix_up_clouds,
             compute_dims=[I_DIM, J_DIM, K_DIM],
+            externals={"LID_LEVEL": lid_level},
         )
         self._relative_humidity_after_pdf = macro_factory.from_dims_halo(
             func=relative_humidity_after_pdf,
@@ -311,7 +312,6 @@ class GFDL1MMacrophysics(NDSLRuntime):
             type_two_ice=state.mixing_ratio.convective_ice,
             type_two_liquid=state.mixing_ratio.convective_liquid,
             type_two_cloud_fraction=state.cloud_fraction.convective,
-            lid_level=locals.lid_level,
         )
 
         self._compute_critical_relative_humidity(
@@ -435,7 +435,6 @@ class GFDL1MMacrophysics(NDSLRuntime):
             type_two_ice=state.mixing_ratio.convective_ice,
             type_two_liquid=state.mixing_ratio.convective_liquid,
             type_two_cloud_fraction=state.cloud_fraction.convective,
-            lid_level=locals.lid_level,
         )
 
         # eliminate any negative values in the following quantities

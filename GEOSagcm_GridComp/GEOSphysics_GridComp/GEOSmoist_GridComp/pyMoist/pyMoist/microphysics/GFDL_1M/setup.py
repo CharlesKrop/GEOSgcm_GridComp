@@ -252,8 +252,6 @@ class GFDL1MSetup(NDSLRuntime):
             lcl_level=locals.lcl_level,
         )
 
-        self._set_value_2d_int(field=locals.lid_level, value=Int(self.lid_level))
-
         # set unused exports to zero
         self._set_value_2d(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
         self._set_value_2d(field=state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
