@@ -1721,6 +1721,81 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
             ! set D1 and idx_d1 outside mp_full, where i loop information is available
             !$ser verbatim call ser_set_D1(ie)
             !$ser verbatim call ser_set_idx_d1(i)
+            !$ser verbatim call ser_set_D2(ke - ks + 1)
+            !$ser verbatim call ser_set_D3(1)
+            !$ser verbatim call ser_set_idx_d3(1)
+            !$ser verbatim call ser_set_D4(1)
+            !$ser verbatim call ser_set_idx_d4(1)
+            !$ser verbatim do k=1, ke-ks+1
+                !$ser verbatim call ser_set_idx_d2(k)
+                !$ser savepoint GFDLMPV3_MPFull-In
+                !$ser data_buffered Dx=2 T_data_buffered=tz(k+ks-1)
+                !$ser data_buffered Dx=2 QA_data_buffered=qaz(k+ks-1)
+                !$ser data_buffered Dx=2 QV_data_buffered=qvz(k+ks-1)
+                !$ser data_buffered Dx=2 QL_data_buffered=qlz(k+ks-1)
+                !$ser data_buffered Dx=2 QR_data_buffered=qrz(k+ks-1)
+                !$ser data_buffered Dx=2 QI_data_buffered=qiz(k+ks-1)
+                !$ser data_buffered Dx=2 QS_data_buffered=qsz(k+ks-1)
+                !$ser data_buffered Dx=2 QG_data_buffered=qgz(k+ks-1)
+                !$ser data_buffered Dx=2 DP_data_buffered=dp(k+ks-1)
+                !$ser data_buffered Dx=2 DZ_data_buffered=dz(k+ks-1)
+                !$ser data_buffered Dx=2 U_data_buffered=u(k+ks-1)
+                !$ser data_buffered Dx=2 V_data_buffered=v(k+ks-1)
+                !$ser data_buffered Dx=2 W_data_buffered=w(k+ks-1)
+                !$ser data_buffered Dx=2 DEN_data_buffered=den(k+ks-1)
+                !$ser data_buffered Dx=2 DENFAC_data_buffered=denfac(k+ks-1)
+                !$ser data_buffered Dx=2 CCN_data_buffered=ccn(k+ks-1)
+                !$ser data_buffered Dx=2 CIN_data_buffered=cin(k+ks-1)
+                !$ser data_buffered Dx=2 H_VAR_data_buffered=h_var(k+ks-1)
+                !$ser data_buffered Dx=2 REVAP_data_buffered=revap(i,k+ks-1)
+                !$ser data_buffered Dx=2 RSUBL_data_buffered=rsubl(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXW_data_buffered=prefluxw(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXR_data_buffered=prefluxr(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXI_data_buffered=prefluxi(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXS_data_buffered=prefluxs(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXG_data_buffered=prefluxg(i,k+ks-1)
+                !$ser data_buffered Dx=1 DTE_data_buffered=dte(i)
+                !$ser data_buffered Dx=1 WATER_data_buffered=water(i)
+                !$ser data_buffered Dx=1 RAIN_data_buffered=rain(i)
+                !$ser data_buffered Dx=1 ICE_data_buffered=ice(i)
+                !$ser data_buffered Dx=1 SNOW_data_buffered=snow(i)
+                !$ser data_buffered Dx=1 GRAUPEL_data_buffered=graupel(i)
+                !$ser data_buffered Dx=1 MPPCW_data_buffered=mppcw(i)
+                !$ser data_buffered Dx=1 MPPEW_data_buffered=mppew(i)
+                !$ser data_buffered Dx=1 MPPE1_data_buffered=mppe1(i)
+                !$ser data_buffered Dx=1 MPPER_data_buffered=mpper(i)
+                !$ser data_buffered Dx=1 MPPDI_data_buffered=mppdi(i)
+                !$ser data_buffered Dx=1 MPPD1_data_buffered=mppd1(i)
+                !$ser data_buffered Dx=1 MPPDS_data_buffered=mppds(i)
+                !$ser data_buffered Dx=1 MPPDG_data_buffered=mppdg(i)
+                !$ser data_buffered Dx=1 MPPSI_data_buffered=mppsi(i)
+                !$ser data_buffered Dx=1 MPPS1_data_buffered=mpps1(i)
+                !$ser data_buffered Dx=1 MPPSS_data_buffered=mppss(i)
+                !$ser data_buffered Dx=1 MPPSG_data_buffered=mppsg(i)
+                !$ser data_buffered Dx=1 MPPFW_data_buffered=mppfw(i)
+                !$ser data_buffered Dx=1 MPPFR_data_buffered=mppfr(i)
+                !$ser data_buffered Dx=1 MPPMI_data_buffered=mppmi(i)
+                !$ser data_buffered Dx=1 MPPMS_data_buffered=mppms(i)
+                !$ser data_buffered Dx=1 MPPMG_data_buffered=mppmg(i)
+                !$ser data_buffered Dx=1 MPPM1_data_buffered=mppm1(i)
+                !$ser data_buffered Dx=1 MPPM2_data_buffered=mppm2(i)
+                !$ser data_buffered Dx=1 MPPM3_data_buffered=mppm3(i)
+                !$ser data_buffered Dx=1 MPPAR_data_buffered=mppar(i)
+                !$ser data_buffered Dx=1 MPPAS_data_buffered=mppas(i)
+                !$ser data_buffered Dx=1 MPPAG_data_buffered=mppag(i)
+                !$ser data_buffered Dx=1 MPPRS_data_buffered=mpprs(i)
+                !$ser data_buffered Dx=1 MPPRG_data_buffered=mpprg(i)
+                !$ser data_buffered Dx=1 MPPXR_data_buffered=mppxr(i)
+                !$ser data_buffered Dx=1 MPPXS_data_buffered=mppxs(i)
+                !$ser data_buffered Dx=1 MPPXG_data_buffered=mppxg(i)
+                ! Globals used by the internal microphysics components.
+                !$ser data_buffered Dx=1 CNV_FRACTION_data_buffered=cnv_fraction
+                !$ser data_buffered Dx=1 CPAUT_data_buffered=cpaut
+                !$ser data_buffered Dx=1 FAC_RC_data_buffered=fac_rc
+                !$ser data_buffered Dx=1 SRF_TYPE_data_buffered=srf_type
+                !$ser data_buffered Dx=1 ONEMSIG_data_buffered=onemsig
+            !$ser verbatim enddo
+            !$ser off
             call mp_full (ks, ke, ntimes, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dp, dz, &
                 u, v, w, den, denfac, ccn, cin, dts, h_var, dte (i), &
                 water (i), rain (i), ice (i), snow (i), graupel (i), &
@@ -1731,9 +1806,83 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 mppfw (i), mppfr (i), mppmi (i), mppms (i), mppmg (i), mppm1 (i), &
                 mppm2 (i), mppm3 (i), mppar (i), mppas (i), mppag (i), mpprs (i), &
                 mpprg (i), mppxr (i), mppxs (i), mppxg (i), convt, last_step)
+            !$ser on
+            ! mp_full resets D2 after using it for internal savepoints; it must be redefined here.
+            !$ser verbatim call ser_set_D2(ke - ks + 1)
+            !$ser verbatim do k=1, ke-ks+1
+                !$ser verbatim call ser_set_idx_d2(k)
+                !$ser savepoint GFDLMPV3_MPFull-Out
+                !$ser data_buffered Dx=2 T_data_buffered=tz(k+ks-1)
+                !$ser data_buffered Dx=2 QA_data_buffered=qaz(k+ks-1)
+                !$ser data_buffered Dx=2 QV_data_buffered=qvz(k+ks-1)
+                !$ser data_buffered Dx=2 QL_data_buffered=qlz(k+ks-1)
+                !$ser data_buffered Dx=2 QR_data_buffered=qrz(k+ks-1)
+                !$ser data_buffered Dx=2 QI_data_buffered=qiz(k+ks-1)
+                !$ser data_buffered Dx=2 QS_data_buffered=qsz(k+ks-1)
+                !$ser data_buffered Dx=2 QG_data_buffered=qgz(k+ks-1)
+                !$ser data_buffered Dx=2 DP_data_buffered=dp(k+ks-1)
+                !$ser data_buffered Dx=2 DZ_data_buffered=dz(k+ks-1)
+                !$ser data_buffered Dx=2 U_data_buffered=u(k+ks-1)
+                !$ser data_buffered Dx=2 V_data_buffered=v(k+ks-1)
+                !$ser data_buffered Dx=2 W_data_buffered=w(k+ks-1)
+                !$ser data_buffered Dx=2 DEN_data_buffered=den(k+ks-1)
+                !$ser data_buffered Dx=2 DENFAC_data_buffered=denfac(k+ks-1)
+                !$ser data_buffered Dx=2 CCN_data_buffered=ccn(k+ks-1)
+                !$ser data_buffered Dx=2 CIN_data_buffered=cin(k+ks-1)
+                !$ser data_buffered Dx=2 H_VAR_data_buffered=h_var(k+ks-1)
+                !$ser data_buffered Dx=2 REVAP_data_buffered=revap(i,k+ks-1)
+                !$ser data_buffered Dx=2 RSUBL_data_buffered=rsubl(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXW_data_buffered=prefluxw(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXR_data_buffered=prefluxr(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXI_data_buffered=prefluxi(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXS_data_buffered=prefluxs(i,k+ks-1)
+                !$ser data_buffered Dx=2 PREFLUXG_data_buffered=prefluxg(i,k+ks-1)
+                !$ser data_buffered Dx=1 DTE_data_buffered=dte(i)
+                !$ser data_buffered Dx=1 WATER_data_buffered=water(i)
+                !$ser data_buffered Dx=1 RAIN_data_buffered=rain(i)
+                !$ser data_buffered Dx=1 ICE_data_buffered=ice(i)
+                !$ser data_buffered Dx=1 SNOW_data_buffered=snow(i)
+                !$ser data_buffered Dx=1 GRAUPEL_data_buffered=graupel(i)
+                !$ser data_buffered Dx=1 MPPCW_data_buffered=mppcw(i)
+                !$ser data_buffered Dx=1 MPPEW_data_buffered=mppew(i)
+                !$ser data_buffered Dx=1 MPPE1_data_buffered=mppe1(i)
+                !$ser data_buffered Dx=1 MPPER_data_buffered=mpper(i)
+                !$ser data_buffered Dx=1 MPPDI_data_buffered=mppdi(i)
+                !$ser data_buffered Dx=1 MPPD1_data_buffered=mppd1(i)
+                !$ser data_buffered Dx=1 MPPDS_data_buffered=mppds(i)
+                !$ser data_buffered Dx=1 MPPDG_data_buffered=mppdg(i)
+                !$ser data_buffered Dx=1 MPPSI_data_buffered=mppsi(i)
+                !$ser data_buffered Dx=1 MPPS1_data_buffered=mpps1(i)
+                !$ser data_buffered Dx=1 MPPSS_data_buffered=mppss(i)
+                !$ser data_buffered Dx=1 MPPSG_data_buffered=mppsg(i)
+                !$ser data_buffered Dx=1 MPPFW_data_buffered=mppfw(i)
+                !$ser data_buffered Dx=1 MPPFR_data_buffered=mppfr(i)
+                !$ser data_buffered Dx=1 MPPMI_data_buffered=mppmi(i)
+                !$ser data_buffered Dx=1 MPPMS_data_buffered=mppms(i)
+                !$ser data_buffered Dx=1 MPPMG_data_buffered=mppmg(i)
+                !$ser data_buffered Dx=1 MPPM1_data_buffered=mppm1(i)
+                !$ser data_buffered Dx=1 MPPM2_data_buffered=mppm2(i)
+                !$ser data_buffered Dx=1 MPPM3_data_buffered=mppm3(i)
+                !$ser data_buffered Dx=1 MPPAR_data_buffered=mppar(i)
+                !$ser data_buffered Dx=1 MPPAS_data_buffered=mppas(i)
+                !$ser data_buffered Dx=1 MPPAG_data_buffered=mppag(i)
+                !$ser data_buffered Dx=1 MPPRS_data_buffered=mpprs(i)
+                !$ser data_buffered Dx=1 MPPRG_data_buffered=mpprg(i)
+                !$ser data_buffered Dx=1 MPPXR_data_buffered=mppxr(i)
+                !$ser data_buffered Dx=1 MPPXS_data_buffered=mppxs(i)
+                !$ser data_buffered Dx=1 MPPXG_data_buffered=mppxg(i)
+                ! Globals used by the internal microphysics components.
+                !$ser data_buffered Dx=1 CNV_FRACTION_data_buffered=cnv_fraction
+                !$ser data_buffered Dx=1 CPAUT_data_buffered=cpaut
+                !$ser data_buffered Dx=1 FAC_RC_data_buffered=fac_rc
+                !$ser data_buffered Dx=1 SRF_TYPE_data_buffered=srf_type
+                !$ser data_buffered Dx=1 ONEMSIG_data_buffered=onemsig
+            !$ser verbatim enddo
             ! reset serialbox indicies and dimensions
             !$ser verbatim call ser_set_D1(1)
             !$ser verbatim call ser_set_idx_d1(1)
+            !$ser verbatim call ser_set_D2(1)
+            !$ser verbatim call ser_set_idx_d2(1)
 
         endif
 
