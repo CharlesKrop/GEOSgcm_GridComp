@@ -205,7 +205,6 @@ class TranslateGFDL1M_Microphysics(TranslateFortranData2Py):
         }
         for name in self.in_vars["data_vars"]:
             safe_assign_array(fields[name].field[:], inputs[name])
-        locals.lid_level.field[:] = code._setup.lid_level
 
         # Do not call code(state): it would rerun setup and macrophysics and
         # overwrite the serialized phase-boundary inputs.

@@ -174,9 +174,6 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
             values = inputs[name] - 1 if name == "KPBLSC" else inputs[name]
             safe_assign_array(fields[name].field[:], values)
 
-        # replicate lid_level initialization from GFDL1MSetup (needed for GFDL1MMacrophysics)
-        locals.lid_level.field[:] = code._setup.lid_level
-
         # The savepoint precedes the tendency snapshots and shallow-precip
         # additions. Reproduce only that setup, preserving serialized locals.
         snapshots = {
