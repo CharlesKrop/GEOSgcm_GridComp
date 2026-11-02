@@ -31,11 +31,11 @@ class GFDL1MInterface(UserCode):
             CNV_FRACTION_MIN=maplpy.get_resource("CNV_FRACTION_MIN:", mapl_state, default=Float(500.0)),
             CWD=os.getcwd(),  # this is a placeholder. need to pass the true path from fortran to python
             DO_GFDL_REFLECTIVITY=maplpy.get_resource("DO_GFDL_REFLECTIVITY:", mapl_state, default=True),
-            DT=maplpy.get_resource("DSL__GFLD1M_DT", mapl_state, default=Float(0.0)),
+            DT=maplpy.get_resource("DSL__GFLD1M_DT:", mapl_state, default=Float(0.0)),
             FAC_RI=maplpy.get_resource("FAC_RI:", mapl_state, default=Float(1.0)),
             FAC_RL=maplpy.get_resource("FAC_RL:", mapl_state, default=Float(1.0)),
             GFDL_MP3=maplpy.get_resource("GFDL_MP3:", mapl_state, default=True),
-            GFDL_MP_KLID=lid - Int(1) if lid > 0 else Int(0),
+            GFDL_MP_KLID=Float(lid - Int(1) if lid > 0 else Int(0)),
             ICE_CNV_VFALL_PARAM=maplpy.get_resource("ICE_CNV_VFALL_PARAM:", mapl_state, default=Int(1)),
             ICE_FRACTION_POLYNOMIAL=maplpy.get_resource("ICE_FRACTION_POLYNOMIAL:", mapl_state, default=V12_ICE_POLYNOMIAL),
             ICE_LSC_VFALL_PARAM=maplpy.get_resource("ICE_LSC_VFALL_PARAM:", mapl_state, default=Int(1)),
@@ -216,7 +216,7 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("tendencies.du_dt_micro", "DUDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dv_dt_micro", "DVDT_micro", export_repository, alloc=True)
         self._managed_state.register("tendencies.dt_dt_micro", "DTDT_micro", export_repository, alloc=True)
-        self._managed_state.register("tendencies.dtdt_friction_pressure_weighted", "DTDTFRIC", export_repository)
+        self._managed_state.register("tendencies.dt_dt_friction_pressure_weighted", "DTDTFRIC", export_repository)
 
         self._managed_state.register("radar.simulated_reflectivity", "REF_DBZ", export_repository)
         self._managed_state.register_2D("radar.maximum_composite_reflectivity", "REF_DBZ_MAX", export_repository)
@@ -228,27 +228,27 @@ class GFDL1MInterface(UserCode):
         self._managed_state.register("mass_fraction.suspended_rain", "QRTOT", export_repository)
         self._managed_state.register("mass_fraction.suspended_snow", "QSTOT", export_repository)
 
-        self._managed_state.register("fall_speed.graupel", "VFALL_GRAUPEL", export_repository)
-        self._managed_state.register("fall_speed.ice", "VFALL_ICE", export_repository)
-        self._managed_state.register("fall_speed.rain", "VFALL_RAIN", export_repository)
-        self._managed_state.register("fall_speed.snow", "VFALL_SNOW", export_repository)
+        self._managed_state.register("fall_speed.graupel", "VFALL_GRAUPEL", export_repository, alloc=True)
+        self._managed_state.register("fall_speed.ice", "VFALL_ICE", export_repository, alloc=True)
+        self._managed_state.register("fall_speed.rain", "VFALL_RAIN", export_repository, alloc=True)
+        self._managed_state.register("fall_speed.snow", "VFALL_SNOW", export_repository, alloc=True)
 
         self._managed_state.register("fill_negative_tendency_cloud_macro.graupel", "DQGDT_FILL_CLDMACRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_macro.convective_ice", "DQICNDT_FILL_CLDMACRO", export_repository)
-        self._managed_state.register("fill_negative_tendency_cloud_macro.large_scale_ice", "DQILSSDT_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.large_scale_ice", "DQILSDT_FILL_CLDMACRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_macro.convective_liquid", "DQLCNDT_FILL_CLDMACRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_macro.large_scale_liquid", "DQLLSDT_FILL_CLDMACRO", export_repository)
-        self._managed_state.register("fill_negative_tendency_cloud_macro.rain", "DQR_FILL_CLDMACRO", export_repository)
-        self._managed_state.register("fill_negative_tendency_cloud_macro.snow", "DQS_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.rain", "DQRDT_FILL_CLDMACRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_macro.snow", "DQSDT_FILL_CLDMACRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_macro.vapor", "DQVDT_FILL_CLDMACRO", export_repository)
 
         self._managed_state.register("fill_negative_tendency_cloud_micro.graupel", "DQGDT_FILL_CLDMICRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_micro.convective_ice", "DQICNDT_FILL_CLDMICRO", export_repository)
-        self._managed_state.register("fill_negative_tendency_cloud_micro.large_scale_ice", "DQILSSDT_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_micro.large_scale_ice", "DQILSDT_FILL_CLDMICRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_micro.convective_liquid", "DQLCNDT_FILL_CLDMICRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_micro.large_scale_liquid", "DQLLSDT_FILL_CLDMICRO", export_repository)
-        self._managed_state.register("fill_negative_tendency_cloud_micro.rain", "DQR_FILL_CLDMICRO", export_repository)
-        self._managed_state.register("fill_negative_tendency_cloud_micro.snow", "DQS_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_micro.rain", "DQRDT_FILL_CLDMICRO", export_repository)
+        self._managed_state.register("fill_negative_tendency_cloud_micro.snow", "DQSDT_FILL_CLDMICRO", export_repository)
         self._managed_state.register("fill_negative_tendency_cloud_micro.vapor", "DQVDT_FILL_CLDMICRO", export_repository)
 
         # system to alert that radar diag is requested, but not yet implemented. remove when implemented
