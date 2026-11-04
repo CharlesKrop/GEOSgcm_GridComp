@@ -17,24 +17,28 @@ class SHOCGEOSInterface(UserCode):
         self.config = None
         self._managed_state = None
         self._shoc = None
+        self._first_run = True
 
     def init(self, mapl_state, import_state, export_state) -> None:
         # Make sure we have our NDSL stack setup
+        if not self._first_run:
+            return
+        self._first_run = False
+
         MAPLPy = get_MAPLPy()
         ndsl_stack = get_NDSL_physics(mapl_state)
-
         self.config = SHOCMFConfiguration(
             dtn=MAPLPy.get_resource("DSL__SHOC_DT:", mapl_state, default=Float(0)),
             PRNUMBER=MAPLPy.get_resource("TURBULENCE_SHC_PRNUM:", mapl_state, default=Float(-0.9)),
             BUOYOPT=MAPLPy.get_resource("TURBULENCE_SHC_BUOY_OPTION:", mapl_state, default=Int(2)),
             LENOPT=MAPLPy.get_resource("TURBULENCE_SHC_LENOPT:", mapl_state, default=Int(3)),
-            LENFAC1=MAPLPy.get_resource("TURBULENCE_SHC_LENFAC1:", mapl_state, default=Float(8.)),
+            LENFAC1=MAPLPy.get_resource("TURBULENCE_SHC_LENFAC1:", mapl_state, default=Float(5.)),
             LENFAC2=MAPLPy.get_resource("TURBULENCE_SHC_LENFAC2:", mapl_state, default=Float(2.)),
-            LENFAC3=MAPLPy.get_resource("TURBULENCE_SHC_LENFAC3:", mapl_state, default=Float(1.)),
+            LENFAC3=MAPLPy.get_resource("TURBULENCE_SHC_LENFAC3:", mapl_state, default=Float(.5)),
             CeFAC=MAPLPy.get_resource("TURBULENCE_SHC_CEFAC:", mapl_state, default=Float(1.)),
             CesFAC=MAPLPy.get_resource("TURBULENCE_SHC_CESFAC:", mapl_state, default=Float(4.)),
             Ck=MAPLPy.get_resource("TURBULENCE_SHC_CK:", mapl_state, default=Float(.1)),
-            shoc_lambda=MAPLPy.get_resource("TURBULENCE_SHC_LAMBDA:", mapl_state, default=Float(.5)),
+            shoc_lambda=MAPLPy.get_resource("TURBULENCE_SHC_LAMBDA:", mapl_state, default=Float(.25)),
         )
 
     def run(self, mapl_state, import_state, export_state) -> None:
@@ -77,24 +81,26 @@ class SHOCGEOSInterface(UserCode):
         self._managed_state.register("input.QGTOT", "QGTOT", import_repository)
         self._managed_state.register("input.QLTOT", "QLTOT", import_repository)
         self._managed_state.register("input.QRTOT", "QRTOT", import_repository)
+        self._managed_state.register("input.WTHV2", "WTHV2", import_repository)
         self._managed_state.register("input.FCLD", "FCLD", import_repository)
-        self._managed_state.register("input.BUOYF", "DSL__BUOYF", import_repository)
-        self._managed_state.register_K_interface("input.MFTKE", "DSL__MFTKE", import_repository)
-        self._managed_state.register_2D("input.DRYCBLH", "DSL__DRYCBLH", import_repository)
+        self._managed_state.register("input.BUOYF", "DSL__BUOYF", import_repository,alloc=True)
+        self._managed_state.register_K_interface("input.MFTKE", "DSL__MFTKE", import_repository,alloc=True)
+        self._managed_state.register_2D("input.DRYCBLH", "DSL__DRYCBLH", import_repository,alloc=True)
 
         self._managed_state.register("input_output.TKESHOC", "TKESHOC", internal_repository)
-        self._managed_state.register("input_output.TKH", "TKH", internal_repository)
-        self._managed_state.register("output.KH", "KH", export_repository,alloc=True)
-        self._managed_state.register("output.KM", "KM", export_repository, alloc=True)
-        self._managed_state.register("output.ISOTROPY", "ISOTROPY", export_repository, alloc=True)
+        self._managed_state.register_K_interface("input_output.TKH", "TKH", internal_repository)
+        self._managed_state.register_K_interface("output.KH", "KH", export_repository,alloc=True)
+        self._managed_state.register_K_interface("output.KM", "KM", export_repository, alloc=True)
+        self._managed_state.register_K_interface("output.ISOTROPY", "ISOTROPY", export_repository, alloc=True)
         self._managed_state.register("output.TKEDISS", "TKEDISS", internal_repository)
+        self._managed_state.register("output.TKEDISSx", "TKEDISS", export_repository)
         self._managed_state.register("output.TKEBUOY", "TKEBUOY", export_repository)    
         self._managed_state.register("output.TKESHEAR", "TKESHEAR", export_repository) 
         self._managed_state.register("output.LSHOC", "LSHOC", export_repository)     
         self._managed_state.register("output.LSHOC1", "LSHOC1", export_repository)
         self._managed_state.register("output.LSHOC2", "LSHOC2", export_repository)
         self._managed_state.register("output.LSHOC3", "LSHOC3", export_repository)
-        self._managed_state.register("output.BRUNTSHOC", "BRUNTSHOC", export_repository)
+        self._managed_state.register("output.BRUNTSHOC", "BRUNTSHOC", export_repository, alloc=True) # alloc=True only if PDFSHAPE>=5
         self._managed_state.register_K_interface("output.RI", "RI", export_repository,alloc=True)  
         self._managed_state.register_K_interface("output.SHOCPRNUM", "SHOCPRNUM", export_repository)    
 
@@ -109,17 +115,20 @@ class SHOCGEOSInterface(UserCode):
         with TimedCUDAProfiler("SHOC", {}):
             with TimedCUDAProfiler("SHOC - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
-                # self._managed_state.record("SHOC-Fortran-In")
+                self._managed_state.record("SHOC-In")
 
             with TimedCUDAProfiler("SHOC Numerics", {}):
                 self._shoc(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("SHOC - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
+                self._managed_state.record("SHOC-Out")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         assert self._managed_state
-        self._managed_state.save_recorded()  # type: ignore[unreachable]
+        rank = MPI.COMM_WORLD.Get_rank()
+        if rank == 0:
+            self._managed_state.save_recorded()  # type: ignore[unreachable]
 
 
 CODE = SHOCGEOSInterface("SHOC")
