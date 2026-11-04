@@ -117,24 +117,6 @@ class SHOCMFState(State):
             }
         )
    
-        QPI: Quantity = dataclasses.field(
-            metadata={
-                "name": "QPI",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "m",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        QPL: Quantity = dataclasses.field(
-            metadata={
-                "name": "QPL",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "m",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         SH: Quantity = dataclasses.field(
             metadata={
                 "name": "SH",
@@ -180,15 +162,6 @@ class SHOCMFState(State):
                 "dtype": Float,
             }
         )
-        Z: Quantity = dataclasses.field(
-            metadata={
-                "name": "Z",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "m",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
         ZLE: Quantity = dataclasses.field(
             metadata={
                 "name": "ZLE",
@@ -214,7 +187,7 @@ class SHOCMFState(State):
         TKH: Quantity = dataclasses.field(
             metadata={
                 "name": "TKH",
-                "dims": [I_DIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "",
                 "intent": "?",
                 "dtype": Float,
@@ -228,7 +201,7 @@ class SHOCMFState(State):
         ISOTROPY: Quantity = dataclasses.field(
             metadata={
                 "name": "ISOTROPY",
-                "dims": [I_DIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "f",
                 "intent": "?",
                 "dtype": Float,
@@ -238,7 +211,7 @@ class SHOCMFState(State):
         KM: Quantity = dataclasses.field(
             metadata={
                 "name": "KM",
-                "dims": [I_DIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
@@ -253,18 +226,9 @@ class SHOCMFState(State):
                 "dtype": Float,
             }
         )
-        TKESHOC: Quantity = dataclasses.field(
+        TKEDISSx: Quantity | None = dataclasses.field(
             metadata={
-                "name": "TKESHOC",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        TKH: Quantity = dataclasses.field(
-            metadata={
-                "name": "TKH",
+                "name": "TKEDISSx",
                 "dims": [I_DIM, J_DIM, K_DIM],
                 "units": "?",
                 "intent": "?",
@@ -362,7 +326,7 @@ class SHOCMFState(State):
         KH: Quantity = dataclasses.field(
             metadata={
                 "name": "KH",
-                "dims": [I_DIM, J_DIM, K_DIM],
+                "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
                 "units": "?",
                 "intent": "?",
                 "dtype": Float,
