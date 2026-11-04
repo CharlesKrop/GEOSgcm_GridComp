@@ -42,7 +42,6 @@ class TranslateResetTke(TranslateFortranData2Py):
         _reset_tke = self.stencil_factory.from_dims_halo(
             func=reset_tke,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"min_tke": config.min_tke}
         )
 
         # Inputs

@@ -36,8 +36,6 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
             "QGTOT": {},
             "QITOT": {},
             "QLTOT": {},
-            "QPI": {},
-            "QPL": {},
             "QRTOT": {},
             "QSTOT": {},
             "SH": {},
@@ -47,8 +45,8 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
             "U": {},
             "V": {},
             "WTHV2": {},
-            "Z": {},
             "ZLE": {},
+            "ISOTROPY_IN": {},
         }
 
         # FloatField Outputs
@@ -92,8 +90,6 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
         state.input.QGTOT.field[:] = inputs["QGTOT"]
         state.input.QITOT.field[:] = inputs["QITOT"]
         state.input.QLTOT.field[:] = inputs["QLTOT"]
-        state.input.QPL.field[:] = inputs["QPL"]
-        state.input.QPI.field[:] = inputs["QPI"]
         state.input.QRTOT.field[:] = inputs["QRTOT"]
         state.input.QSTOT.field[:] = inputs["QSTOT"]
         state.input.SH.field[:] = inputs["SH"]
@@ -101,8 +97,8 @@ class TranslateRUN_SHOC(TranslateFortranData2Py):
         state.input.U.field[:] = inputs["U"]
         state.input.V.field[:] = inputs["V"]
         state.input.WTHV2.field[:] = inputs["WTHV2"]
-        state.input.Z.field[:] = inputs["Z"]
         state.input.ZLE.field[:] = inputs["ZLE"]
+        state.output.ISOTROPY.field[:] = inputs["ISOTROPY_IN"]
         
         # In/outs
         state.input_output.TKESHOC.field[:] = inputs["TKESHOC_IN"]
