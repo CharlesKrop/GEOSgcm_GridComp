@@ -151,3 +151,11 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
+    _dummy_field_no_read_no_write: Local = dataclasses.field(
+        metadata={
+            "name": "_dummy_field_no_read_no_write",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "1",
+            "dtype": Float,
+        }
+    )
