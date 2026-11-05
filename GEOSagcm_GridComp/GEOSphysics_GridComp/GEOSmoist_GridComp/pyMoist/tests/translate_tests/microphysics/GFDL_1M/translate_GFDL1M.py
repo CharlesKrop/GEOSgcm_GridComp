@@ -159,7 +159,7 @@ class TranslateGFDL1M(TranslateFortranData2Py):
         # shift GFDL_MP_KLID to be zero-based for Python
         lid = constants["GFDL_MP_KLID"]
         constants["GFDL_MP_KLID"] = lid - Int(1) if lid > 0 else Int(0)
-        config = GFDL1MConfig(CWD="/Users/ckropiew/GEOS/v11.10.1/run/experiments/GCM_C24_L72_NX1_NY1/scratch", **constants)
+        config = GFDL1MConfig(CWD="/Users/ckropiew/netcdfs/last_run", **constants)
 
         # initialize state
         state = GFDL1MState.zeros(self.quantity_factory)
