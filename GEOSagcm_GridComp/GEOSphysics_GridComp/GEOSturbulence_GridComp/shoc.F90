@@ -23,6 +23,7 @@ module shoc
  use MAPL,              only: MAPL_UNDEF
 
  use MAPL_SatVaporMod,  only: MAPL_EQsat
+ use GEOS_UtilsMod,     only: GEOS_QsatIce, GEOS_QsatLqu
 
  implicit none
 
@@ -639,8 +640,12 @@ contains
 ! Saturation mixing ratio over water/ice wrt temp  based on relative water phase content
 !             qsatt =     omn  * qsatw(tabs(i,j,k),prsl(i,j,k))                &
 !                   + (1.-omn) * qsati(tabs(i,j,k),prsl(i,j,k))
-             qsatt =     omn  * MAPL_EQsat(tabs(i,j,k),prsl(i,j,k),dtqw)     &
-                   + (1.-omn) * MAPL_EQsat(tabs(i,j,k),prsl(i,j,k),dtqi,OverIce=.TRUE.)
+
+             ! COMMENTED OUT FOR NOW, USING GEOS_QSAT INSTEAD OF MAPL_QSAT KMF 10/28/26
+            !  qsatt =     omn  * MAPL_EQsat(tabs(i,j,k),prsl(i,j,k),dtqw)     &
+            !        + (1.-omn) * MAPL_EQsat(tabs(i,j,k),prsl(i,j,k),dtqi,OverIce=.TRUE.)
+             qsatt =     omn  * GEOS_QsatLqu(tabs(i,j,k),prsl(i,j,k),dtqw)     &
+                   + (1.-omn) * GEOS_QsatIce(tabs(i,j,k),prsl(i,j,k),dtqi)
 
 ! Derivative of saturation mixing ratio over water/ice wrt temp. based on relative water phase content
 !             dqsat =     omn  * dtqsatw(tabs(i,j,k),prsl(i,j,k))             &
@@ -649,7 +654,6 @@ contains
 
              bbb = (1. + epsv*qsatt-wrk-qpl(i,j,k)-qpi(i,j,k)                &
                  + 1.61*tabs(i,j,k)*dqsat) / (1.+lstarn*dqsat)
-
 ! Calculate Brunt-Vaisalla frequency using centered differences in the vertical
 
              brunt(i,j,k) = cld_sgs(i,j,k)*betdz*(bbb*(hl(i,j,kc)-hl(i,j,kb))               &
@@ -704,8 +708,7 @@ contains
       brunt_edge(:,:,nz) = brunt_edge(:,:,nzm)
       brunt2(:,:,1) = brunt2(:,:,2)
       brunt2(:,:,nzm) = brunt2(:,:,nzm-1)
-
-
+ 
       !=========== Length scale calculations ===========
       ! Based on Eq. 10 in BK13 (Eq. 4.12 in Pete's dissertation)
       do k=1,nzm-1
@@ -750,14 +753,17 @@ contains
              if ( shocparams%LENOPT .lt. 4 ) then
 
                  ! Surface length scale, following Olson et al 2026
-                 if (lobukhov(i,j).gt.0.1) then
-                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 / (1.+3.*zl(i,j,k)/lobukhov(i,j))
-                 else if (lobukhov(i,j).lt.-0.1) then
-                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 * (1.-10.*zl(i,j,k)/lobukhov(i,j))**0.2
-                 else
-                    smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
-                 end if
+                !  if (lobukhov(i,j).gt.0.1) then
+                !     smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 / (1.+3.*zl(i,j,k)/lobukhov(i,j))
+                !  else if (lobukhov(i,j).lt.-0.1) then
+                !     smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1 * (1.-10.*zl(i,j,k)/lobukhov(i,j))**0.2
+                !  else
+                !     smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
+                !  end if
 !                 smixt1(i,j,k) = sqrt(400.*tkes*vonk*zl(i,j,k))*shocparams%LENFAC1  ! original SHOC, includes TKE
+
+                 ! Original smixt1 code KMF 10/21/26
+                 smixt1(i,j,k) = vonk*zl(i,j,k)*shocparams%LENFAC1
 
                  ! Turbulent length scale
                  smixt2(i,j,k) = sqrt(l_par(i,j,k)*400.*tkes)*shocparams%LENFAC2
