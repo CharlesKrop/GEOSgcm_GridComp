@@ -338,7 +338,7 @@ contains
          LONG_NAME  = 'DSL__BUOYF',                       &
          UNITS      = '',                                         &
          DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationEdge,                         &
+         VLOCATION  =  MAPL_VLocationCenter,                         &
          RESTART    = MAPL_RestartSkip,                           &
                                                         RC=STATUS  )
       VERIFY_(STATUS)
@@ -358,7 +358,7 @@ contains
          LONG_NAME  = 'DSL__DRYCBLH',                       &
          UNITS      = '',                                         &
          DIMS       =  MAPL_DimsHorzOnly,                          &
-         VLOCATION  =  MAPL_VLocationEdge,                         &
+         VLOCATION  = MAPL_VLocationNone,                  &
          RESTART    = MAPL_RestartSkip,                           &
                                                         RC=STATUS  )
       VERIFY_(STATUS)
@@ -3144,7 +3144,8 @@ end if
      integer :: NTR, K, LTOP, LMAX
      real :: maxaero
      real :: eis_stable, kh_thresh
-     real, pointer, dimension(:,:,:) :: DSL__BUOYF, DSL__MFTKE
+     real, pointer, dimension(:,:,:) :: DSL__BUOYF
+     real, pointer, dimension(:,:,:) :: DSL__MFTKE
      real, pointer, dimension(:,:) :: DSL__DRYCBLH
 
 #ifdef _CUDA
@@ -3290,8 +3291,20 @@ end if
      if (DO_SHOC /= 0) then
         call MAPL_GetResource(MAPL, USE_PYTURB_SHOC, 'USE_PYTURB_SHOC:', default=.FALSE., RC=STATUS); VERIFY_(STATUS)
         if (USE_PYTURB_SHOC) then
-           call MAPL_ConfigSetAttribute(CF, DT, 'DSL__SHOC_DT:', RC=STATUS); VERIFY_(STATUS)
-           call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
+            call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%TSCALE,  trim(COMP_NAME)//"_SHC_TSCALE:",      default=400., RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%CKVAL,   trim(COMP_NAME)//"_SHC_CK:",          default=0.1,  RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%CEFAC,   trim(COMP_NAME)//"_SHC_CEFAC:",       default=1.0,  RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%CESFAC,  trim(COMP_NAME)//"_SHC_CESFAC:",      default=4.,   RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENOPT,  trim(COMP_NAME)//"_SHC_LENOPT:",      default=3,    RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC1, trim(COMP_NAME)//"_SHC_LENFAC1:",     default=5.,   RC=STATUS); VERIFY_(STATUS)       
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC2, trim(COMP_NAME)//"_SHC_LENFAC2:",     default=2.,   RC=STATUS); VERIFY_(STATUS)       
+            call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
+            call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
+            call MAPL_ConfigSetAttribute(CF, DT, 'DSL__SHOC_DT:', RC=STATUS); VERIFY_(STATUS)
+            call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
         else
             call MAPL_GetResource (MAPL, SHOCPARAMS%PRNUM,   trim(COMP_NAME)//"_SHC_PRNUM:",       default=-0.9, RC=STATUS); VERIFY_(STATUS)
             call MAPL_GetResource (MAPL, SHOCPARAMS%LAMBDA,  trim(COMP_NAME)//"_SHC_LAMBDA:",      default=0.25, RC=STATUS); VERIFY_(STATUS)
@@ -3305,6 +3318,8 @@ end if
             call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
             call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
             call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
+            call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT )
+            call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT )
          endif !ENDIF USE_PYTURB_SHOC
      else
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , RC=STATUS); VERIFY_(STATUS)
@@ -3885,6 +3900,7 @@ end if
       slflxmf      = (aws3-awql3*mapl_alhl-awqi3*mapl_alhs)/mapl_cp
       qtflxmf      = awqv3+awql3+awqi3
 
+
       !=== Fill Exports ===
       if (associated(edmf_dry_a))     edmf_dry_a   = edmfdrya 
       if (associated(edmf_moist_a))   edmf_moist_a = edmfmoista 
@@ -3971,19 +3987,17 @@ end if
       call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
       VERIFY_(STATUS)
 
-
-      call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
       DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
       DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
       DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
-
+      
       if (USE_PYTURB_SHOC) then
-   
          call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
-
       else
+      call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT, INTERNAL )
       call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                   !== Inputs ==
                   SH(:,:),               &
@@ -4028,7 +4042,15 @@ end if
       if (associated(TKEDISSx)) TKEDISSx = TKEDISS
       KH(:,:,1:LM) = TKH(:,:,1:LM)
 
+      call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT, INTERNAL )
       endif ! ENDIF USE_PYTURB_SHOC
+
+      if (USE_PYTURB_SHOC) then
+         call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
+      else
+         call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT )
+         call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT )
+      endif
 
       call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
       VERIFY_(STATUS)
@@ -4627,7 +4649,7 @@ end if
                do L = LM,2,-1
                   locmax = maxloc(temparray(1:LM),1)
                   minlval = max(0.001,0.0001*maxval(temparray(1:LM)))
-                  if(temparray(locmax-1)<minlval.and.temparray(locmax+1)<minlval) temparray(locmax) = minlval
+                  !if(temparray(locmax-1)<minlval.and.temparray(locmax+1)<minlval) temparray(locmax) = minlval
                enddo
                maxkh = temparray(LM)
                do L = LM-1,2,-1
@@ -7381,6 +7403,27 @@ end subroutine ComputeMOScalingInterlevel
 
     return
   end subroutine VTRISOLVE
+
+!   subroutine SHOC_Finalize(gc, import, export, rc)
+
+!    type(ESMF_GridComp), intent(inout) :: GC     ! Gridded component
+!    type(ESMF_State),    intent(inout) :: IMPORT ! Import state
+!    type(ESMF_State),    intent(inout) :: EXPORT ! Export state
+!    integer, optional,   intent(  out) :: RC     ! Error code
+   
+!    type (MAPL_MetaComp), pointer   :: MAPL
+   
+!    ! Get my internal MAPL_Generic state
+!    !-----------------------------------
+!    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS)
+!    VERIFY_(STATUS)
+
+
+!    if (USE_PYTURB_SHOC) then
+!       call MAPL_pybridge_gcfinalize( "pyMoist.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
+!    endif
+
+! end subroutine SHOC_Finalize
 
 
 end module GEOS_TurbulenceGridCompMod
