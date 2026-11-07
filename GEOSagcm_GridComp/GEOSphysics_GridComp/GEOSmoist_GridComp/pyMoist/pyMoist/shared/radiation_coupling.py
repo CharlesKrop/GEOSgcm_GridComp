@@ -1,77 +1,74 @@
-from ndsl.dsl.gt4py import PARALLEL, computation, interval
+from ndsl.dsl.gt4py import computation, FORWARD, PARALLEL, interval
+from pyMoist.constants import MAPL_UNDEF
 from ndsl.dsl.typing import FloatField
+from pyMoist.shared.constants import CFMIN, QCMIN, QPMIN
+from pyMoist.shared.cloud_processes import cloud_effective_radius_ice, cloud_effective_radius_liquid
 
-from pyMoist.shared.incloud_processes import cloud_effective_radius_ice, cloud_effective_radius_liquid
 
-
-def radiation_coupling(
-    temperature: FloatField,
-    pressure: FloatField,
-    large_scale_cloud_fraction: FloatField,
-    convective_cloud_fraction: FloatField,
-    vapor: FloatField,
-    large_scale_liquid: FloatField,
-    large_scale_ice: FloatField,
-    convective_liquid: FloatField,
-    convective_ice: FloatField,
-    rain: FloatField,
-    snow: FloatField,
-    graupel: FloatField,
-    liquid_concentration: FloatField,
-    ice_concentration: FloatField,
-    radiation_vapor: FloatField,
-    radiation_liquid: FloatField,
+def radiation_coupling_scale_aware(
+    t: FloatField,
+    p_mb: FloatField,
+    cloud_particle_effective_radius_liquid: FloatField,
+    cloud_particle_effective_radius_ice: FloatField,
+    concentration_liquid: FloatField,
+    radiation_cloud_fraction: FloatField,
+    radiation_graupel: FloatField,
     radiation_ice: FloatField,
+    radiation_liquid: FloatField,
     radiation_rain: FloatField,
     radiation_snow: FloatField,
-    radiation_graupel: FloatField,
-    radiation_cloud_fraction: FloatField,
-    liquid_radius: FloatField,
-    ice_radius: FloatField,
-) -> None:
-    """Couple radiation with cloud variables to ensure physical consistency.
-
-    Args:
-        temperature (FloatField)
-        pressure (FloatField)
-        large_scale_cloud_fraction (FloatField)
-        convective_cloud_fraction (FloatField)
-        vapor (FloatField)
-        large_scale_liquid (FloatField)
-        large_scale_ice (FloatField)
-        convective_liquid (FloatField)
-        convective_ice (FloatField)
-        rain (FloatField)
-        snow (FloatField)
-        graupel (FloatField)
-        liquid_concentration (FloatField)
-        ice_concentration (FloatField)
-        radiation_vapor (FloatField)
-        radiation_liquid (FloatField)
-        radiation_ice (FloatField)
-        radiation_rain (FloatField)
-        radiation_snow (FloatField)
-        radiation_graupel (FloatField)
-        radiation_cloud_fraction (FloatField)
-        liquid_radius (FloatField)
-        ice_radius (FloatField)
-    """
-
-    from __externals__ import FAC_RI, FAC_RL, MAX_RI, MAX_RL, MIN_RI, MIN_RL
+    radiation_vapor: FloatField,
+    anvil_cloud_fraction: FloatField,
+    anvil_ice: FloatField,
+    anvil_liquid: FloatField,
+    large_scale_cloud_fraction: FloatField,
+    large_scale_ice: FloatField,
+    large_scale_liquid: FloatField,
+    graupel: FloatField,
+    rain: FloatField,
+    snow: FloatField,
+    vapor: FloatField,
+):
+    from __externals__ import MIN_RL, MAX_RL, FAC_RL, MIN_RI, MAX_RI, FAC_RI, ICE_RADII_PARAM
 
     with computation(PARALLEL), interval(...):
-        # water vapor
+        # 1. Pass through water vapor
         radiation_vapor = vapor
 
-        # total cloud fraction
-        radiation_cloud_fraction = max(min(large_scale_cloud_fraction + convective_cloud_fraction, 1.0), 0.0)
-        if radiation_cloud_fraction >= 1.0e-5:
-            radiation_liquid = (large_scale_liquid + convective_liquid) / radiation_cloud_fraction if (large_scale_liquid + convective_liquid) >= 1.0e-8 else 0.0
-            radiation_ice = (large_scale_ice + convective_ice) / radiation_cloud_fraction if (large_scale_ice + convective_ice) >= 1.0e-8 else 0.0
-            radiation_rain = rain / radiation_cloud_fraction if rain >= 1.0e-8 else 0.0
-            radiation_snow = snow / radiation_cloud_fraction if snow >= 1.0e-8 else 0.0
-            radiation_graupel = graupel / radiation_cloud_fraction if graupel >= 1.0e-8 else 0.0
+        # 2. Combine inputs for Total Cloud Fraction and Cloud Condensates
+        total_liquid = large_scale_liquid + anvil_liquid
+        total_ice = large_scale_ice + anvil_ice
+        radiation_cloud_fraction = max(min(large_scale_cloud_fraction + anvil_cloud_fraction, 1.0), 0.0)
+
+        # 3. Process clouds if there is fraction OR resolved condensate
+        if radiation_cloud_fraction >= CFMIN or (total_liquid + total_ice) >= QCMIN:
+            # Calculate in-cloud specific humidities and cap at 0.01 max
+            if total_liquid >= QCMIN:
+                radiation_liquid = min(total_liquid / radiation_cloud_fraction, 0.01)
+            else:
+                radiation_liquid = 0.0
+
+            if total_ice >= QCMIN:
+                radiation_ice = min(total_ice / radiation_cloud_fraction, 0.01)
+            else:
+                radiation_ice = 0.0
+
+            if rain >= QPMIN:
+                radiation_rain = min(rain / radiation_cloud_fraction, 0.01)
+            else:
+                radiation_rain = 0.0
+
+            if snow >= QPMIN:
+                radiation_snow = min(snow / radiation_cloud_fraction, 0.01)
+            else:
+                radiation_snow = 0.0
+
+            if graupel >= QPMIN:
+                radiation_graupel = min(graupel / radiation_cloud_fraction, 0.01)
+            else:
+                radiation_graupel = 0.0
         else:
+            # Clear sky
             radiation_cloud_fraction = 0.0
             radiation_liquid = 0.0
             radiation_ice = 0.0
@@ -79,26 +76,14 @@ def radiation_coupling(
             radiation_snow = 0.0
             radiation_graupel = 0.0
 
-        # Cap the high end of condensates
-        radiation_liquid = min(radiation_liquid, 0.01)
-        radiation_ice = min(radiation_ice, 0.01)
-        radiation_rain = min(radiation_rain, 0.01)
-        radiation_snow = min(radiation_snow, 0.01)
-        radiation_graupel = min(radiation_graupel, 0.01)
+        # 4. LIQUID RADII (BRAMS formulation with limits)
+        if radiation_liquid > 0.0:
+            cloud_particle_effective_radius_liquid = max(MIN_RL, min(cloud_effective_radius_liquid(p_mb, t, radiation_liquid, concentration_liquid) * FAC_RL, MAX_RL))
+        else:
+            cloud_particle_effective_radius_liquid = MAPL_UNDEF
 
-        # Liquid radii - Brams formulation with limits
-        liquid_radius = max(
-            MIN_RL,
-            min(
-                cloud_effective_radius_liquid(pressure, temperature, radiation_liquid, liquid_concentration) * FAC_RL,
-                MAX_RL,
-            ),
-        )
-        # Ice radii - Brams formulation with limits
-        ice_radius = max(
-            MIN_RI,
-            min(
-                cloud_effective_radius_ice(pressure, temperature, radiation_ice) * FAC_RI,
-                MAX_RI,
-            ),
-        )
+        # 5. ICE RADII (BRAMS formulation with limits)
+        if radiation_ice > 0.0:
+            cloud_particle_effective_radius_ice = max(MIN_RI, min(cloud_effective_radius_ice(p_mb, t, radiation_ice, ICE_RADII_PARAM) * FAC_RI, MAX_RI))
+        else:
+            cloud_particle_effective_radius_ice = MAPL_UNDEF
