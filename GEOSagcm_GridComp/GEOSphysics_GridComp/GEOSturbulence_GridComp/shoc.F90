@@ -1,4 +1,25 @@
+#define ACC_PREFIX !$acc
 module shoc
+
+#ifdef SERIALIZE
+USE m_serialize, ONLY: &
+  fs_add_savepoint_metainfo, &
+  fs_create_savepoint
+USE utils_ppser, ONLY:  &
+  ppser_get_mode, &
+  ppser_intlength, &
+  ppser_reallength, &
+  ppser_realtype, &
+  ppser_savepoint, &
+  ppser_serializer, &
+  ppser_serializer_ref, &
+  ppser_zrperturb, &
+  ppser_get_mode
+USE savepoint_helpers
+USE utils_ppser_buffered
+USE utils_ppser_kbuff
+#endif
+
 
 ! Implementation of the Simplified High Order Closure (SHOC) scheme
 ! of Bogenschutz and Krueger (2013), J. Adv. Model. Earth Syst, 5, 195-211,
@@ -210,7 +231,21 @@ module shoc
   Ces      = shocparams%CESFAC*Ce           ! Ce surface factor
   tscale   = shocparams%TSCALE              ! time scale set based off of similarity results of BK13, s
 
+
 ! Map GEOS variables to those of SHOC
+
+#ifdef SERIALIZE
+call fs_create_savepoint('InvertInterfaceVars-In', ppser_savepoint)
+call ser_set_Dx(nx,ny,nz,1)
+do k=1,nz
+do j=1,ny
+do i=1,nx
+call ser_set_indices(i,j,k,1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "phii_inv", phii_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+enddo
+enddo
+#endif
   do k=1,nz
     do j=1,ny
       do i=1,nx
@@ -219,6 +254,52 @@ module shoc
       enddo
     enddo
   enddo
+#ifdef SERIALIZE
+call fs_create_savepoint('InvertInterfaceVars-Out', ppser_savepoint)
+do k=1,nz
+do j=1,ny
+do i=1,nx
+call ser_set_indices(i,j,k,1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "zi", zi(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+enddo
+enddo
+#endif
+
+#ifdef SERIALIZE
+call fs_create_savepoint('InvertVars-In', ppser_savepoint)
+call ser_set_Dx(nx,ny,nzm,1)
+do k=1,nzm
+do j=1,ny
+do i=1,nx
+call ser_set_indices(i,j,k,1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "phil_inv", phil_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "tkh_inv", tkh_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "prsl_inv", prsl_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "u_inv", u_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "v_inv", v_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "omega_inv", omega_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "tabs_inv", tabs_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qwv_inv", qwv_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qc_inv", qc_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qi_inv", qi_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "cld_sgs_inv", cld_sgs_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "tke_inv", tke_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "wthv_sec_inv", wthv_sec_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "wthv_mf_inv", wthv_mf_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+enddo
+enddo
+call ser_set_Dx(nx,ny,nz,1)
+do k=1,nz
+do j=1,ny
+do i=1,nx
+call ser_set_indices(i,j,k,1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "phii_inv", phii_inv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+enddo
+enddo
+#endif
 
   do k=1,nzm
     do j=1,ny
@@ -241,6 +322,32 @@ module shoc
       enddo
     enddo
   enddo
+
+#ifdef SERIALIZE
+call fs_create_savepoint('InvertVars-Out', ppser_savepoint)
+call ser_set_Dx(nx,ny,nzm,1)
+do k=1,nzm
+do j=1,ny
+do i=1,nx
+call ser_set_indices(i,j,k,1)
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "zl", zl(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "tkh", tkh(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "prsl", prsl(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "u", u(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "v", v(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "omega", omega(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "tabs", tabs(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qwv", qwv(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qcl", qcl(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "qci", qci(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "cld_sgs", cld_sgs(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "tke", tke(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "wthv_sec", wthv_sec(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+    call fs_write_buffered(ppser_serializer, ppser_savepoint, 3, "wthv_mf", wthv_mf(i,j,k), idx_d1=ser_idx_d1, D1=ser_D1, idx_d2=ser_idx_d2, D2=ser_D2, idx_d3=ser_idx_d3, D3=ser_D3, idx_d4=ser_idx_d4, D4=ser_D4, mode=ppser_get_mode())
+enddo
+enddo
+enddo
+#endif
 
   do k=1,nzm
     do j=1,ny
