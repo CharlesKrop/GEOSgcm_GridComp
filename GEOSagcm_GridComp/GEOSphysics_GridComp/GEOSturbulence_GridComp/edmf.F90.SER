@@ -99,6 +99,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
                     moist_a3,                      & ! Cloudy updraft area fraction
                     dqrdt,                         & ! Liquid precipitation tendency
                     dqsdt,                         & ! Frozen precipitation tendency
+                    edmf_dmf,                      & ! Detrained mass flux (kg m-2 s-1)
                                                      !==== Diagnostic outputs - updraft properties ==================
                     dry_w3,                        & ! Dry updraft mean vertical velocity (m s-1)
                     moist_w3,                      & ! Cloudy updraft mean vertical velocity (m s-1)
@@ -171,7 +172,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
                                         dry_thl3, moist_thl3, &
                                         dry_u3,   moist_u3,   &
                                         dry_v3,   moist_v3,   &
-                                        moist_qc3, entx
+                                        moist_qc3, entx,      &
+                                        edmf_dmf
 
    REAL, DIMENSION(:,:,:,:), POINTER :: EDMF_PLUMES_W,   &
                                         EDMF_PLUMES_THL, &
@@ -223,15 +225,13 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
 
    LOGICAL :: calc_avg_diag
 
+
 ! min values to avoid singularities
    REAL, PARAMETER ::    &
        WSTARmin = 1.e-3, &
        PBLHmin = 100.
-
    !$ser verbatim logical :: DEBUG_EDMF
    !$ser verbatim DEBUG_EDMF=.True.
-
-   
   !$ser verbatim if (DEBUG_EDMF) then
   !$ser savepoint EDMF-constants
   !$ser verbatim call ser_set_Dx(1,1,1,1)
@@ -252,7 +252,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
   !$ser verbatim enddo
   !$ser verbatim enddo
   !$ser verbatim endif
-
 
    ! If any average diagnostics requested, perform required calculations,
    ! otherwise skip for efficiency
@@ -324,13 +323,11 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
   ! $ser verbatim enddo
   ! $ser verbatim enddo
   ! $ser verbatim endif
-  
-
    if (associated(entx)) entx = mapl_undef
 
-  
    ! Initialize the environmental area. Updraft area will be subtracted below.
    ae3=1.
+
 
   !  $ser verbatim if (DEBUG_EDMF) then
   !  $ser verbatim call ser_set_Dx(ITE,JTE,KTE+1,1)
@@ -370,9 +367,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser verbatim endif
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
       ! Activate mass-flux only if positive surface buoyancy flux
       ! and mean TKE below 100m exceeds threshold (for stability)
+      IF (wthv > 0.0 .and. tmp>0.05 .and. phis(IH,JH).lt.3e4) then
 
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint EstimateScaleHeight-In
@@ -384,6 +381,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 zlo3=zlo3(IH,JH,k)
       ! $ser data_buffered Dx=3 qv3=qv3(IH,JH,k)
       ! $ser verbatim enddo
+      nup2 = MFPARAMS%NUP
 
       ! $ser savepoint EstimateScaleHeight-In1
       ! $ser verbatim do k=KTS,KTE+1
@@ -391,9 +389,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 pw3=pw3(IH,JH,k-1) zw3_ESH=zw3(IH,JH,k-1)
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
-      IF (wthv > 0.0 .and. tmp>0.05 .and. phis(IH,JH).lt.3e4) then
-      nup2 = MFPARAMS%NUP
       UPW=0.
       UPTHL=0.
       UPTHV=0.
@@ -407,7 +402,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       QR = 0.
       QS = 0.
 
-
       ! Estimate scale height for entrainment calculation
       if (mfparams%ET == 2 ) then
          pmid = 0.5*(pw3(IH,JH,kts-1:kte-1)+pw3(IH,JH,kts:kte))
@@ -417,7 +411,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       else ! if mfparams%ET not 2
          L0 = mfparams%L0
       end if
-
       ! $ser savepoint EstimateScaleHeight-Out
       ! $ser verbatim do k=KTS,KTE
       ! $ser verbatim call ser_set_indices(IH,JH,k,1)
@@ -430,7 +423,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=2 mfdepth=mfdepth(IH,JH)
       ! $ser verbatim end if
       ! $ser verbatim enddo
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint FlipVariables-In
       ! $ser verbatim do k=KTS,KTE
@@ -441,7 +433,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=2 ztop=ztop
       ! $ser data_buffered Dx=2 wthv=wthv tmp=tmp phis=phis(IH,JH)
       ! $ser verbatim enddo
-
       ! $ser savepoint FlipVariables-In1
       ! $ser verbatim do k=KTS,KTE+1
       ! $ser verbatim call ser_set_indices(IH,JH,k,1)
@@ -481,8 +472,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
            end if
         end if
       ENDDO
-
-      
       ui(kte)     = u(kte)
       vi(kte)     = v(kte)
       thli(kte)   = thl(kte)
@@ -516,7 +505,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 qt=qt(k) dp=dp(k)
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint FlipVariables-Out1
       ! $ser verbatim do k=KTS,KTE+1
@@ -527,7 +515,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 zw=zw(k-1) p=p(k-1) qti=qti(k-1)
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
       !
       ! compute entrainment coefficient
       !
@@ -544,7 +531,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       THE_SEED(2) = 1000000 * ( 100*thl(kts+1) - INT(100*thl(kts+1)))
       if(THE_SEED(1) == 0) THE_SEED(1) =  5
       if(THE_SEED(2) == 0) THE_SEED(2) = -5
-
 
       if (L0 .gt. 0. ) then
         ! entrainent: Ent=Ent0/dz*P(dz/L0)
@@ -572,7 +558,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
         ENT=0.
       end if
 
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint SurfaceConditions-In
       ! $ser verbatim do k=KTS,KTE
@@ -580,14 +565,12 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=2 wthv=wthv pblh=pblh wqt=wqt wthl=wthl
       ! $ser data_buffered Dx=2 tmp=tmp phis=phis(IH,JH) ztop=ztop
       ! $ser verbatim enddo
-
       ! $ser savepoint SurfaceConditions-In1
       ! $ser verbatim do k=KTS,KTE+1
       ! $ser verbatim call ser_set_indices(IH,JH,k,1)
       ! $ser data_buffered Dx=3 p=p(k-1) 
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
       ! exner function
       exfh=(p/mapl_p00)**mapl_kappa
       exf=(0.5*(p(1:kte)+p(0:kte-1))/mapl_p00)**mapl_kappa
@@ -613,17 +596,14 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 exf=exf(k)
       ! $ser data_buffered Dx=2 wmin=wmin wmax=wmax
       ! $ser verbatim enddo
-
       ! $ser savepoint SurfaceConditions-Out1
       ! $ser verbatim do k=KTS,KTE+1
       ! $ser verbatim call ser_set_indices(IH,JH,k,1)
       ! $ser data_buffered Dx=3 exfh=exfh(k-1) 
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
       ! Identify inversions below 1.5km, calculate stability in overlying 1km to define
       ! a dynamic pressure deceleration factor in the updraft w equation below.
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint IdentifyInversions-In
       ! $ser verbatim do k=KTS,KTE
@@ -633,7 +613,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 zlo=zlo(k) t3=t3(IH,JH,k) thv=thv(k)
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
       wcfac = 0.
       tmp = 0.
       k = kts+1
@@ -651,7 +630,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
          end do
          wcfac(1:k) = min(10.,max(0.,thv(ktmp)-thv(k)-MFPARAMS%WCTHRESH))*exp(-(zlo(k)-zlo(1:k))/200. )
       end if
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint IdentifyInversions-Out
       ! $ser verbatim do k=KTS,KTE
@@ -660,7 +638,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 wcfac=wcfac(k) 
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint DefineSurfaceProperties-In
       ! $ser verbatim do k=KTS,KTE
@@ -705,11 +682,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser verbatim enddo
       ! $ser verbatim call ser_set_D4(1)
       ! $ser verbatim endif
-
       !
       ! If needed, rescale UPW to ensure that the mass-flux does not exceed layer mass
       !
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint ScaleUpdraft-In
       ! $ser verbatim call ser_set_D4(NUP2)
@@ -749,13 +724,10 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser verbatim enddo
       ! $ser verbatim call ser_set_D4(1)
       ! $ser verbatim endif
-
       !
       ! Make sure that the thv and qt fluxes are not more than
       ! their values computed from the surface scheme.
       !
-
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint TotalUpdraftFlux-In
       ! $ser verbatim call ser_set_D4(NUP2)
@@ -817,11 +789,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser verbatim enddo
       ! $ser verbatim call ser_set_D4(1)
       ! $ser verbatim endif
-
       !========================
       !  Integrate updrafts
       !========================
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint IntegrateUpdrafts-In
       ! $ser verbatim call ser_set_D4(NUP2)
@@ -850,7 +820,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 p=p(k-1) zw=zw(k-1) exfh=exfh(k-1)
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
 
       ! loop over vertical
       vertint: DO k=KTS,KTE
@@ -896,6 +865,7 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
               Wn2=EntW*UPW(k-1,I)**2+(1.-EntW)*MFPARAMS%WA*B/WP
             END IF
 
+
             IF (Wn2>0.) THEN
                UPW(K,I)=sqrt(Wn2)
                UPTHV(K,I)=THVn
@@ -909,15 +879,13 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
             ELSE
               UPW(K,I) = 0.
               UPA(K,I) = 0.
-                 !EXIT vertint
+!                  EXIT vertint
             END IF
           end if ! check if updraft still rising
         ENDDO   ! I: loop over updrafts
 
       ! loop over vertical
       ENDDO vertint
-
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint IntegrateUpdrafts-Out
       ! $ser verbatim call ser_set_D4(NUP2)
@@ -935,8 +903,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser data_buffered Dx=3 qr=qr(k) qs=qs(k) 
       ! $ser verbatim enddo
       ! $ser verbatim endif
-
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint UpdateEntx-In
       ! $ser verbatim call ser_set_D4(NUP2)
@@ -986,11 +952,9 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       ! $ser verbatim enddo
       ! $ser verbatim endif
 
-
   ! CFL condition: Check that mass flux does not exceed layer mass at any level
   ! If it does, rescale updraft area.
   ! See discussion in Beljaars et al 2018 [ECMWF Tech Memo]
-
     ! $ser verbatim if (DEBUG_EDMF) then
     ! $ser savepoint CheckMassFlux-In
     ! $ser verbatim call ser_set_D4(NUP2)
@@ -1024,7 +988,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
       QR  = factor*QR
       QS  = factor*QS
 
-
     ! $ser verbatim if (DEBUG_EDMF) then
     ! $ser savepoint CheckMassFlux-Out
     ! $ser verbatim call ser_set_D4(NUP2)
@@ -1040,10 +1003,8 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
     ! $ser data_buffered Dx=3 qr=qr(k) qs=qs(k)
     ! $ser verbatim enddo
     ! $ser verbatim endif
-
   ! Rescale UPA if MF TKE more than half of prognostic TKE near surface
   ! Prevents instability due to MF without KH
-
     ! $ser verbatim if (DEBUG_EDMF) then
     ! $ser savepoint RescaleUpdraftProperties-In
     ! $ser verbatim call ser_set_D4(NUP2)
@@ -1110,13 +1071,10 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
     ! $ser verbatim enddo
     ! $ser verbatim endif
 
-
       !
       ! writing updraft properties for output
       ! all variables, except Areas are now multipled by the area
       !
-
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint WriteUpdraftProperties-In
       ! $ser verbatim call ser_set_D4(NUP2)
@@ -1145,8 +1103,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
           ENDIF
         ENDDO  ! first sum over all i-updrafts
       END DO
-
-
       ! $ser verbatim if (DEBUG_EDMF) then
       ! $ser savepoint WriteUpdraftProperties-Out
       ! $ser verbatim call ser_set_D4(1)
@@ -1392,8 +1348,6 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
   ! $ser flush_savepoint WriteUpdraftProperties-In
   ! $ser flush_savepoint WriteUpdraftProperties-Out
   ! $ser verbatim endif
-  
-
 
   ! Calculate explicit part of state update for trisolver
   ! Note vertical index is flipped, as in TurbGridComp.
@@ -1443,6 +1397,17 @@ SUBROUTINE RUN_EDMF(its,ite, jts,jte, kts,kte, dt, & ! Index limits and timestep
   YQI = dmi * YQI
   YU  = dmi * YU
   YV  = dmi * YV
+
+  ! Detrained mass flux calculation
+  ! Includes contributions from the dynamic detrainment and from turbulent mixing
+  if (associated(edmf_dmf)) then
+     edmf_dmf = max(0.,edmfmf(:,:,kts-1:kte-1)-edmfmf(:,:,kts:kte))
+     edmf_dmf = edmf_dmf + edmfmf(:,:,kts:kte)*( 1. - exp( -entx(:,:,kts:kte)*(zw3(:,:,kts-1:kte-1)-zw3(:,:,kts:kte)) ) )
+     where( moist_a3(:,:,kts:kte).le.0. )
+        edmf_dmf = 0.
+     end where
+  end if
+
   
 END SUBROUTINE run_edmf
 
@@ -1471,7 +1436,6 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
   z1   = z(kte)
   ztop = z(kte)
 
-
   do k = kte-1 , kts+1, -1
     z2 = z(k)
     t2 = t(k)
@@ -1497,7 +1461,7 @@ subroutine calc_mf_depth(kts,kte,t,z,q,p,ztop,wthv,wqt)
 
     z1 = z2
     t1 = t2
-   enddo  ! k loop
+  enddo  ! k loop
 
   return
 
@@ -1679,7 +1643,6 @@ end subroutine Poisson
       REAL alxm,em,g,oldm,sq,t,y
       SAVE alxm,g,oldm,sq
       DATA oldm /-1./
-  
       if (xm.lt.12.)then
         if (xm.ne.oldm) then
           oldm=xm
