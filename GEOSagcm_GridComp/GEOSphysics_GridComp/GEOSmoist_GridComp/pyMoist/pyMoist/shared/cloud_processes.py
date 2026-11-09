@@ -339,15 +339,18 @@ def evaporate(
     # EVAPORATION OF CLOUD WATER - DelGenio et al (1996, J. Clim., 9, 270-303) formulation (Eq.s 15-17)
 
     with computation(PARALLEL), interval(...):
+        # Saturation Vapor Pressure calculation (Pa)
         es = 100.0 * p_mb * saturation_specific_humidity / (EPSILON + (1.0 - EPSILON) * saturation_specific_humidity)  # (100's <-^ convert from mbar to Pa)
 
+        # Relative Humidity ceiling
         rh_limited = min(vapor / saturation_specific_humidity, 1.00)
 
+        # Thermodynamic and Psychrometric microphysical diffusion factors
         k1 = (MAPL_ALHL**2) * RHO_W / (K_COND * MAPL_RVAP * (t**2))
-
-        # DIFFU is given for 1000 mb, so 1000.0/p_mb accounts for increased diffusivity at lower pressure
         k2 = MAPL_RVAP * t * RHO_W / (DIFFU * (1000.0 / p_mb) * es)
 
+        # Liquid radii evaluation
+        # Pass grid-mean QL to perfectly balance the grid-mean drop concentration NL
         if cloud_fraction > 0.0 and liquid > 0.0:
             liquid_modified = liquid / cloud_fraction
         else:
@@ -355,16 +358,20 @@ def evaporate(
 
         radius = cloud_effective_radius_liquid(p_mb, t, liquid_modified, concentration_liquid)
 
+        # Calculate Evaporation rate with explicit squared radius dependencies
         if rh_limited < rh_crit and radius > 0.0:
             evap = CCW_EVAP_EFF * liquid * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)
             evap = max(0.0, min(evap, liquid))
         else:
             evap = 0.0
 
+        # Macrophysical Cloud Fraction Adjustment
         total_condensate = ice + liquid
         if total_condensate > 0.0:
+            # Linear relaxation of cloud fraction based on evaporated mass fraction
             cloud_fraction = cloud_fraction * (total_condensate - evap) / total_condensate
 
+        # State Variable Updates
         vapor = vapor + evap
         liquid = liquid - evap
         t = t - (MAPL_ALHL / MAPL_CP) * evap
