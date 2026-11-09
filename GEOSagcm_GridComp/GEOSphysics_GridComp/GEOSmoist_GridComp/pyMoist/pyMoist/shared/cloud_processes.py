@@ -340,7 +340,7 @@ def evaporate(
 
     with computation(PARALLEL), interval(...):
         # Saturation Vapor Pressure calculation (Pa)
-        es = 100.0 * p_mb * saturation_specific_humidity / (EPSILON + (1.0 - EPSILON) * saturation_specific_humidity)  # (100's <-^ convert from mbar to Pa)
+        es = 100.0 * p_mb * saturation_specific_humidity / (EPSILON + (1.0 - EPSILON) * saturation_specific_humidity)
 
         # Relative Humidity ceiling
         rh_limited = min(vapor / saturation_specific_humidity, 1.00)
