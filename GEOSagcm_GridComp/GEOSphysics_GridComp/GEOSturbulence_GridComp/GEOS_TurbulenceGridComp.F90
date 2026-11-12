@@ -333,35 +333,35 @@ contains
                                                         RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'DSL__BUOYF',                                       &
-         LONG_NAME  = 'DSL__BUOYF',                       &
-         UNITS      = '',                                         &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationCenter,                         &
-         RESTART    = MAPL_RestartSkip,                           &
-                                                        RC=STATUS  )
-      VERIFY_(STATUS)
+      ! call MAPL_AddImportSpec(GC,                                 &
+      !    SHORT_NAME = 'DSL__BUOYF',                                       &
+      !    LONG_NAME  = 'DSL__BUOYF',                       &
+      !    UNITS      = '',                                         &
+      !    DIMS       =  MAPL_DimsHorzVert,                          &
+      !    VLOCATION  =  MAPL_VLocationCenter,                         &
+      !    RESTART    = MAPL_RestartSkip,                           &
+      !                                                   RC=STATUS  )
+      ! VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'DSL__MFTKE',                                       &
-         LONG_NAME  = 'DSL__MFTKE',                       &
-         UNITS      = '',                                         &
-         DIMS       =  MAPL_DimsHorzVert,                          &
-         VLOCATION  =  MAPL_VLocationEdge,                         &
-         RESTART    = MAPL_RestartSkip,                           &
-                                                        RC=STATUS  )
-      VERIFY_(STATUS)
+      ! call MAPL_AddImportSpec(GC,                                 &
+      !    SHORT_NAME = 'DSL__MFTKE',                                       &
+      !    LONG_NAME  = 'DSL__MFTKE',                       &
+      !    UNITS      = '',                                         &
+      !    DIMS       =  MAPL_DimsHorzVert,                          &
+      !    VLOCATION  =  MAPL_VLocationEdge,                         &
+      !    RESTART    = MAPL_RestartSkip,                           &
+      !                                                   RC=STATUS  )
+      ! VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                                 &
-         SHORT_NAME = 'DSL__DRYCBLH',                                       &
-         LONG_NAME  = 'DSL__DRYCBLH',                       &
-         UNITS      = '',                                         &
-         DIMS       =  MAPL_DimsHorzOnly,                          &
-         VLOCATION  = MAPL_VLocationNone,                  &
-         RESTART    = MAPL_RestartSkip,                           &
-                                                        RC=STATUS  )
-      VERIFY_(STATUS)
+      ! call MAPL_AddImportSpec(GC,                                 &
+      !    SHORT_NAME = 'DSL__DRYCBLH',                                       &
+      !    LONG_NAME  = 'DSL__DRYCBLH',                       &
+      !    UNITS      = '',                                         &
+      !    DIMS       =  MAPL_DimsHorzOnly,                          &
+      !    VLOCATION  = MAPL_VLocationNone,                  &
+      !    RESTART    = MAPL_RestartSkip,                           &
+      !                                                   RC=STATUS  )
+      ! VERIFY_(STATUS)
 
      call MAPL_AddImportSpec(GC,                                  &
         SHORT_NAME = 'TH',                                        &
@@ -3144,9 +3144,9 @@ end if
      integer :: NTR, K, LTOP, LMAX
      real :: maxaero
      real :: eis_stable, kh_thresh
-     real, pointer, dimension(:,:,:) :: DSL__BUOYF
-     real, pointer, dimension(:,:,:) :: DSL__MFTKE
-     real, pointer, dimension(:,:) :: DSL__DRYCBLH
+   !   real, pointer, dimension(:,:,:) :: DSL__BUOYF
+   !   real, pointer, dimension(:,:,:) :: DSL__MFTKE
+   !   real, pointer, dimension(:,:) :: DSL__DRYCBLH
 
 #ifdef _CUDA
      type(dim3) :: Grid, Block
@@ -3338,6 +3338,7 @@ end if
 !-----------------------------------
 
      PDFALLOC = (PDFSHAPE.ge.5)
+     
 
      call MAPL_GetPointer(EXPORT,      KH,      'KH', ALLOC=.TRUE., RC=STATUS)
      VERIFY_(STATUS)
@@ -3987,12 +3988,12 @@ end if
       call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
       VERIFY_(STATUS)
 
-      call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
-      DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
-      DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
+      ! call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      ! call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      ! call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      ! DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
+      ! DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
+      ! DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
       
       if (USE_PYTURB_SHOC) then
          call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
