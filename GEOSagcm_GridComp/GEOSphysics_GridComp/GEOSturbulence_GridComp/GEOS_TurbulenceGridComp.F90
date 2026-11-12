@@ -333,7 +333,7 @@ contains
                                                         RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                                 &
+      call MAPL_AddInternalSpec(GC,                                 &
          SHORT_NAME = 'DSL__BUOYF',                                       &
          LONG_NAME  = 'DSL__BUOYF',                       &
          UNITS      = '',                                         &
@@ -343,7 +343,7 @@ contains
                                                         RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                                 &
+      call MAPL_AddInternalSpec(GC,                                 &
          SHORT_NAME = 'DSL__MFTKE',                                       &
          LONG_NAME  = 'DSL__MFTKE',                       &
          UNITS      = '',                                         &
@@ -353,7 +353,7 @@ contains
                                                         RC=STATUS  )
       VERIFY_(STATUS)
 
-      call MAPL_AddImportSpec(GC,                                 &
+      call MAPL_AddInternalSpec(GC,                                 &
          SHORT_NAME = 'DSL__DRYCBLH',                                       &
          LONG_NAME  = 'DSL__DRYCBLH',                       &
          UNITS      = '',                                         &
@@ -3988,9 +3988,9 @@ end if
       call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
       VERIFY_(STATUS)
 
-      call MAPL_GetPointer(IMPORT,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,   DSL__MFTKE,  'DSL__MFTKE', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(IMPORT,   DSL__DRYCBLH,  'DSL__DRYCBLH', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL,   DSL__MFTKE,  'DSL__MFTKE', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+      call MAPL_GetPointer(INTERNAL,   DSL__DRYCBLH,  'DSL__DRYCBLH', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
       DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
       DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
       DSL__DRYCBLH(:, :) = DRYCBLH(:,:)

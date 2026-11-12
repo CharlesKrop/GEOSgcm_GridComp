@@ -64,9 +64,9 @@ class SHOCGEOSInterface_NOOP_Out(UserCode):
         self._managed_state.register("input.QRTOT", "QRTOT", import_repository)
         self._managed_state.register("input.WTHV2", "WTHV2", import_repository)
         self._managed_state.register("input.FCLD", "FCLD", import_repository)
-        self._managed_state.register("input.BUOYF", "DSL__BUOYF", import_repository,alloc=True)
-        self._managed_state.register_K_interface("input.MFTKE", "DSL__MFTKE", import_repository,alloc=True)
-        self._managed_state.register_2D("input.DRYCBLH", "DSL__DRYCBLH", import_repository,alloc=True)
+        self._managed_state.register("input.BUOYF", "DSL__BUOYF", internal_repository,alloc=True)
+        self._managed_state.register_K_interface("input.MFTKE", "DSL__MFTKE", internal_repository,alloc=True)
+        self._managed_state.register_2D("input.DRYCBLH", "DSL__DRYCBLH", internal_repository,alloc=True)
 
         self._managed_state.register("input_output.TKESHOC", "TKESHOC", internal_repository)
         self._managed_state.register_K_interface("input_output.TKH", "TKH", internal_repository)
