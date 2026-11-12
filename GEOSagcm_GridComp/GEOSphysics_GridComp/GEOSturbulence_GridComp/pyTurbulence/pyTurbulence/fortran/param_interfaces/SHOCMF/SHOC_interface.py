@@ -115,20 +115,20 @@ class SHOCGEOSInterface(UserCode):
         with TimedCUDAProfiler("SHOC", {}):
             with TimedCUDAProfiler("SHOC - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
-                self._managed_state.record("SHOC-In")
+                #self._managed_state.record("SHOC-In")
 
             with TimedCUDAProfiler("SHOC Numerics", {}):
                 self._shoc(self._managed_state.ndsl_state)
 
             with TimedCUDAProfiler("SHOC - State copy-back", {}):
                 self._managed_state.ndsl_to_fortran()
-                self._managed_state.record("SHOC-Out")
+                #self._managed_state.record("SHOC-Out")
 
     def finalize(self, mapl_state, import_state, export_state) -> None:
         assert self._managed_state
-        rank = MPI.COMM_WORLD.Get_rank()
-        if rank == 0:
-            self._managed_state.save_recorded()  # type: ignore[unreachable]
+        # rank = MPI.COMM_WORLD.Get_rank()
+        # if rank == 0:
+        #     self._managed_state.save_recorded()  # type: ignore[unreachable]
 
 
 CODE = SHOCGEOSInterface("SHOC")
