@@ -4093,12 +4093,12 @@ subroutine pimltfrz (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm
     ! Applies a resolution-dependent adjustment to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
+    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1x)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
-    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
-    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
+    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m^3
+    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0x) to
+    !   2.0e-4 kg/m^3. Grid-scale clouds get a larger ice bucket, allowing 
     !   resolved large-scale ascent to loft and suspend ice normally before
     !   autoconversion to snow occurs.
     ! -------------------------------------------------------------------------
@@ -4300,12 +4300,12 @@ subroutine pifr (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, cvm, te
     ! Applies a resolution-dependent adjustment to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
+    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1x)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
-    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
-    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
+    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m^3
+    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0x) to
+    !   2.0e-4 kg/m^3. Grid-scale clouds get a larger ice bucket, allowing 
     !   resolved large-scale ascent to loft and suspend ice normally before
     !   autoconversion to snow occurs.
     ! -------------------------------------------------------------------------
@@ -4643,12 +4643,12 @@ subroutine psaut (ks, ke, dts, qak, qvk, qlk, qrk, qik, qsk, qgk, dp, tz, den, d
     ! Applies a resolution-dependent adjustment to the critical ice threshold,
     ! partitioning the grid box into unresolved and resolved fractions.
     !   
-    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1×)
+    ! - Unresolved scales (onemsig = 0): Applies a strict penalty (0.1x)
     !   to sub-grid parameterizations. This forces sub-grid ice to precipitate
     !   as snow earlier, preventing global QI from skyrocketing and negatively 
-    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m³
-    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0×) to
-    !   2.0e-4 kg/m³. Grid-scale clouds get a larger ice bucket, allowing 
+    !   impacting the radiation budget. Threshold = 1.0e-5 kg/m^3
+    ! - Resolved scales (onemsig = 1): Increases the threshold (2.0x) to
+    !   2.0e-4 kg/m^3. Grid-scale clouds get a larger ice bucket, allowing 
     !   resolved large-scale ascent to loft and suspend ice normally before
     !   autoconversion to snow occurs.
     ! -------------------------------------------------------------------------
@@ -5625,8 +5625,8 @@ subroutine pwbf (ks, ke, dts, qa, qv, ql, qr, qi, qs, qg, dp, tz, cvm, te8, den,
                 explicit_wbf_rate = explicit_wbf_rate * c_wbf * q_ice_bulk
 
                 ! Resolution-dependent scaling using timescale damping
-                ! As onemsig → 0 (coarse resolution): damping factor → 0 (WBF disabled)
-                ! As onemsig → 1 (fine resolution): damping factor → 1 (WBF fully active)
+                ! As onemsig -> 0 (coarse resolution): damping factor -> 0 (WBF disabled)
+                ! As onemsig -> 1 (fine resolution): damping factor -> 1 (WBF fully active)
                 explicit_wbf_rate = explicit_wbf_rate * (onemsig * dts / (tau_wbf + onemsig * dts))
 
                 ! Calculate mass sink over the duration of the time step
