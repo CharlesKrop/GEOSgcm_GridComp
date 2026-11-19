@@ -386,7 +386,7 @@ subroutine GFDL_1M_Initialize (MAPL, CF, CLOCK, IMPORT, EXPORT, RC)
     !   3 = Physical: Uses NNI from aerosol activation with tight bounds (RECOMMENDED)
     !   4+ = Morrison-Gettelman power-law (two-moment schemes)
     !
-    ! DISPERSION FACTORS: Scale volume mean → effective radius (account for distribution width)
+    ! DISPERSION FACTORS: Scale volume mean --> effective radius (account for distribution width)
     ! FAC_R*: Tuning multipliers | MIN/MAX_R*: Hard bounds [m]
     ! -----------------------------------------------------------------------------------------
     call MAPL_GetResource( MAPL, LIQ_RADII_PARAM , 'LIQ_RADII_PARAM:' , DEFAULT= 3     , RC=STATUS); VERIFY_(STATUS)
@@ -1922,11 +1922,13 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_TimerOn(MAPL,"---CLDDIAGS",RC=STATUS); VERIFY_(STATUS)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'DQRL', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) then
           !$ser savepoint GFDL1M-In_part_16
           !$ser data DQRL=PTR3D
-        if(associated(PTR3D)) PTR3D = DQRDT_macro + DQRDT_micro
+          PTR3D = DQRDT_macro + DQRDT_micro
           !$ser savepoint GFDL1M-Out_part_11
           !$ser data DQRL=PTR3D
+        endif
 
         ! dissipative heating tendency from KE across the macro/micro physics
         call MAPL_GetPointer(EXPORT, PTR3D, 'DTDTFRIC', RC=STATUS); VERIFY_(STATUS)
@@ -1948,45 +1950,55 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
         call MAPL_TimerOff(MAPL,"---RADAR_DIAGS",RC=STATUS); VERIFY_(STATUS)
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) then
           !$ser savepoint GFDL1M-In_part_18
           !$ser data QRTOT=PTR3D
-        if (associated(PTR3D)) PTR3D = QRAIN
+          PTR3D = QRAIN
           !$ser savepoint GFDL1M-Out_part_13
           !$ser data QRTOT=PTR3D
+        endif
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QSTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) then
           !$ser savepoint GFDL1M-In_part_19
           !$ser data QSTOT=PTR3D
-        if (associated(PTR3D)) PTR3D = QSNOW
+          PTR3D = QSNOW
           !$ser savepoint GFDL1M-Out_part_14
           !$ser data QSTOT=PTR3D
+        endif
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QGTOT', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR3D)) then
           !$ser savepoint GFDL1M-In_part_20
           !$ser data QGTOT=PTR3D
-        if (associated(PTR3D)) PTR3D = QGRAUPEL
+          PTR3D = QGRAUPEL
           !$ser savepoint GFDL1M-Out_part_15
           !$ser data QGTOT=PTR3D
+        endif
 
         call MAPL_GetPointer(EXPORT, PTR2D, 'LWP', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
           !$ser savepoint GFDL1M-In_part_21
           !$ser data LWP=PTR2D
-        if (associated(PTR2D)) PTR2D = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
+          PTR2D = SUM( ( QLCN+QLLS+QRAIN ) *MASS , 3 )
           !$ser savepoint GFDL1M-Out_part_16
           !$ser data LWP=PTR2D
+        endif
 
         call MAPL_GetPointer(EXPORT, PTR2D, 'IWP', RC=STATUS); VERIFY_(STATUS)
+        if (associated(PTR2D)) then
           !$ser savepoint GFDL1M-In_part_22
           !$ser data IWP=PTR2D
-        if (associated(PTR2D)) PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
+          PTR2D = SUM( ( QICN+QILS+QSNOW+QGRAUPEL ) *MASS , 3 )
+          !$ser savepoint GFDL1M-Out_part_17
+          !$ser data IWP=PTR2D
+        endif
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'NCPL_VOL', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = NACTL
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'NCPI_VOL', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) PTR3D = NACTI
-          !$ser savepoint GFDL1M-Out_part_17
-          !$ser data IWP=PTR2D
 
         call MAPL_TimerOff(MAPL,"---CLDDIAGS",RC=STATUS); VERIFY_(STATUS)
         !$ser savepoint GFDL1M-Out_part_18
