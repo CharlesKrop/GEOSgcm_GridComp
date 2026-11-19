@@ -7,57 +7,11 @@ from ndsl.dsl.typing import Float, Int
 
 @dataclasses.dataclass
 class GFDL1MLocals(LocalState):
-    p_interface_mb: Local = dataclasses.field(
+    dcloud_fraction_dt: Local = dataclasses.field(
         metadata={
-            "name": "p_interface_mb",
-            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
-            "units": "millibars",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    p_mb: Local = dataclasses.field(
-        metadata={
-            "name": "p_mb",
+            "name": "dcloud_fraction_dt",
             "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "millibars",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    edge_height_above_surface: Local = dataclasses.field(
-        metadata={
-            "name": "edge_height_above_surface",
-            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
-            "units": "m",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    layer_height_above_surface: Local = dataclasses.field(
-        metadata={
-            "name": "layer_height_above_surface",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "m",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    layer_thickness: Local = dataclasses.field(
-        metadata={
-            "name": "layer_thickness",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "m",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    layer_thickness_negative: Local = dataclasses.field(
-        metadata={
-            "name": "layer_thickness_negative",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "m",
-            "intent": "?",
+            "units": "?",
             "dtype": Float,
         }
     )
@@ -66,52 +20,6 @@ class GFDL1MLocals(LocalState):
             "name": "dp",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "Pa",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    mass: Local = dataclasses.field(
-        metadata={
-            "name": "mass",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "kg m-2",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    mass_inverse: Local = dataclasses.field(
-        metadata={
-            "name": "mass_inverse",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "kg m-2",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    u_unmodified: Local = dataclasses.field(
-        metadata={
-            "name": "u_unmodified",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "m s-1",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    v_unmodified: Local = dataclasses.field(
-        metadata={
-            "name": "v_unmodified",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "m s-1",
-            "intent": "?",
-            "dtype": Float,
-        }
-    )
-    saturation_specific_humidity: Local = dataclasses.field(
-        metadata={
-            "name": "saturation_specific_humidity",
-            "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "intent": "?",
             "dtype": Float,
         }
     )
@@ -120,7 +28,38 @@ class GFDL1MLocals(LocalState):
             "name": "dsaturation_specific_humidity",
             "dims": [I_DIM, J_DIM, K_DIM],
             "units": "?",
-            "intent": "?",
+            "dtype": Float,
+        }
+    )
+    edge_height_above_surface: Local = dataclasses.field(
+        metadata={
+            "name": "edge_height_above_surface",
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "m",
+            "dtype": Float,
+        }
+    )
+    layer_height_above_surface: Local = dataclasses.field(
+        metadata={
+            "name": "layer_height_above_surface",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "m",
+            "dtype": Float,
+        }
+    )
+    layer_thickness: Local = dataclasses.field(
+        metadata={
+            "name": "layer_thickness",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "m",
+            "dtype": Float,
+        }
+    )
+    layer_thickness_negative: Local = dataclasses.field(
+        metadata={
+            "name": "layer_thickness_negative",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "m",
             "dtype": Float,
         }
     )
@@ -129,111 +68,94 @@ class GFDL1MLocals(LocalState):
             "name": "lcl_level",
             "dims": [I_DIM, J_DIM],
             "units": "?",
-            "intent": "?",
             "dtype": Int,
         }
     )
-    total_concentration: Local = dataclasses.field(
+    mass: Local = dataclasses.field(
         metadata={
-            "name": "total_concentration",
+            "name": "mass",
             "dims": [I_DIM, J_DIM, K_DIM],
-            "units": "?",
-            "intent": "?",
+            "units": "kg m-2",
             "dtype": Float,
         }
     )
-
-    @dataclasses.dataclass
-    class DriverTendencies(LocalState):
-        dvapordt: Local = dataclasses.field(
-            metadata={
-                "name": "dvapordt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dliquiddt: Local = dataclasses.field(
-            metadata={
-                "name": "dliquiddt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        draindt: Local = dataclasses.field(
-            metadata={
-                "name": "draindt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dicedt: Local = dataclasses.field(
-            metadata={
-                "name": "dicedt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dsnowdt: Local = dataclasses.field(
-            metadata={
-                "name": "dsnowdt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dgraupeldt: Local = dataclasses.field(
-            metadata={
-                "name": "dgraupeldt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dcloudfractiondt: Local = dataclasses.field(
-            metadata={
-                "name": "dcloudfractiondt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dtdt: Local = dataclasses.field(
-            metadata={
-                "name": "dtdt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dudt: Local = dataclasses.field(
-            metadata={
-                "name": "dudt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-        dvdt: Local = dataclasses.field(
-            metadata={
-                "name": "dvdt",
-                "dims": [I_DIM, J_DIM, K_DIM],
-                "units": "?",
-                "intent": "?",
-                "dtype": Float,
-            }
-        )
-
-    driver_tendencies: DriverTendencies
+    mass_inverse: Local = dataclasses.field(
+        metadata={
+            "name": "mass_inverse",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "kg m-2",
+            "dtype": Float,
+        }
+    )
+    p_interface_mb: Local = dataclasses.field(
+        metadata={
+            "name": "p_interface_mb",
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "millibars",
+            "dtype": Float,
+        }
+    )
+    p_mb: Local = dataclasses.field(
+        metadata={
+            "name": "p_mb",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "millibars",
+            "dtype": Float,
+        }
+    )
+    reflectivity: Local = dataclasses.field(
+        metadata={
+            "name": "reflectivity",
+            "dims": [I_DIM, J_DIM, K_INTERFACE_DIM],
+            "units": "dBZ",
+            "dtype": Float,
+        }
+    )
+    saturation_specific_humidity: Local = dataclasses.field(
+        metadata={
+            "name": "saturation_specific_humidity",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "?",
+            "dtype": Float,
+        }
+    )
+    temporary_3d: Local = dataclasses.field(
+        metadata={
+            "name": "temporary_3d",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "N/A",
+            "dtype": Float,
+        }
+    )
+    temporary_3d_2: Local = dataclasses.field(
+        metadata={
+            "name": "temporary_3d_2",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "N/A",
+            "dtype": Float,
+        }
+    )
+    u_unmodified: Local = dataclasses.field(
+        metadata={
+            "name": "u_unmodified",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "m s-1",
+            "dtype": Float,
+        }
+    )
+    v_unmodified: Local = dataclasses.field(
+        metadata={
+            "name": "v_unmodified",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "m s-1",
+            "dtype": Float,
+        }
+    )
+    _dummy_field_no_read_no_write: Local = dataclasses.field(
+        metadata={
+            "name": "_dummy_field_no_read_no_write",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "1",
+            "dtype": Float,
+        }
+    )

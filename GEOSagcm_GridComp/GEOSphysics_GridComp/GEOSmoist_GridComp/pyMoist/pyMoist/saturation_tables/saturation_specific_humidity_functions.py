@@ -105,7 +105,7 @@ def saturation_specific_humidity_liquid_surface(
 
 
 @function
-def saturation_specific_humidity(t, p, esx):
+def saturation_specific_humidity(t, p, esx, use_dqsat_order=False):
     """Compute saturation specific humidity and derivative saturation specific humidity
     with respect to temperature from saturation pressure tables.
 
@@ -115,6 +115,7 @@ def saturation_specific_humidity(t, p, esx):
         t (Float): temperature in Kelvin
         p (Float): pressure in Pascals
         esx (Float): saturation pressure table in Pascals, specifics unknown
+        use_dqsat_order (bool): match GEOS_DQSAT's derivative evaluation order
 
     Returns:
         qsat (Float): saturation specific humidity
@@ -139,11 +140,12 @@ def saturation_specific_humidity(t, p, esx):
     else:
         dd = 1.0 / (p - (1.0 - ESFAC) * qsat)
         qsat = ESFAC * qsat * dd
-        # NOTE the following dqsat calculation is the sole point of difference between GEOS_QSAT
-        # (the source of this code) and GEOS_DQSAT. GEOS_DQSAT computes using a different order
-        # of operations (and one line instead of two): DQSAT = (ESFAC*DEGSUBS)*DQQ*PP*(DD*DD).
-        # In testing, this difference resulted in errors no larger than four (4) ULP.
-        dqsat = dq * DEGSUBS
-        dqsat = ESFAC * dqsat * p * (dd * dd)
+        # Match the selected Fortran entry point's evaluation order. A few ULPs
+        # in this derivative can change a PDF equilibrium iteration's outcome.
+        if use_dqsat_order:
+            dqsat = (ESFAC * DEGSUBS) * dq * p * (dd * dd)
+        else:
+            dqsat = dq * DEGSUBS
+            dqsat = ESFAC * dqsat * p * (dd * dd)
 
     return qsat, dqsat

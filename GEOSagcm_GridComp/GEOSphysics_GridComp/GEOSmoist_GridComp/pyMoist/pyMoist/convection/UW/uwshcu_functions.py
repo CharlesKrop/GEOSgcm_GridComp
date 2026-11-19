@@ -5,7 +5,7 @@ from ndsl.dsl.typing import Float, FloatField, Int
 
 import pyMoist.constants as constants
 from pyMoist.saturation_tables import GlobalTable_saturation_tables, saturation_specific_humidity
-from pyMoist.shared.incloud_processes import ice_fraction
+from pyMoist.shared.cloud_processes import ice_fraction
 
 
 P00 = Float(1e5)  # Reference pressure
