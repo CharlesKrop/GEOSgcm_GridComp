@@ -1801,7 +1801,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 !$ser data_buffered Dx=1 SRF_TYPE_data_buffered=srf_type
                 !$ser data_buffered Dx=1 ONEMSIG_data_buffered=onemsig
             !$ser verbatim enddo
-            !$ser off
             call mp_full (ks, ke, ntimes, tz, qaz, qvz, qlz, qrz, qiz, qsz, qgz, dp, dz, &
                 u, v, w, den, denfac, ccn, cin, dts, h_var, dte (i), &
                 water (i), rain (i), ice (i), snow (i), graupel (i), &
@@ -1812,7 +1811,6 @@ subroutine mpdrv (hydrostatic, ua, va, wa, delp, pt, qv, ql, qr, qi, qs, qg, qa,
                 mppfw (i), mppfr (i), mppmi (i), mppms (i), mppmg (i), mppm1 (i), &
                 mppm2 (i), mppm3 (i), mppar (i), mppas (i), mppag (i), mpprs (i), &
                 mpprg (i), mppxr (i), mppxs (i), mppxg (i), convt, last_step)
-            !$ser on
             !$ser verbatim call ser_set_D2(ke - ks + 1)
             !$ser verbatim do k=1, ke-ks+1
                 !$ser verbatim call ser_set_idx_d2(k)
@@ -2404,25 +2402,25 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         !$ser verbatim do k=1, ke-ks+1
             !$ser verbatim call ser_set_idx_d3(k)
             !$ser savepoint GFDLMPV3_Sedimentation-In
-            !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-            !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-            !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-            !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-            !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-            !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-            !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-            !$ser data_buffered Dx=3 DZ_data_buffered=dz(k+ks-1)
-            !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-            !$ser data_buffered Dx=3 U_data_buffered=u(k+ks-1)
-            !$ser data_buffered Dx=3 V_data_buffered=v(k+ks-1)
-            !$ser data_buffered Dx=3 W_data_buffered=w(k+ks-1)
-            !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-            !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-            !$ser data_buffered Dx=2 DTE_data_buffered=dte
-            !$ser data_buffered Dx=2 MPPM1_data_buffered=mppm1
-            !$ser data_buffered Dx=2 MPPM2_data_buffered=mppm2
-            !$ser data_buffered Dx=2 MPPM3_data_buffered=mppm3
-            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered=cnv_fraction
+            !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+            !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+            !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+            !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+            !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+            !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+            !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+            !$ser data_buffered Dx=3 DZ_data_buffered_in_n_loop=dz(k+ks-1)
+            !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+            !$ser data_buffered Dx=3 U_data_buffered_in_n_loop=u(k+ks-1)
+            !$ser data_buffered Dx=3 V_data_buffered_in_n_loop=v(k+ks-1)
+            !$ser data_buffered Dx=3 W_data_buffered_in_n_loop=w(k+ks-1)
+            !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+            !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+            !$ser data_buffered Dx=2 DTE_data_buffered_in_n_loop=dte
+            !$ser data_buffered Dx=2 MPPM1_data_buffered_in_n_loop=mppm1
+            !$ser data_buffered Dx=2 MPPM2_data_buffered_in_n_loop=mppm2
+            !$ser data_buffered Dx=2 MPPM3_data_buffered_in_n_loop=mppm3
+            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered_in_n_loop=cnv_fraction
         !$ser verbatim enddo
         call sedimentation (dts, ks, ke, tz, qv, ql, qr, qi, qs, qg, dz, dp, vtw, &
             vtr, vti, vts, vtg, w1, r1, i1, s1, g1, pfw, pfr, pfi, pfs, pfg, u, v, &
@@ -2430,25 +2428,25 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         !$ser verbatim do k=1, ke-ks+1
             !$ser verbatim call ser_set_idx_d3(k)
             !$ser savepoint GFDLMPV3_Sedimentation-Out
-            !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-            !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-            !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-            !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-            !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-            !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-            !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-            !$ser data_buffered Dx=3 DZ_data_buffered=dz(k+ks-1)
-            !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-            !$ser data_buffered Dx=3 U_data_buffered=u(k+ks-1)
-            !$ser data_buffered Dx=3 V_data_buffered=v(k+ks-1)
-            !$ser data_buffered Dx=3 W_data_buffered=w(k+ks-1)
-            !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-            !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-            !$ser data_buffered Dx=2 DTE_data_buffered=dte
-            !$ser data_buffered Dx=2 MPPM1_data_buffered=mppm1
-            !$ser data_buffered Dx=2 MPPM2_data_buffered=mppm2
-            !$ser data_buffered Dx=2 MPPM3_data_buffered=mppm3
-            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered=cnv_fraction
+            !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+            !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+            !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+            !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+            !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+            !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+            !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+            !$ser data_buffered Dx=3 DZ_data_buffered_in_n_loop=dz(k+ks-1)
+            !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+            !$ser data_buffered Dx=3 U_data_buffered_in_n_loop=u(k+ks-1)
+            !$ser data_buffered Dx=3 V_data_buffered_in_n_loop=v(k+ks-1)
+            !$ser data_buffered Dx=3 W_data_buffered_in_n_loop=w(k+ks-1)
+            !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+            !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+            !$ser data_buffered Dx=2 DTE_data_buffered_in_n_loop=dte
+            !$ser data_buffered Dx=2 MPPM1_data_buffered_in_n_loop=mppm1
+            !$ser data_buffered Dx=2 MPPM2_data_buffered_in_n_loop=mppm2
+            !$ser data_buffered Dx=2 MPPM3_data_buffered_in_n_loop=mppm3
+            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered_in_n_loop=cnv_fraction
         !$ser verbatim enddo
 
         water = water + w1 * convt
@@ -2470,56 +2468,56 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         !$ser verbatim do k=1, ke-ks+1
             !$ser verbatim call ser_set_idx_d3(k)
             !$ser savepoint GFDLMPV3_WarmRain-In
-            !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-            !$ser data_buffered Dx=3 DZ_data_buffered=dz(k+ks-1)
-            !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-            !$ser data_buffered Dx=3 QA_data_buffered=qa(k+ks-1)
-            !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-            !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-            !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-            !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-            !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-            !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-            !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-            !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-            !$ser data_buffered Dx=3 VTW_data_buffered=vtw(k+ks-1)
-            !$ser data_buffered Dx=3 VTR_data_buffered=vtr(k+ks-1)
-            !$ser data_buffered Dx=3 CCN_data_buffered=ccn(k+ks-1)
-            !$ser data_buffered Dx=3 REVAP_data_buffered=revap(k+ks-1)
-            !$ser data_buffered Dx=3 H_VAR_data_buffered=h_var(k+ks-1)
-            !$ser data_buffered Dx=2 MPPER_data_buffered=mpper
-            !$ser data_buffered Dx=2 MPPAR_data_buffered=mppar
-            !$ser data_buffered Dx=2 MPPXR_data_buffered=mppxr
-            !$ser data_buffered Dx=2 CPAUT_data_buffered=cpaut
-            !$ser data_buffered Dx=2 FAC_RC_data_buffered=fac_rc
+            !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+            !$ser data_buffered Dx=3 DZ_data_buffered_in_n_loop=dz(k+ks-1)
+            !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+            !$ser data_buffered Dx=3 QA_data_buffered_in_n_loop=qa(k+ks-1)
+            !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+            !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+            !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+            !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+            !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+            !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+            !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+            !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+            !$ser data_buffered Dx=3 VTW_data_buffered_in_n_loop=vtw(k+ks-1)
+            !$ser data_buffered Dx=3 VTR_data_buffered_in_n_loop=vtr(k+ks-1)
+            !$ser data_buffered Dx=3 CCN_data_buffered_in_n_loop=ccn(k+ks-1)
+            !$ser data_buffered Dx=3 REVAP_data_buffered_in_n_loop=revap(k+ks-1)
+            !$ser data_buffered Dx=3 H_VAR_data_buffered_in_n_loop=h_var(k+ks-1)
+            !$ser data_buffered Dx=2 MPPER_data_buffered_in_n_loop=mpper
+            !$ser data_buffered Dx=2 MPPAR_data_buffered_in_n_loop=mppar
+            !$ser data_buffered Dx=2 MPPXR_data_buffered_in_n_loop=mppxr
+            !$ser data_buffered Dx=2 CPAUT_data_buffered_in_n_loop=cpaut
+            !$ser data_buffered Dx=2 FAC_RC_data_buffered_in_n_loop=fac_rc
         !$ser verbatim enddo
         call warm_rain (dts, ks, ke, dp, dz, tz, qa, qv, ql, qr, qi, qs, qg, den, &
             denfac, vtw, vtr, ccn, h_var, revap, mpper, mppar, mppxr, convt)
         !$ser verbatim do k=1, ke-ks+1
             !$ser verbatim call ser_set_idx_d3(k)
             !$ser savepoint GFDLMPV3_WarmRain-Out
-            !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-            !$ser data_buffered Dx=3 DZ_data_buffered=dz(k+ks-1)
-            !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-            !$ser data_buffered Dx=3 QA_data_buffered=qa(k+ks-1)
-            !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-            !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-            !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-            !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-            !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-            !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-            !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-            !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-            !$ser data_buffered Dx=3 VTW_data_buffered=vtw(k+ks-1)
-            !$ser data_buffered Dx=3 VTR_data_buffered=vtr(k+ks-1)
-            !$ser data_buffered Dx=3 CCN_data_buffered=ccn(k+ks-1)
-            !$ser data_buffered Dx=3 REVAP_data_buffered=revap(k+ks-1)
-            !$ser data_buffered Dx=3 H_VAR_data_buffered=h_var(k+ks-1)
-            !$ser data_buffered Dx=2 MPPER_data_buffered=mpper
-            !$ser data_buffered Dx=2 MPPAR_data_buffered=mppar
-            !$ser data_buffered Dx=2 MPPXR_data_buffered=mppxr
-            !$ser data_buffered Dx=2 CPAUT_data_buffered=cpaut
-            !$ser data_buffered Dx=2 FAC_RC_data_buffered=fac_rc
+            !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+            !$ser data_buffered Dx=3 DZ_data_buffered_in_n_loop=dz(k+ks-1)
+            !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+            !$ser data_buffered Dx=3 QA_data_buffered_in_n_loop=qa(k+ks-1)
+            !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+            !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+            !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+            !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+            !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+            !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+            !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+            !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+            !$ser data_buffered Dx=3 VTW_data_buffered_in_n_loop=vtw(k+ks-1)
+            !$ser data_buffered Dx=3 VTR_data_buffered_in_n_loop=vtr(k+ks-1)
+            !$ser data_buffered Dx=3 CCN_data_buffered_in_n_loop=ccn(k+ks-1)
+            !$ser data_buffered Dx=3 REVAP_data_buffered_in_n_loop=revap(k+ks-1)
+            !$ser data_buffered Dx=3 H_VAR_data_buffered_in_n_loop=h_var(k+ks-1)
+            !$ser data_buffered Dx=2 MPPER_data_buffered_in_n_loop=mpper
+            !$ser data_buffered Dx=2 MPPAR_data_buffered_in_n_loop=mppar
+            !$ser data_buffered Dx=2 MPPXR_data_buffered_in_n_loop=mppxr
+            !$ser data_buffered Dx=2 CPAUT_data_buffered_in_n_loop=cpaut
+            !$ser data_buffered Dx=2 FAC_RC_data_buffered_in_n_loop=fac_rc
         !$ser verbatim enddo
 
         ! -----------------------------------------------------------------------
@@ -2529,37 +2527,37 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         !$ser verbatim do k=1, ke-ks+1
             !$ser verbatim call ser_set_idx_d3(k)
             !$ser savepoint GFDLMPV3_IceCloud-In
-            !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-            !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-            !$ser data_buffered Dx=3 QA_data_buffered=qa(k+ks-1)
-            !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-            !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-            !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-            !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-            !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-            !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-            !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-            !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-            !$ser data_buffered Dx=3 VTW_data_buffered=vtw(k+ks-1)
-            !$ser data_buffered Dx=3 VTR_data_buffered=vtr(k+ks-1)
-            !$ser data_buffered Dx=3 VTI_data_buffered=vti(k+ks-1)
-            !$ser data_buffered Dx=3 VTS_data_buffered=vts(k+ks-1)
-            !$ser data_buffered Dx=3 VTG_data_buffered=vtg(k+ks-1)
-            !$ser data_buffered Dx=3 H_VAR_data_buffered=h_var(k+ks-1)
-            !$ser data_buffered Dx=2 MPPFW_data_buffered=mppfw
-            !$ser data_buffered Dx=2 MPPFR_data_buffered=mppfr
-            !$ser data_buffered Dx=2 MPPMI_data_buffered=mppmi
-            !$ser data_buffered Dx=2 MPPMS_data_buffered=mppms
-            !$ser data_buffered Dx=2 MPPMG_data_buffered=mppmg
-            !$ser data_buffered Dx=2 MPPAS_data_buffered=mppas
-            !$ser data_buffered Dx=2 MPPAG_data_buffered=mppag
-            !$ser data_buffered Dx=2 MPPRS_data_buffered=mpprs
-            !$ser data_buffered Dx=2 MPPRG_data_buffered=mpprg
-            !$ser data_buffered Dx=2 MPPXS_data_buffered=mppxs
-            !$ser data_buffered Dx=2 MPPXG_data_buffered=mppxg
-            !$ser data_buffered Dx=2 SRF_TYPE_data_buffered=srf_type
-            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered=cnv_fraction
-            !$ser data_buffered Dx=2 ONEMSIG_data_buffered=onemsig
+            !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+            !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+            !$ser data_buffered Dx=3 QA_data_buffered_in_n_loop=qa(k+ks-1)
+            !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+            !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+            !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+            !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+            !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+            !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+            !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+            !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+            !$ser data_buffered Dx=3 VTW_data_buffered_in_n_loop=vtw(k+ks-1)
+            !$ser data_buffered Dx=3 VTR_data_buffered_in_n_loop=vtr(k+ks-1)
+            !$ser data_buffered Dx=3 VTI_data_buffered_in_n_loop=vti(k+ks-1)
+            !$ser data_buffered Dx=3 VTS_data_buffered_in_n_loop=vts(k+ks-1)
+            !$ser data_buffered Dx=3 VTG_data_buffered_in_n_loop=vtg(k+ks-1)
+            !$ser data_buffered Dx=3 H_VAR_data_buffered_in_n_loop=h_var(k+ks-1)
+            !$ser data_buffered Dx=2 MPPFW_data_buffered_in_n_loop=mppfw
+            !$ser data_buffered Dx=2 MPPFR_data_buffered_in_n_loop=mppfr
+            !$ser data_buffered Dx=2 MPPMI_data_buffered_in_n_loop=mppmi
+            !$ser data_buffered Dx=2 MPPMS_data_buffered_in_n_loop=mppms
+            !$ser data_buffered Dx=2 MPPMG_data_buffered_in_n_loop=mppmg
+            !$ser data_buffered Dx=2 MPPAS_data_buffered_in_n_loop=mppas
+            !$ser data_buffered Dx=2 MPPAG_data_buffered_in_n_loop=mppag
+            !$ser data_buffered Dx=2 MPPRS_data_buffered_in_n_loop=mpprs
+            !$ser data_buffered Dx=2 MPPRG_data_buffered_in_n_loop=mpprg
+            !$ser data_buffered Dx=2 MPPXS_data_buffered_in_n_loop=mppxs
+            !$ser data_buffered Dx=2 MPPXG_data_buffered_in_n_loop=mppxg
+            !$ser data_buffered Dx=2 SRF_TYPE_data_buffered_in_n_loop=srf_type
+            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered_in_n_loop=cnv_fraction
+            !$ser data_buffered Dx=2 ONEMSIG_data_buffered_in_n_loop=onemsig
         !$ser verbatim enddo
         call ice_cloud (ks, ke, dp, tz, qa, qv, ql, qr, qi, qs, qg, den, denfac, vtw, &
             vtr, vti, vts, vtg, dts, h_var, mppfw, mppfr, mppmi, mppms, mppmg, mppas, &
@@ -2567,37 +2565,37 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
         !$ser verbatim do k=1, ke-ks+1
             !$ser verbatim call ser_set_idx_d3(k)
             !$ser savepoint GFDLMPV3_IceCloud-Out
-            !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-            !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-            !$ser data_buffered Dx=3 QA_data_buffered=qa(k+ks-1)
-            !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-            !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-            !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-            !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-            !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-            !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-            !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-            !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-            !$ser data_buffered Dx=3 VTW_data_buffered=vtw(k+ks-1)
-            !$ser data_buffered Dx=3 VTR_data_buffered=vtr(k+ks-1)
-            !$ser data_buffered Dx=3 VTI_data_buffered=vti(k+ks-1)
-            !$ser data_buffered Dx=3 VTS_data_buffered=vts(k+ks-1)
-            !$ser data_buffered Dx=3 VTG_data_buffered=vtg(k+ks-1)
-            !$ser data_buffered Dx=3 H_VAR_data_buffered=h_var(k+ks-1)
-            !$ser data_buffered Dx=2 MPPFW_data_buffered=mppfw
-            !$ser data_buffered Dx=2 MPPFR_data_buffered=mppfr
-            !$ser data_buffered Dx=2 MPPMI_data_buffered=mppmi
-            !$ser data_buffered Dx=2 MPPMS_data_buffered=mppms
-            !$ser data_buffered Dx=2 MPPMG_data_buffered=mppmg
-            !$ser data_buffered Dx=2 MPPAS_data_buffered=mppas
-            !$ser data_buffered Dx=2 MPPAG_data_buffered=mppag
-            !$ser data_buffered Dx=2 MPPRS_data_buffered=mpprs
-            !$ser data_buffered Dx=2 MPPRG_data_buffered=mpprg
-            !$ser data_buffered Dx=2 MPPXS_data_buffered=mppxs
-            !$ser data_buffered Dx=2 MPPXG_data_buffered=mppxg
-            !$ser data_buffered Dx=2 SRF_TYPE_data_buffered=srf_type
-            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered=cnv_fraction
-            !$ser data_buffered Dx=2 ONEMSIG_data_buffered=onemsig
+            !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+            !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+            !$ser data_buffered Dx=3 QA_data_buffered_in_n_loop=qa(k+ks-1)
+            !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+            !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+            !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+            !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+            !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+            !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+            !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+            !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+            !$ser data_buffered Dx=3 VTW_data_buffered_in_n_loop=vtw(k+ks-1)
+            !$ser data_buffered Dx=3 VTR_data_buffered_in_n_loop=vtr(k+ks-1)
+            !$ser data_buffered Dx=3 VTI_data_buffered_in_n_loop=vti(k+ks-1)
+            !$ser data_buffered Dx=3 VTS_data_buffered_in_n_loop=vts(k+ks-1)
+            !$ser data_buffered Dx=3 VTG_data_buffered_in_n_loop=vtg(k+ks-1)
+            !$ser data_buffered Dx=3 H_VAR_data_buffered_in_n_loop=h_var(k+ks-1)
+            !$ser data_buffered Dx=2 MPPFW_data_buffered_in_n_loop=mppfw
+            !$ser data_buffered Dx=2 MPPFR_data_buffered_in_n_loop=mppfr
+            !$ser data_buffered Dx=2 MPPMI_data_buffered_in_n_loop=mppmi
+            !$ser data_buffered Dx=2 MPPMS_data_buffered_in_n_loop=mppms
+            !$ser data_buffered Dx=2 MPPMG_data_buffered_in_n_loop=mppmg
+            !$ser data_buffered Dx=2 MPPAS_data_buffered_in_n_loop=mppas
+            !$ser data_buffered Dx=2 MPPAG_data_buffered_in_n_loop=mppag
+            !$ser data_buffered Dx=2 MPPRS_data_buffered_in_n_loop=mpprs
+            !$ser data_buffered Dx=2 MPPRG_data_buffered_in_n_loop=mpprg
+            !$ser data_buffered Dx=2 MPPXS_data_buffered_in_n_loop=mppxs
+            !$ser data_buffered Dx=2 MPPXG_data_buffered_in_n_loop=mppxg
+            !$ser data_buffered Dx=2 SRF_TYPE_data_buffered_in_n_loop=srf_type
+            !$ser data_buffered Dx=2 CNV_FRACTION_data_buffered_in_n_loop=cnv_fraction
+            !$ser data_buffered Dx=2 ONEMSIG_data_buffered_in_n_loop=onemsig
         !$ser verbatim enddo
 
         if (do_subgrid_proc) then
@@ -2609,34 +2607,34 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
             !$ser verbatim do k=1, ke-ks+1
                 !$ser verbatim call ser_set_idx_d3(k)
                 !$ser savepoint GFDLMPV3_SubgridProcesses-In
-                !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-                !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-                !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-                !$ser data_buffered Dx=3 QA_data_buffered=qa(k+ks-1)
-                !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-                !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-                !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-                !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-                !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-                !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-                !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-                !$ser data_buffered Dx=3 CCN_data_buffered=ccn(k+ks-1)
-                !$ser data_buffered Dx=3 CIN_data_buffered=cin(k+ks-1)
-                !$ser data_buffered Dx=3 RSUBL_data_buffered=rsubl(k+ks-1)
-                !$ser data_buffered Dx=3 H_VAR_data_buffered=h_var(k+ks-1)
-                !$ser data_buffered Dx=2 MPPCW_data_buffered=mppcw
-                !$ser data_buffered Dx=2 MPPEW_data_buffered=mppew
-                !$ser data_buffered Dx=2 MPPE1_data_buffered=mppe1
-                !$ser data_buffered Dx=2 MPPDI_data_buffered=mppdi
-                !$ser data_buffered Dx=2 MPPD1_data_buffered=mppd1
-                !$ser data_buffered Dx=2 MPPDS_data_buffered=mppds
-                !$ser data_buffered Dx=2 MPPDG_data_buffered=mppdg
-                !$ser data_buffered Dx=2 MPPSI_data_buffered=mppsi
-                !$ser data_buffered Dx=2 MPPS1_data_buffered=mpps1
-                !$ser data_buffered Dx=2 MPPSS_data_buffered=mppss
-                !$ser data_buffered Dx=2 MPPSG_data_buffered=mppsg
-                !$ser data_buffered Dx=2 MPPFW_data_buffered=mppfw
-                !$ser data_buffered Dx=2 ONEMSIG_data_buffered=onemsig
+                !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+                !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+                !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+                !$ser data_buffered Dx=3 QA_data_buffered_in_n_loop=qa(k+ks-1)
+                !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+                !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+                !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+                !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+                !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+                !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+                !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+                !$ser data_buffered Dx=3 CCN_data_buffered_in_n_loop=ccn(k+ks-1)
+                !$ser data_buffered Dx=3 CIN_data_buffered_in_n_loop=cin(k+ks-1)
+                !$ser data_buffered Dx=3 RSUBL_data_buffered_in_n_loop=rsubl(k+ks-1)
+                !$ser data_buffered Dx=3 H_VAR_data_buffered_in_n_loop=h_var(k+ks-1)
+                !$ser data_buffered Dx=2 MPPCW_data_buffered_in_n_loop=mppcw
+                !$ser data_buffered Dx=2 MPPEW_data_buffered_in_n_loop=mppew
+                !$ser data_buffered Dx=2 MPPE1_data_buffered_in_n_loop=mppe1
+                !$ser data_buffered Dx=2 MPPDI_data_buffered_in_n_loop=mppdi
+                !$ser data_buffered Dx=2 MPPD1_data_buffered_in_n_loop=mppd1
+                !$ser data_buffered Dx=2 MPPDS_data_buffered_in_n_loop=mppds
+                !$ser data_buffered Dx=2 MPPDG_data_buffered_in_n_loop=mppdg
+                !$ser data_buffered Dx=2 MPPSI_data_buffered_in_n_loop=mppsi
+                !$ser data_buffered Dx=2 MPPS1_data_buffered_in_n_loop=mpps1
+                !$ser data_buffered Dx=2 MPPSS_data_buffered_in_n_loop=mppss
+                !$ser data_buffered Dx=2 MPPSG_data_buffered_in_n_loop=mppsg
+                !$ser data_buffered Dx=2 MPPFW_data_buffered_in_n_loop=mppfw
+                !$ser data_buffered Dx=2 ONEMSIG_data_buffered_in_n_loop=onemsig
             !$ser verbatim enddo
             call subgrid_z_proc (ks, ke, den, denfac, dts, h_var, tz, qa, qv, ql, qr, &
                 qi, qs, qg, dp, ccn, cin, mppcw, mppew, mppe1, mppdi, mppd1, mppds, &
@@ -2644,34 +2642,34 @@ subroutine mp_full (ks, ke, ntimes, tz, qa, qv, ql, qr, qi, qs, qg, dp, dz, u, v
             !$ser verbatim do k=1, ke-ks+1
                 !$ser verbatim call ser_set_idx_d3(k)
                 !$ser savepoint GFDLMPV3_SubgridProcesses-Out
-                !$ser data_buffered Dx=3 DEN_data_buffered=den(k+ks-1)
-                !$ser data_buffered Dx=3 DENFAC_data_buffered=denfac(k+ks-1)
-                !$ser data_buffered Dx=3 T_data_buffered=tz(k+ks-1)
-                !$ser data_buffered Dx=3 QA_data_buffered=qa(k+ks-1)
-                !$ser data_buffered Dx=3 QV_data_buffered=qv(k+ks-1)
-                !$ser data_buffered Dx=3 QL_data_buffered=ql(k+ks-1)
-                !$ser data_buffered Dx=3 QR_data_buffered=qr(k+ks-1)
-                !$ser data_buffered Dx=3 QI_data_buffered=qi(k+ks-1)
-                !$ser data_buffered Dx=3 QS_data_buffered=qs(k+ks-1)
-                !$ser data_buffered Dx=3 QG_data_buffered=qg(k+ks-1)
-                !$ser data_buffered Dx=3 DP_data_buffered=dp(k+ks-1)
-                !$ser data_buffered Dx=3 CCN_data_buffered=ccn(k+ks-1)
-                !$ser data_buffered Dx=3 CIN_data_buffered=cin(k+ks-1)
-                !$ser data_buffered Dx=3 RSUBL_data_buffered=rsubl(k+ks-1)
-                !$ser data_buffered Dx=3 H_VAR_data_buffered=h_var(k+ks-1)
-                !$ser data_buffered Dx=2 MPPCW_data_buffered=mppcw
-                !$ser data_buffered Dx=2 MPPEW_data_buffered=mppew
-                !$ser data_buffered Dx=2 MPPE1_data_buffered=mppe1
-                !$ser data_buffered Dx=2 MPPDI_data_buffered=mppdi
-                !$ser data_buffered Dx=2 MPPD1_data_buffered=mppd1
-                !$ser data_buffered Dx=2 MPPDS_data_buffered=mppds
-                !$ser data_buffered Dx=2 MPPDG_data_buffered=mppdg
-                !$ser data_buffered Dx=2 MPPSI_data_buffered=mppsi
-                !$ser data_buffered Dx=2 MPPS1_data_buffered=mpps1
-                !$ser data_buffered Dx=2 MPPSS_data_buffered=mppss
-                !$ser data_buffered Dx=2 MPPSG_data_buffered=mppsg
-                !$ser data_buffered Dx=2 MPPFW_data_buffered=mppfw
-                !$ser data_buffered Dx=2 ONEMSIG_data_buffered=onemsig
+                !$ser data_buffered Dx=3 DEN_data_buffered_in_n_loop=den(k+ks-1)
+                !$ser data_buffered Dx=3 DENFAC_data_buffered_in_n_loop=denfac(k+ks-1)
+                !$ser data_buffered Dx=3 T_data_buffered_in_n_loop=tz(k+ks-1)
+                !$ser data_buffered Dx=3 QA_data_buffered_in_n_loop=qa(k+ks-1)
+                !$ser data_buffered Dx=3 QV_data_buffered_in_n_loop=qv(k+ks-1)
+                !$ser data_buffered Dx=3 QL_data_buffered_in_n_loop=ql(k+ks-1)
+                !$ser data_buffered Dx=3 QR_data_buffered_in_n_loop=qr(k+ks-1)
+                !$ser data_buffered Dx=3 QI_data_buffered_in_n_loop=qi(k+ks-1)
+                !$ser data_buffered Dx=3 QS_data_buffered_in_n_loop=qs(k+ks-1)
+                !$ser data_buffered Dx=3 QG_data_buffered_in_n_loop=qg(k+ks-1)
+                !$ser data_buffered Dx=3 DP_data_buffered_in_n_loop=dp(k+ks-1)
+                !$ser data_buffered Dx=3 CCN_data_buffered_in_n_loop=ccn(k+ks-1)
+                !$ser data_buffered Dx=3 CIN_data_buffered_in_n_loop=cin(k+ks-1)
+                !$ser data_buffered Dx=3 RSUBL_data_buffered_in_n_loop=rsubl(k+ks-1)
+                !$ser data_buffered Dx=3 H_VAR_data_buffered_in_n_loop=h_var(k+ks-1)
+                !$ser data_buffered Dx=2 MPPCW_data_buffered_in_n_loop=mppcw
+                !$ser data_buffered Dx=2 MPPEW_data_buffered_in_n_loop=mppew
+                !$ser data_buffered Dx=2 MPPE1_data_buffered_in_n_loop=mppe1
+                !$ser data_buffered Dx=2 MPPDI_data_buffered_in_n_loop=mppdi
+                !$ser data_buffered Dx=2 MPPD1_data_buffered_in_n_loop=mppd1
+                !$ser data_buffered Dx=2 MPPDS_data_buffered_in_n_loop=mppds
+                !$ser data_buffered Dx=2 MPPDG_data_buffered_in_n_loop=mppdg
+                !$ser data_buffered Dx=2 MPPSI_data_buffered_in_n_loop=mppsi
+                !$ser data_buffered Dx=2 MPPS1_data_buffered_in_n_loop=mpps1
+                !$ser data_buffered Dx=2 MPPSS_data_buffered_in_n_loop=mppss
+                !$ser data_buffered Dx=2 MPPSG_data_buffered_in_n_loop=mppsg
+                !$ser data_buffered Dx=2 MPPFW_data_buffered_in_n_loop=mppfw
+                !$ser data_buffered Dx=2 ONEMSIG_data_buffered_in_n_loop=onemsig
             !$ser verbatim enddo
 
         endif
