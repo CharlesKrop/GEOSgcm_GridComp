@@ -121,6 +121,7 @@ contains
     !$ser verbatim call ESMF_VMGet(VM, mpiCommunicator=comm, rc=status)
     !$ser verbatim call MPI_COMM_rank(comm,rank,mpierr)
     !$ser init directory='./moist_serialbox_data' prefix='Generator' mpi_rank=rank unique_id=.true.
+    !$ser off
 
     Iam = 'SetServices'
     call ESMF_GridCompGet( GC, NAME=COMP_NAME, RC=STATUS )
