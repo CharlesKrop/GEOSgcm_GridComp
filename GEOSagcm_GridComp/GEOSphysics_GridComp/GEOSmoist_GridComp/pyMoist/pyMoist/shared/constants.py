@@ -18,12 +18,12 @@ V12_ICE_POLYNOMIAL = Int(3)
 ICE_FRACTION_POLYNOMIAL = Int(3)
 
 # Ice fraction glaciation shift options
-GLAC_SHIFT_CONV = 7.5  # Will hold tropical liquid very high
-GLAC_SHIFT_LAND = -1.0
-GLAC_SHIFT_LANDICE = 3.0
-GLAC_SHIFT_OCEAN = 4.0
-GLAC_SHIFT_SEAICE = 2.0
-GLAC_SHIFT_SNOW = 1.0
+GLAC_SHIFT_CONV = Float(7.5)  # Will hold tropical liquid very high
+GLAC_SHIFT_LAND = Float(-1.0)
+GLAC_SHIFT_LANDICE = Float(3.0)
+GLAC_SHIFT_OCEAN = Float(4.0)
+GLAC_SHIFT_SEAICE = Float(2.0)
+GLAC_SHIFT_SNOW = Float(1.0)
 
 # Jason ice_fraction constants
 # In anvil/convective clouds
@@ -65,7 +65,8 @@ DIFFU = Float(2.2e-5)  # m**2 s**-1
 TAUFRZ = Float(600.0)  # timescale for freezing
 TAUMLT = Float(300.0)  # timescale for melting
 CFMIN = Float(1.0e-5)  # minimum cloud fraction
-QCMIN = Float(1.0e-8)  # minimum condensate (ql & qi) values
+QAMIN = Float(1.0e-8)  # minimum cloud fraction for cloud cleanup
+QCMIN = Float(1.0e-12)  # minimum condensate (ql & qi) values
 QPMIN = Float(1.0e-15)  # minimum precipitate (qr, qs, qg) values
 DQCMAX = Float(1.0e-4)
 
@@ -169,8 +170,8 @@ LAM1 = Float(3.29)
 GONV_MIN = Float(1.0e2)
 GONV_MAX = Float(1.0e6)
 # For snow moments conversions (from Field et al. 2005)
-SA = [5.065339, -0.062659, -3.032362, 0.029469, -0.000285, 0.31255, 0.000204, 0.003199, 0.0, -0.015952]
-SB = [0.476221, -0.015896, 0.165977, 0.007468, -0.000141, 0.060366, 0.000079, 0.000594, 0.0, -0.003577]
+SA = [Float(x) for x in (5.065339, -0.062659, -3.032362, 0.029469, -0.000285, 0.31255, 0.000204, 0.003199, 0.0, -0.015952)]
+SB = [Float(x) for x in (0.476221, -0.015896, 0.165977, 0.007468, -0.000141, 0.060366, 0.000079, 0.000594, 0.0, -0.003577)]
 
 SA3_BM_S = SA[2] * BM_S
 SA4_BM_S = SA[3] * BM_S
