@@ -3147,11 +3147,14 @@ end if
      real, pointer, dimension(:,:,:) :: DSL__BUOYF
      real, pointer, dimension(:,:,:) :: DSL__MFTKE
      real, pointer, dimension(:,:) :: DSL__DRYCBLH
+     integer :: comm, rank, mpierr
+     real :: start, finish
 
 #ifdef _CUDA
      type(dim3) :: Grid, Block
      integer :: blocksize_x, blocksize_y
 #endif
+
 
 ! Get tracer bundle for aerosol PBL calculation
 !-----------------------------------
@@ -3988,17 +3991,22 @@ end if
       call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
       VERIFY_(STATUS)
 
-      call MAPL_GetPointer(INTERNAL,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL,   DSL__MFTKE,  'DSL__MFTKE', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      call MAPL_GetPointer(INTERNAL,   DSL__DRYCBLH,  'DSL__DRYCBLH', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
-      DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
-      DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
-      DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
+      call MPI_Comm_rank(comm, rank, mpierr)
       
       if (USE_PYTURB_SHOC) then
+         call cpu_time(start)
+         call MAPL_GetPointer(INTERNAL,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(INTERNAL,   DSL__MFTKE,  'DSL__MFTKE', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+         call MAPL_GetPointer(INTERNAL,   DSL__DRYCBLH,  'DSL__DRYCBLH', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
+         DSL__BUOYF(:, :, 1:LM) = BUOYF(:,:,1:LM)
+         DSL__MFTKE(:, :, 0:LM) = MFTKE(:,:,0:LM)
+         DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
          call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
+         call cpu_time(finish)
+         if (rank == 0) print *, 'Python SHOC time taken (with interface) = ', finish - start, 's'
       else
       ! call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT, INTERNAL )
+      call cpu_time(start)
       call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                   !== Inputs ==
                   SH(:,:),               &
@@ -4042,7 +4050,8 @@ end if
 
       if (associated(TKEDISSx)) TKEDISSx = TKEDISS
       KH(:,:,1:LM) = TKH(:,:,1:LM)
-
+      call cpu_time(finish)
+      if (rank == 0) print *, 'Fortran SHOC time taken = ', finish - start, 's'
       ! call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT, INTERNAL )
       endif ! ENDIF USE_PYTURB_SHOC
 
