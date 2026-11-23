@@ -4006,12 +4006,10 @@ end if
          DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
          call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
          call cpu_time(finish)
-         print *, 'RUNNING PYSHOC'
-         if (rank == 0) print *, 'Python SHOC time taken (with interface) = ', finish - start, 's'
+         if (rank == 0) print *, 'NDSL SHOC time taken (with interface) = ', finish - start, 's'
       else
       ! call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT, INTERNAL )
       call cpu_time(start)
-      print *, 'RUNNING FORTRAN SHOC'
       call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                   !== Inputs ==
                   SH(:,:),               &
