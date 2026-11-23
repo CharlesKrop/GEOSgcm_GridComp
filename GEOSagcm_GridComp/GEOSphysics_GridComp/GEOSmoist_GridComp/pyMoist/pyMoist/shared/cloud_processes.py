@@ -36,9 +36,6 @@ from pyMoist.shared.constants import (
     ALHFBCP,
     ALHLBCP,
     ALHSBCP,
-    AT_ICE_ALL,
-    AT_ICE_MAX,
-    AT_ICE_PWR,
     BX,
     CFMIN,
     DIFFU,
@@ -51,9 +48,6 @@ from pyMoist.shared.constants import (
     GLAC_SHIFT_SNOW,
     ICE_FRACTION_POLYNOMIAL,
     ICE_RADII_PARAM,
-    IT_ICE_ALL,
-    IT_ICE_MAX,
-    IT_ICE_PWR,
     JASON_ICE_POLYNOMIAL,
     JAT_ICE_ALL,
     JAT_ICE_MAX,
@@ -71,15 +65,6 @@ from pyMoist.shared.constants import (
     LBE,
     LBX,
     LIQ_RADII_PARAM,
-    LIT_ICE_ALL,
-    LIT_ICE_MAX,
-    LIT_ICE_PWR,
-    LT_ICE_ALL,
-    LT_ICE_MAX,
-    LT_ICE_PWR,
-    OT_ICE_ALL,
-    OT_ICE_MAX,
-    OT_ICE_PWR,
     QCMIN,
     R13BBETA,
     R_AIR,
@@ -91,9 +76,6 @@ from pyMoist.shared.constants import (
     SRF_TYPE_LANDICE,
     SRF_TYPE_OCEAN,
     SRF_TYPE_SNOW,
-    ST_ICE_ALL,
-    ST_ICE_MAX,
-    ST_ICE_PWR,
     TAUFRZ,
     TAUMLT,
     T_HOM,
@@ -852,9 +834,7 @@ def ice_fraction(
         # Match the reference Fortran compiler's integer-power multiplication order.
         tc_squared = tc * tc
         tc_fourth = tc_squared * tc_squared
-        ptc = (
-            7.6725 + 1.0118 * tc + 0.1422 * tc_squared + 0.0106 * tc**3 + 0.000339 * tc_fourth + 0.00000395 * (tc_fourth * tc)
-        )
+        ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc_squared + 0.0106 * tc**3 + 0.000339 * tc_fourth + 0.00000395 * (tc_fourth * tc)
         ice_fraction = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
 
     elif ICE_FRACTION_POLYNOMIAL == JASON_ICE_POLYNOMIAL:
@@ -938,14 +918,7 @@ def ice_fraction(
         # Match the reference Fortran compiler's integer-power multiplication order.
         tc_squared = tc_shifted * tc_shifted
         tc_fourth = tc_squared * tc_squared
-        ptc = (
-            7.6725
-            + 1.0118 * tc_shifted
-            + 0.1422 * tc_squared
-            + 0.0106 * tc_shifted**3
-            + 0.000339 * tc_fourth
-            + 0.00000395 * (tc_fourth * tc_shifted)
-        )
+        ptc = 7.6725 + 1.0118 * tc_shifted + 0.1422 * tc_squared + 0.0106 * tc_shifted**3 + 0.000339 * tc_fourth + 0.00000395 * (tc_fourth * tc_shifted)
         liquid_fraction = 1.0 / (1.0 + exp(-1.0 * ptc))
         # Calculate the smooth taper to force liquid to 0.0 at and below T_HOM
         # u scales from 0.0 (at T_HOM) to 1.0 (at T_HOM + T_WIDTH = -30 C)

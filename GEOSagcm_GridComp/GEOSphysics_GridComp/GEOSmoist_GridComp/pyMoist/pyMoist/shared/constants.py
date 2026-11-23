@@ -25,46 +25,6 @@ GLAC_SHIFT_OCEAN = 4.0
 GLAC_SHIFT_SEAICE = 2.0
 GLAC_SHIFT_SNOW = 1.0
 
-# --------------------------------------------------
-# ice_fraction constants
-# --------------------------------------------------
-# 1. Anvil / Convective Clouds (Deep updrafts, clean high-altitude cores)
-# Observations: High updraft velocity dynamically preserves liquid down to deep
-# temperatures. Freezing drops off exponentially close to homogeneous limit.
-AT_ICE_ALL = Float(233.16)  # Strict homogeneous limit (-40C)
-AT_ICE_MAX = Float(268.16)  # Latent heat maintains liquid until -5C
-AT_ICE_PWR = Float(4.5)  # Asymmetric S-curve to shield liquid peak
-# 2. Land Ice (Antarctica / Greenland)
-# Bias Fix: Widens mixed-phase window and raises PWR to fix the severe polar
-# downward LW deficit (-25 W/m²) and clear lower troposphere cold pools.
-LIT_ICE_ALL = Float(234.16)  # Deep absolute freeze floor lowered to -39C
-LIT_ICE_MAX = Float(268.15)  # Delays plateau glaciation onset to -5C
-LIT_ICE_PWR = Float(4.2)  # Highly emissive summer liquid water shield
-# 3. Sea Ice (Arctic / Southern Ocean Pack Ice)
-# Bias Fix: Expands liquid window to restore thin supercooled liquid cloud tops.
-# Eliminates the MAM positive SW surface heating and matches vertical ERA5 QL mass.
-IT_ICE_ALL = Float(235.16)  # Lowers homogeneous floor to -38C
-IT_ICE_MAX = Float(271.15)  # Maintains warm liquid threshold near -2C
-IT_ICE_PWR = Float(4.5)  # High exponent shifts excess QI mass back to QL
-# 4. Snow Surface (High-latitude winter land)
-# Bias Fix: Shuts down spring continental shortwave overestimation and boundary
-# layer cold biases across snow-covered Siberia and northern boreal zones.
-ST_ICE_ALL = Float(236.16)  # Total freeze-out pushed down to -37C
-ST_ICE_MAX = Float(268.15)  # Delays land ice crystal production to -5C
-ST_ICE_PWR = Float(4.0)  # Stronger power curve guards spring liquid path
-# 5. Land (Ice-free, ice-nucleating aerosol rich)
-# Observations: Mineral and biological dust act as potent heterogeneous INPs.
-# Mixed-phase clouds glaciate rapidly and uniformly throughout the -10C to -25C zone.
-LT_ICE_ALL = Float(241.16)  # Dust forces total glaciation early at -32C
-LT_ICE_MAX = Float(266.16)  # Active INPs seed ice starting at -7C
-LT_ICE_PWR = Float(1.5)  # Near-linear transition curve clears liquid pooling
-# 6. Oceans (Open water, mid-to-high latitude marine boundary layers)
-# Bias Fix: Synchronized with Sea Ice limits to maintain high open-water marine
-# cloud optical depths, mitigating mid-latitude high-altitude liquid biases.
-OT_ICE_ALL = Float(235.16)  # Drops to 100% ice near -38C
-OT_ICE_MAX = Float(271.15)  # Highly liquid-dominated near 0C to -2C
-OT_ICE_PWR = Float(4.5)  # High power protects high marine LWP peak
-
 # Jason ice_fraction constants
 # In anvil/convective clouds
 JAT_ICE_ALL = Float(245.16)
