@@ -3147,6 +3147,7 @@ end if
      real, pointer, dimension(:,:,:) :: DSL__BUOYF
      real, pointer, dimension(:,:,:) :: DSL__MFTKE
      real, pointer, dimension(:,:) :: DSL__DRYCBLH
+     type(ESMF_VM) :: vm
      integer :: comm, rank, mpierr
      real :: start, finish
 
@@ -3991,8 +3992,10 @@ end if
       call MAPL_TimerOn (MAPL,name="---SHOC" ,RC=STATUS)
       VERIFY_(STATUS)
 
+      call ESMF_VMGetCurrent(vm, rc=status)
+      call ESMF_VMGet(vm, mpiCommunicator=comm)
       call MPI_Comm_rank(comm, rank, mpierr)
-      
+
       if (USE_PYTURB_SHOC) then
          call cpu_time(start)
          call MAPL_GetPointer(INTERNAL,   DSL__BUOYF,  'DSL__BUOYF', alloc=.TRUE.,RC=STATUS); VERIFY_(STATUS)
@@ -4003,10 +4006,12 @@ end if
          DSL__DRYCBLH(:, :) = DRYCBLH(:,:)
          call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT, INTERNAL )
          call cpu_time(finish)
+         print *, 'RUNNING PYSHOC'
          if (rank == 0) print *, 'Python SHOC time taken (with interface) = ', finish - start, 's'
       else
       ! call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT, INTERNAL )
       call cpu_time(start)
+      print *, 'RUNNING FORTRAN SHOC'
       call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                   !== Inputs ==
                   SH(:,:),               &
