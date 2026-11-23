@@ -30,6 +30,8 @@ EPS = RDGAS / RVGAS  # 0.6219934994582882
 EPSM1 = RDGAS / RVGAS - 1.0  # -0.3780065005417118
 
 TICE = Float(273.15)  # freezing temperature (K): ref: GFDL, GFS
+TFRZ_INST = TICE - Float(40.0)  # homogeneous freezing temperature (K)
+TMLT_FAST = TICE + Float(2.0)  # fast melting temperature (K)
 
 SATURATION_TABLE_LENGTH = Int(2621)
 SATURATION_TABLE_TMIN = TICE - Float(160.0)

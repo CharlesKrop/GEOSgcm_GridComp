@@ -25,42 +25,49 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
         super().__init__(grid, stencil_factory)
         self.quantity_factory = grid.quantity_factory
         self.in_vars["data_vars"] = {
-            name: {}
+            f"{name}_data_buffered_in_n_loop": {}
             for name in (
-                "DEN_data_buffered",
-                "DENFAC_data_buffered",
-                "T_data_buffered",
-                "QA_data_buffered",
-                "QV_data_buffered",
-                "QL_data_buffered",
-                "QR_data_buffered",
-                "QI_data_buffered",
-                "QS_data_buffered",
-                "QG_data_buffered",
-                "DP_data_buffered",
-                "CCN_data_buffered",
-                "CIN_data_buffered",
-                "RSUBL_data_buffered",
-                "H_VAR_data_buffered",
-                "MPPCW_data_buffered",
-                "MPPEW_data_buffered",
-                "MPPE1_data_buffered",
-                "MPPDI_data_buffered",
-                "MPPD1_data_buffered",
-                "MPPDS_data_buffered",
-                "MPPDG_data_buffered",
-                "MPPSI_data_buffered",
-                "MPPS1_data_buffered",
-                "MPPSS_data_buffered",
-                "MPPSG_data_buffered",
-                "MPPFW_data_buffered",
-                "ONEMSIG_data_buffered",
+                "DEN",
+                "DENFAC",
+                "T",
+                "QA",
+                "QV",
+                "QL",
+                "QR",
+                "QI",
+                "QS",
+                "QG",
+                "DP",
+                "CCN",
+                "CIN",
+                "RSUBL",
+                "H_VAR",
+                "MPPCW",
+                "MPPEW",
+                "MPPE1",
+                "MPPDI",
+                "MPPD1",
+                "MPPDS",
+                "MPPDG",
+                "MPPSI",
+                "MPPS1",
+                "MPPSS",
+                "MPPSG",
+                "MPPFW",
+                "ONEMSIG",
             )
         }
         self.out_vars = self.in_vars["data_vars"]
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL1M-Config")
+        if "TURNRHCRIT" in self.constants:
+            self.constants["TURNRHCRIT_SFC"] = self.constants.pop("TURNRHCRIT")
+            self.constants["TURNRHCRIT_TOP"] = 3250.0
+        self.constants.setdefault("MIN_RH_CRIT", 0.725)
+        self.cwd = str(data_loader._data_path)
+        lid = self.constants["GFDL_MP_KLID"]
+        self.level_start = int(lid - Int(1)) if lid > 0 else 0
 
     def compute(self, inputs):
         # Serialized Fortran levels are one-based; Python configuration is zero-based.
@@ -68,15 +75,15 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
         # shift GFDL_MP_KLID to be zero-based for Python
         lid = constants["GFDL_MP_KLID"]
         constants["GFDL_MP_KLID"] = lid - Int(1) if lid > 0 else Int(0)
-        # Keep the full physical domain: the legacy savepoint omits its top level.
+        # Retain the full namelist grid; the runtime restricts the stencil to the lid.
         config = GFDL1MConfig(
-            CWD="/Users/ckropiew/GEOS/v11.10.1/run/experiments/GCM_C24_L72_NX1_NY1/scratch",
+            CWD=self.cwd,
             **constants,
         )
         if not config.GFDL_MP3:
             raise NotImplementedError("The Python GFDL1M microphysics translator requires GFDL_MP3.")
         state = GFDL1MState.zeros(self.quantity_factory)
-        # Initialize the runtime, but execute only sedimentation after loading
+        # Initialize the runtime, but execute only subgrid processes after loading
         # its phase-boundary fields.
         code = GFDL1M(
             stencil_factory=self.stencil_factory,
@@ -94,34 +101,34 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
 
         # map fortran serialbox names to python state names
         fields = {
-            "DEN_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density,
-            "DENFAC_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density_factor,
-            "T_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.t,
-            "QA_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cloud_fraction,
-            "QV_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.vapor,
-            "QL_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.liquid,
-            "QR_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.rain,
-            "QI_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.ice,
-            "QS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.snow,
-            "QG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.graupel,
-            "DP_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
-            "CCN_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.ccn,
-            "CIN_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cin,
-            "RSUBL_data_buffered": state.non_anvil_large_scale.sublimation,
-            "H_VAR_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.h_var,
-            "MPPCW_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppcw,
-            "MPPEW_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppew,
-            "MPPE1_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppe1,
-            "MPPDI_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdi,
-            "MPPD1_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppd1,
-            "MPPDS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppds,
-            "MPPDG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdg,
-            "MPPSI_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsi,
-            "MPPS1_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mpps1,
-            "MPPSS_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppss,
-            "MPPSG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsg,
-            "MPPFW_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppfw,
-            "ONEMSIG_data_buffered": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.one_minus_sigma,
+            "DEN_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density,
+            "DENFAC_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density_factor,
+            "T_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.t,
+            "QA_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cloud_fraction,
+            "QV_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.vapor,
+            "QL_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.liquid,
+            "QR_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.rain,
+            "QI_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.ice,
+            "QS_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.snow,
+            "QG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.graupel,
+            "DP_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
+            "CCN_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.ccn,
+            "CIN_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cin,
+            "RSUBL_data_buffered_in_n_loop": state.non_anvil_large_scale.sublimation,
+            "H_VAR_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.h_var,
+            "MPPCW_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppcw,
+            "MPPEW_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppew,
+            "MPPE1_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppe1,
+            "MPPDI_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdi,
+            "MPPD1_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppd1,
+            "MPPDS_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppds,
+            "MPPDG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdg,
+            "MPPSI_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsi,
+            "MPPS1_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mpps1,
+            "MPPSS_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppss,
+            "MPPSG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsg,
+            "MPPFW_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppfw,
+            "ONEMSIG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.one_minus_sigma,
         }
 
         # Identify ntimes from the input data shape.
@@ -130,7 +137,7 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
         # Create output arrays with the same shape as the input arrays.
         outputs = {name: np.empty_like(inputs[name]) for name in self.out_vars}
 
-        # Ensure the shape of the serialized data and the shape of the state fields match.
+        # Accept the full column or the Fortran lid-to-bottom slice.
         for name in self.in_vars["data_vars"]:
             field_shape = fields[name].field.shape
             ni, nj = field_shape[:2]
@@ -139,7 +146,7 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
                 len(field_shape) not in (2, 3)
                 or len(shape) != len(field_shape)
                 or shape[:2] != (ni * nj, ntimes)
-                or (len(shape) == 3 and not 0 < shape[2] <= field_shape[2])
+                or (len(shape) == 3 and shape[2] not in (field_shape[2], field_shape[2] - self.level_start))
             ):
                 raise ValueError(f"{name}: buffer shape {shape} is incompatible with " f"field shape {field_shape} and {ntimes} time samples")
 
@@ -149,15 +156,16 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
                 destination = fields[name].field[:]
                 source = inputs[name][:, n, ...]
                 ni, nj = destination.shape[:2]
-                # Ensure any unfilled data are zeroed out.
-                destination[:] = 0
+                # Preserve missing values outside the serialized domain.
+                destination[:] = np.nan
                 # Reshape and copy the serialized data into the state field.
                 if destination.ndim == 2:
                     safe_assign_array(destination, source.reshape((ni, nj), order="F"))
                 else:
                     nlevels = source.shape[-1]
                     unpacked = source.reshape((ni, nj, nlevels), order="F")
-                    safe_assign_array(destination[:, :, -nlevels:], unpacked)
+                    start = 0 if nlevels == destination.shape[-1] else self.level_start
+                    safe_assign_array(destination[:, :, start : start + nlevels], unpacked)
 
             code._gfdl_microphysics_v3._driver._mp_full._subgrid_processes(
                 state,
@@ -169,7 +177,8 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
             for name in self.out_vars:
                 output_sample = outputs[name][:, n, ...]
                 field = fields[name].field[:]
-                saved_levels = field if field.ndim == 2 else field[:, :, -output_sample.shape[-1] :]
+                start = 0 if field.ndim == 2 or output_sample.shape[-1] == field.shape[-1] else self.level_start
+                saved_levels = field if field.ndim == 2 else field[:, :, start : start + output_sample.shape[-1]]
                 safe_assign_array(
                     output_sample,
                     saved_levels.reshape(output_sample.shape, order="F"),

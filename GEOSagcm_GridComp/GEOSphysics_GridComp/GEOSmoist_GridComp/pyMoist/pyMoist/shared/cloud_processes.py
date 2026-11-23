@@ -43,6 +43,12 @@ from pyMoist.shared.constants import (
     CFMIN,
     DIFFU,
     EPSILON,
+    GLAC_SHIFT_CONV,
+    GLAC_SHIFT_LAND,
+    GLAC_SHIFT_LANDICE,
+    GLAC_SHIFT_OCEAN,
+    GLAC_SHIFT_SEAICE,
+    GLAC_SHIFT_SNOW,
     ICE_FRACTION_POLYNOMIAL,
     ICE_RADII_PARAM,
     IT_ICE_ALL,
@@ -90,6 +96,8 @@ from pyMoist.shared.constants import (
     ST_ICE_PWR,
     TAUFRZ,
     TAUMLT,
+    T_HOM,
+    T_WIDTH,
     V12_ICE_POLYNOMIAL,
 )
 
@@ -242,6 +250,8 @@ def cloud_effective_radius_ice(
     t: Float,
     ice_mixing_ratio: Float,
     ice_radii_param: Int = ICE_RADII_PARAM,
+    ice_concentration: Float = 0.0,
+    convection_fraction: Float = 0.0,
 ) -> Float:
     """
     Calculate the effective radius of ice particles in clouds
@@ -269,16 +279,24 @@ def cloud_effective_radius_ice(
             bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (MAPL_TICE - t) ** 1.5)
         bb = min((max(bb, -6.0)), -2.0)
         radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
-    else:
+    elif ice_radii_param == 2:
         # ------ice cloud effective radius ----- [Sun, 2001]
         # https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2022GL102521
         tc = t - MAPL_TICE
         aa = 45.8966 * (wc**0.2214)
         bb = 0.79570 * (wc**0.2535) * (t - 83.15)
-        radius = min(155.0, max(30.0, (1.2351 + 0.0105 * tc) * (aa + bb)))
+        radius = min(150.0, max(30.0, (1.2351 + 0.0105 * tc) * (aa + bb)))
         radius = 0.64952 * radius
+    else:
+        if wc > 1.0e-9 and ice_concentration > 1.0:
+            volume_radius = (3.0 * rho * ice_mixing_ratio / (4.0 * MAPL_PI * 917.0 * ice_concentration)) ** (1.0 / 3.0)
+            radius = (0.50 + 1.10 * sqrt(convection_fraction)) * volume_radius
+            radius = min(150.0e-6 - 75.0e-6 * (1.0 - sqrt(convection_fraction)), max(25.0e-6, radius))
+        else:
+            radius = 50.0e-6
 
-    radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
+    if ice_radii_param < 3:
+        radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
 
     return radius
 
@@ -290,35 +308,27 @@ def cloud_effective_radius_liquid(
     liquid_mixing_ratio: Float,
     liquid_concentration: Float,
     liquid_radii_param: Int = LIQ_RADII_PARAM,
+    convection_fraction: Float = 0.0,
 ) -> Float:
-    """
-    Calculate the effective radius of liquid droplets clouds
-
-    Arguments:
-        pressure (in): pressure (millibars)
-        temperature (in): temperature (Kelvin)
-        liquid_mixing_ratio (in): liquid mixing ratio (kg/kg)
-        liquid_concentration (in): liquid cloud droplet concentration (m^-3)
-
-    Returns:
-        radius (Float): drop radius
-    """
-    # LDRADIUS4 first computes air density in kg/m3, then converts the
-    # in-cloud liquid content to g/m3 exactly once.
+    """Return the effective liquid radius using the configured GFDL closure."""
     rho = air_density(pressure, temperature)
-
-    # liquid water content
-    wc = 1.0e3 * rho * liquid_mixing_ratio  # air density [g/m3] * liquid cloud mixing ratio [kg/kg]
-    # cloud drop number concentration
-    # from the aerosol model + ....
+    wc = 1.0e3 * rho * liquid_mixing_ratio
     nnx = max(liquid_concentration * 1.0e-6, 10.0)
-    # radius in meters
+
     if liquid_radii_param == 1:
-        # Jason Version
-        radius = min(60.0e-6, max(2.5e-6, 1.0e-6 * BX * (wc / nnx) ** R13BBETA * ABETA * 6.92))
+        radius = min(60.0e-6, max(5.0e-6, 1.0e-6 * BX * (wc / nnx) ** R13BBETA * ABETA * 6.92))
+    elif liquid_radii_param == 2:
+        radius = min(60.0e-6, max(5.0e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE))
+    elif liquid_radii_param == 3:
+        liquid_water_content = rho * liquid_mixing_ratio
+        if liquid_water_content > 1.0e-12 and liquid_concentration > 1.0e-3:
+            volume_radius = (3.0 * liquid_water_content / (4.0 * MAPL_PI * 1000.0 * liquid_concentration)) ** (1.0 / 3.0)
+            radius = (1.30 + 1.05 * sqrt(convection_fraction)) * volume_radius
+            radius = min(60.0e-6, max(5.0e-6 + 7.5e-6 * sqrt(convection_fraction), radius))
+        else:
+            radius = 4.0e-6
     else:
-        # [liu&daum, 2000 and 2005. liu et al 2008]
-        radius = min(60.0e-6, max(2.5e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE))
+        radius = min(60.0e-6, max(5.0e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE))
 
     return radius
 
@@ -349,19 +359,11 @@ def evaporate(
         k1 = (MAPL_ALHL**2) * RHO_W / (K_COND * MAPL_RVAP * (t**2))
         k2 = MAPL_RVAP * t * RHO_W / (DIFFU * (1000.0 / p_mb) * es)
 
-        # Liquid radii evaluation
-        # Pass grid-mean QL to perfectly balance the grid-mean drop concentration NL
-        if cloud_fraction > 0.0 and liquid > 0.0:
-            liquid_modified = liquid / cloud_fraction
-        else:
-            liquid_modified = 0.0
-
-        radius = cloud_effective_radius_liquid(p_mb, t, liquid_modified, concentration_liquid)
+        radius = cloud_effective_radius_liquid(p_mb, t, liquid, concentration_liquid, convection_fraction=cloud_fraction)
 
         # Calculate Evaporation rate with explicit squared radius dependencies
         if rh_limited < rh_crit and radius > 0.0:
             evap = CCW_EVAP_EFF * liquid * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)
-            evap = max(0.0, min(evap, liquid))
         else:
             evap = 0.0
 
@@ -842,12 +844,17 @@ def ice_fraction(
         ice_fraction (Float): ice fraction
     """
     # save an integer copy of surface type for comparisons
-    surface_type_int = trunc(surface_type)
+    surface_type_int = int(round_away_from_zero(surface_type))
 
     if ICE_FRACTION_POLYNOMIAL == RAW_MODIS_POLYNOMIAL:
         # Use MODIS polynomial from Hu et al, DOI: (10.1029/2009JD012384)
         tc = max(-46.0, min(t - MAPL_TICE, 46.0))  # convert to celcius and limit range from -46:46 C
-        ptc = 7.6725 + 1.0118 * tc + 0.1422 * tc**2 + 0.0106 * tc**3 + 0.000339 * tc**4 + 0.00000395 * tc**5
+        # Match the reference Fortran compiler's integer-power multiplication order.
+        tc_squared = tc * tc
+        tc_fourth = tc_squared * tc_squared
+        ptc = (
+            7.6725 + 1.0118 * tc + 0.1422 * tc_squared + 0.0106 * tc**3 + 0.000339 * tc_fourth + 0.00000395 * (tc_fourth * tc)
+        )
         ice_fraction = 1.0 - (1.0 / (1.0 + exp(-1 * ptc)))
 
     elif ICE_FRACTION_POLYNOMIAL == JASON_ICE_POLYNOMIAL:
@@ -902,52 +909,54 @@ def ice_fraction(
         ice_fraction = ice_fraction_m * (1.0 - convection_fraction) + ice_fraction_c * (convection_fraction)
 
     elif ICE_FRACTION_POLYNOMIAL == V12_ICE_POLYNOMIAL:
-        # ------------------------------------------------------------------
-        # 1. Convective / Anvil Cloud Ice Fraction (ICEFRCT_C)
-        # ------------------------------------------------------------------
-        ice_fraction_c = 0.00
-        if t <= AT_ICE_ALL:
-            ice_fraction_c = 1.000
-        elif t <= AT_ICE_MAX:
-            ice_fraction_c = sin(0.5 * MAPL_PI * (1.00 - (t - AT_ICE_ALL) / (AT_ICE_MAX - AT_ICE_ALL)))
-        ice_fraction_c = max(0.00, min(1.00, ice_fraction_c)) ** AT_ICE_PWR
+        # This mode forced surface_type to an integer before comparison
+        surface_type_int = int(round_away_from_zero(surface_type))
 
-        # ------------------------------------------------------------------
-        # 2. Grid-Scale / Mesh Cloud Ice Fraction (ICEFRCT_M)
-        # ------------------------------------------------------------------
-        # Select the correct constants based on surface type
-        if surface_type == SRF_TYPE_LANDICE:
-            t_all_loc = LIT_ICE_ALL
-            t_max_loc = LIT_ICE_MAX
-            pwr_loc = LIT_ICE_PWR
-        if surface_type == SRF_TYPE_ICE:
-            t_all_loc = IT_ICE_ALL
-            t_max_loc = IT_ICE_MAX
-            pwr_loc = IT_ICE_PWR
-        if surface_type == SRF_TYPE_SNOW:
-            t_all_loc = ST_ICE_ALL
-            t_max_loc = ST_ICE_MAX
-            pwr_loc = ST_ICE_PWR
-        if surface_type == SRF_TYPE_LAND:
-            t_all_loc = LT_ICE_ALL
-            t_max_loc = LT_ICE_MAX
-            pwr_loc = LT_ICE_PWR
-        if surface_type == SRF_TYPE_OCEAN:
-            t_all_loc = OT_ICE_ALL
-            t_max_loc = OT_ICE_MAX
-            pwr_loc = OT_ICE_PWR
+        # Handle glaciation shift
+        if surface_type_int == SRF_TYPE_LANDICE:
+            glac_shift = GLAC_SHIFT_LANDICE
+        elif surface_type_int == SRF_TYPE_ICE:
+            glac_shift = GLAC_SHIFT_SEAICE
+        elif surface_type_int == SRF_TYPE_SNOW:
+            glac_shift = GLAC_SHIFT_SNOW
+        elif surface_type_int == SRF_TYPE_OCEAN:
+            glac_shift = GLAC_SHIFT_LAND
+        elif surface_type_int == SRF_TYPE_LAND:
+            glac_shift = GLAC_SHIFT_OCEAN
+        else:
+            glac_shift = GLAC_SHIFT_CONV
 
-        # Calculate ICEFRCT_M
-        # Sigmoidal functions like figure 6b/6c of Hu et al 2010, doi:10.1029/2009JD012384
-        ice_fraction_m = 0.00
-        if t <= t_all_loc:
-            ice_fraction_m = 1.000
-        elif t <= t_max_loc:
-            ice_fraction_m = sin(0.5 * MAPL_PI * (1.00 - (t - t_all_loc) / (t_max_loc - t_all_loc)))
-        ice_fraction_m = max(0.00, min(1.00, ice_fraction_m)) ** pwr_loc
+        # Consider the convection fraction
+        glac_shift = glac_shift + GLAC_SHIFT_CONV * convection_fraction
 
-        # Combine the Convective and Mesh functions
-        ice_fraction = ice_fraction_m * (1.0 - convection_fraction) + ice_fraction_c * (convection_fraction)
+        # Calculate the actual unclipped Celsius temperature
+        t_celsius = t - MAPL_TICE
+        tc = max(-46.0, min(t_celsius, 46.0))
+        tc_shifted = tc + glac_shift
+
+        # Calculate the new polynomial
+        # Match the reference Fortran compiler's integer-power multiplication order.
+        tc_squared = tc_shifted * tc_shifted
+        tc_fourth = tc_squared * tc_squared
+        ptc = (
+            7.6725
+            + 1.0118 * tc_shifted
+            + 0.1422 * tc_squared
+            + 0.0106 * tc_shifted**3
+            + 0.000339 * tc_fourth
+            + 0.00000395 * (tc_fourth * tc_shifted)
+        )
+        liquid_fraction = 1.0 / (1.0 + exp(-1.0 * ptc))
+        # Calculate the smooth taper to force liquid to 0.0 at and below T_HOM
+        # u scales from 0.0 (at T_HOM) to 1.0 (at T_HOM + T_WIDTH = -30 C)
+        u = (t_celsius - T_HOM) / T_WIDTH
+        u = max(0.0, min(u, 1.0))
+
+        # C2-continuous Smootherstep: 6u^5 - 15u^4 + 10u^3 evaluated using Horner's method to avoid slow power (**) operators
+        taper = u**3 * (10.0 + u * (-15.0 + u * 6.0))
+
+        # Apply the taper to the liquid fraction and compute the final ice fraction
+        ice_fraction = 1.0 - liquid_fraction * taper
 
     # Final bounds check
     ice_fraction = min(1.0, max(0.0, ice_fraction))
@@ -1239,6 +1248,7 @@ def sublimate(
     ice: FloatField,
     cloud_fraction: FloatField,
     saturation_specific_humidity: FloatField,
+    concentration_ice: FloatField,
 ):
     from __externals__ import CCI_EVAP_EFF, DTIME, ICE_RADII_PARAM
 
@@ -1256,12 +1266,7 @@ def sublimate(
         # DIFFU is given for 1000 mb, so 1000.0/p_mb accounts for increased diffusivity at lower pressure
         k2 = MAPL_RVAP * t * RHO_I / (DIFFU * (1000.0 / p_mb) * es)
 
-        if cloud_fraction > 0.0 and ice > 0.0:
-            ice_modified = ice / cloud_fraction
-        else:
-            ice_modified = 0.0
-
-        radius = cloud_effective_radius_ice(p_mb, t, ice_modified, ICE_RADII_PARAM)
+        radius = cloud_effective_radius_ice(p_mb, t, ice, ICE_RADII_PARAM, concentration_ice, cloud_fraction)
 
         if rh_limited < rh_crit and radius > 0.0:
             subl = CCI_EVAP_EFF * ice * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)

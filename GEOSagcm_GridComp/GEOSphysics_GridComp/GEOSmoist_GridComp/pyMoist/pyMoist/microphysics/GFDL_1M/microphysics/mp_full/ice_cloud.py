@@ -2,7 +2,7 @@ import dataclasses
 
 from ndsl import Local, LocalState, QuantityFactory, StencilFactory, NDSLRuntime
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, float32, interval, log
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, float32, interval, log, tanh
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
@@ -14,7 +14,7 @@ from pyMoist.microphysics.GFDL_1M.microphysics.config import (
     GFDLMPV3TableL4,
     GFDLMPV3TableL20,
 )
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, QPMIN, TICE
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, QPMIN, RDGAS, TFRZ_INST, TICE, TMLT_FAST
 from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
 from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
@@ -668,7 +668,7 @@ def p_ice_melt_freeze(
     # psaut_qi_crt (ice to snow conversion) has strong resolution dependence
     # account for this using onemsig to convert more ice to snow at coarser resolutions
     with computation(FORWARD), interval(0, 1):
-        critical_ice_factor: FloatFieldIJ = PSAUT_QI_CRT * (1.0e-1 * (1.0 - one_minus_sigma) + one_minus_sigma)
+        critical_ice_factor: FloatFieldIJ = PSAUT_QI_CRT * (0.1 + 1.9 * one_minus_sigma)
 
         fac_imlt: FloatFieldIJ = 1.0 - exp(-DT / TAU_IMLT)
         fac_frez: FloatFieldIJ = 1.0 - exp(-DT / TAU_FREZ)
@@ -686,8 +686,15 @@ def p_ice_melt_freeze(
 
             tmp = float32(t)
             newliq = new_liquid_condensate(t=tmp, liquid=liquid_internal, ice=ice_internal, convection_fraction=convection_fraction, surface_type=surface_type)
-            sink = float32(fac_imlt * min(ice_internal, min(newliq, (t - TICE) / icpk / cloud_fraction_bounded)))
-            tmp = float32(min(sink, max(QL_MLT / cloud_fraction_bounded - liquid_internal, 0.0)))
+
+            # Cloud ice melts instantly if it gets too far past freezing (e.g., +2 C)
+            if tmp > TMLT_FAST:
+                factor_ice_melt_local = 1.0  # Instant melt
+            else:
+                factor_ice_melt_local = fac_imlt
+
+            sink = float32(factor_ice_melt_local * min(ice_internal, min(newliq, (t - TICE) / icpk)))
+            tmp = float32(min(sink, max(QL_MLT - liquid_internal, 0.0)))
 
             tmp = tmp * cloud_fraction_bounded
             sink = sink * cloud_fraction_bounded
@@ -733,9 +740,17 @@ def p_ice_melt_freeze(
 
             tmp = float32(t)
             newice = new_ice_condensate(t=tmp, liquid=liquid_internal, ice=ice_internal, convection_fraction=convection_fraction, surface_type=surface_type)
-            sink = float32(fac_frez * min(liquid_internal, min(newice, (TICE - t) / icpk / cloud_fraction_bounded)))
+
+            # --- NEW: Homogeneous Freezing Hard Stop ---
+            if tmp < TFRZ_INST:
+                newice = liquid_internal  # All liquid must become ice
+                factor_freezing_local = 1.0  # Instantaneous timescale
+            else:
+                factor_freezing_local = fac_frez  # Normal 10-minute timescale
+
+            sink = float32(factor_freezing_local * min(liquid_internal, min(newice, (TICE - t) / icpk)))
             ice_modified = critical_ice_factor / density
-            tmp = float32(min(sink, max(ice_modified / cloud_fraction_bounded - ice_internal, 0.0)))
+            tmp = float32(min(sink, max(ice_modified - ice_internal, 0.0)))
 
             tmp = tmp * cloud_fraction_bounded
             sink = sink * cloud_fraction_bounded
@@ -805,7 +820,13 @@ def p_ice_to_snow_autoconversion(
     from __externals__ import CONV_FACTOR, DO_QA, DT, IN_CLOUD_ICE, PSAUT_QI_CRT, TAU_I2S
 
     with computation(FORWARD), interval(0, 1):
-        critical_ice_factor: FloatFieldIJ = PSAUT_QI_CRT * (1.0e-1 * (1.0 - one_minus_sigma) + one_minus_sigma)
+        # Tunable parameters for pressure-dependent critical threshold
+        psaut_factor_high: FloatFieldIJ = 5.0  # Multiplier at upper levels
+        psaut_factor_low: FloatFieldIJ = 1.0  # Multiplier at lower levels
+        psaut_p_mid: FloatFieldIJ = 450.0  # Transition center (hPa)
+        psaut_p_width: FloatFieldIJ = 100.0  # Transition width (hPa)
+
+        critical_ice_factor: FloatFieldIJ = PSAUT_QI_CRT * (0.1 + 1.9 * one_minus_sigma)
 
         fac_i2s: FloatFieldIJ = 1.0 - exp(-DT / TAU_I2S)
 
@@ -814,6 +835,29 @@ def p_ice_to_snow_autoconversion(
         if t < TICE and ice > QCMIN:
 
             tc = float32(t - TICE)
+
+            # Calculate dry air pressure, then convert from Pa to hPa (mb).
+            pressure = float32(density * RDGAS * t)
+            pressure = pressure * 0.01
+
+            # Smooth pressure-dependent threshold multiplier using tanh.
+            # Baseline critical threshold: critical_qi_factor
+            # 
+            # Physical interpretation:
+            #   - Upper troposphere (p <= 450 hPa): Multiplier approaches ~10x.
+            #     Ice must accumulate sgnificantly before converting to snow. 
+            #     This allows ice to stay suspended in strong updrafts and 
+            #     detrainment regions.
+            #   
+            #   - Mid troposphere (p = 700 hPa): Transition midpoint with 5.5x 
+            #     multiplier, yielding a moderate threshold
+            #   
+            #   - Lower troposphere (p >= 850 hPa): Multiplier drops toward 1x baseline. 
+            #     Effective threshold stays low, meaning ice 
+            #     converts to snow readily as it approaches the surface.
+            pressure_norm = (pressure - psaut_p_mid) / psaut_p_width
+            pressure_factor = psaut_factor_low + 0.5 * (psaut_factor_high - psaut_factor_low) * (1.0 - tanh(pressure_norm))
+            critical_ice_factor_local = min(critical_ice_factor * pressure_factor, PSAUT_QI_CRT)
 
             # Use In-Cloud condensates with scale-aware blending
             if IN_CLOUD_ICE:
@@ -828,7 +872,7 @@ def p_ice_to_snow_autoconversion(
             sink = 0.0
             dice_internal = max(dice_internal, QCMIN)
             ice_plus = ice_internal + dice_internal
-            ice_modified = critical_ice_factor / density / cloud_fraction_internal
+            ice_modified = critical_ice_factor_local / density
             if ice_plus > (ice_modified + QCMIN):
                 if ice_modified > (ice_internal - dice_internal):
                     dq = (0.25 * (ice_plus - ice_modified) ** 2) / dice_internal

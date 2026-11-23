@@ -11,15 +11,23 @@ SRF_TYPE_SNOW = Int(2)
 SRF_TYPE_ICE = Int(3)
 SRF_TYPE_LANDICE = Int(4)
 
+# Ice fraction polynomial options
 RAW_MODIS_POLYNOMIAL = Int(1)
 JASON_ICE_POLYNOMIAL = Int(2)
 V12_ICE_POLYNOMIAL = Int(3)
 ICE_FRACTION_POLYNOMIAL = Int(3)
 
+# Ice fraction glaciation shift options
+GLAC_SHIFT_CONV = 7.5  # Will hold tropical liquid very high
+GLAC_SHIFT_LAND = -1.0
+GLAC_SHIFT_LANDICE = 3.0
+GLAC_SHIFT_OCEAN = 4.0
+GLAC_SHIFT_SEAICE = 2.0
+GLAC_SHIFT_SNOW = 1.0
+
 # --------------------------------------------------
 # ice_fraction constants
 # --------------------------------------------------
-# FINAL REVISED SURFACE-DEPENDENT CLOUD PHASE CONSTANTS (Bias-Corrected)
 # 1. Anvil / Convective Clouds (Deep updrafts, clean high-altitude cores)
 # Observations: High updraft velocity dynamically preserves liquid down to deep
 # temperatures. Freezing drops off exponentially close to homogeneous limit.
@@ -57,7 +65,7 @@ OT_ICE_ALL = Float(235.16)  # Drops to 100% ice near -38C
 OT_ICE_MAX = Float(271.15)  # Highly liquid-dominated near 0C to -2C
 OT_ICE_PWR = Float(4.5)  # High power protects high marine LWP peak
 
-# Jason constants
+# Jason ice_fraction constants
 # In anvil/convective clouds
 JAT_ICE_ALL = Float(245.16)
 JAT_ICE_MAX = Float(261.16)
@@ -100,6 +108,9 @@ CFMIN = Float(1.0e-5)  # minimum cloud fraction
 QCMIN = Float(1.0e-8)  # minimum condensate (ql & qi) values
 QPMIN = Float(1.0e-15)  # minimum precipitate (qr, qs, qg) values
 DQCMAX = Float(1.0e-4)
+
+T_HOM = Float(-38.0)  # Homogeneous freezing at -38 C
+T_WIDTH = Float(10.0)  # Homogeneous freezing with -38 : -28 C
 
 R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1
 

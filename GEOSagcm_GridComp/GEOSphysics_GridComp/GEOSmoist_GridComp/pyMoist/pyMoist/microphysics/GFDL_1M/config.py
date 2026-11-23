@@ -36,6 +36,8 @@ class GFDL1MConfig:
     PHYS_HYDROSTATIC: Bool
     REPORT_GFDL_1M_NEGATIVES: Bool
     SH_MD_DP: Bool
-    TURNRHCRIT: Float
+    TURNRHCRIT_SFC: Float
+    TURNRHCRIT_TOP: Float
     USE_AEROSOL_NN: Bool
     USE_BERGERON: Bool
+    MIN_RH_CRIT: Float = Float(0.725)

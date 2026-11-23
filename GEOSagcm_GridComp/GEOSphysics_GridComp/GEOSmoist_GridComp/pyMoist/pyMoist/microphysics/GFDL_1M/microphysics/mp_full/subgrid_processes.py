@@ -98,6 +98,7 @@ def p_instant(
         RH_INC,
         RHC_CEVAP,
         T_MIN,
+        T_PSC,
         T_SUB,
         T_WFR,
         TAU_L2V,
@@ -112,7 +113,8 @@ def p_instant(
         # instant deposit all water vapor to cloud ice when temperature is super low
         # -----------------------------------------------------------------------
 
-        if t < T_MIN:
+        if t < T_PSC:
+            is_psc = t >= T_MIN
 
             subl = max(vapor - QCMIN, 0.0)
             mppd1 = mppd1 + subl * dry_dp * CONV_FACTOR
@@ -145,8 +147,9 @@ def p_instant(
                 C1_LIQ=C1_LIQ,
             )
 
-            # [WMP] avoid high cloud fractions for high troposhere cirrus clouds
-            if not DO_QA:
+            if is_psc:
+                cloud_fraction = 1.0
+            else:
                 cloud_fraction = max(0.0, min(1.0, 1.0 - QCMIN / max(ice, QCMIN)))
                 if cloud_fraction < CFMIN:
                     # remove clouds and qi if qa is too small
@@ -190,7 +193,7 @@ def p_instant(
             (total_energy - LV00 * combined_precip + LI00 * (snow + graupel)) / moist_heat_capacity_3(combined_precip, rain, snow + graupel, C1_VAP, C1_LIQ, C1_ICE)
         )
 
-        if t_in > T_SUB + 6.0:
+        if t_in > T_SUB + 6.0 and t >= T_PSC:
 
             # initialize to 0s
             evap = 0.0
@@ -482,6 +485,7 @@ class SubgridProcesses(NDSLRuntime):
                 "RHC_CEVAP": mp_namelist.RHC_CEVAP,
                 "TAU_L2V": mp_namelist.TAU_L2V,
                 "T_MIN": mp_namelist.T_MIN,
+                "T_PSC": mp_namelist.T_PSC,
                 "T_SUB": mp_namelist.T_SUB,
                 "T_WFR": mp_config.T_WFR,
                 "USE_RHC_CEVAP": mp_namelist.USE_RHC_CEVAP,
@@ -521,6 +525,7 @@ class SubgridProcesses(NDSLRuntime):
                 "D1_VAP": mp_config.D1_VAP,
                 "DO_WBF": mp_namelist.DO_WBF,
                 "DO_QA": mp_namelist.DO_QA,
+                "IN_CLOUD_ICE": mp_namelist.IN_CLOUD_ICE,
                 "DT": DRIVER_DT,
                 "LI00": mp_config.LI00,
                 "LI20": mp_config.LI20,
@@ -553,37 +558,38 @@ class SubgridProcesses(NDSLRuntime):
             tcp3=self._subgrid_processes_locals.tcp3,
         )
 
-        # -----------------------------------------------------------------------
-        # instant processes (include deposition, evaporation, and sublimation)
-        # -----------------------------------------------------------------------
-        self._p_instant(
-            t=gfdl_mp_v3_locals.t,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            density=gfdl_mp_v3_locals.density,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            h_var=gfdl_mp_v3_locals.h_var,
-            cvm=self._subgrid_processes_locals.cvm,
-            icpk=self._subgrid_processes_locals.icpk,
-            lcpk=self._subgrid_processes_locals.lcpk,
-            tcpk=self._subgrid_processes_locals.tcpk,
-            tcp3=self._subgrid_processes_locals.tcp3,
-            total_energy=self._subgrid_processes_locals.total_energy,
-            mppd1=gfdl_mp_v3_locals.mppd1,
-            mppe1=gfdl_mp_v3_locals.mppe1,
-            mpps1=gfdl_mp_v3_locals.mpps1,
-            one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
-            table_0=self._saturation_tables.table_0,
-            table_2=self._saturation_tables.table_2,
-            dtable_0=self._saturation_tables.dtable_0,
-            dtable_2=self._saturation_tables.dtable_2,
-        )
         if not self._mp_namelist.DO_WARM_RAIN_MP:
+            # -----------------------------------------------------------------------
+            # instant processes (include deposition, evaporation, and sublimation)
+            # -----------------------------------------------------------------------
+            self._p_instant(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                density=gfdl_mp_v3_locals.density,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                h_var=gfdl_mp_v3_locals.h_var,
+                cvm=self._subgrid_processes_locals.cvm,
+                icpk=self._subgrid_processes_locals.icpk,
+                lcpk=self._subgrid_processes_locals.lcpk,
+                tcpk=self._subgrid_processes_locals.tcpk,
+                tcp3=self._subgrid_processes_locals.tcp3,
+                total_energy=self._subgrid_processes_locals.total_energy,
+                mppd1=gfdl_mp_v3_locals.mppd1,
+                mppe1=gfdl_mp_v3_locals.mppe1,
+                mpps1=gfdl_mp_v3_locals.mpps1,
+                one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
+                table_0=self._saturation_tables.table_0,
+                table_2=self._saturation_tables.table_2,
+                dtable_0=self._saturation_tables.dtable_0,
+                dtable_2=self._saturation_tables.dtable_2,
+            )
+
             if False:
                 # WMP - something here causes large warm temperature spikes
                 # WMP - partial evap is moved into pinst call above
@@ -600,161 +606,161 @@ class SubgridProcesses(NDSLRuntime):
                     for n in self._mp_namelist.NCONDS:
                         pcond_pevap_not_ported = True
 
-        # -----------------------------------------------------------------------
-        # enforce complete freezing below t_wfr
-        # -----------------------------------------------------------------------
-        self._p_complete_freezing(
-            t=gfdl_mp_v3_locals.t,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            cvm=self._subgrid_processes_locals.cvm,
-            icpk=self._subgrid_processes_locals.icpk,
-            lcpk=self._subgrid_processes_locals.lcpk,
-            tcpk=self._subgrid_processes_locals.tcpk,
-            tcp3=self._subgrid_processes_locals.tcp3,
-            total_energy=self._subgrid_processes_locals.total_energy,
-            mppfw=gfdl_mp_v3_locals.mppfw,
-        )
+            # -----------------------------------------------------------------------
+            # enforce complete freezing below t_wfr
+            # -----------------------------------------------------------------------
+            self._p_complete_freezing(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                cvm=self._subgrid_processes_locals.cvm,
+                icpk=self._subgrid_processes_locals.icpk,
+                lcpk=self._subgrid_processes_locals.lcpk,
+                tcpk=self._subgrid_processes_locals.tcpk,
+                tcp3=self._subgrid_processes_locals.tcp3,
+                total_energy=self._subgrid_processes_locals.total_energy,
+                mppfw=gfdl_mp_v3_locals.mppfw,
+            )
 
-        # -----------------------------------------------------------------------
-        # Wegener Bergeron Findeisen process
-        # -----------------------------------------------------------------------
-        self._p_wbf(
-            t=gfdl_mp_v3_locals.t,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            density=gfdl_mp_v3_locals.density,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            cvm=self._subgrid_processes_locals.cvm,
-            icpk=self._subgrid_processes_locals.icpk,
-            lcpk=self._subgrid_processes_locals.lcpk,
-            tcpk=self._subgrid_processes_locals.tcpk,
-            tcp3=self._subgrid_processes_locals.tcp3,
-            total_energy=self._subgrid_processes_locals.total_energy,
-            one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
-            mppfw=gfdl_mp_v3_locals.mppfw,
-            table_0=self._saturation_tables.table_0,
-            table_2=self._saturation_tables.table_2,
-            dtable_0=self._saturation_tables.dtable_0,
-            dtable_2=self._saturation_tables.dtable_2,
-        )
+            # -----------------------------------------------------------------------
+            # Wegener Bergeron Findeisen process
+            # -----------------------------------------------------------------------
+            self._p_wbf(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                density=gfdl_mp_v3_locals.density,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                cvm=self._subgrid_processes_locals.cvm,
+                icpk=self._subgrid_processes_locals.icpk,
+                lcpk=self._subgrid_processes_locals.lcpk,
+                tcpk=self._subgrid_processes_locals.tcpk,
+                tcp3=self._subgrid_processes_locals.tcp3,
+                total_energy=self._subgrid_processes_locals.total_energy,
+                one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
+                mppfw=gfdl_mp_v3_locals.mppfw,
+                table_0=self._saturation_tables.table_0,
+                table_2=self._saturation_tables.table_2,
+                dtable_0=self._saturation_tables.dtable_0,
+                dtable_2=self._saturation_tables.dtable_2,
+            )
 
-        # -----------------------------------------------------------------------
-        # Bigg freezing mechanism
-        # -----------------------------------------------------------------------
-        self._p_bigg(
-            t=gfdl_mp_v3_locals.t,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            density=gfdl_mp_v3_locals.density,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            ccn=gfdl_mp_v3_locals.ccn,
-            cvm=self._subgrid_processes_locals.cvm,
-            icpk=self._subgrid_processes_locals.icpk,
-            lcpk=self._subgrid_processes_locals.lcpk,
-            tcpk=self._subgrid_processes_locals.tcpk,
-            tcp3=self._subgrid_processes_locals.tcp3,
-            total_energy=self._subgrid_processes_locals.total_energy,
-            mppfw=gfdl_mp_v3_locals.mppfw,
-        )
+            # -----------------------------------------------------------------------
+            # Bigg freezing mechanism
+            # -----------------------------------------------------------------------
+            self._p_bigg(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                density=gfdl_mp_v3_locals.density,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                ccn=gfdl_mp_v3_locals.ccn,
+                cvm=self._subgrid_processes_locals.cvm,
+                icpk=self._subgrid_processes_locals.icpk,
+                lcpk=self._subgrid_processes_locals.lcpk,
+                tcpk=self._subgrid_processes_locals.tcpk,
+                tcp3=self._subgrid_processes_locals.tcp3,
+                total_energy=self._subgrid_processes_locals.total_energy,
+                mppfw=gfdl_mp_v3_locals.mppfw,
+            )
 
-        # -----------------------------------------------------------------------
-        # cloud ice deposition and sublimation
-        # -----------------------------------------------------------------------
-        self._p_ice_deposition_and_sublimation(
-            t=gfdl_mp_v3_locals.t,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            density=gfdl_mp_v3_locals.density,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            cin=gfdl_mp_v3_locals.cin,
-            rsubl=state.non_anvil_large_scale.sublimation,
-            cvm=self._subgrid_processes_locals.cvm,
-            icpk=self._subgrid_processes_locals.icpk,
-            lcpk=self._subgrid_processes_locals.lcpk,
-            tcpk=self._subgrid_processes_locals.tcpk,
-            tcp3=self._subgrid_processes_locals.tcp3,
-            total_energy=self._subgrid_processes_locals.total_energy,
-            one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
-            mppdi=gfdl_mp_v3_locals.mppdi,
-            mppsi=gfdl_mp_v3_locals.mppsi,
-            table_2=self._saturation_tables.table_2,
-            dtable_2=self._saturation_tables.dtable_2,
-        )
+            # -----------------------------------------------------------------------
+            # cloud ice deposition and sublimation
+            # -----------------------------------------------------------------------
+            self._p_ice_deposition_and_sublimation(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                density=gfdl_mp_v3_locals.density,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                cin=gfdl_mp_v3_locals.cin,
+                rsubl=state.non_anvil_large_scale.sublimation,
+                cvm=self._subgrid_processes_locals.cvm,
+                icpk=self._subgrid_processes_locals.icpk,
+                lcpk=self._subgrid_processes_locals.lcpk,
+                tcpk=self._subgrid_processes_locals.tcpk,
+                tcp3=self._subgrid_processes_locals.tcp3,
+                total_energy=self._subgrid_processes_locals.total_energy,
+                one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
+                mppdi=gfdl_mp_v3_locals.mppdi,
+                mppsi=gfdl_mp_v3_locals.mppsi,
+                table_2=self._saturation_tables.table_2,
+                dtable_2=self._saturation_tables.dtable_2,
+            )
 
-        # -----------------------------------------------------------------------
-        # snow deposition and sublimation
-        # -----------------------------------------------------------------------
-        self._p_snow_deposition_and_sublimation(
-            t=gfdl_mp_v3_locals.t,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            density=gfdl_mp_v3_locals.density,
-            density_factor=gfdl_mp_v3_locals.density_factor,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            cvm=self._subgrid_processes_locals.cvm,
-            icpk=self._subgrid_processes_locals.icpk,
-            lcpk=self._subgrid_processes_locals.lcpk,
-            tcpk=self._subgrid_processes_locals.tcpk,
-            tcp3=self._subgrid_processes_locals.tcp3,
-            total_energy=self._subgrid_processes_locals.total_energy,
-            mppds=gfdl_mp_v3_locals.mppds,
-            mppss=gfdl_mp_v3_locals.mppss,
-            CSSUB=self._mp_config.CSSUB,
-            table_2=self._saturation_tables.table_2,
-            dtable_2=self._saturation_tables.dtable_2,
-        )
+            # -----------------------------------------------------------------------
+            # snow deposition and sublimation
+            # -----------------------------------------------------------------------
+            self._p_snow_deposition_and_sublimation(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                density=gfdl_mp_v3_locals.density,
+                density_factor=gfdl_mp_v3_locals.density_factor,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                cvm=self._subgrid_processes_locals.cvm,
+                icpk=self._subgrid_processes_locals.icpk,
+                lcpk=self._subgrid_processes_locals.lcpk,
+                tcpk=self._subgrid_processes_locals.tcpk,
+                tcp3=self._subgrid_processes_locals.tcp3,
+                total_energy=self._subgrid_processes_locals.total_energy,
+                mppds=gfdl_mp_v3_locals.mppds,
+                mppss=gfdl_mp_v3_locals.mppss,
+                CSSUB=self._mp_config.CSSUB,
+                table_2=self._saturation_tables.table_2,
+                dtable_2=self._saturation_tables.dtable_2,
+            )
 
-        # -----------------------------------------------------------------------
-        # graupel deposition and sublimation
-        # -----------------------------------------------------------------------
-        self._p_graupel_deposition_and_sublimation(
-            t=gfdl_mp_v3_locals.t,
-            dry_dp=gfdl_mp_v3_locals.dry_dp,
-            density=gfdl_mp_v3_locals.density,
-            density_factor=gfdl_mp_v3_locals.density_factor,
-            vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
-            ice=gfdl_mp_v3_locals.mixing_ratio.ice,
-            liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
-            graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
-            rain=gfdl_mp_v3_locals.mixing_ratio.rain,
-            snow=gfdl_mp_v3_locals.mixing_ratio.snow,
-            cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
-            cvm=self._subgrid_processes_locals.cvm,
-            icpk=self._subgrid_processes_locals.icpk,
-            lcpk=self._subgrid_processes_locals.lcpk,
-            tcpk=self._subgrid_processes_locals.tcpk,
-            tcp3=self._subgrid_processes_locals.tcp3,
-            total_energy=self._subgrid_processes_locals.total_energy,
-            mppdg=gfdl_mp_v3_locals.mppdg,
-            mppsg=gfdl_mp_v3_locals.mppsg,
-            CGSUB=self._mp_config.CGSUB,
-            table_2=self._saturation_tables.table_2,
-            dtable_2=self._saturation_tables.dtable_2,
-        )
+            # -----------------------------------------------------------------------
+            # graupel deposition and sublimation
+            # -----------------------------------------------------------------------
+            self._p_graupel_deposition_and_sublimation(
+                t=gfdl_mp_v3_locals.t,
+                dry_dp=gfdl_mp_v3_locals.dry_dp,
+                density=gfdl_mp_v3_locals.density,
+                density_factor=gfdl_mp_v3_locals.density_factor,
+                vapor=gfdl_mp_v3_locals.mixing_ratio.vapor,
+                ice=gfdl_mp_v3_locals.mixing_ratio.ice,
+                liquid=gfdl_mp_v3_locals.mixing_ratio.liquid,
+                graupel=gfdl_mp_v3_locals.mixing_ratio.graupel,
+                rain=gfdl_mp_v3_locals.mixing_ratio.rain,
+                snow=gfdl_mp_v3_locals.mixing_ratio.snow,
+                cloud_fraction=gfdl_mp_v3_locals.cloud_fraction,
+                cvm=self._subgrid_processes_locals.cvm,
+                icpk=self._subgrid_processes_locals.icpk,
+                lcpk=self._subgrid_processes_locals.lcpk,
+                tcpk=self._subgrid_processes_locals.tcpk,
+                tcp3=self._subgrid_processes_locals.tcp3,
+                total_energy=self._subgrid_processes_locals.total_energy,
+                mppdg=gfdl_mp_v3_locals.mppdg,
+                mppsg=gfdl_mp_v3_locals.mppsg,
+                CGSUB=self._mp_config.CGSUB,
+                table_2=self._saturation_tables.table_2,
+                dtable_2=self._saturation_tables.dtable_2,
+            )

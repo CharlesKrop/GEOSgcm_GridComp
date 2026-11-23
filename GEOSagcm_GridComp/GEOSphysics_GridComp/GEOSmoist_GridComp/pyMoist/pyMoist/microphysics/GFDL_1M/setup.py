@@ -11,7 +11,13 @@ from pyMoist.constants import MAPL_GRAV
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
-from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
+from pyMoist.saturation_tables import (
+    GlobalTable_saturation_tables,
+    SaturationVaporPressureTable,
+    saturation_specific_humidity,
+    saturation_specific_humidity_frozen_surface,
+    saturation_specific_humidity_liquid_surface,
+)
 from pyMoist.shared.cloud_processes import find_lcl_level
 
 
@@ -30,6 +36,12 @@ def calculate_derived_states(
     esx: GlobalTable_saturation_tables,
     sat: FloatField,
     dsat: FloatField,
+    esw: GlobalTable_saturation_tables,
+    lqu: Float,
+    ese: GlobalTable_saturation_tables,
+    frz: Float,
+    sat_liquid: FloatField,
+    sat_ice: FloatField,
     u: FloatField,
     u_unmodified: FloatField,
     v: FloatField,
@@ -75,6 +87,8 @@ def calculate_derived_states(
         mass = dp / MAPL_GRAV
         mass_inverse = 1 / mass
         sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
+        sat_liquid, _ = saturation_specific_humidity_liquid_surface(esw, lqu, t, p_mb * 100.0)
+        sat_ice, _ = saturation_specific_humidity_frozen_surface(ese, frz, t, p_mb * 100.0)
         sat, dsat = saturation_specific_humidity(t=t, p=p_mb * 100.0, esx=esx)
         u_unmodified = u
         v_unmodified = v
@@ -205,6 +219,10 @@ class GFDL1MSetup(NDSLRuntime):
         #           `self.saturation_tables.X` fails closure capture for
         #           argument reconstruction at call time
         self._esx = self.saturation_tables.esx
+        self._esw = self.saturation_tables.esw
+        self._lqu = self.saturation_tables.lqu
+        self._ese = self.saturation_tables.ese
+        self._frz = self.saturation_tables.frz
 
     def __call__(
         self,
@@ -238,6 +256,12 @@ class GFDL1MSetup(NDSLRuntime):
             esx=self._esx,
             sat=locals.saturation_specific_humidity,
             dsat=locals.dsaturation_specific_humidity,
+            esw=self._esw,
+            lqu=self._lqu,
+            ese=self._ese,
+            frz=self._frz,
+            sat_liquid=locals.saturation_specific_humidity_liquid,
+            sat_ice=locals.saturation_specific_humidity_ice,
             u=state.u,
             u_unmodified=locals.u_unmodified,
             v=state.v,

@@ -73,7 +73,11 @@ class MPFull(NDSLRuntime):
 
         # initialize subcomponents
         self._sedimentation = Sedimentation(
-            stencil_factory, quantity_factory, mp_config, mp_namelist, DRIVER_DT,
+            stencil_factory,
+            quantity_factory,
+            mp_config,
+            mp_namelist,
+            DRIVER_DT,
             ice_radii_param=ice_radii_param,
         )
         self._update_precip_fluxes = stencil_factory.from_dims_halo(

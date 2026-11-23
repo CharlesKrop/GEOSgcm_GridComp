@@ -43,7 +43,8 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
                 "PLEmb",
                 "ZL0",
                 "MASS",
-                "QST3",
+                "QSLIQ",
+                "QSICE",
                 "EIS",
                 "SRF_TYPE",
                 "CNV_FRC",
@@ -90,6 +91,20 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL1M-Config")
+        if "TURNRHCRIT" in self.constants:
+            self.constants["TURNRHCRIT_SFC"] = self.constants.pop("TURNRHCRIT")
+            self.constants["TURNRHCRIT_TOP"] = 3250.0
+        self.constants.setdefault("MIN_RH_CRIT", 0.725)
+        self.cwd = str(data_loader._data_path)
+        import xarray as xr
+
+        with xr.open_dataset(data_loader._data_path / "GFDL1M_Macrophysics-In.nc") as dataset:
+            nlevels = dataset["T"].shape[-1]
+        if nlevels != self.grid.npz:
+            self.grid = Grid._make(self.grid.npx, self.grid.npy, nlevels, self.grid.layout, self.grid.rank, self.stencil_factory.backend)
+            self.stencil_factory = StencilFactory(config=self.stencil_factory.config, grid_indexing=self.grid.grid_indexing)
+            self.quantity_factory = self.grid.quantity_factory
+            self.maxshape = self.grid.domain_shape_full(add=(1, 1, 1))
 
     def compute(self, inputs):
         # Serialized Fortran levels are one-based; Python configuration is zero-based.
@@ -98,7 +113,7 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
         lid = constants["GFDL_MP_KLID"]
         constants["GFDL_MP_KLID"] = lid - Int(1) if lid > 0 else Int(0)
         config = GFDL1MConfig(
-            CWD="/Users/ckropiew/GEOS/v11.10.1/run/experiments/GCM_C24_L72_NX1_NY1/scratch",
+            CWD=self.cwd,
             **constants,
         )
         state = GFDL1MState.zeros(self.quantity_factory)
@@ -135,7 +150,8 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
             "PLEmb": locals.p_interface_mb,
             "ZL0": locals.layer_height_above_surface,
             "MASS": locals.mass,
-            "QST3": locals.saturation_specific_humidity,
+            "QSLIQ": locals.saturation_specific_humidity_liquid,
+            "QSICE": locals.saturation_specific_humidity_ice,
             "EIS": state.estimated_inversion_strength,
             "SRF_TYPE": state.surface_type,
             "CNV_FRC": state.convection_fraction,

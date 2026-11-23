@@ -64,7 +64,6 @@ class TranslateGFDLMPV3_Config(TranslateFortranData2Py):
             "DO_SEDI_MELT_QI": {},
             "DO_SEDI_MELT_QS": {},
             "DO_SEDI_MELT_QG": {},
-            "DO_QA": {},
             "RAD_SNOW": {},
             "RAD_GRAUPEL": {},
             "RAD_RAIN": {},
@@ -184,7 +183,8 @@ class TranslateGFDLMPV3_Config(TranslateFortranData2Py):
             "SED_FAC": {},
             "DO_ICE_PRES_SCALING": {},
             "VW_FAC": {},
-            "VI_FAC": {},
+            "VI_FAC_CNV": {},
+            "VI_FAC_LSC": {},
             "VS_FAC": {},
             "VG_FAC": {},
             "VR_FAC": {},
@@ -343,6 +343,10 @@ class TranslateGFDLMPV3_Config(TranslateFortranData2Py):
     def extra_data_load(self, data_loader: DataLoader):
         self.data_path = data_loader._data_path
         self.constants = data_loader.load("GFDL1M-Config")
+        if "TURNRHCRIT" in self.constants:
+            self.constants["TURNRHCRIT_SFC"] = self.constants.pop("TURNRHCRIT")
+            self.constants["TURNRHCRIT_TOP"] = 3250.0
+        self.constants.setdefault("MIN_RH_CRIT", 0.725)
         self.outputs_for_manual_test = data_loader.load("GFDLMPV3_Config-Out")
 
     def subset_output(self, varname, output):
@@ -405,7 +409,6 @@ class TranslateGFDLMPV3_Config(TranslateFortranData2Py):
             "DO_SEDI_MELT_QI": code._gfdl_microphysics_v3._mp_namelist.DO_SEDI_MELT_QI,
             "DO_SEDI_MELT_QS": code._gfdl_microphysics_v3._mp_namelist.DO_SEDI_MELT_QS,
             "DO_SEDI_MELT_QG": code._gfdl_microphysics_v3._mp_namelist.DO_SEDI_MELT_QG,
-            "DO_QA": code._gfdl_microphysics_v3._mp_namelist.DO_QA,
             "RAD_SNOW": code._gfdl_microphysics_v3._mp_namelist.RAD_SNOW,
             "RAD_GRAUPEL": code._gfdl_microphysics_v3._mp_namelist.RAD_GRAUPEL,
             "RAD_RAIN": code._gfdl_microphysics_v3._mp_namelist.RAD_RAIN,
@@ -525,7 +528,8 @@ class TranslateGFDLMPV3_Config(TranslateFortranData2Py):
             "SED_FAC": code._gfdl_microphysics_v3._mp_namelist.SED_FAC,
             "DO_ICE_PRES_SCALING": code._gfdl_microphysics_v3._mp_namelist.DO_ICE_PRES_SCALING,
             "VW_FAC": code._gfdl_microphysics_v3._mp_namelist.VW_FAC,
-            "VI_FAC": code._gfdl_microphysics_v3._mp_namelist.VI_FAC,
+            "VI_FAC_CNV": code._gfdl_microphysics_v3._mp_namelist.VI_FAC_CNV,
+            "VI_FAC_LSC": code._gfdl_microphysics_v3._mp_namelist.VI_FAC_LSC,
             "VS_FAC": code._gfdl_microphysics_v3._mp_namelist.VS_FAC,
             "VG_FAC": code._gfdl_microphysics_v3._mp_namelist.VG_FAC,
             "VR_FAC": code._gfdl_microphysics_v3._mp_namelist.VR_FAC,

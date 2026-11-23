@@ -52,7 +52,7 @@ class GFDLMPV3NamelistConfig:
     5: Fletcher (1962)
     """
 
-    IGFLAG: Int = Int(3)
+    IGFLAG: Int = Int(4)
     """ice generation scheme
     1: WSM6
     2: WSM6 with 0 at 0 C
@@ -327,6 +327,8 @@ class GFDLMPV3NamelistConfig:
 
     T_MIN: Float = Float(178.0)
     """minimum temperature to freeze - dry all water vapor (K)"""
+    T_PSC: Float = Float(188.15)
+    """Polar stratospheric ice-cloud frost point (K)."""
     T_SUB: Float = Float(184.0)
     """minimum temperature for sublimation of cloud ice (K)"""
 
@@ -358,7 +360,7 @@ class GFDLMPV3NamelistConfig:
     TAU_GMLT: Float = Float(1200.0)
     """graupel melting time scale (s)"""
     # subgridz timescales
-    TAU_WBF: Float = Float(1200.0)
+    TAU_WBF: Float = Float(600.0)
     """Wegener Bergeron Findeisen time scale (s)"""
 
     CCN_O: Float = Float(90.0)
@@ -368,7 +370,7 @@ class GFDLMPV3NamelistConfig:
 
     RTHRESHU: Float = Float(7.0e-6)
     """unstable critical cloud drop radius (micro m)"""
-    RTHRESHS: Float = Float(10.0e-6)
+    RTHRESHS: Float = Float(12.0e-6)
     """stable critical cloud drop radius (micro m)"""
 
     IN_CLOUD_LIQ: Bool = True
@@ -397,6 +399,8 @@ class GFDLMPV3NamelistConfig:
     PGAUT_QS_CRT: Bool = Float(0.6e-3)
     """snow to graupel autoconversion threshold (0.6e-3 in Purdue Lin scheme) (kg/m^3)"""
 
+    C_PAUT_SCHEME: Int = Int(1)
+    """Rain autoconversion scheme: 1 Hong et al., 2 Khairoutdinov-Kogan."""
     C_PAUT: Float = Float(0.5)
     """cloud water to rain autoconversion efficiency"""
 
@@ -449,11 +453,12 @@ class GFDLMPV3NamelistConfig:
     SED_FAC: Float = Float(1.0)
     """coefficient for sedimentation fall, scale from 1.0 (implicit) to 0.0 (lagrangian)"""
 
-    DO_ICE_PRES_SCALING: Bool = True
+    DO_ICE_PRES_SCALING: Bool = Bool(False)
     """optional pressure scaling to accelerate ice settling in the upper troposphere"""
 
     VW_FAC: Float = Float(1.0)
-    VI_FAC: Float = Float(1.0)
+    VI_FAC_CNV: Float = Float(1.15)
+    VI_FAC_LSC: Float = Float(1.0)
     VS_FAC: Float = Float(1.0)
     VG_FAC: Float = Float(1.0)
     VR_FAC: Float = Float(1.0)
@@ -650,6 +655,8 @@ class GFDLMPV3CloudMPConfig:
     # all other configuration parameters
     T_WFR: Float
     CPAUT0: Float64
+    LIQUID_EXPONENT: Float64
+    CCN_EXPONENT: Float64
     NORMW: Float64
     NORMI: Float64
     NORMR: Float64

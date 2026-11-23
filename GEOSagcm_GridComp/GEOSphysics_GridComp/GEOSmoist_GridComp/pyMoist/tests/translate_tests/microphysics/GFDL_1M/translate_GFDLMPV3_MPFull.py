@@ -97,7 +97,13 @@ class TranslateGFDLMPV3_MPFull(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL1M-Config")
+        if "TURNRHCRIT" in self.constants:
+            self.constants["TURNRHCRIT_SFC"] = self.constants.pop("TURNRHCRIT")
+            self.constants["TURNRHCRIT_TOP"] = 3250.0
+        self.constants.setdefault("MIN_RH_CRIT", 0.725)
         self.cwd = str(data_loader._data_path)
+        lid = self.constants["GFDL_MP_KLID"]
+        self.level_start = int(lid - Int(1)) if lid > 0 else 0
 
     def compute(self, inputs):
         constants = self.constants.copy()
@@ -182,13 +188,14 @@ class TranslateGFDLMPV3_MPFull(TranslateFortranData2Py):
             ni, nj = destination.shape[:2]
             destination[:] = 0
             if destination.ndim == 2:
+                # unfold the single IJ dimension
                 safe_assign_array(destination, source.reshape((ni, nj), order="F"))
             else:
+                # 3D fields have to be treated with care since only serialize a subset of levels starting from GFDL_MP_KLID
                 nlevels = source.shape[-1]
-                # Cell fields end at the bottom cell; PREFLUX fields end at the
-                # bottom interface. MPFull adds cell k's flux at interface k+1.
+                start = self.level_start + int(name.startswith("PREFLUX"))
                 safe_assign_array(
-                    destination[:, :, -nlevels:],
+                    destination[:, :, start : start + nlevels],
                     source.reshape((ni, nj, nlevels), order="F"),
                 )
 
@@ -198,6 +205,7 @@ class TranslateGFDLMPV3_MPFull(TranslateFortranData2Py):
         outputs = {name: np.empty_like(inputs[name]) for name in self.out_vars}
         for name, output in outputs.items():
             field = fields[name].field[:]
-            saved_levels = field if field.ndim == 2 else field[:, :, -output.shape[-1] :]
+            start = self.level_start + int(name.startswith("PREFLUX"))
+            saved_levels = field if field.ndim == 2 else field[:, :, start : start + output.shape[-1]]
             safe_assign_array(output, saved_levels.reshape(output.shape, order="F"))
         return outputs

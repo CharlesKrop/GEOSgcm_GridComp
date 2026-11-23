@@ -164,7 +164,21 @@ class GFDLMPV3(NDSLRuntime):
         # cloud water autoconversion, Hong et al. (2004)
 
         aone = Float(Float(2.0) / Float(9.0) * (Float(3.0) / Float(4.0)) ** (Float(4.0) / Float(3.0)) / constants.PI ** (Float(1.0) / Float(3.0)))
-        mp_config.CPAUT0 = float64(mp_namelist.C_PAUT * aone * constants.GRAV / constants.VISD)
+        if mp_namelist.C_PAUT_SCHEME == 1:
+            mp_config.LIQUID_EXPONENT = float64(Float(7.0) / Float(3.0))
+            mp_config.CCN_EXPONENT = float64(Float(-1.0) / Float(3.0))
+            # Khairoutdinov and Kogan (2000) Formulation
+            # DOI: 10.1175/1520-0493(2000)128<0229:ANCPPI>2.0.CO;2
+            mp_config.CPAUT0 = float64(mp_namelist.C_PAUT * aone * constants.GRAV / constants.VISD)
+        elif mp_namelist.C_PAUT_SCHEME == 2:
+            mp_config.LIQUID_EXPONENT = float64(Float(2.47))
+            mp_config.CCN_EXPONENT = float64(Float(-1.79))
+            # Empirical KK2000 pre-factor in SI units.
+            # NOTE: If your ccn input is in #/cm3, multiply this constant by 1.0e6**(-1.79)
+            # inside your localized c_praut evaluation if necessary.
+            mp_config.CPAUT0 = float64(mp_namelist.C_PAUT * Float(1350.0))
+        else:
+            raise ValueError(f"Invalid C_PAUT_SCHEME: {mp_namelist.C_PAUT_SCHEME}")
 
         # terminal velocities parameters, Lin et al. (1983)
 

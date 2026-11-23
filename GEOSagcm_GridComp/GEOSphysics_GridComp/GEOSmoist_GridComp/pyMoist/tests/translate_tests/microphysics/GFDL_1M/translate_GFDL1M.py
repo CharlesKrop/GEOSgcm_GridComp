@@ -152,6 +152,20 @@ class TranslateGFDL1M(TranslateFortranData2Py):
 
     def extra_data_load(self, data_loader: DataLoader):
         self.constants = data_loader.load("GFDL1M-Config")
+        if "TURNRHCRIT" in self.constants:
+            self.constants["TURNRHCRIT_SFC"] = self.constants.pop("TURNRHCRIT")
+            self.constants["TURNRHCRIT_TOP"] = 3250.0
+        self.constants.setdefault("MIN_RH_CRIT", 0.725)
+        self.cwd = str(data_loader._data_path)
+        import xarray as xr
+
+        with xr.open_dataset(data_loader._data_path / "GFDL1M-In.nc") as dataset:
+            nlevels = dataset["T"].shape[-1]
+        if nlevels != self.grid.npz:
+            self.grid = Grid._make(self.grid.npx, self.grid.npy, nlevels, self.grid.layout, self.grid.rank, self.stencil_factory.backend)
+            self.stencil_factory = StencilFactory(config=self.stencil_factory.config, grid_indexing=self.grid.grid_indexing)
+            self.quantity_factory = self.grid.quantity_factory
+            self.maxshape = self.grid.domain_shape_full(add=(1, 1, 1))
 
     def compute(self, inputs):
         # initialize constants
@@ -159,7 +173,7 @@ class TranslateGFDL1M(TranslateFortranData2Py):
         # shift GFDL_MP_KLID to be zero-based for Python
         lid = constants["GFDL_MP_KLID"]
         constants["GFDL_MP_KLID"] = lid - Int(1) if lid > 0 else Int(0)
-        config = GFDL1MConfig(CWD="/Users/ckropiew/netcdfs/last_run", **constants)
+        config = GFDL1MConfig(CWD=self.cwd, **constants)
 
         # initialize state
         state = GFDL1MState.zeros(self.quantity_factory)

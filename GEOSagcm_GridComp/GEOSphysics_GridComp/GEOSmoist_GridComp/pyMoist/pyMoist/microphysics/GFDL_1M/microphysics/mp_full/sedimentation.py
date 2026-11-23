@@ -253,7 +253,26 @@ def compute_terminal_velocity_ice(
         terminal_velocity_ice (FloatField)
         convection_fraction (FloatFieldIJ)
     """
-    from __externals__ import CONST_VI, DO_ICE_PRES_SCALING, ICE_RADII_PARAM, IFFLAG, VI_FAC, VI_MAX, VI_MIN, aaC, aaL, bbC, bbL, ccC, ccL, ddC, ddL, eeC, eeL
+    from __externals__ import (
+        CONST_VI,
+        DO_ICE_PRES_SCALING,
+        ICE_RADII_PARAM,
+        IFFLAG,
+        VI_FAC_CNV,
+        VI_FAC_LSC,
+        VI_MAX,
+        VI_MIN,
+        aaC,
+        aaL,
+        bbC,
+        bbL,
+        ccC,
+        ccL,
+        ddC,
+        ddL,
+        eeC,
+        eeL,
+    )
 
     with computation(PARALLEL), interval(...):
         # initialize t_internal and p_dry manually so that it gets the correct precision
@@ -275,7 +294,7 @@ def compute_terminal_velocity_ice(
                 ice_density = ice * density * 1.0e3
                 viLSC = 10.0 ** (log10(ice_density) * (t_internal * (aaL * t_internal + bbL) + ccL) + ddL * t_internal + eeL)
                 viCNV = 10.0 ** (log10(ice_density) * (t_internal * (aaC * t_internal + bbC) + ccC) + ddC * t_internal + eeC)
-                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
+                terminal_velocity_ice = 0.01 * (viLSC * VI_FAC_LSC * (1.0 - convection_fraction) + viCNV * VI_FAC_CNV * convection_fraction)
 
             elif IFFLAG == 2:
                 # Pure Heymsfield and Donner (1990)
@@ -289,7 +308,7 @@ def compute_terminal_velocity_ice(
                 viLSC = max(10.0, (1.411 * t_internal + 11.71 * log10(ice_density * 1.0e3) + 82.35))
                 # Anvil Vm: a=1.119, b=14.21, c=68.85
                 viCNV = max(10.0, (1.119 * t_internal + 14.21 * log10(ice_density * 1.0e3) + 68.85))
-                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
+                terminal_velocity_ice = 0.01 * (viLSC * VI_FAC_LSC * (1.0 - convection_fraction) + viCNV * VI_FAC_CNV * convection_fraction)
 
             elif IFFLAG == 4:
                 # Combination: Deng & Mace (2008) LSC + Mishra et al (2014) Anvil CNV
@@ -297,7 +316,7 @@ def compute_terminal_velocity_ice(
                 viLSC = 10.0 ** (log10(ice_density) * (t_internal * (aaL * t_internal + bbL) + ccL) + ddL * t_internal + eeL)
                 # Anvil Vm: a=1.119, b=14.21, c=68.85
                 viCNV = max(10.0, (1.119 * t_internal + 14.21 * log10(ice_density * 1.0e3) + 68.85))
-                terminal_velocity_ice = 0.01 * (viLSC * (1.0 - convection_fraction) + viCNV * (convection_fraction))
+                terminal_velocity_ice = 0.01 * (viLSC * VI_FAC_LSC * (1.0 - convection_fraction) + viCNV * VI_FAC_CNV * convection_fraction)
 
             # 2. Apply Universal Pressure Scaling (Accelerates high-alt ice)
             if DO_ICE_PRES_SCALING:
@@ -310,7 +329,6 @@ def compute_terminal_velocity_ice(
                 terminal_velocity_ice = terminal_velocity_ice * (c0 + c1 * log(diam))
 
             # 3. Apply user multiplier and safety caps
-            terminal_velocity_ice = VI_FAC * terminal_velocity_ice
             terminal_velocity_ice = min(VI_MAX, max(VI_MIN, terminal_velocity_ice))
 
 
@@ -489,7 +507,8 @@ class Sedimentation(NDSLRuntime):
                 "DO_ICE_PRES_SCALING": mp_namelist.DO_ICE_PRES_SCALING,
                 "ICE_RADII_PARAM": ice_radii_param,
                 "IFFLAG": mp_namelist.IFFLAG,
-                "VI_FAC": mp_namelist.VI_FAC,
+                "VI_FAC_CNV": mp_namelist.VI_FAC_CNV,
+                "VI_FAC_LSC": mp_namelist.VI_FAC_LSC,
                 "VI_MAX": mp_namelist.VI_MAX,
                 "VI_MIN": mp_namelist.VI_MIN,
                 "aaL": Float(-1.70704e-5),
@@ -593,7 +612,7 @@ class Sedimentation(NDSLRuntime):
                 mu=self._mp_namelist.MUI,
                 v_min=self._mp_namelist.VI_MIN,
                 v_max=self._mp_namelist.VI_MAX,
-                v_fac=self._mp_namelist.VI_FAC,
+                v_fac=Float(0.5) * (self._mp_namelist.VI_FAC_CNV + self._mp_namelist.VI_FAC_LSC),
                 const_v=self._mp_namelist.CONST_VI,
             )
         else:

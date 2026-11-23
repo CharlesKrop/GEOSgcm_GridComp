@@ -2,7 +2,7 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, float32, func
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, Int
 
 from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL4, GFDLMPV3TableL5
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, DT_FR, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
+from pyMoist.microphysics.GFDL_1M.microphysics.constants import C_LIQ, CFMIN, DT_FR, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
 from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
 from pyMoist.shared.cloud_processes import ice_fraction
@@ -729,41 +729,45 @@ def p_ice_deposition_and_sublimation(
             dq = vapor - ice_saturation_humidity
             tmp = min(ice, dq / (1.0 + tcpk * dice_saturation_humidity))
 
+            # Ice Crystal Concentration (cin) Evaluation
             if ice > QCMIN:
                 if DO_PSD_ICE_NUM:
                     cin = calc_particle_concentration(ice, density, MUI, PCAI, PCBI)
                     cin = cin / density
                 elif not PROG_CIN:
                     if INFLAG == 1:
-                        cin = 5.38e7 * exp(0.75 * log(ice * density))
+                        # Uses ice mass relationship
+                        cin = 5.38e7 * (ice * density) ** 0.75
                     if INFLAG == 2:
-                        cin = float32(exp(-2.80 + 0.262 * (TICE - t)) * 1000.0)
+                        # Uses temperature dependence (Fletcher-type curve)
+                        cin = float32(60.8101 * exp(0.262 * (TICE - t)))
                     if INFLAG == 3:
-                        cin = exp(-0.639 + 12.96 * (vapor / ice_saturation_humidity - 1.0)) * 1000.0
+                        # Uses ice supersaturation dependence
+                        cin = 527.819 * exp(12.96 * (vapor / ice_saturation_humidity - 1.0))
                     if INFLAG == 4:
-                        cin = float32(5.0e-3 * exp(0.304 * (TICE - t)) * 1000.0)
+                        # Steeper temperature dependence
+                        cin = float32(5.0 * exp(0.304 * (TICE - t)))
                     if INFLAG == 5:
-                        cin = float32(1.0e-5 * exp(0.5 * (TICE - t)) * 1000.0)
+                        # Very steep temperature dependence (Meyers-type approximation)
+                        cin = float32(0.01 * exp(0.5 * (TICE - t)))
                 pidep = float32(
-                    DT
-                    * dq
-                    * 4.0
-                    * 11.9
-                    * exp(0.5 * log(ice * density * cin))
-                    / (ice_saturation_humidity * density * (tcpk * cvm) ** 2 / (TCOND * RVGAS * t**2) + 1.0 / VDIFU)
+                    DT * dq * 4.0 * 11.9 * sqrt(ice * density * cin) / (ice_saturation_humidity * density * (tcpk * cvm) ** 2 / (TCOND * RVGAS * t**2) + 1.0 / VDIFU)
                 )
 
+            # Deposition vs Sublimation Branching
             if dq > 0.0:
+                # Ice Vapor Deposition (Growth Phase)
                 tc = float32(TICE - t)
-                qi_gen = 4.92e-11 * exp(1.33 * log(1.0e3 * exp(0.1 * tc)))
+                ice_gen = 4.808e-7 * exp(0.133 * tc)
+                ramp_factor = min(QI_LIM, 0.1 * tc) / density
                 if IGFLAG == 1:
-                    qi_crt = qi_gen / density
+                    qi_crt = ice_gen / density
                 if IGFLAG == 2:
-                    qi_crt = qi_gen * min(QI_LIM, 0.1 * tc) / density
+                    qi_crt = ice_gen * ramp_factor
                 if IGFLAG == 3:
-                    qi_crt = 1.82e-6 * min(QI_LIM, 0.1 * tc) / density
+                    qi_crt = 1.82e-6 * ramp_factor
                 if IGFLAG == 4:
-                    qi_crt = max(qi_gen, 1.82e-6) * min(QI_LIM, 0.1 * tc) / density
+                    qi_crt = max(ice_gen, 1.82e-6) * ramp_factor
                 sink = min(tmp, min(max(qi_crt - ice, pidep), tc / tcpk))
                 mppdi = mppdi + sink * dry_dp * CONV_FACTOR
             else:
@@ -822,7 +826,7 @@ def p_melt(
     return float32(
         (c.A[0] / (icpk * cvm) * t / density - c.A[1] * lcpk / icpk * dcondensate)
         * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density))
-        * vent_coeff(density_factor, condensate_x_density, c.A[2], c.A[3], blin, mu)
+        * vent_coeff(condensate_x_density, c.A[2], c.A[3], density_factor, blin, mu)
         + C_LIQ / (icpk * cvm) * t * (pxacw + pxacr)
     )
 
@@ -977,7 +981,7 @@ def p_sublimation(
         * t_squared
         * dcondensate
         * exp((1 + mu) / (mu + 3) * log(6 * condensate_x_density))
-        * vent_coeff(density_factor, condensate_x_density, c.A[1], c.A[2], blin, mu)
+        * vent_coeff(condensate_x_density, c.A[1], c.A[2], density_factor, blin, mu)
         / (c.A[3] * t_squared + c.A[4] * (cpk * cvm) ** 2 * saturation_specific_humidity * density)
     )
 
@@ -1033,55 +1037,39 @@ def p_wbf(
         dtable_0 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DO_WBF, DT, LI00, LI20, LV00, PWBF_QI_CRT, T_WFR, TAU_WBF
-
-    with computation(FORWARD), interval(0, 1):
-        if DO_WBF:
-            # internal parameters
-            wbf_coarse_mult: FloatFieldIJ = 10.0  # how much slower WBF is at 50km vs 2km
-
-    with computation(FORWARD), interval(0, 1):
-        if DO_WBF:
-            # -------------------------------------------------------------------
-            # Scale tau_wbf:
-            # If onemsig = 1.0 (2km),   tau_wbf_eff = tau_wbf
-            # If onemsig = 0.0 (50km),  tau_wbf_eff = tau_wbf * wbf_coarse_mult
-            # -------------------------------------------------------------------
-            tau_wbf_eff: FloatFieldIJ = TAU_WBF * (wbf_coarse_mult * (1.0 - one_minus_sigma) + one_minus_sigma)
-
-            # Calculate the time-step fraction using the effective timescale
-            fac_wbf: FloatFieldIJ = 1.0 - exp(-DT / tau_wbf_eff)
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DO_WBF, DT, IN_CLOUD_ICE, LI00, LI20, LV00, T_WFR, TAU_WBF
 
     with computation(FORWARD), interval(...):
         if DO_WBF:
             tc = float32(TICE - t)
-
             t_in = float32(t)
-            liquid_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_0, dtable_0)
-            ice_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+            qadum = max(cloud_fraction, CFMIN) if IN_CLOUD_ICE else 1.0
+            liquid_in = liquid / qadum
+            ice_in = ice / qadum
+            snow_in = snow / qadum
+            graupel_in = graupel / qadum
+            ice_bulk_in = ice_in + snow_in + graupel_in
+            sink = 0.0
 
-            # heterogeneity and allow WBF to operate in large-scale updrafts
-            # when the environment is supersaturated with respect to ice (qv > qsi)
-            # and there is both liquid and ice present
-            # Bypassed qi > qcmin constraint for colder temperatures to ensure initiation
-            if tc > 0.0 and liquid > QCMIN and (ice > QCMIN or tc > 15.0) and vapor > ice_saturation_humidity:
-                # 1. Homogeneous Freezing Limit (-40 C)
-                if tc >= 40.0:
-                    sink = liquid
-                    tmp = 0.0  # All frozen liquid instantly becomes snow
-                else:
-                    # Normal WBF probabilistic freezing
-                    sink = min(fac_wbf * liquid, tc / icpk)
+            if tc >= 40.0:
+                sink = liquid_in
+            elif tc > 0.0:
+                liquid_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_0, dtable_0)
+                ice_saturation_humidity, _ = saturation_specific_humidity(t_in, density, table_2, dtable_2)
+                if liquid_in > 1.0e-6 and ice_bulk_in > 1.0e-6 and vapor > ice_saturation_humidity:
+                    latent_v = float32(LV00 + D1_VAP * t)
+                    latent_s = float32(LI20 + (D1_VAP + D1_ICE) * t)
+                    psi = float32(ice_saturation_humidity * density * RVGAS * t_in)
+                    f_k = float32((latent_s / (TCOND * t_in)) * ((latent_s / (RVGAS * t_in)) - 1.0))
+                    f_d = float32((RVGAS * t_in) / (VDIFU * psi))
+                    explicit_wbf_rate = float32((liquid_saturation_humidity - ice_saturation_humidity) / (ice_saturation_humidity * density * (f_k + f_d)))
+                    explicit_wbf_rate = float32(explicit_wbf_rate * 1.5e-3 * ice_bulk_in)
+                    explicit_wbf_rate = float32(explicit_wbf_rate * (one_minus_sigma * DT / (TAU_WBF + one_minus_sigma * DT)))
+                    sink = float32(explicit_wbf_rate * DT)
+                    sink = min(min(sink, liquid_in), tc / icpk)
 
-                    # 2. Temperature-Dependent Snow Boost
-                    # Scales from 1.0 (at 0 C) down to 0.0 (at -40 C)
-                    # As tc gets larger (colder), the multiplier shrinks,
-                    # reducing qim and forcing more mass to spill over into qs.
-                    snow_boost_mult = max(0.0, 1.0 - (tc / 40.0))
-
-                    qim = (PWBF_QI_CRT * snow_boost_mult) / density
-                    tmp = min(sink, max(qim - ice, 0.0))
-
+            if sink > 0.0:
+                sink = sink * qadum
                 mppfw = mppfw + sink * dry_dp * CONV_FACTOR
 
                 t, vapor, ice, liquid, graupel, rain, snow, cloud_fraction, cvm, total_energy, lcpk, icpk, tcpk, tcp3 = update_hydrometeors_and_temperature(
@@ -1093,11 +1081,11 @@ def p_wbf(
                     rain=rain,
                     snow=snow,
                     dvapor=0.0,
-                    dice=tmp,
+                    dice=sink,
                     dliquid=-sink,
                     dgraupel=0.0,
                     drain=0.0,
-                    dsnow=sink - tmp,
+                    dsnow=0.0,
                     t=t,
                     total_energy=total_energy,
                     DO_QA=DO_QA,
@@ -1221,8 +1209,7 @@ def update_hydrometeors(
 ):
 
     # save previous total condensate
-    if not DO_QA:
-        initial_condensate = max(liquid + ice, QCMIN)
+    initial_condensate = max(liquid + ice, QCMIN)
 
     vapor = vapor + dvapor
     ice = ice + dice
@@ -1231,9 +1218,9 @@ def update_hydrometeors(
     rain = rain + drain
     snow = snow + dsnow
 
-    # total new condensate / old condensate
-    if not DO_QA:
-        cloud_fraction = max(0.0, min(1.0, cloud_fraction * (liquid + ice) / initial_condensate))
+    new_condensate = max(liquid + ice, QCMIN)
+
+    cloud_fraction = max(0.0, min(1.0, cloud_fraction * sqrt(new_condensate / initial_condensate)))
 
     return vapor, ice, liquid, graupel, rain, snow, cloud_fraction
 
@@ -1267,10 +1254,7 @@ def update_hydrometeors_and_temperature(
     C1_LIQ: Float64,
     C1_ICE: Float64,
 ):
-
-    # save previous total condensate
-    if not DO_QA:
-        initial_condensate = max(liquid + ice, QCMIN)
+    initial_condensate = max(liquid + ice, QCMIN)
 
     vapor = vapor + dvapor
     ice = ice + dice
@@ -1279,9 +1263,9 @@ def update_hydrometeors_and_temperature(
     rain = rain + drain
     snow = snow + dsnow
 
-    # total new condensate / old condensate
-    if not DO_QA:
-        cloud_fraction = max(0.0, min(1.0, cloud_fraction * (liquid + ice) / initial_condensate))
+    new_condensate = max(liquid + ice, QCMIN)
+
+    cloud_fraction = max(0.0, min(1.0, cloud_fraction * sqrt(new_condensate / initial_condensate)))
 
     cvm = moist_heat_capacity_6(vapor, ice, liquid, graupel, rain, snow, C1_VAP, C1_LIQ, C1_ICE)
     t = (total_energy - LV00 * vapor + LI00 * (ice + snow + graupel)) / cvm
@@ -1296,26 +1280,26 @@ def update_hydrometeors_and_temperature(
 
 @function
 def vent_coeff(
-    density_factor: Float,
-    condensate_x_density: Float,
+    mixing_ratio_x_density: Float,
     c1: Float,
     c2: Float,
+    density_factor: Float,
     blin: Float,
     mu: Float,
 ):
     """ventilation coefficient, Lin et al. (1983)
 
     Args:
-        density_factor (Float)
-        condensate_x_density (Float)
-        c1 (Float)
-        c2 (Float)
-        blin (Float)
-        mu (Float)
+        mixing_ratio_x_density (Float): condensate mixing ratio times density
+        c1 (Float): first coefficient
+        c2 (Float): second coefficient
+        density_factor (Float): density scaling factor
+        blin (Float): linear size exponent
+        mu (Float): size distribution shape parameter
 
     Returns:
         (Float): ventilation coefficient
     """
-    return c1 + c2 * exp((3 + 2 * mu + blin) / (mu + 3) / 2 * log(6 * condensate_x_density)) * sqrt(density_factor) / exp(
-        (1 + mu) / (mu + 3) * log(6 * condensate_x_density)
+    return c1 + c2 * exp((3 + 2 * mu + blin) / (mu + 3) / 2 * log(6 * mixing_ratio_x_density)) * sqrt(density_factor) / exp(
+        (1 + mu) / (mu + 3) * log(6 * mixing_ratio_x_density)
     )

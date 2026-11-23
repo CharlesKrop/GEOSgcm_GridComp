@@ -363,12 +363,7 @@ def autoconversion_part_2(
         cpaut (FloatFieldIJ)
         factor_rc (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, DO_PSD_WATER_NUM, DO_QA, DT, IRAIN_F, MUW, PCAW, PCBW, QL0_MAX, T_WFR
-
-    with computation(FORWARD), interval(0, 1):
-        # internal constants
-        so1: FloatFieldIJ = -1.0 / 3.0
-        so3: FloatFieldIJ = 7.0 / 3.0
+    from __externals__ import CCN_EXPONENT, CONV_FACTOR, C_PAUT_SCHEME, DO_PSD_WATER_NUM, DO_QA, DT, IRAIN_F, LIQUID_EXPONENT, MUW, PCAW, PCBW, QL0_MAX, T_WFR
 
     with computation(FORWARD), interval(...):
         if IRAIN_F == 0:
@@ -385,9 +380,14 @@ def autoconversion_part_2(
 
                 if dcondensate > 0.0:
 
-                    c_praut = cpaut * exp(so1 * log(ccn * RHOW))
-                    sink = min(1.0, dcondensate / dliquid_internal) * DT * c_praut * density * exp(so3 * log(liquid_internal))
-                    sink = min(QL0_MAX / cloud_fraction_internal, min(liquid_internal, sink)) * cloud_fraction_internal
+                    if C_PAUT_SCHEME == 1:
+                        c_praut = float32(cpaut * (ccn * RHOW) ** float64(CCN_EXPONENT))
+                        sink = float32(min(dcondensate, DT * c_praut * density * liquid_internal ** float64(LIQUID_EXPONENT)))
+                    else:
+                        ccn_base = max(ccn * density, 25.0e6) / 1.0e6
+                        c_praut = float32(cpaut * ccn_base ** float64(CCN_EXPONENT))
+                        sink = float32(min(dcondensate, DT * c_praut * density * liquid_internal ** float64(LIQUID_EXPONENT)))
+                    sink = min(QL0_MAX, min(liquid_internal, sink)) * cloud_fraction_internal
                     mppar = mppar + sink * dry_dp * CONV_FACTOR
 
                     vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
@@ -419,9 +419,10 @@ def autoconversion_part_2(
                 dcondensate = liquid_internal - condensate
 
                 if dcondensate > 0.0:
-                    c_praut = cpaut * exp(so1 * log(ccn * RHOW))
-                    sink = min(dcondensate, DT * c_praut * density * exp(so3 * log(liquid_internal)))
-                    sink = min(QL0_MAX / cloud_fraction_internal, min(liquid_internal, sink)) * cloud_fraction_internal
+                    c_praut = float32(cpaut * (ccn * RHOW) ** float64(CCN_EXPONENT))
+                    sink = float32(min(dcondensate, DT * c_praut * density * liquid_internal ** float64(LIQUID_EXPONENT)))
+
+                    sink = min(QL0_MAX, min(liquid_internal, sink)) * cloud_fraction_internal
                     mppar = mppar + sink * dry_dp * CONV_FACTOR
 
                     vapor, ice, liquid, graupel, rain, snow, cloud_fraction = update_hydrometeors(
@@ -546,12 +547,15 @@ class WarmRain(NDSLRuntime):
             func=autoconversion_part_2,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
+                "CCN_EXPONENT": mp_config.CCN_EXPONENT,
                 "CONV_FACTOR": CONV_FACTOR,
+                "C_PAUT_SCHEME": mp_namelist.C_PAUT_SCHEME,
                 "DO_PSD_WATER_NUM": mp_namelist.DO_PSD_WATER_NUM,
                 "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "IN_CLOUD_LIQ": mp_namelist.IN_CLOUD_LIQ,
                 "IRAIN_F": mp_namelist.IRAIN_F,
+                "LIQUID_EXPONENT": mp_config.LIQUID_EXPONENT,
                 "MUW": mp_namelist.MUW,
                 "PCAW": mp_config.PCAW,
                 "PCBW": mp_config.PCBW,

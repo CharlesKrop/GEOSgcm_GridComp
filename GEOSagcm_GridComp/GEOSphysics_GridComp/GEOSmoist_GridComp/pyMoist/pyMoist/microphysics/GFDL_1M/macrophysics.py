@@ -18,7 +18,7 @@ from pyMoist.shared.cloud_processes import evaporate, fix_up_clouds, hydrostatic
 def compute_macrophysics_factors(
     estimated_inversion_strength: FloatFieldIJ,
     surface_type: IntFieldIJ,
-    p_mb: FloatField,
+    layer_height_above_surface: FloatField,
     boundary_layer_level_for_uw_shallow_conv: FloatFieldIJ,
     min_rh_crit: FloatFieldIJ,
     turn_rh_crit: FloatFieldIJ,
@@ -28,29 +28,28 @@ def compute_macrophysics_factors(
     Args:
         estimated_inversion_strength (FloatFieldIJ)
         surface_type (IntFieldIJ)
-        p_mb (FloatField)
+        layer_height_above_surface (FloatField)
         boundary_layer_level_for_uw_shallow_conv (FloatFieldIJ)
         min_rh_crit (FloatFieldIJ)
         turn_rh_crit (FloatFieldIJ)
     """
-    from __externals__ import MIN_RH_STABLE, MIN_RH_UNSTABLE, TURNRHCRIT_PARAM
+    from __externals__ import MIN_RH_STABLE, MIN_RH_UNSTABLE, TURNRHCRIT_SFC
 
     with computation(FORWARD), interval(0, 1):
         fac_eis = compute_estimated_inversion_strength_factor(estimated_inversion_strength)
         min_rh_crit = MIN_RH_UNSTABLE * (1.0 - fac_eis) + MIN_RH_STABLE * fac_eis
         min_rh_crit = max(0.7, min_rh_crit)
 
-        if TURNRHCRIT_PARAM <= 0.0:
-            # Level indices are positive, so truncation after +0.5 matches NINT.
-            turn_rh_crit = p_mb.at(K=int(boundary_layer_level_for_uw_shallow_conv + 0.5)) - 50
+        if TURNRHCRIT_SFC <= 0.0:
+            # KPBLSC is converted to zero-based indexing by the Python interface.
+            turn_rh_crit = layer_height_above_surface.at(K=int(boundary_layer_level_for_uw_shallow_conv + 0.5))
         else:
-            turn_rh_crit = TURNRHCRIT_PARAM
+            turn_rh_crit = TURNRHCRIT_SFC
 
 
 def compute_critical_relative_humidity(
     area: FloatFieldIJ,
-    p_mb: FloatField,
-    p_interface_mb: FloatField,
+    layer_height_above_surface: FloatField,
     min_rh_crit: FloatFieldIJ,
     turn_rh_crit: FloatFieldIJ,
     rh_crit: FloatField,
@@ -69,24 +68,26 @@ def compute_critical_relative_humidity(
         alpha (FloatField)
         one_minus_alpha (FloatField)
     """
-    from __externals__ import MAX_RH_CRIT, k_end
+    from __externals__ import MAX_RH_CRIT, MIN_RH_CRIT, TURNRHCRIT_TOP
 
     with computation(PARALLEL), interval(...):
-        # use Slingo-Ritter (1985) formulation for critical relative humidity
-        # ensure the max is never lower than the min
-        safe_max_rh_crit = max(MAX_RH_CRIT, min_rh_crit)
-        if p_mb <= turn_rh_crit:
-            minimum_rh = min_rh_crit
-        elif K == k_end:
-            minimum_rh = safe_max_rh_crit
+        transition_thickness = 0.25 * turn_rh_crit
+        start_height = turn_rh_crit - transition_thickness
+        min_rh_free = min(min_rh_crit, MIN_RH_CRIT + 0.05)
+        if layer_height_above_surface >= turn_rh_crit:
+            if layer_height_above_surface < TURNRHCRIT_TOP:
+                upper_scale = (layer_height_above_surface - turn_rh_crit) / (TURNRHCRIT_TOP - turn_rh_crit)
+                rh_crit = min_rh_crit - (min_rh_crit - min_rh_free) * upper_scale
+            else:
+                rh_crit = min_rh_free
+        elif layer_height_above_surface <= start_height:
+            rh_crit = MAX_RH_CRIT
         else:
-            x_norm = (p_mb - turn_rh_crit) / (p_interface_mb.at(K=k_end + 1) - turn_rh_crit)
-            # cubic smoothstep S-curve: x^2 * (3 - 2x)
-            minimum_rh = min_rh_crit + (safe_max_rh_crit - min_rh_crit) * (x_norm * x_norm * (3.0 - 2.0 * x_norm))
+            x_norm = (turn_rh_crit - layer_height_above_surface) / transition_thickness
+            x_norm = max(0.0, min(1.0, x_norm))
+            rh_crit = min_rh_crit + (MAX_RH_CRIT - min_rh_crit) * (x_norm * x_norm * (3.0 - 2.0 * x_norm))
 
-    # scale-aware blending for rhcrit
-    with computation(PARALLEL), interval(...):
-        rh_crit = MAX_RH_CRIT + (minimum_rh - MAX_RH_CRIT) * sqrt(sqrt(area / 1.0e10))
+        rh_crit = MAX_RH_CRIT + (rh_crit - MAX_RH_CRIT) * sqrt(sqrt(area / 1.0e10))
         # limit alpha to < 30 %
         alpha = max(0.0, min(0.30, (1.0 - rh_crit)))
         one_minus_alpha = 1.0 - alpha
@@ -220,7 +221,11 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._compute_critical_relative_humidity = stencil_factory.from_dims_halo(
             func=compute_critical_relative_humidity,
             compute_dims=[I_DIM, J_DIM, K_DIM],
-            externals={"MAX_RH_CRIT": config.MAX_RH_CRIT},
+            externals={
+                "MAX_RH_CRIT": config.MAX_RH_CRIT,
+                "MIN_RH_CRIT": config.MIN_RH_CRIT,
+                "TURNRHCRIT_TOP": config.TURNRHCRIT_TOP,
+            },
         )
         self._compute_macrophysics_factors = stencil_factory.from_dims_halo(
             func=compute_macrophysics_factors,
@@ -228,7 +233,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             externals={
                 "MIN_RH_UNSTABLE": config.MIN_RH_UNSTABLE,
                 "MIN_RH_STABLE": config.MIN_RH_STABLE,
-                "TURNRHCRIT_PARAM": config.TURNRHCRIT,
+                "TURNRHCRIT_SFC": config.TURNRHCRIT_SFC,
             },
         )
         self._copy = stencil_factory.from_dims_halo(
@@ -296,7 +301,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._compute_macrophysics_factors(
             estimated_inversion_strength=state.estimated_inversion_strength,
             surface_type=state.surface_type,
-            p_mb=locals.p_mb,
+            layer_height_above_surface=locals.layer_height_above_surface,
             boundary_layer_level_for_uw_shallow_conv=state.boundary_layer_level_for_uw_shallow_conv,
             min_rh_crit=self._locals.min_rh_crit,
             turn_rh_crit=self._locals.turn_rh_crit,
@@ -316,8 +321,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
 
         self._compute_critical_relative_humidity(
             area=state.area,
-            p_mb=locals.p_mb,
-            p_interface_mb=locals.p_interface_mb,
+            layer_height_above_surface=locals.layer_height_above_surface,
             min_rh_crit=self._locals.min_rh_crit,
             turn_rh_crit=self._locals.turn_rh_crit,
             rh_crit=self._locals.rh_crit,
@@ -398,12 +402,12 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 p_mb=locals.p_mb,
                 t=state.t,
                 vapor=state.mixing_ratio.vapor,
-                rh_crit=self._locals.rh_crit,
+                rh_crit=self._locals.one_minus_alpha,
                 liquid=state.mixing_ratio.convective_liquid,
                 ice=state.mixing_ratio.convective_ice,
                 cloud_fraction=state.cloud_fraction.convective,
                 concentration_liquid=state.concentration.liquid,
-                saturation_specific_humidity=locals.saturation_specific_humidity,
+                saturation_specific_humidity=locals.saturation_specific_humidity_liquid,
             )
 
             self._update_output_by_dt(input=state.mixing_ratio.vapor, output=state.cloud_liquid_evaporation)
@@ -416,11 +420,12 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 p_mb=locals.p_mb,
                 t=state.t,
                 vapor=state.mixing_ratio.vapor,
-                rh_crit=self._locals.rh_crit,
+                rh_crit=self._locals.one_minus_alpha,
                 liquid=state.mixing_ratio.convective_liquid,
                 ice=state.mixing_ratio.convective_ice,
                 cloud_fraction=state.cloud_fraction.convective,
-                saturation_specific_humidity=locals.saturation_specific_humidity,
+                saturation_specific_humidity=locals.saturation_specific_humidity_ice,
+                concentration_ice=state.concentration.ice,
             )
 
             self._update_output_by_dt(input=state.mixing_ratio.vapor, output=state.cloud_ice_sublimation)

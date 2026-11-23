@@ -119,6 +119,22 @@ class GFDL1MLocals(LocalState):
             "dtype": Float,
         }
     )
+    saturation_specific_humidity_liquid: Local = dataclasses.field(
+        metadata={
+            "name": "saturation_specific_humidity_liquid",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "kg kg-1",
+            "dtype": Float,
+        }
+    )
+    saturation_specific_humidity_ice: Local = dataclasses.field(
+        metadata={
+            "name": "saturation_specific_humidity_ice",
+            "dims": [I_DIM, J_DIM, K_DIM],
+            "units": "kg kg-1",
+            "dtype": Float,
+        }
+    )
     temporary_3d: Local = dataclasses.field(
         metadata={
             "name": "temporary_3d",
