@@ -89,9 +89,10 @@ def flip_sign(input: FloatField, output: FloatField):
         output = -1.0 * input
 
 
-def min_with_one(field: FloatField):
+def combine_cloud_fractions(large_scale: FloatField, convective: FloatField, combined: FloatField):
     with computation(PARALLEL), interval(...):
-        field = min(field, 1.0)
+        combined = large_scale + convective - (convective * large_scale)
+        combined = min(max(combined, 0.0), 1.0)
 
 
 def negative_adjustment(
@@ -484,8 +485,8 @@ class GFDL1M(NDSLRuntime):
             externals={"DTIME": config.DT},
         )
 
-        self._min_with_one = stencil_factory.from_dims_halo(
-            func=min_with_one,
+        self._combine_cloud_fractions = stencil_factory.from_dims_halo(
+            func=combine_cloud_fractions,
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
@@ -510,6 +511,7 @@ class GFDL1M(NDSLRuntime):
                 "MAX_RI": config.MAX_RI,
                 "FAC_RI": config.FAC_RI,
                 "ICE_RADII_PARAM": config.ICE_RADII_PARAM,
+                "LIQ_RADII_PARAM": config.LIQ_RADII_PARAM,
             },
         )
 
@@ -604,9 +606,11 @@ class GFDL1M(NDSLRuntime):
         self._set_value_k_interface(field=state.non_anvil_large_scale.liquid_precip_flux, value=Float(0.0))
 
         # cloud fractions and condensates for radiation
-        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
-        self._min_with_one(field=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.radiation_field.cloud_fraction)
+        self._combine_cloud_fractions(
+            large_scale=state.cloud_fraction.large_scale,
+            convective=state.cloud_fraction.convective,
+            combined=state.radiation_field.cloud_fraction,
+        )
         self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
         self._copy(input=self._locals.temporary_3d, output=state.radiation_field.liquid)
         self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
@@ -815,6 +819,8 @@ class GFDL1M(NDSLRuntime):
             cloud_particle_effective_radius_liquid=state.cloud_particle_effective_radius.liquid,
             cloud_particle_effective_radius_ice=state.cloud_particle_effective_radius.ice,
             concentration_liquid=state.concentration.liquid,
+            concentration_ice=state.concentration.ice,
+            convection_fraction=state.convection_fraction,
             radiation_cloud_fraction=state.radiation_field.cloud_fraction,
             radiation_graupel=state.radiation_field.graupel,
             radiation_ice=state.radiation_field.ice,

@@ -386,7 +386,7 @@ def p_bigg(
         total_energy (FloatField64)
         mppfw (FloatFieldIJ)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_BIGG, DO_PSD_WATER_NUM, DO_QA, DT, LI00, LI20, LV00, MUW, PCAW, PCBW, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_BIGG, DO_PSD_WATER_NUM, DT, LI00, LI20, LV00, MUW, PCAW, PCBW, T_WFR
 
     with computation(FORWARD), interval(...):
         if DO_BIGG:
@@ -424,7 +424,6 @@ def p_bigg(
                     dsnow=0.0,
                     t=t,
                     total_energy=total_energy,
-                    DO_QA=DO_QA,
                     D1_VAP=D1_VAP,
                     D1_ICE=D1_ICE,
                     LI00=LI00,
@@ -475,7 +474,7 @@ def p_complete_freezing(
         total_energy (FloatField64)
         mppfw (FloatFieldIJ)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, LI00, LI20, LV00, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, LI00, LI20, LV00, T_WFR
 
     with computation(FORWARD), interval(...):
         tc = float32(T_WFR - t)
@@ -501,7 +500,6 @@ def p_complete_freezing(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -565,7 +563,7 @@ def p_graupel_deposition_and_sublimation(
         table_2 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLING, BLINH, CONV_FACTOR, D1_ICE, D1_VAP, DO_HAIL, DO_QA, DT, GS_FAC, LI00, LI20, LV00, MUG, MUH, T_SUB, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLING, BLINH, CONV_FACTOR, D1_ICE, D1_VAP, DO_HAIL, DT, GS_FAC, LI00, LI20, LV00, MUG, MUH, T_SUB, T_WFR
 
     with computation(FORWARD), interval(...):
         if graupel > QPMIN:
@@ -630,7 +628,6 @@ def p_graupel_deposition_and_sublimation(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -704,7 +701,6 @@ def p_ice_deposition_and_sublimation(
         D1_ICE,
         D1_VAP,
         DO_PSD_ICE_NUM,
-        DO_QA,
         DT,
         IGFLAG,
         INFLAG,
@@ -794,7 +790,6 @@ def p_ice_deposition_and_sublimation(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -882,7 +877,7 @@ def p_snow_deposition_and_sublimation(
         table_2 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLINS, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUS, SS_FAC, T_SUB, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, BLINS, CONV_FACTOR, D1_ICE, D1_VAP, DT, LI00, LI20, LV00, MUS, SS_FAC, T_SUB, T_WFR
 
     with computation(FORWARD), interval(...):
         if snow > QPMIN:
@@ -931,7 +926,6 @@ def p_snow_deposition_and_sublimation(
                 dsnow=-sink,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -1037,7 +1031,7 @@ def p_wbf(
         dtable_0 (GFDLMPV3SaturationTable)
         dtable_2 (GFDLMPV3SaturationTable)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, DO_WBF, DT, IN_CLOUD_ICE, LI00, LI20, LV00, T_WFR, TAU_WBF
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_WBF, DT, IN_CLOUD_ICE, LI00, LI20, LV00, T_WFR, TAU_WBF
 
     with computation(FORWARD), interval(...):
         if DO_WBF:
@@ -1088,7 +1082,6 @@ def p_wbf(
                     dsnow=0.0,
                     t=t,
                     total_energy=total_energy,
-                    DO_QA=DO_QA,
                     D1_VAP=D1_VAP,
                     D1_ICE=D1_ICE,
                     LI00=LI00,
@@ -1204,8 +1197,6 @@ def update_hydrometeors(
     dgraupel: Float,
     drain: Float,
     dsnow: Float,
-    # constants
-    DO_QA: Bool,
 ):
 
     # save previous total condensate
@@ -1243,7 +1234,6 @@ def update_hydrometeors_and_temperature(
     t: Float64,
     total_energy: Float64,
     # constants
-    DO_QA: Bool,
     D1_VAP: Float64,
     D1_ICE: Float64,
     LI00: Float64,

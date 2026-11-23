@@ -72,7 +72,6 @@ def p_graupel_accretion_to_cloud_water_and_rain(
         D1_VAP,
         DO_3D_ACC_CLIQ,
         DO_HAIL,
-        DO_QA,
         DT,
         LI00,
         LI20,
@@ -185,7 +184,6 @@ def p_graupel_accretion_to_cloud_water_and_rain(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -236,7 +234,7 @@ def p_graupel_accretion_to_ice(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import BLING, BLINH, CGACI, CONV_FACTOR, DO_3D_ACC_CICE, DO_HAIL, DO_QA, DT, FI2G_FAC, MUG, MUH, VDIFFFLAG
+    from __externals__ import BLING, BLINH, CGACI, CONV_FACTOR, DO_3D_ACC_CICE, DO_HAIL, DT, FI2G_FAC, MUG, MUH, VDIFFFLAG
 
     with computation(FORWARD), interval(...):
         if t < TICE and ice > QCMIN:
@@ -295,7 +293,6 @@ def p_graupel_accretion_to_ice(
                 dgraupel=sink,
                 drain=0.0,
                 dsnow=0.0,
-                DO_QA=DO_QA,
             )
 
 
@@ -335,7 +332,7 @@ def p_graupel_accretion_to_snow(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import CGACS, CONV_FACTOR, DO_QA, DT, FS2G_FAC, VDIFFFLAG
+    from __externals__ import CGACS, CONV_FACTOR, DT, FS2G_FAC, VDIFFFLAG
 
     with computation(FORWARD), interval(...):
         if t < TICE and snow > QPMIN and graupel > QPMIN:
@@ -372,7 +369,6 @@ def p_graupel_accretion_to_snow(
                 dgraupel=sink,
                 drain=0.0,
                 dsnow=-sink,
-                DO_QA=DO_QA,
             )
 
 
@@ -449,7 +445,6 @@ def p_graupel_melt(
         D1_VAP,
         DO_3D_ACC_CLIQ,
         DO_HAIL,
-        DO_QA,
         DT,
         LI00,
         LI20,
@@ -583,7 +578,6 @@ def p_graupel_melt(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -652,7 +646,6 @@ def p_ice_melt_freeze(
         CONV_FACTOR,
         D1_ICE,
         D1_VAP,
-        DO_QA,
         DT,
         IN_CLOUD_ICE,
         LI00,
@@ -716,7 +709,6 @@ def p_ice_melt_freeze(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -772,7 +764,6 @@ def p_ice_melt_freeze(
                 dsnow=sink - tmp,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -817,7 +808,7 @@ def p_ice_to_snow_autoconversion(
         mppas (FloatFieldIJ)
         one_minus_sigma (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, DO_QA, DT, IN_CLOUD_ICE, PSAUT_QI_CRT, TAU_I2S
+    from __externals__ import CONV_FACTOR, DT, IN_CLOUD_ICE, PSAUT_QI_CRT, TAU_I2S
 
     with computation(FORWARD), interval(0, 1):
         # Tunable parameters for pressure-dependent critical threshold
@@ -898,7 +889,6 @@ def p_ice_to_snow_autoconversion(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=sink,
-                DO_QA=DO_QA,
             )
 
 
@@ -940,7 +930,7 @@ def p_snow_accretion_to_ice(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import BLINS, CONV_FACTOR, CSACI, DO_3D_ACC_CICE, DO_QA, DT, FI2S_FAC, MUS, VDIFFFLAG
+    from __externals__ import BLINS, CONV_FACTOR, CSACI, DO_3D_ACC_CICE, DT, FI2S_FAC, MUS, VDIFFFLAG
 
     with computation(FORWARD), interval(...):
         if t < TICE and ice > QCMIN:
@@ -988,7 +978,6 @@ def p_snow_accretion_to_ice(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=sink,
-                DO_QA=DO_QA,
             )
 
 
@@ -1044,7 +1033,7 @@ def p_snow_accretion_to_rain_and_graupel(
         ACCO (GFDLMPV3TableL3xL10)
         CGFR (GFDLMPV3TableL2)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, CSACR, D1_ICE, D1_VAP, DO_QA, DT, LI00, LI20, LV00, MUR, T_WFR, VDIFFFLAG
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, CSACR, D1_ICE, D1_VAP, DT, LI00, LI20, LV00, MUR, T_WFR, VDIFFFLAG
 
     with computation(FORWARD), interval(...):
         if t < TICE and rain > QPMIN:
@@ -1103,7 +1092,6 @@ def p_snow_accretion_to_rain_and_graupel(
                 dsnow=psacr,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -1187,7 +1175,6 @@ def p_snow_melt(
         D1_ICE,
         D1_VAP,
         DO_3D_ACC_CLIQ,
-        DO_QA,
         DT,
         LI00,
         LI20,
@@ -1305,7 +1292,6 @@ def p_snow_melt(
                 dsnow=-sink,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -1346,7 +1332,7 @@ def p_snow_to_graupel_autoconversion(
         cloud_fraction (FloatField)
         mppag (FloatFieldIJ)
     """
-    from __externals__ import CONV_FACTOR, DO_QA, DT, FS2G_FAC, PGAUT_QS_CRT
+    from __externals__ import CONV_FACTOR, DT, FS2G_FAC, PGAUT_QS_CRT
 
     with computation(FORWARD), interval(...):
         if t < TICE and snow > QPMIN:
@@ -1375,7 +1361,6 @@ def p_snow_to_graupel_autoconversion(
                 dgraupel=sink,
                 drain=0.0,
                 dsnow=-sink,
-                DO_QA=DO_QA,
             )
 
 
@@ -1509,7 +1494,6 @@ class IceCloud(NDSLRuntime):
                 "D1_VAP": mp_config.D1_VAP,
                 "DO_3D_ACC_CLIQ": mp_namelist.DO_3D_ACC_CLIQ,
                 "DO_HAIL": mp_namelist.DO_HAIL,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "MUH": mp_namelist.MUH,
                 "MUG": mp_namelist.MUG,
@@ -1530,7 +1514,6 @@ class IceCloud(NDSLRuntime):
                 "CONV_FACTOR": CONV_FACTOR,
                 "DO_3D_ACC_CICE": mp_namelist.DO_3D_ACC_CICE,
                 "DO_HAIL": mp_namelist.DO_HAIL,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FI2G_FAC": mp_namelist.FI2G_FAC,
                 "MUH": mp_namelist.MUH,
@@ -1544,7 +1527,6 @@ class IceCloud(NDSLRuntime):
             externals={
                 "CGACS": mp_config.CGACS,
                 "CONV_FACTOR": CONV_FACTOR,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FS2G_FAC": mp_namelist.FS2G_FAC,
                 "VDIFFFLAG": mp_namelist.VDIFFFLAG,
@@ -1567,7 +1549,6 @@ class IceCloud(NDSLRuntime):
                 "D1_VAP": mp_config.D1_VAP,
                 "DO_3D_ACC_CLIQ": mp_namelist.DO_3D_ACC_CLIQ,
                 "DO_HAIL": mp_namelist.DO_HAIL,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "MUH": mp_namelist.MUH,
                 "MUG": mp_namelist.MUG,
@@ -1588,7 +1569,6 @@ class IceCloud(NDSLRuntime):
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "IN_CLOUD_ICE": mp_namelist.IN_CLOUD_ICE,
                 "LI00": mp_config.LI00,
@@ -1606,7 +1586,6 @@ class IceCloud(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONV_FACTOR": CONV_FACTOR,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "IN_CLOUD_ICE": mp_namelist.IN_CLOUD_ICE,
                 "PSAUT_QI_CRT": mp_namelist.PSAUT_QI_CRT,
@@ -1629,7 +1608,6 @@ class IceCloud(NDSLRuntime):
                 "CONV_FACTOR": CONV_FACTOR,
                 "CSACI": mp_config.CSACI,
                 "DO_3D_ACC_CICE": mp_namelist.DO_3D_ACC_CICE,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FI2S_FAC": mp_namelist.FI2S_FAC,
                 "MUS": mp_namelist.MUS,
@@ -1647,7 +1625,6 @@ class IceCloud(NDSLRuntime):
                 "CSACR": mp_config.CSACR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "MUR": mp_namelist.MUR,
                 "LI00": mp_config.LI00,
@@ -1672,7 +1649,6 @@ class IceCloud(NDSLRuntime):
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
                 "DO_3D_ACC_CLIQ": mp_namelist.DO_3D_ACC_CLIQ,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "LI00": mp_config.LI00,
                 "LI20": mp_config.LI20,
@@ -1688,7 +1664,6 @@ class IceCloud(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONV_FACTOR": CONV_FACTOR,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "FS2G_FAC": mp_namelist.FS2G_FAC,
                 "PGAUT_QS_CRT": mp_namelist.PGAUT_QS_CRT,

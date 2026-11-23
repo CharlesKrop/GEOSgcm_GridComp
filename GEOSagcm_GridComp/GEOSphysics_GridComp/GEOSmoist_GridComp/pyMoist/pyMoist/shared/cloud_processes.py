@@ -47,6 +47,7 @@ from pyMoist.shared.constants import (
     GLAC_SHIFT_SEAICE,
     GLAC_SHIFT_SNOW,
     ICE_FRACTION_POLYNOMIAL,
+    ICE_RAD3_DISP,
     ICE_RADII_PARAM,
     JASON_ICE_POLYNOMIAL,
     JAT_ICE_ALL,
@@ -64,7 +65,12 @@ from pyMoist.shared.constants import (
     K_COND,
     LBE,
     LBX,
+    LIQ_RAD3_DISP,
     LIQ_RADII_PARAM,
+    MG_ICE_A,
+    MG_ICE_MU,
+    MG_LIQ_DD_FLOOR,
+    MG_LIQ_MU,
     QCMIN,
     R13BBETA,
     R_AIR,
@@ -235,50 +241,70 @@ def cloud_effective_radius_ice(
     ice_concentration: Float = 0.0,
     convection_fraction: Float = 0.0,
 ) -> Float:
-    """
-    Calculate the effective radius of ice particles in clouds
+    """Calculate the effective radius of ice particles in clouds
 
     Arguments:
         p (in): pressure (millibars)
         t (in): temperature (Kelvin)
         ice_mixing_ratio (in): liquid mixing ratio (kg/kg)
+        ice_radii_param (in): ice radius parameter selection. Optional, defaults to ICE_RADII_PARAM constant
+        ice_concentration (in): ice number concentration (m^-3). Optional, defaults to 0.0 (ice_concentration not considered)
+        convection_fraction (in): fraction of convection (dimensionless), Optional, defaults to 0.0 (convection_fraction not considered)
 
     Returns:
         radius (Float): ice particle radius
     """
+    # Minimum ice number concentration to consider for number-based ice radius calculation
+    min_ice_concentration = 1.0
 
     # air density (kg/m^3)
     rho = air_density(p, t)
-
-    # ice water content
-    wc = 1.0e3 * rho * ice_mixing_ratio  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
-    # radius in meters
     if ice_radii_param == 1:
-        # ------ice cloud effective radius ----- [klaus wyser, 1998]
+        # Klaus/Wyser (1998); IWC is in g/m^3.
+        ice_water_content = 1.0e3 * rho * ice_mixing_ratio  # air density [g/m3] * ice cloud mixing ratio [kg/kg]
         if t > MAPL_TICE or ice_mixing_ratio < 1.0e-9:
             bb = -2.0
         else:
-            bb = -2.0 + log10(wc / 50.0) * (1.0e-3 * (MAPL_TICE - t) ** 1.5)
+            bb = -2.0 + log10(max(ice_water_content, 1.0e-5) / 50.0) * (1.0e-3 * (MAPL_TICE - t) ** 1.5)
         bb = min((max(bb, -6.0)), -2.0)
         radius = 377.4 + 203.3 * bb + 37.91 * bb**2 + 2.3696 * bb**3
+        radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
     elif ice_radii_param == 2:
-        # ------ice cloud effective radius ----- [Sun, 2001]
-        # https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2022GL102521
-        tc = t - MAPL_TICE
-        aa = 45.8966 * (wc**0.2214)
-        bb = 0.79570 * (wc**0.2535) * (t - 83.15)
-        radius = min(150.0, max(30.0, (1.2351 + 0.0105 * tc) * (aa + bb)))
-        radius = 0.64952 * radius
-    else:
-        if wc > 1.0e-9 and ice_concentration > 1.0:
-            volume_radius = (3.0 * rho * ice_mixing_ratio / (4.0 * MAPL_PI * 917.0 * ice_concentration)) ** (1.0 / 3.0)
-            radius = (0.50 + 1.10 * sqrt(convection_fraction)) * volume_radius
+        # Sun (2001): temperature dependence is bounded at 0 C and T_HOM.
+        # 0.64952 converts diameter to radius for hexagonal columns.
+        ice_water_content = 1.0e3 * rho * ice_mixing_ratio
+        tc = max(min(0.0, t - MAPL_TICE), T_HOM)
+        aa = 45.8966 * max(ice_water_content, 1.0e-10) ** 0.2214
+        bb = 0.79570 * max(ice_water_content, 1.0e-10) ** 0.2535 * tc
+        radius = 0.64952 * (1.2351 + 0.0105 * tc) * (aa + bb)
+        radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
+    elif ice_radii_param == 3:
+        # Number-based ice radius. Bounds limit overly large crystals while
+        # retaining aerosol sensitivity and a larger maximum in convection.
+        ice_water_content = ice_mixing_ratio * rho  # kg/m^3
+        if ice_water_content > 1.0e-12 and ice_concentration > min_ice_concentration:
+            volume_radius = (3.0 * ice_water_content / (4.0 * MAPL_PI * 917.0 * ice_concentration)) ** (1.0 / 3.0)
+            radius = (ICE_RAD3_DISP + 1.10 * sqrt(convection_fraction)) * volume_radius
             radius = min(150.0e-6 - 75.0e-6 * (1.0 - sqrt(convection_fraction)), max(25.0e-6, radius))
         else:
+            # Background radius for pristine non-convective upper-tropospheric cirrus.
             radius = 50.0e-6
-
-    if ice_radii_param < 3:
-        radius = min(150.0e-6, max(5.0e-6, 1.0e-6 * radius))
+    else:
+        # Morrison-Gettelman closure: m = a*D^2 and re = (2/3)*M3/M2.
+        # For a gamma distribution M3/M2 = (mu+3)/lambda.
+        ice_density = max(ice_concentration, 1.0e-2)
+        ice_water_content = rho * ice_mixing_ratio  # kg/m^3
+        if ice_water_content > 1.0e-12 and ice_density > 0.0:
+            mean_mass = ice_water_content / ice_density
+            fraction = MG_ICE_A * (MG_ICE_MU + 2.0) * (MG_ICE_MU + 1.0)
+            if fraction > 0.0 and mean_mass > 0.0:
+                inverse_lambda = sqrt(mean_mass / fraction)
+                radius = (2.0 / 3.0) * (MG_ICE_MU + 3.0) * inverse_lambda
+            else:
+                radius = 15.0e-6
+        else:
+            radius = 15.0e-6
+        radius = min(150.0e-6, max(5.0e-6, radius))
 
     return radius
 
@@ -292,25 +318,56 @@ def cloud_effective_radius_liquid(
     liquid_radii_param: Int = LIQ_RADII_PARAM,
     convection_fraction: Float = 0.0,
 ) -> Float:
-    """Return the effective liquid radius using the configured GFDL closure."""
+    """Calculate the effective radius of liquid droplets in clouds
+
+    Arguments:
+        pressure (in): pressure (millibars)
+        temperature (in): temperature (Kelvin)
+        liquid_mixing_ratio (in): liquid mixing ratio (kg/kg)
+        liquid_radii_param (in): liquid radius parameter selection. Optional, defaults to LIQ_RADII_PARAM constant
+        liquid_concentration (in): liquid number concentration (m^-3). Optional, defaults to 0.0 (no mathematical effect)
+        convection_fraction (in): fraction of convection (dimensionless), Optional, defaults to 0.0 (no mathematical effect)
+
+    Returns:
+        radius (Float): liquid droplet radius
+    """
     rho = air_density(pressure, temperature)
-    wc = 1.0e3 * rho * liquid_mixing_ratio
+    # liquid_concentration is supplied in m-3.
+    # Legacy parameterizations below require number concentration in cm-3, hence the factor 1.e-6.
     nnx = max(liquid_concentration * 1.0e-6, 10.0)
 
     if liquid_radii_param == 1:
+        # Jason formulation.
+        wc = 1.0e3 * rho * liquid_mixing_ratio
         radius = min(60.0e-6, max(5.0e-6, 1.0e-6 * BX * (wc / nnx) ** R13BBETA * ABETA * 6.92))
     elif liquid_radii_param == 2:
+        # Liu and Daum (2000, 2005); Liu et al. (2008).
+        wc = 1.0e3 * rho * liquid_mixing_ratio
         radius = min(60.0e-6, max(5.0e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE))
     elif liquid_radii_param == 3:
+        # Convert mixing ratio [kg/kg] to liquid water content [kg/m3]
         liquid_water_content = rho * liquid_mixing_ratio
+        # Check for clear sky
         if liquid_water_content > 1.0e-12 and liquid_concentration > 1.0e-3:
+            # Volume Mean Radius calculation (meters) uses liquid water density (1000.0 kg/m3)
             volume_radius = (3.0 * liquid_water_content / (4.0 * MAPL_PI * 1000.0 * liquid_concentration)) ** (1.0 / 3.0)
-            radius = (1.30 + 1.05 * sqrt(convection_fraction)) * volume_radius
+            # Effective Radius with convective enhancement - broader size distributions in strong updrafts
+            radius = (LIQ_RAD3_DISP + 1.05 * sqrt(convection_fraction)) * volume_radius
+            # Increase radius in highly convectiv regions
             radius = min(60.0e-6, max(5.0e-6 + 7.5e-6 * sqrt(convection_fraction), radius))
         else:
+            # Background radius for clear sky.
             radius = 4.0e-6
     else:
-        radius = min(60.0e-6, max(5.0e-6, 1.0e-6 * LBX * (wc / nnx) ** LBE))
+        # Morrison-Gettelman gamma closure
+        drop_density = max(liquid_concentration, MG_LIQ_DD_FLOOR)
+        liquid_water_content = rho * liquid_mixing_ratio  # kg/m^3
+        if liquid_water_content > 0.0 and drop_density > 0.0:
+            aa = ((3.0 * (MG_LIQ_MU + 2.0) * (MG_LIQ_MU + 1.0)) / (4.0 * MAPL_PI * RHO_W * (MG_LIQ_MU + 3.0) ** 2)) ** (1.0 / 3.0)
+            radius = aa * (liquid_water_content / drop_density) ** (1.0 / 3.0)
+        else:
+            radius = 5.0e-6
+        radius = min(60.0e-6, max(5.0e-6, radius))
 
     return radius
 
@@ -1166,26 +1223,32 @@ def redistribute_clouds_function(
         large_scale_ice = ice - convective_ice
 
     # 3. Cloud Fraction Growth vs. Decay Redistribution
-    cloud_fraction_old = convective_cloud_fraction + large_scale_cloud_fraction
-    if cloud_fraction < cloud_fraction_old:
-        # DECAY: Cloud fraction shrank. Reduce proportionally.
-        if cloud_fraction_old > epsilon:
-            f_cn = convective_cloud_fraction / cloud_fraction_old
-            convective_cloud_fraction = min(1.0, cloud_fraction * f_cn)
-            large_scale_cloud_fraction = min(1.0, cloud_fraction * (1.0 - f_cn))
-        else:
-            convective_cloud_fraction = 0.0
-            large_scale_cloud_fraction = 0.0
+    # Assuming grid scale microphysics primarily changes the Large-Scale cloud (CLLS).
+    if cloud_fraction <= 0.0:
+        convective_cloud_fraction = 0.0
+        large_scale_cloud_fraction = 0.0
     else:
-        # GROWTH: Cloud expanded. Convective core stays its original size.
-        # convective_cloud_fraction remains unchanged (bounded to cloud_fraction just in case)
-        convective_cloud_fraction = min(convective_cloud_fraction, cloud_fraction)
-        large_scale_cloud_fraction = min(1.0, cloud_fraction - convective_cloud_fraction)
+        # If the new total cloud fraction is smaller than the convective core, the core must shrink
+        if cloud_fraction < convective_cloud_fraction:
+            convective_cloud_fraction = cloud_fraction
+            large_scale_cloud_fraction = 0.0
+        # Otherwise, convective_cloud_fraction remains rigid, and we back-calculate the new CLLS required to achieve the total CF using the overlap formula.
+        else:
+            if convective_cloud_fraction < 1.0:
+                large_scale_cloud_fraction = (cloud_fraction - convective_cloud_fraction) / (1.0 - convective_cloud_fraction)
+            else:
+                large_scale_cloud_fraction = 0.0
+
+    # Ensure cloud fractions are reasonable
+    convective_cloud_fraction = max(0.0, min(convective_cloud_fraction, 1.0))
+    large_scale_cloud_fraction = max(0.0, min(large_scale_cloud_fraction, 1.0))
 
     # 4. Clean up: Evaporate/Sublimate if clouds are completely gone
     if (large_scale_cloud_fraction <= 0.0) and (large_scale_liquid + large_scale_ice > 0.0):
         vapor = vapor + large_scale_liquid + large_scale_ice
         t = t - (ALHLBCP) * large_scale_liquid - (ALHSBCP) * large_scale_ice
+        liquid = max(0.0, liquid - large_scale_liquid)
+        ice = max(0.0, ice - large_scale_ice)
         large_scale_cloud_fraction = 0.0
         large_scale_liquid = 0.0
         large_scale_ice = 0.0
@@ -1193,6 +1256,8 @@ def redistribute_clouds_function(
     if (convective_cloud_fraction <= 0.0) and (convective_liquid + convective_ice > 0.0):
         vapor = vapor + convective_liquid + convective_ice
         t = t - (ALHLBCP) * convective_liquid - (ALHSBCP) * convective_ice
+        liquid = max(0.0, liquid - convective_liquid)
+        ice = max(0.0, ice - convective_ice)
         convective_cloud_fraction = 0.0
         convective_liquid = 0.0
         convective_ice = 0.0

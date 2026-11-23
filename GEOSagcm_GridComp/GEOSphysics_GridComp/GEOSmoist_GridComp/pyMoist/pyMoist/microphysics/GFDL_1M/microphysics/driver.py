@@ -455,7 +455,7 @@ def fix_negative_water_species(
     mppcw: FloatFieldIJ,
     mppfr: FloatFieldIJ,
 ):
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, DO_QA, LI00, LI20, LV00, T_WFR
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, CONV_FACTOR, D1_ICE, D1_VAP, LI00, LI20, LV00, T_WFR
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
@@ -502,7 +502,6 @@ def fix_negative_water_species(
                 dgraupel=0.0,
                 drain=0.0,
                 dsnow=-sink,
-                DO_QA=DO_QA,
             )
 
         # if snow < 0, borrow from graupel
@@ -522,7 +521,6 @@ def fix_negative_water_species(
                 dgraupel=-sink,
                 drain=0.0,
                 dsnow=sink,
-                DO_QA=DO_QA,
             )
 
         # if grapuel < 0, borrow from rain
@@ -545,7 +543,6 @@ def fix_negative_water_species(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -576,7 +573,6 @@ def fix_negative_water_species(
                 dgraupel=0.0,
                 drain=sink,
                 dsnow=0.0,
-                DO_QA=DO_QA,
             )
 
         # if cloud water < 0, borrow from water vapor
@@ -599,7 +595,6 @@ def fix_negative_water_species(
                 dsnow=0.0,
                 t=t,
                 total_energy=total_energy,
-                DO_QA=DO_QA,
                 D1_VAP=D1_VAP,
                 D1_ICE=D1_ICE,
                 LI00=LI00,
@@ -1033,7 +1028,7 @@ def restore_and_update_humidities(
         local_total_liquid (FloatField)
         local_total_solid (FloatField)
     """
-    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, DO_INLINE_MP, DO_QA, DT_INVERSE, MOIST_KAPPA, USE_COND
+    from __externals__ import C1_ICE, C1_LIQ, C1_VAP, C_AIR, DO_INLINE_MP, QA_TEND, DT_INVERSE, MOIST_KAPPA, USE_COND
 
     with computation(PARALLEL), interval(...):
         # initialize 64 bit internals
@@ -1076,7 +1071,7 @@ def restore_and_update_humidities(
         output_reflectivity = local_reflectivity
 
         # return cloud fraction tendencies for GEOS
-        if not DO_QA:
+        if QA_TEND:
             dcloud_fraction_dt = DT_INVERSE * (cloud_fraction * sqrt(max(local_ice + local_liquid, QCMIN) / max(ice + liquid, QCMIN)) - cloud_fraction)
         else:
             cloud_fraction = local_cloud_fraction
@@ -1395,7 +1390,6 @@ class GFDLMPV3Driver(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={
                 "CONV_FACTOR": CONV_FACTOR,
-                "DO_QA": mp_namelist.DO_QA,
                 "C1_VAP": mp_config.C1_VAP,
                 "C1_LIQ": mp_config.C1_LIQ,
                 "C1_ICE": mp_config.C1_ICE,
@@ -1482,7 +1476,7 @@ class GFDLMPV3Driver(NDSLRuntime):
                 "C1_VAP": mp_config.C1_VAP,
                 "C_AIR": mp_config.C_AIR,
                 "DO_INLINE_MP": mp_config.DO_INLINE_MP,
-                "DO_QA": mp_namelist.DO_QA,
+                "QA_TEND": mp_namelist.QA_TEND,
                 "DT_INVERSE": DT_INVERSE,
                 "MOIST_KAPPA": mp_config.MOIST_KAPPA,
                 "USE_COND": mp_config.USE_COND,
@@ -1798,7 +1792,7 @@ class GFDLMPV3Driver(NDSLRuntime):
         # -----------------------------------------------------------------------
         # cloud fraction diagnostic
         # -----------------------------------------------------------------------
-        if self._mp_namelist.DO_QA and self._mp_config.LAST_STEP:
+        if self._mp_namelist.DO_CF and self._mp_config.LAST_STEP:
             self._cloud_fraction(
                 t=self._gfdl_mp_v3_locals.t,
                 p=self._gfdl_mp_v3_locals.p,

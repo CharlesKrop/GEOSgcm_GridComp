@@ -74,7 +74,6 @@ def evaporation(
         CONV_FACTOR,
         D1_ICE,
         D1_VAP,
-        DO_QA,
         DT,
         LI00,
         LI20,
@@ -207,7 +206,6 @@ def evaporation(
                     dsnow=0.0,
                     t=t,
                     total_energy=total_energy,
-                    DO_QA=DO_QA,
                     D1_VAP=D1_VAP,
                     D1_ICE=D1_ICE,
                     LI00=LI00,
@@ -258,7 +256,7 @@ def accretion(
         ACC (GFDLMPV3TableL20)
         ACCO (GFDLMPV3TableL3xL10)
     """
-    from __externals__ import BLINR, CONV_FACTOR, CRACW, DO_3D_ACC_CLIQ, DO_QA, DT, MUR, T_WFR, VDIFFFLAG
+    from __externals__ import BLINR, CONV_FACTOR, CRACW, DO_3D_ACC_CLIQ, DT, MUR, T_WFR, VDIFFFLAG
 
     with computation(FORWARD), interval(...):
         if t > T_WFR and rain > QPMIN and liquid > QCMIN:
@@ -303,7 +301,6 @@ def accretion(
                 dgraupel=0.0,
                 drain=sink,
                 dsnow=0.0,
-                DO_QA=DO_QA,
             )
 
 
@@ -363,7 +360,7 @@ def autoconversion_part_2(
         cpaut (FloatFieldIJ)
         factor_rc (FloatFieldIJ)
     """
-    from __externals__ import CCN_EXPONENT, CONV_FACTOR, C_PAUT_SCHEME, DO_PSD_WATER_NUM, DO_QA, DT, IRAIN_F, LIQUID_EXPONENT, MUW, PCAW, PCBW, QL0_MAX, T_WFR
+    from __externals__ import CCN_EXPONENT, CONV_FACTOR, C_PAUT_SCHEME, DO_PSD_WATER_NUM, DT, IRAIN_F, LIQUID_EXPONENT, MUW, PCAW, PCBW, QL0_MAX, T_WFR
 
     with computation(FORWARD), interval(...):
         if IRAIN_F == 0:
@@ -404,7 +401,6 @@ def autoconversion_part_2(
                         dgraupel=0.0,
                         drain=sink,
                         dsnow=0.0,
-                        DO_QA=DO_QA,
                     )
 
     with computation(FORWARD), interval(...):
@@ -439,7 +435,6 @@ def autoconversion_part_2(
                         dgraupel=0.0,
                         drain=sink,
                         dsnow=0.0,
-                        DO_QA=DO_QA,
                     )
 
 
@@ -505,7 +500,6 @@ class WarmRain(NDSLRuntime):
                 "CONV_FACTOR": CONV_FACTOR,
                 "D1_ICE": mp_config.D1_ICE,
                 "D1_VAP": mp_config.D1_VAP,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "LI00": mp_config.LI00,
                 "LI20": mp_config.LI20,
@@ -526,7 +520,6 @@ class WarmRain(NDSLRuntime):
                 "CONV_FACTOR": CONV_FACTOR,
                 "CRACW": mp_config.CRACW,
                 "DO_3D_ACC_CLIQ": mp_namelist.DO_3D_ACC_CLIQ,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "MUR": mp_namelist.MUR,
                 "T_WFR": mp_config.T_WFR,
@@ -551,7 +544,6 @@ class WarmRain(NDSLRuntime):
                 "CONV_FACTOR": CONV_FACTOR,
                 "C_PAUT_SCHEME": mp_namelist.C_PAUT_SCHEME,
                 "DO_PSD_WATER_NUM": mp_namelist.DO_PSD_WATER_NUM,
-                "DO_QA": mp_namelist.DO_QA,
                 "DT": DRIVER_DT,
                 "IN_CLOUD_LIQ": mp_namelist.IN_CLOUD_LIQ,
                 "IRAIN_F": mp_namelist.IRAIN_F,

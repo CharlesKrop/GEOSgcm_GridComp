@@ -156,8 +156,10 @@ class GFDLMPV3NamelistConfig:
     DO_SEDI_MELT_QG: Bool = Bool(False)
     """melt cloud ice, snow, and graupel during sedimentation"""
 
-    DO_QA: Bool = Bool(False)
-    """do inline cloud fraction"""
+    QA_TEND: Bool = Bool(False)
+    """Return a cloud-fraction tendency instead of the updated cloud fraction."""
+    DO_CF: Bool = Bool(False)
+    """Run the diagnostic cloud-fraction calculation after microphysics."""
     RAD_SNOW: Bool = Bool(True)
     """include snow in cloud fraciton calculation"""
     RAD_GRAUPEL: Bool = Bool(True)

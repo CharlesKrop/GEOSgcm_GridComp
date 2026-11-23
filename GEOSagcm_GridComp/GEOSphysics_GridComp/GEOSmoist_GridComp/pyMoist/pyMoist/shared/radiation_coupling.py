@@ -1,6 +1,6 @@
 from ndsl.dsl.gt4py import computation, FORWARD, PARALLEL, interval
 from pyMoist.constants import MAPL_UNDEF
-from ndsl.dsl.typing import FloatField
+from ndsl.dsl.typing import FloatField, FloatFieldIJ
 from pyMoist.shared.constants import CFMIN, QCMIN, QPMIN
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice, cloud_effective_radius_liquid
 
@@ -11,6 +11,8 @@ def radiation_coupling_scale_aware(
     cloud_particle_effective_radius_liquid: FloatField,
     cloud_particle_effective_radius_ice: FloatField,
     concentration_liquid: FloatField,
+    concentration_ice: FloatField,
+    convection_fraction: FloatFieldIJ,
     radiation_cloud_fraction: FloatField,
     radiation_graupel: FloatField,
     radiation_ice: FloatField,
@@ -29,7 +31,7 @@ def radiation_coupling_scale_aware(
     snow: FloatField,
     vapor: FloatField,
 ):
-    from __externals__ import MIN_RL, MAX_RL, FAC_RL, MIN_RI, MAX_RI, FAC_RI, ICE_RADII_PARAM
+    from __externals__ import MIN_RL, MAX_RL, FAC_RL, MIN_RI, MAX_RI, FAC_RI, ICE_RADII_PARAM, LIQ_RADII_PARAM
 
     with computation(PARALLEL), interval(...):
         # 1. Pass through water vapor
@@ -38,33 +40,37 @@ def radiation_coupling_scale_aware(
         # 2. Combine inputs for Total Cloud Fraction and Cloud Condensates
         total_liquid = large_scale_liquid + anvil_liquid
         total_ice = large_scale_ice + anvil_ice
-        radiation_cloud_fraction = max(min(large_scale_cloud_fraction + anvil_cloud_fraction, 1.0), 0.0)
+        # Use Maximum-Random Overlap for Radiation footprint
+        radiation_cloud_fraction = large_scale_cloud_fraction + anvil_cloud_fraction - (large_scale_cloud_fraction * anvil_cloud_fraction)
+        radiation_cloud_fraction = max(min(radiation_cloud_fraction, 1.0), 0.0)
 
         # 3. Process clouds if there is fraction OR resolved condensate
         if radiation_cloud_fraction >= CFMIN or (total_liquid + total_ice) >= QCMIN:
+            # Secure a strict safe lower floor for branchless division protection
+            div_cf = max(radiation_cloud_fraction, CFMIN)
             # Calculate in-cloud specific humidities and cap at 0.01 max
             if total_liquid >= QCMIN:
-                radiation_liquid = min(total_liquid / radiation_cloud_fraction, 0.01)
+                radiation_liquid = min(total_liquid / div_cf, 0.01)
             else:
                 radiation_liquid = 0.0
 
             if total_ice >= QCMIN:
-                radiation_ice = min(total_ice / radiation_cloud_fraction, 0.01)
+                radiation_ice = min(total_ice / div_cf, 0.01)
             else:
                 radiation_ice = 0.0
 
             if rain >= QPMIN:
-                radiation_rain = min(rain / radiation_cloud_fraction, 0.01)
+                radiation_rain = min(rain / div_cf, 0.01)
             else:
                 radiation_rain = 0.0
 
             if snow >= QPMIN:
-                radiation_snow = min(snow / radiation_cloud_fraction, 0.01)
+                radiation_snow = min(snow / div_cf, 0.01)
             else:
                 radiation_snow = 0.0
 
             if graupel >= QPMIN:
-                radiation_graupel = min(graupel / radiation_cloud_fraction, 0.01)
+                radiation_graupel = min(graupel / div_cf, 0.01)
             else:
                 radiation_graupel = 0.0
         else:
@@ -77,13 +83,19 @@ def radiation_coupling_scale_aware(
             radiation_graupel = 0.0
 
         # 4. LIQUID RADII (BRAMS formulation with limits)
-        if radiation_liquid > 0.0:
-            cloud_particle_effective_radius_liquid = max(MIN_RL, min(cloud_effective_radius_liquid(p_mb, t, radiation_liquid, concentration_liquid) * FAC_RL, MAX_RL))
+        # Pass total_liquid to maintain cloud_effective_radius_liquid assumptions
+        if total_liquid > 0.0 and radiation_cloud_fraction > 0.0:
+            cloud_particle_effective_radius_liquid = max(
+                MIN_RL, min(cloud_effective_radius_liquid(p_mb, t, total_liquid, concentration_liquid, LIQ_RADII_PARAM, convection_fraction) * FAC_RL, MAX_RL)
+            )
         else:
             cloud_particle_effective_radius_liquid = MAPL_UNDEF
 
         # 5. ICE RADII (BRAMS formulation with limits)
-        if radiation_ice > 0.0:
-            cloud_particle_effective_radius_ice = max(MIN_RI, min(cloud_effective_radius_ice(p_mb, t, radiation_ice, ICE_RADII_PARAM) * FAC_RI, MAX_RI))
+        # Pass total_ice to maintain cloud_effective_radius_ice assumptions
+        if total_ice > 0.0 and radiation_cloud_fraction > 0.0:
+            cloud_particle_effective_radius_ice = max(
+                MIN_RI, min(cloud_effective_radius_ice(p_mb, t, total_ice, ICE_RADII_PARAM, concentration_ice, convection_fraction) * FAC_RI, MAX_RI)
+            )
         else:
             cloud_particle_effective_radius_ice = MAPL_UNDEF

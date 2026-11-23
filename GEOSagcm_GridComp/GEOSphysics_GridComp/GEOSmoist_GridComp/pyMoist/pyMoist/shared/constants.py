@@ -75,7 +75,18 @@ T_WIDTH = Float(10.0)  # Homogeneous freezing with -38 : -28 C
 
 R_AIR = Float(3.47e-3)  # m3 Pa kg-1K-1
 
-# particle radius
+# Size distribution dispersion scaling factors for [ICE|LIQ]_RADII_PARAM == 3
+# Increasing this value increases effective radius
+LIQ_RAD3_DISP = Float(1.30)
+ICE_RAD3_DISP = Float(0.50)
+
+# Morrison-Gettelman (2008) Liquid Gamma Closure
+MG_LIQ_DD_FLOOR = Float(5.0e7)  # Droplet density floor
+MG_LIQ_MU = Float(3.0)  # Shape parameter for droplet gamma dist
+# Morrison-Gettelman (2008) ice mass-dimension power law:  m = a * D^b, b = 2
+MG_ICE_A = Float(0.069)  # prefactor a [kg m^-2] for b=2
+MG_ICE_MU = Float(2.0)  # gamma-distribution shape parameter
+
 # Jason
 ABETA = Float(0.07)
 R13BBETA = Float(1.0) / Float(3.0) - Float(0.14)
