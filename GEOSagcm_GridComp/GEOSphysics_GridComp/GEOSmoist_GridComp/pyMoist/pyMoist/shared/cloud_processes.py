@@ -8,6 +8,7 @@ from ndsl.dsl.gt4py import (
     GlobalTable,
     K,
     computation,
+    erf,
     exp,
     float32,
     float64,
@@ -23,7 +24,7 @@ from ndsl.dsl.gt4py import (
 )
 from ndsl.dsl.typing import Bool, BoolFieldIJ, Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 
-from pyMoist.constants import MAPL_ALHL, MAPL_ALHS, MAPL_CP, MAPL_CPDRY, MAPL_CPVAP, MAPL_PI, MAPL_RGAS, MAPL_RVAP, MAPL_TICE
+from pyMoist.constants import MAPL_AIRMW, MAPL_ALHL, MAPL_ALHS, MAPL_CP, MAPL_CPDRY, MAPL_CPVAP, MAPL_H2OMW, MAPL_KAPPA, MAPL_PI, MAPL_RGAS, MAPL_RVAP, MAPL_TICE
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     saturation_specific_humidity,
@@ -71,6 +72,7 @@ from pyMoist.shared.constants import (
     MG_ICE_MU,
     MG_LIQ_DD_FLOOR,
     MG_LIQ_MU,
+    QAMIN,
     QCMIN,
     R13BBETA,
     R_AIR,
@@ -373,6 +375,7 @@ def cloud_effective_radius_liquid(
 
 
 def evaporate(
+    convection_fraction: FloatFieldIJ,
     p_mb: FloatField,
     t: FloatField,
     vapor: FloatField,
@@ -383,7 +386,7 @@ def evaporate(
     concentration_liquid: FloatField,
     saturation_specific_humidity: FloatField,
 ):
-    from __externals__ import CCW_EVAP_EFF, DTIME
+    from __externals__ import CCW_EVAP_EFF, DTIME, LIQ_RADII_PARAM
 
     # EVAPORATION OF CLOUD WATER - DelGenio et al (1996, J. Clim., 9, 270-303) formulation (Eq.s 15-17)
 
@@ -398,11 +401,14 @@ def evaporate(
         k1 = (MAPL_ALHL**2) * RHO_W / (K_COND * MAPL_RVAP * (t**2))
         k2 = MAPL_RVAP * t * RHO_W / (DIFFU * (1000.0 / p_mb) * es)
 
-        radius = cloud_effective_radius_liquid(p_mb, t, liquid, concentration_liquid, convection_fraction=cloud_fraction)
+        radius = 0.0
+        if liquid > 0.0:
+            radius = cloud_effective_radius_liquid(p_mb, t, liquid, concentration_liquid, LIQ_RADII_PARAM, convection_fraction)
 
         # Calculate Evaporation rate with explicit squared radius dependencies
         if rh_limited < rh_crit and radius > 0.0:
             evap = CCW_EVAP_EFF * liquid * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)
+            evap = max(0.0, min(evap, liquid))
         else:
             evap = 0.0
 
@@ -410,7 +416,7 @@ def evaporate(
         total_condensate = ice + liquid
         if total_condensate > 0.0:
             # Linear relaxation of cloud fraction based on evaporated mass fraction
-            cloud_fraction = cloud_fraction * (total_condensate - evap) / total_condensate
+            cloud_fraction = max(0.0, min(1.0, cloud_fraction * (total_condensate - evap) / total_condensate))
 
         # State Variable Updates
         vapor = vapor + evap
@@ -523,14 +529,12 @@ def fix_up_clouds(
         else:
             # ensure physical values for cloud quantities
 
-            # ensure total cloud fraction <= 1.0
-            total_cloud_fraction = type_one_cloud_fraction + type_two_cloud_fraction
-            if total_cloud_fraction > 1.0:
-                type_one_cloud_fraction = type_one_cloud_fraction * (1.0 / total_cloud_fraction)
-                type_two_cloud_fraction = type_two_cloud_fraction * (1.0 / total_cloud_fraction)
+            # Ensure individual cloud fractions do not exceed 1.0 due to advection noise
+            type_one_cloud_fraction = min(type_one_cloud_fraction, 1.0)
+            type_two_cloud_fraction = min(type_two_cloud_fraction, 1.0)
 
             # fix if type two cloud fraction too small
-            if type_two_cloud_fraction < CFMIN:
+            if type_two_cloud_fraction < QAMIN:
                 vapor = vapor + type_two_liquid + type_two_ice
                 t = t - ALHLBCP * type_two_liquid - ALHSBCP * type_two_ice
                 type_two_ice = 0.0
@@ -538,7 +542,7 @@ def fix_up_clouds(
                 type_two_cloud_fraction = 0.0
 
             # fix if type one cloud fraction too small
-            if type_one_cloud_fraction < CFMIN:
+            if type_one_cloud_fraction < QAMIN:
                 vapor = vapor + type_one_liquid + type_one_ice
                 t = t - ALHLBCP * type_one_liquid - ALHSBCP * type_one_ice
                 type_one_ice = 0.0
@@ -676,6 +680,10 @@ def hydrostatic_pdf(
         t_internal_previous = 0.0
         f_t_internal_previous = 0.0
 
+    with computation(FORWARD), interval(...):
+        # fix stratiform convection fraction to zero
+        stratiform_convection_fraction = 0.0
+
     # PHASE 1: setup & environmental isolation
     with computation(FORWARD), interval(0, 1):
         if iteration_method != -999:
@@ -704,7 +712,17 @@ def hydrostatic_pdf(
     with computation(PARALLEL), interval(...):
         # PHASE 2: pre-calculate Double Gaussian PDF (if applicable)
         if PDFSHAPE == 6:
-            option_not_implemented = True
+            exner = (p_mb / 1000.0) ** MAPL_KAPPA
+            beta, rwqt, rwhl, rhlqt, t1, t2, sigt1, sigt2, q1, q2, sigmaqt1, sigmaqt2, w1, w2, sigw1, sigw2 = precalculate_double_gaussian_pdf(
+                pdf_first_plume_fractional_area,
+                internal_t,
+                liquid_water_static_energy_variance,
+                liquid_water_static_energy_third_moment,
+                total_water_variance,
+                total_water_third_moment,
+                vertical_motion_variance,
+                vertical_motion_third_moment,
+            )
 
         # PHASE 3: Iteration to Thermodynamic Equilibrium
         # adjust temperature, saturation, and condensate until stable
@@ -719,7 +737,7 @@ def hydrostatic_pdf(
             qsat_iteration, dqsat_iteration = saturation_specific_humidity(internal_t, p_mb * 100.0, esx, use_dqsat_order=True)
 
             if use_sc_ice:
-                sc_ice_internal = min(max(sc_ice, 1.0), 1.7)
+                sc_ice_internal = min(max(sc_ice, 1.0), 1.8)
                 qs_x_sc = qsat_iteration * sc_ice_internal
                 if internal_large_scale_ice >= 0.0 and qsat_iteration > internal_total_water:
                     qsat_iteration = qs_x_sc
@@ -742,7 +760,30 @@ def hydrostatic_pdf(
             elif PDFSHAPE == 5:
                 option_not_implemented = True
             elif PDFSHAPE == 6:
-                option_not_implemented = True
+                if internal_total_water + q2 + 2.0 * sigmaqt2 > qsat_iteration:
+                    internal_condensate, internal_cloud_fraction, liquid_water_flux = partition_double_gaussian_2(
+                        exner,
+                        pdf_first_plume_fractional_area,
+                        beta,
+                        rhlqt,
+                        t1,
+                        t2,
+                        sigt1,
+                        sigt2,
+                        internal_total_water,
+                        q1,
+                        q2,
+                        sigmaqt1,
+                        sigmaqt2,
+                        w1,
+                        w2,
+                        qsat_iteration,
+                        dqsat_iteration,
+                    )
+                else:
+                    internal_condensate = 0.0
+                    internal_cloud_fraction = 0.0
+                    liquid_water_flux = 0.0
 
             if USE_BERGERON:
                 delta_condensate = internal_condensate - internal_condensate_old
@@ -769,7 +810,8 @@ def hydrostatic_pdf(
                     needs_preexisting=bergeron_needs_preexisting,
                 )
             else:
-                fraction_ice = ice_fraction(internal_t, convection_fraction, surface_type)
+                # The PDF represents the stratiform environment, not the anvil, so use stratiform_convection_fraction instead of standard convection_fraction
+                fraction_ice = ice_fraction(internal_t, stratiform_convection_fraction, surface_type)
 
             # relax the condensate update to prevent oscillation during iteration
             latent_heeat_factor = (1.0 - fraction_ice) * ALHLBCP + fraction_ice * ALHSBCP
@@ -831,7 +873,13 @@ def hydrostatic_pdf(
             count += 1
 
         if PDFSHAPE == 6:
-            option_not_implemented = True
+            virtual_potential_temperature = (internal_t / exner) * (1.0 + internal_vapor * MAPL_H2OMW / MAPL_AIRMW)
+            bastoeps = (MAPL_RVAP / MAPL_RGAS) * virtual_potential_temperature
+            buoyancy_flux = (
+                liquid_water_static_energy_flux
+                + (MAPL_H2OMW / MAPL_AIRMW) * virtual_potential_temperature * total_water_flux
+                + (latent_heeat_factor - bastoeps) * liquid_water_flux
+            )
 
         # PHASE 4: Finalization & Mapping back to Absolute Grid Box
         # scale the environmental values back down to grid-box absolutes,
@@ -1015,20 +1063,29 @@ def melt_freeze(
 
     with computation(FORWARD), interval(0, 1):
         latent_heat_fusion: FloatFieldIJ = MAPL_ALHS - MAPL_ALHL
+        t_instant_freeze: FloatFieldIJ = MAPL_TICE + T_HOM  # Homogeneous freezing limit
+        t_fast_melt: FloatFieldIJ = MAPL_TICE + 2.0  # Fast melt limit for surviving cloud ice
 
     with computation(PARALLEL), interval(...):
         if t <= MAPL_TICE:
             # FREEZING REGIME (t <= MAPL_TICE)
 
             # 1. Target ice deficit (new_ice_condensate)
-            fraction_ice = ice_fraction(t, convection_fraction, surface_type)
+            if t < t_instant_freeze:
+                # Homogeneous regime: All liquid shatters instantly
+                fraction_ice = 1.0
+                phase_factor = 1.0
+            else:
+                # Mixed-phase regime: Follow the specified polynomial/curve
+                fraction_ice = ice_fraction(t, convection_fraction, surface_type)
+                phase_factor = 1.0 - exp(-DTIME / max(DTIME, TAUFRZ))
             target_ice = min(max(0.0, fraction_ice * (liquid + ice) - ice), liquid)
 
             # 2. Thermodynamic limit (prevent latent heating above freezing point)
             max_phase_change = max(0.0, (MAPL_TICE - t) * MAPL_CP / latent_heat_fusion)
 
             # 3. Apply relaxation timescale
-            condensate_phase_changed = (1.0 - exp(-DTIME / max(DTIME, TAUFRZ))) * min(target_ice, max_phase_change)
+            condensate_phase_changed = phase_factor * min(target_ice, max_phase_change)
 
             # 4. Update states (liquid -> ice, temp warms)
             ice = ice + condensate_phase_changed
@@ -1045,12 +1102,119 @@ def melt_freeze(
             max_phase_change = max(0.0, (t - MAPL_TICE) * MAPL_CP / latent_heat_fusion)
 
             # 3. Apply relaxation timescale
-            condensate_phase_changed = (1.0 - exp(-DTIME / max(DTIME, TAUMLT))) * min(target_melt, max_phase_change)
+            if t > t_fast_melt:
+                phase_factor = 1.0
+            else:
+                phase_factor = 1.0 - exp(-DTIME / max(DTIME, TAUMLT))
+            condensate_phase_changed = phase_factor * min(target_melt, max_phase_change)
 
             # 4. Update states (ice -> liquid, temp cools)
             ice = ice - condensate_phase_changed
             liquid = liquid + condensate_phase_changed
             t = t - (latent_heat_fusion * condensate_phase_changed) / MAPL_CP
+
+
+@function
+def partition_double_gaussian_2(
+    exner: float32,
+    a: float32,
+    beta: float32,
+    rtqt: float32,
+    t1pert: float32,
+    t2pert: float32,
+    sigt1: float32,
+    sigt2: float32,
+    qtbar: float32,
+    qt1: float32,
+    qt2: float32,
+    sigqt1: float32,
+    sigqt2: float32,
+    w1: float32,
+    w2: float32,
+    qsat: float32,
+    dqsat: float32,
+):
+    """Partition condensate using the double gaussian PDF. All parameters (input and output) andinternals are expected to be 32 bit precision.
+
+    Args:
+        exner (float32)
+        a (float32)
+        beta (float32)
+        rtqt (float32)
+        t1pert (float32)
+        t2pert (float32)
+        sigt1 (float32)
+        sigt2 (float32)
+        qtbar (float32)
+        qt1 (float32)
+        qt2 (float32)
+        sigqt1 (float32)
+        sigqt2 (float32)
+        w1 (float32)
+        w2 (float32)
+        qsat (float32)
+        dqsat (float32)
+
+    Returns:
+        condensate (float32): cloud water content
+        cloud_fraction (float32): cloud fraction
+        liquid_water_flux (float32): vertical flux of cloud water content
+    """
+    internal_exner = float32(exner)
+    internal_a = float32(a)
+    internal_beta = float32(beta)
+    internal_rtqt = float32(rtqt)
+    internal_t1pert = float32(t1pert)
+    internal_t2pert = float32(t2pert)
+    internal_sigt1 = float32(sigt1)
+    internal_sigt2 = float32(sigt2)
+    internal_qtbar = float32(qtbar)
+    internal_qt1 = float32(qt1)
+    internal_qt2 = float32(qt2)
+    internal_sigqt1 = float32(sigqt1)
+    internal_sigqt2 = float32(sigqt2)
+    internal_w1 = float32(w1)
+    internal_w2 = float32(w2)
+    internal_qsat = float32(qsat)
+    internal_dqsat = float32(dqsat)
+
+    sqrt2 = float32(1.4142135)
+    sqrt2pi = float32(2.5066282)
+
+    # Calculate saturation mixing ratio for plume 1
+    qsat1 = float32(internal_qsat + internal_dqsat * internal_t1pert)
+    cq = float32(1.0 / (1.0 + internal_beta * qsat1))
+    ct = float32((1.0 + internal_beta * internal_qtbar) * internal_exner * (MAPL_CP / MAPL_ALHL) * internal_beta * internal_qsat * cq**2)
+    s1 = float32(internal_qtbar + internal_qt1 - qsat1 * (1.0 + internal_beta * (internal_qtbar + internal_qt1)) * cq)
+    sigs1 = float32(
+        max(
+            1e-6 * internal_qtbar,
+            sqrt(ct**2 * internal_sigt1**2 + cq**2 * internal_sigqt1**2 - 2.0 * ct * cq * internal_sigt1 * internal_sigqt1 * internal_rtqt),
+        )
+    )
+    cld1 = float32(0.5 * (1.0 + erf(s1 / (sqrt2 * sigs1))))
+    qc1 = float32(max(0.0, s1 * cld1 + (sigs1 / sqrt2pi) * exp(-0.5 * (s1 / sigs1) ** 2)))
+
+    if internal_a > 0.001:
+        qsat2 = float32(internal_qsat + internal_dqsat * internal_t2pert)
+        s2 = float32(internal_qtbar + internal_qt2 - qsat2 * (1.0 + internal_beta * (internal_qtbar + internal_qt2)) / (1.0 + internal_beta * qsat2))
+        sigs2 = float32(
+            max(
+                1e-6 * internal_qtbar,
+                sqrt(ct**2 * internal_sigt2**2 + cq**2 * internal_sigqt2**2 - 2.0 * ct * cq * internal_sigt2 * internal_sigqt2 * internal_rtqt),
+            )
+        )
+        cld2 = float32(0.5 * (1.0 + erf(s2 / (sqrt2 * sigs2))))
+        qc2 = float32(max(0.0, s2 * cld2 + (sigs2 / sqrt2pi) * exp(-0.5 * (s2 / sigs2) ** 2)))
+    else:
+        cld2 = cld1
+        qc2 = qc1
+
+    condensate = float32(qc1 * (1.0 - internal_a) + qc2 * internal_a)
+    liquid_water_flux = float32((1.0 - internal_a) * internal_w1 * qc1 + internal_a * internal_w2 * qc2)
+    cloud_fraction = float32((1.0 - internal_a) * cld1 + internal_a * cld2)
+
+    return condensate, cloud_fraction, liquid_water_flux
 
 
 @function
@@ -1156,6 +1320,105 @@ def pdffrac(
             cloud_fraction = 1.0
 
     return cloud_fraction
+
+
+@function
+def precalculate_double_gaussian_pdf(
+    a: float32,
+    tbar: float32,
+    t2bar: float32,
+    t3bar: float32,
+    qt2bar: float32,
+    qt3bar: float32,
+    w2bar: float32,
+    w3bar: float32,
+):
+    """Calculate double Gaussian PDF parameters. All parameters (input and output) and internals are expected to be 32 bit precision.
+
+    Args:
+        a (float32)
+        tbar (float32)
+        t2bar (float32)
+        t3bar (float32)
+        qt2bar (float32)
+        qt3bar (float32)
+        w2bar (float32)
+        w3bar (float32)
+
+    Returns:
+        beta, rwqt, rwth, rtqt, t1, t2, sigt1, sigt2, qt1, qt2, sigqt1, sigqt2, w1, w2, sigw1, sigw2
+    """
+
+    # ensure inputs are 32 bit
+    internal_a = float32(a)
+    internal_tbar = float32(tbar)
+    internal_t2bar = float32(t2bar)
+    internal_t3bar = float32(t3bar)
+    internal_qt2bar = float32(qt2bar)
+    internal_qt3bar = float32(qt3bar)
+    internal_w2bar = float32(w2bar)
+    internal_w3bar = float32(w3bar)
+
+    # calculate beta
+    beta = float32((MAPL_RGAS / MAPL_RVAP) * (MAPL_ALHL / (MAPL_RGAS * internal_tbar)) * (MAPL_ALHL / (MAPL_CP * internal_tbar)))
+
+    # If some skewness is present
+    if internal_a > 0.001 and internal_a < 0.5 and (internal_qt3bar > 0.0 or internal_t3bar > 0.0 or internal_w3bar > 0.0):
+        # Empirical adjustment to ensure realizability
+        qt3bar_local = float32(min(internal_qt3bar, (sqrt(internal_qt2bar) * (0.6 + 1.5 * exp(-10.0 * internal_a))) ** 3))
+
+        tmp = float32(1.0 - (1.0 - internal_a) - internal_a**3 / (1.0 - internal_a) ** 2)
+
+        if tmp != 0.0:
+            t2 = float32(abs(internal_t3bar / tmp) ** (1.0 / 3.0))
+            w2 = float32(abs(internal_w3bar / tmp) ** (1.0 / 3.0))
+            qt2 = float32(abs(qt3bar_local / tmp) ** (1.0 / 3.0))
+        else:
+            t2 = float32(abs(internal_t3bar) ** (1.0 / 3.0))
+            w2 = float32(abs(internal_w3bar) ** (1.0 / 3.0))
+            qt2 = float32(abs(qt3bar_local) ** (1.0 / 3.0))
+        if internal_t3bar < 0.0:
+            t2 = -t2
+        if internal_w3bar < 0.0:
+            w2 = -w2
+
+        t1 = float32(internal_a * t2 / (internal_a - 1.0))
+        w1 = float32(internal_a * w2 / (internal_a - 1.0))
+        fac = float32(sqrt(internal_a / (1.0 - internal_a)))
+        tmp = float32(max(0.0, internal_t2bar - (1.0 - internal_a) * t1**2 - internal_a * t2**2))
+        sigt1 = float32(sqrt(tmp / (1.0 - internal_a + internal_a * fac)))
+        sigt2 = float32(fac * sigt1)
+        tmp = float32(max(0.0, internal_w2bar - (1.0 - internal_a) * w1**2 - internal_a * w2**2))
+        sigw1 = float32(sqrt(tmp / (1.0 - internal_a + internal_a * fac)))
+        sigw2 = float32(fac * sigw1)
+    else:
+        t1 = float32(0.0)
+        t2 = float32(0.0)
+        sigt1 = float32(sqrt(internal_t2bar))
+        sigt2 = sigt1
+        w1 = 0.0
+        w2 = 0.0
+        sigw1 = float32(sqrt(internal_w2bar))
+        sigw2 = sigw1
+        qt2 = 0.0
+
+    if internal_a > 0.001 and internal_qt3bar > 0.0 and internal_a < 0.5:
+        qt1 = float32(internal_a * qt2 / (internal_a - 1.0))
+        fac = float32(sqrt(internal_a / (1.0 - internal_a)))
+        tmp = float32(max(0.0, internal_qt2bar - (1.0 - internal_a) * qt1**2 - internal_a * qt2**2))
+        sigqt1 = float32(sqrt(tmp / (1.0 - internal_a + internal_a * fac)))
+        sigqt2 = float32(fac * sigqt1)
+    else:
+        qt1 = 0.0
+        qt2 = 0.0
+        sigqt1 = float32(sqrt(internal_qt2bar))
+        sigqt2 = sigqt1
+
+    # set coorelation coefficients
+    rwqt = float32(0.0)
+    rwth = float32(0.0)
+    rtqt = float32(-0.2)
+    return beta, rwqt, rwth, rtqt, t1, t2, sigt1, sigt2, qt1, qt2, sigqt1, sigqt2, w1, w2, sigw1, sigw2
 
 
 @function
@@ -1278,6 +1541,7 @@ def redistribute_clouds_function(
 
 
 def sublimate(
+    convection_fraction: FloatFieldIJ,
     p_mb: FloatField,
     t: FloatField,
     vapor: FloatField,
@@ -1297,14 +1561,12 @@ def sublimate(
 
         rh_limited = min(vapor / saturation_specific_humidity, 1.00)
 
-        # Match SUBL3 in the v11.10.1 reference, which uses liquid latent
-        # heat in this resistance term (but sublimation heat for cooling).
-        k1 = (MAPL_ALHL**2) * RHO_I / (K_COND * MAPL_RVAP * (t**2))
-
-        # DIFFU is given for 1000 mb, so 1000.0/p_mb accounts for increased diffusivity at lower pressure
+        k1 = (MAPL_ALHS**2) * RHO_I / (K_COND * MAPL_RVAP * (t**2))
         k2 = MAPL_RVAP * t * RHO_I / (DIFFU * (1000.0 / p_mb) * es)
 
-        radius = cloud_effective_radius_ice(p_mb, t, ice, ICE_RADII_PARAM, concentration_ice, cloud_fraction)
+        radius = 0.0
+        if ice > 0.0:
+            radius = cloud_effective_radius_ice(p_mb, t, ice, ICE_RADII_PARAM, concentration_ice, convection_fraction)
 
         if rh_limited < rh_crit and radius > 0.0:
             subl = CCI_EVAP_EFF * ice * DTIME * (rh_crit - rh_limited) / ((k1 + k2) * radius**2)
@@ -1314,7 +1576,7 @@ def sublimate(
 
         total_condensate = ice + liquid
         if total_condensate > 0.0:
-            cloud_fraction = cloud_fraction * (total_condensate - subl) / total_condensate
+            cloud_fraction = max(0.0, min(1.0, cloud_fraction * (total_condensate - subl) / total_condensate))
 
         vapor = vapor + subl
         ice = ice - subl

@@ -5,7 +5,6 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.basic_operations import add, copy
-from ndsl.stencils.basic_operations_2d import set_value_2d
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
@@ -154,14 +153,6 @@ class GFDL1MMacrophysicsLocals(LocalState):
             "dtype": Float,
         }
     )
-    temporary_2d: Local = dataclasses.field(
-        metadata={
-            "name": "temporary_2d",
-            "dims": [I_DIM, J_DIM],
-            "units": "?",
-            "dtype": Float,
-        }
-    )
     temporary_3d: Local = dataclasses.field(
         metadata={
             "name": "temporary_3d",
@@ -246,6 +237,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             externals={
                 "DTIME": config.DT,
                 "CCW_EVAP_EFF": config.CCW_EVAP_EFF,
+                "LIQ_RADII_PARAM": config.LIQ_RADII_PARAM,
             },
         )
         self._fill_negative_q = stencil_factory.from_dims_halo(
@@ -275,10 +267,6 @@ class GFDL1MMacrophysics(NDSLRuntime):
             func=melt_freeze,
             compute_dims=[I_DIM, J_DIM, K_DIM],
             externals={"DTIME": config.DT},
-        )
-        self._set_value_2d = stencil_factory.from_dims_halo(
-            func=set_value_2d,
-            compute_dims=[I_DIM, J_DIM, K_DIM],
         )
         self._sublimate = macro_factory.from_dims_halo(
             func=sublimate,
@@ -384,10 +372,8 @@ class GFDL1MMacrophysics(NDSLRuntime):
 
         # melt/freeze particles if enabled
         if self._config.MELTFRZ_CLDMACRO:
-            # since we are explicitly operating on convective types pass convection_fraction always as 1.0
-            self._set_value_2d(field=self._locals.temporary_2d, value=Float(1.0))
             self._melt_freeze(
-                convection_fraction=self._locals.temporary_2d,
+                convection_fraction=state.convection_fraction,
                 surface_type=state.surface_type,
                 t=state.t,
                 liquid=state.mixing_ratio.convective_liquid,
@@ -399,6 +385,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             self._copy(input=state.mixing_ratio.vapor, output=state.cloud_liquid_evaporation)
 
             self._evaporate(
+                convection_fraction=state.convection_fraction,
                 p_mb=locals.p_mb,
                 t=state.t,
                 vapor=state.mixing_ratio.vapor,
@@ -417,6 +404,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             self._copy(input=state.mixing_ratio.vapor, output=state.cloud_ice_sublimation)
 
             self._sublimate(
+                convection_fraction=state.convection_fraction,
                 p_mb=locals.p_mb,
                 t=state.t,
                 vapor=state.mixing_ratio.vapor,
