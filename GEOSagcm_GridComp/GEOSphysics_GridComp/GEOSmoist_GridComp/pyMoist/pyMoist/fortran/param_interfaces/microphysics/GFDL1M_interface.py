@@ -284,8 +284,6 @@ class GFDL1MInterface(UserCode):
         with TimedCUDAProfiler("GFDL 1M", {}):
             with TimedCUDAProfiler("GFDL 1M - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
-                print("saving python data in")
-                self._managed_state.record("GFDL1M_python_in")
                 # KPBL_SC is Fortran-indexed. Convert to Python index while Python numerics run, then restore before state copy-back.
                 self._managed_state.ndsl_state.boundary_layer_level_for_uw_shallow_conv.field[:] -= 1
 
@@ -294,8 +292,6 @@ class GFDL1MInterface(UserCode):
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
                 self._managed_state.ndsl_state.boundary_layer_level_for_uw_shallow_conv.field[:] += 1
-                print("saving python data out")
-                self._managed_state.record("GFDL1M_python_out")
                 self._managed_state.ndsl_to_fortran()
 
         rank = MPI.COMM_WORLD.Get_rank()
