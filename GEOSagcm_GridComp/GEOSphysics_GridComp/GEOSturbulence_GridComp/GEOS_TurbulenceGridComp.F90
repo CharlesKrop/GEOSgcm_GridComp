@@ -3322,8 +3322,8 @@ end if
             call MAPL_GetResource (MAPL, SHOCPARAMS%LENFAC3, trim(COMP_NAME)//"_SHC_LENFAC3:",     default=0.5,  RC=STATUS); VERIFY_(STATUS)
             call MAPL_GetResource (MAPL, SHOCPARAMS%BUOYOPT, trim(COMP_NAME)//"_SHC_BUOY_OPTION:", default=2,    RC=STATUS); VERIFY_(STATUS)
             call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 6.0 , RC=STATUS); VERIFY_(STATUS)
-            ! call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT )
-            ! call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT )
+            call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT )
+            call MAPL_pybridge_gcinit( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT )
          endif !ENDIF USE_PYTURB_SHOC
      else
        call MAPL_GetResource (MAPL, PDFSHAPE,   'PDFSHAPE:',   DEFAULT = 1.0 , RC=STATUS); VERIFY_(STATUS)
@@ -4008,7 +4008,7 @@ end if
          call cpu_time(finish)
          if (rank == 0) print *, 'NDSL SHOC time taken (with interface) = ', finish - start, 's'
       else
-      ! call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT, INTERNAL )
+      call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT, INTERNAL )
       call cpu_time(start)
       call RUN_SHOC( IM, JM, LM, LM+1, DT,  &
                   !== Inputs ==
@@ -4055,14 +4055,14 @@ end if
       KH(:,:,1:LM) = TKH(:,:,1:LM)
       call cpu_time(finish)
       if (rank == 0) print *, 'Fortran SHOC time taken = ', finish - start, 's'
-      ! call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT, INTERNAL )
+      call MAPL_pybridge_gcrun_with_internal( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT, INTERNAL )
       endif ! ENDIF USE_PYTURB_SHOC
 
       if (USE_PYTURB_SHOC) then
          call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface", MAPL, IMPORT, EXPORT )
-      ! else
-      !    call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT )
-      !    call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT )
+      else
+         call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_In", MAPL, IMPORT, EXPORT )
+         call MAPL_pybridge_gcfinalize( "pyTurbulence.fortran.param_interfaces.SHOCMF.SHOC_interface_NOOP_Out", MAPL, IMPORT, EXPORT )
       endif
 
       call MAPL_TimerOff (MAPL,name="---SHOC" ,RC=STATUS)
