@@ -27,7 +27,7 @@ class GFDL1MInterface(UserCode):
             ANV_ICEFALL=maplpy.get_resource("ANV_ICEFALL:", mapl_state, default=Float(1.0)),
             CCI_EVAP_EFF=maplpy.get_resource("CCI_EVAP_EFF:", mapl_state, default=Float(4.0e-3)),
             CCW_EVAP_EFF=maplpy.get_resource("CCW_EVAP_EFF:", mapl_state, default=Float(4.0e-3)),
-            CNV_FRACTION_MAX=maplpy.get_resource("CNV_FRACTION_MAX:", mapl_state, default=Float(2500.0)),
+            CNV_FRACTION_MAX=maplpy.get_resource("CNV_FRACTION_MAX:", mapl_state, default=Float(1500.0)),
             CNV_FRACTION_MIN=maplpy.get_resource("CNV_FRACTION_MIN:", mapl_state, default=Float(500.0)),
             CWD=os.getcwd(),  # this is a placeholder. need to pass the true path from fortran to python
             DO_GFDL_REFLECTIVITY=maplpy.get_resource("DO_GFDL_REFLECTIVITY:", mapl_state, default=True),
@@ -39,11 +39,11 @@ class GFDL1MInterface(UserCode):
             ICE_CNV_VFALL_PARAM=maplpy.get_resource("ICE_CNV_VFALL_PARAM:", mapl_state, default=Int(1)),
             ICE_FRACTION_POLYNOMIAL=maplpy.get_resource("ICE_FRACTION_POLYNOMIAL:", mapl_state, default=V12_ICE_POLYNOMIAL),
             ICE_LSC_VFALL_PARAM=maplpy.get_resource("ICE_LSC_VFALL_PARAM:", mapl_state, default=Int(1)),
-            ICE_RADII_PARAM=maplpy.get_resource("ICE_RADII_PARAM:", mapl_state, default=Int(2)),
-            LIQ_RADII_PARAM=maplpy.get_resource("LIQ_RADII_PARAM:", mapl_state, default=Int(1)),
+            ICE_RADII_PARAM=maplpy.get_resource("ICE_RADII_PARAM:", mapl_state, default=Int(3)),
+            LIQ_RADII_PARAM=maplpy.get_resource("LIQ_RADII_PARAM:", mapl_state, default=Int(3)),
             LS_ICEFALL=maplpy.get_resource("LS_ICEFALL:", mapl_state, default=Float(1.0)),
-            MAX_RH_CRIT=maplpy.get_resource("MAX_RH_CRIT:", mapl_state, default=Float(1.0)),
-            MAX_RI=maplpy.get_resource("MAX_RI:", mapl_state, default=Float(100.0e-6)),
+            MAX_RH_CRIT=maplpy.get_resource("MAX_RH_CRIT:", mapl_state, default=Float(0.9900)),
+            MAX_RI=maplpy.get_resource("MAX_RI:", mapl_state, default=Float(150.0e-6)),
             MAX_RL=maplpy.get_resource("MAX_RL:", mapl_state, default=Float(60.0e-6)),
             MELTFRZ_CLDMACRO=maplpy.get_resource("MELTFRZ_CLDMACRO:", mapl_state, default=True),
             MELTFRZ_CLDMICRO=maplpy.get_resource("MELTFRZ_CLDMICRO:", mapl_state, default=False),
@@ -51,7 +51,7 @@ class GFDL1MInterface(UserCode):
             MIN_RH_UNSTABLE=maplpy.get_resource("MIN_RH_UNSTABLE:", mapl_state, default=Float(0.975)),
             MIN_RH_CRIT=maplpy.get_resource("MIN_RH_CRIT:", mapl_state, default=Float(0.725)),
             MIN_RI=maplpy.get_resource("MIN_RI:", mapl_state, default=Float(5.0e-6)),
-            MIN_RL=maplpy.get_resource("MIN_RL:", mapl_state, default=Float(2.5e-6)),
+            MIN_RL=maplpy.get_resource("MIN_RL:", mapl_state, default=Float(5.0e-6)),
             PDFSHAPE=maplpy.get_resource("PDFSHAPE:", mapl_state, default=Int(1)),
             PHYS_HYDROSTATIC=maplpy.get_resource("PHYS_HYDROSTATIC:", mapl_state, default=True),
             REPORT_GFDL_1M_NEGATIVES=maplpy.get_resource("REPORT_GFDL_1M_NEGATIVES:", mapl_state, default=False),
@@ -59,7 +59,7 @@ class GFDL1MInterface(UserCode):
             TURNRHCRIT_SFC=maplpy.get_resource("TURNRHCRIT_SFC:", mapl_state, default=Float(-1.0)),
             TURNRHCRIT_TOP=maplpy.get_resource("TURNRHCRIT_TOP:", mapl_state, default=Float(3250.0)),
             USE_AEROSOL_NN=maplpy.get_resource("USE_AEROSOL_NN:", mapl_state, default=USE_AEROSOL_NN),
-            USE_BERGERON=maplpy.get_resource("USE_BERGERON:", mapl_state, default=USE_AEROSOL_NN),
+            USE_BERGERON=maplpy.get_resource("USE_BERGERON:", mapl_state, default=False),
         )
 
         # Initialize the module
@@ -284,6 +284,8 @@ class GFDL1MInterface(UserCode):
         with TimedCUDAProfiler("GFDL 1M", {}):
             with TimedCUDAProfiler("GFDL 1M - State copy", {}):
                 self._managed_state.fortran_to_ndsl()
+                print("saving python data in")
+                self._managed_state.record("GFDL1M_python_in")
                 # KPBL_SC is Fortran-indexed. Convert to Python index while Python numerics run, then restore before state copy-back.
                 self._managed_state.ndsl_state.boundary_layer_level_for_uw_shallow_conv.field[:] -= 1
 
@@ -292,7 +294,13 @@ class GFDL1MInterface(UserCode):
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
                 self._managed_state.ndsl_state.boundary_layer_level_for_uw_shallow_conv.field[:] += 1
+                print("saving python data out")
+                self._managed_state.record("GFDL1M_python_out")
                 self._managed_state.ndsl_to_fortran()
+
+        rank = MPI.COMM_WORLD.Get_rank()
+        if rank == 0:
+            self._managed_state.save_recorded()
 
     def finalize(
         self,
