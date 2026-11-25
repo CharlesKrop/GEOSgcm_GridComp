@@ -1274,12 +1274,26 @@ class GFDLMPV3Driver(NDSLRuntime):
         CONV_FACTOR = Float(Float(86400.0) * RGRAV / gfdl_1m_config.DT)
 
         # initialize class specific locals
-        self._gfdl_mp_v3_locals = GFDLMPV3Locals.make_locals(quantity_factory)
+        self._gfdl_mp_v3_locals = GFDLMPV3Locals.empty(quantity_factory)
 
-        # make config visible at runtime
+        # make config and saturation tables visible at runtime
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
         self._saturation_tables = saturation_tables
+        # NOTE: This is an orchestration workaround. Direct call to `self._saturation_tables.X`
+        # fails closure capture for argument reconstruction at call time.
+        # The driver and MPFull capture the same arrays in nested graphs. Separate
+        # views preserve the data while giving their closures distinct identities.
+        self._table_0 = self._saturation_tables.table_0.view()
+        self._table_1 = self._saturation_tables.table_1
+        self._table_2 = self._saturation_tables.table_2.view()
+        self._table_3 = self._saturation_tables.table_3
+        self._table_4 = self._saturation_tables.table_4
+        self._dtable_0 = self._saturation_tables.dtable_0.view()
+        self._dtable_1 = self._saturation_tables.dtable_1
+        self._dtable_2 = self._saturation_tables.dtable_2.view()
+        self._dtable_3 = self._saturation_tables.dtable_3
+        self._dtable_4 = self._saturation_tables.dtable_4
 
         # initialize subcomponents
         self._mp_full = MPFull(
@@ -1806,10 +1820,10 @@ class GFDLMPV3Driver(NDSLRuntime):
                 cloud_fraction=self._gfdl_mp_v3_locals.cloud_fraction,
                 area=self._gfdl_mp_v3_locals.area,
                 h_var=self._gfdl_mp_v3_locals.h_var,
-                table_0=self._saturation_tables.table_0,
-                table_2=self._saturation_tables.table_2,
-                dtable_0=self._saturation_tables.dtable_0,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_0=self._table_0,
+                table_2=self._table_2,
+                dtable_0=self._dtable_0,
+                dtable_2=self._dtable_2,
             )
 
         # -----------------------------------------------------------------------

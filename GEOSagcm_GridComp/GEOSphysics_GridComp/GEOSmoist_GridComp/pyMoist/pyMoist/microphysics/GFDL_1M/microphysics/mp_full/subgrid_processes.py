@@ -347,6 +347,12 @@ class SubgridProcesses(NDSLRuntime):
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
         self._saturation_tables = saturation_tables
+        # NOTE: This is an orchestration workaround. Direct call to `self._saturation_tables.X`
+        # fails closure capture for argument reconstruction at call time.
+        self._table_0 = self._saturation_tables.table_0
+        self._table_2 = self._saturation_tables.table_2
+        self._dtable_0 = self._saturation_tables.dtable_0
+        self._dtable_2 = self._saturation_tables.dtable_2
 
         # initialize locals for ice cloud
         self._subgrid_processes_locals = SubgridProcessesLocals.make_locals(quantity_factory)
@@ -573,27 +579,14 @@ class SubgridProcesses(NDSLRuntime):
                 mppe1=gfdl_mp_v3_locals.mppe1,
                 mpps1=gfdl_mp_v3_locals.mpps1,
                 one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
-                table_0=self._saturation_tables.table_0,
-                table_2=self._saturation_tables.table_2,
-                dtable_0=self._saturation_tables.dtable_0,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_0=self._table_0,
+                table_2=self._table_2,
+                dtable_0=self._dtable_0,
+                dtable_2=self._dtable_2,
             )
 
-            if False:
-                # WMP - something here causes large warm temperature spikes
-                # WMP - partial evap is moved into pinst call above
-                # WMP - ignoring condensation for now
-                # -----------------------------------------------------------------------
-                # cloud water condensation and evaporation
-                # -----------------------------------------------------------------------
-                if self._mp_namelist.DELAY_COND_EVAP:
-                    cond_evap = self._mp_config.LAST_STEP
-                else:
-                    cond_evap = True
-
-                if cond_evap:
-                    for n in self._mp_namelist.NCONDS:
-                        pcond_pevap_not_ported = True
+            # Partial evaporation is handled by p_instant above.
+            # The separate cloud water condensation/evaporation path is not yet ported.
 
             # -----------------------------------------------------------------------
             # enforce complete freezing below t_wfr
@@ -639,10 +632,10 @@ class SubgridProcesses(NDSLRuntime):
                 total_energy=self._subgrid_processes_locals.total_energy,
                 one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
                 mppfw=gfdl_mp_v3_locals.mppfw,
-                table_0=self._saturation_tables.table_0,
-                table_2=self._saturation_tables.table_2,
-                dtable_0=self._saturation_tables.dtable_0,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_0=self._table_0,
+                table_2=self._table_2,
+                dtable_0=self._dtable_0,
+                dtable_2=self._dtable_2,
             )
 
             # -----------------------------------------------------------------------
@@ -694,8 +687,8 @@ class SubgridProcesses(NDSLRuntime):
                 one_minus_sigma=gfdl_mp_v3_locals.one_minus_sigma,
                 mppdi=gfdl_mp_v3_locals.mppdi,
                 mppsi=gfdl_mp_v3_locals.mppsi,
-                table_2=self._saturation_tables.table_2,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_2=self._table_2,
+                dtable_2=self._dtable_2,
             )
 
             # -----------------------------------------------------------------------
@@ -722,8 +715,8 @@ class SubgridProcesses(NDSLRuntime):
                 mppds=gfdl_mp_v3_locals.mppds,
                 mppss=gfdl_mp_v3_locals.mppss,
                 CSSUB=self._mp_config.CSSUB,
-                table_2=self._saturation_tables.table_2,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_2=self._table_2,
+                dtable_2=self._dtable_2,
             )
 
             # -----------------------------------------------------------------------
@@ -750,6 +743,6 @@ class SubgridProcesses(NDSLRuntime):
                 mppdg=gfdl_mp_v3_locals.mppdg,
                 mppsg=gfdl_mp_v3_locals.mppsg,
                 CGSUB=self._mp_config.CGSUB,
-                table_2=self._saturation_tables.table_2,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_2=self._table_2,
+                dtable_2=self._dtable_2,
             )

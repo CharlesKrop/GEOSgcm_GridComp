@@ -163,8 +163,15 @@ class GFDL1MSetup(NDSLRuntime):
 
         # make configuration and saturation tables visible at runtime
         self.config = config
-        self.saturation_tables = saturation_tables
-        
+        self._saturation_tables = saturation_tables
+        # NOTE: This is an orchestration workaround. Direct call to `self._saturation_tables.X`
+        # fails closure capture for argument reconstruction at call time.
+        self._esx = self._saturation_tables.esx
+        self._esw = self._saturation_tables.esw
+        self._lqu = self._saturation_tables.lqu
+        self._ese = self._saturation_tables.ese
+        self._frz = self._saturation_tables.frz
+
         # Configuration supplies a zero-based lid; nonpositive values use TOA.
         self.lid_level = max(0, int(config.GFDL_MP_KLID))
 
@@ -214,15 +221,6 @@ class GFDL1MSetup(NDSLRuntime):
                 "DT": config.DT,
             },
         )
-
-        # Dev NOTE: this is an orchestration workaround. Direct call to
-        #           `self.saturation_tables.X` fails closure capture for
-        #           argument reconstruction at call time
-        self._esx = self.saturation_tables.esx
-        self._esw = self.saturation_tables.esw
-        self._lqu = self.saturation_tables.lqu
-        self._ese = self.saturation_tables.ese
-        self._frz = self.saturation_tables.frz
 
     def __call__(
         self,

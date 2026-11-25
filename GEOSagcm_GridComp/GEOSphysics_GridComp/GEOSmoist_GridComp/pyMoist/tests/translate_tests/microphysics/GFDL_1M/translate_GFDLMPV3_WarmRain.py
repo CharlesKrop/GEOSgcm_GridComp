@@ -87,10 +87,10 @@ class TranslateGFDLMPV3_WarmRain(TranslateFortranData2Py):
 
         # replace gfdl_mp_v3_locals and mp_full_locals with a regular State version (instead of LocalState)
         # so that it can be read from outside and the data can be passed back to the translate test
-        gfdl_mp_v3_locals = GFDLMPV3Locals.make_as_state(self.quantity_factory)
+        gfdl_mp_v3_locals = GFDLMPV3Locals.empty(self.quantity_factory)
         code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals = gfdl_mp_v3_locals
 
-        mp_full_locals = MPFullLocals.make_as_state(self.quantity_factory)
+        mp_full_locals = MPFullLocals.empty(self.quantity_factory)
         code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals = mp_full_locals
 
         # map fortran serialbox names to python state names

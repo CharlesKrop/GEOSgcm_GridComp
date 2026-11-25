@@ -1454,10 +1454,14 @@ class IceCloud(NDSLRuntime):
         # initialize NDSLRuntime parent class
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
-        # make config visible at runtime
+        # make config and saturation tables visible at runtime
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
         self._saturation_tables = saturation_tables
+        # NOTE: This is an orchestration workaround. Direct call to `self._saturation_tables.X`
+        # fails closure capture for argument reconstruction at call time.
+        self._table_2 = self._saturation_tables.table_2
+        self._dtable_2 = self._saturation_tables.dtable_2
 
         # initialize locals for ice cloud
         self._ice_cloud_locals = IceCloudLocals.make_locals(quantity_factory)
@@ -1758,8 +1762,8 @@ class IceCloud(NDSLRuntime):
                 ACC=self._mp_config.ACC,
                 ACCO=self._mp_config.ACCO,
                 CSMLT=self._mp_config.CSMLT,
-                table_2=self._saturation_tables.table_2,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_2=self._table_2,
+                dtable_2=self._dtable_2,
             )
 
             # -----------------------------------------------------------------------
@@ -1791,8 +1795,8 @@ class IceCloud(NDSLRuntime):
                 ACC=self._mp_config.ACC,
                 ACCO=self._mp_config.ACCO,
                 CGMLT=self._mp_config.CGMLT,
-                table_2=self._saturation_tables.table_2,
-                dtable_2=self._saturation_tables.dtable_2,
+                table_2=self._table_2,
+                dtable_2=self._dtable_2,
             )
 
             # -----------------------------------------------------------------------

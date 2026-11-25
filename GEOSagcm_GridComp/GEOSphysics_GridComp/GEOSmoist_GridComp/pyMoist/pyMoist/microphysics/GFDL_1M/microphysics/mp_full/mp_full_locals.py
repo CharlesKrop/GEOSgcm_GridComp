@@ -1,15 +1,15 @@
 import dataclasses
 
-from ndsl import Local, LocalState
+from ndsl import Quantity, State
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.typing import Float
 
 
 @dataclasses.dataclass
-class MPFullLocals(LocalState):
+class MPFullLocals(State):
     @dataclasses.dataclass
-    class Precip(LocalState):
-        ice: Local = dataclasses.field(
+    class Precip(State):
+        ice: Quantity = dataclasses.field(
             metadata={
                 "name": "ice",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -17,7 +17,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        liquid: Local = dataclasses.field(
+        liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -25,7 +25,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        graupel: Local = dataclasses.field(
+        graupel: Quantity = dataclasses.field(
             metadata={
                 "name": "graupel",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -33,7 +33,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        rain: Local = dataclasses.field(
+        rain: Quantity = dataclasses.field(
             metadata={
                 "name": "rain",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -41,7 +41,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        snow: Local = dataclasses.field(
+        snow: Quantity = dataclasses.field(
             metadata={
                 "name": "snow",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -51,8 +51,8 @@ class MPFullLocals(LocalState):
         )
 
     @dataclasses.dataclass
-    class SurfacePrecip(LocalState):
-        ice: Local = dataclasses.field(
+    class SurfacePrecip(State):
+        ice: Quantity = dataclasses.field(
             metadata={
                 "name": "ice",
                 "dims": [I_DIM, J_DIM],
@@ -60,7 +60,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        liquid: Local = dataclasses.field(
+        liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid",
                 "dims": [I_DIM, J_DIM],
@@ -68,7 +68,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        graupel: Local = dataclasses.field(
+        graupel: Quantity = dataclasses.field(
             metadata={
                 "name": "graupel",
                 "dims": [I_DIM, J_DIM],
@@ -76,7 +76,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        rain: Local = dataclasses.field(
+        rain: Quantity = dataclasses.field(
             metadata={
                 "name": "rain",
                 "dims": [I_DIM, J_DIM],
@@ -84,7 +84,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        snow: Local = dataclasses.field(
+        snow: Quantity = dataclasses.field(
             metadata={
                 "name": "snow",
                 "dims": [I_DIM, J_DIM],
@@ -94,8 +94,8 @@ class MPFullLocals(LocalState):
         )
 
     @dataclasses.dataclass
-    class TerminalVelocity(LocalState):
-        ice: Local = dataclasses.field(
+    class TerminalVelocity(State):
+        ice: Quantity = dataclasses.field(
             metadata={
                 "name": "ice",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -103,7 +103,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        liquid: Local = dataclasses.field(
+        liquid: Quantity = dataclasses.field(
             metadata={
                 "name": "liquid",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -111,7 +111,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        graupel: Local = dataclasses.field(
+        graupel: Quantity = dataclasses.field(
             metadata={
                 "name": "graupel",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -119,7 +119,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        rain: Local = dataclasses.field(
+        rain: Quantity = dataclasses.field(
             metadata={
                 "name": "rain",
                 "dims": [I_DIM, J_DIM, K_DIM],
@@ -127,7 +127,7 @@ class MPFullLocals(LocalState):
                 "dtype": Float,
             }
         )
-        snow: Local = dataclasses.field(
+        snow: Quantity = dataclasses.field(
             metadata={
                 "name": "snow",
                 "dims": [I_DIM, J_DIM, K_DIM],

@@ -90,7 +90,7 @@ class MPFull(NDSLRuntime):
         self._subgrid_processes = SubgridProcesses(stencil_factory, quantity_factory, saturation_tables, mp_config, mp_namelist, CONV_FACTOR, DRIVER_DT)
 
         # initialize MPFull locals
-        self._mp_full_locals = MPFullLocals.make_locals(quantity_factory)
+        self._mp_full_locals = MPFullLocals.empty(quantity_factory)
 
         # make namelist visible at runtime
         self._mp_namelist = mp_namelist

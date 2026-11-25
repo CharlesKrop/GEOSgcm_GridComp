@@ -480,10 +480,14 @@ class WarmRain(NDSLRuntime):
         # initialize NDSLRuntime parent class
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
-        # make config and tables visible at runtime
+        # make config and saturation tables visible at runtime
         self._mp_config = mp_config
         self._mp_namelist = mp_namelist
         self._saturation_tables = saturation_tables
+        # NOTE: This is an orchestration workaround. Direct call to `self._saturation_tables.X`
+        # fails closure capture for argument reconstruction at call time.
+        self._table_0 = self._saturation_tables.table_0
+        self._dtable_0 = self._saturation_tables.dtable_0
 
         # initialize locals for warm rain
         self._warm_rain_locals = WarmRainLocals.make_locals(quantity_factory)
@@ -577,8 +581,8 @@ class WarmRain(NDSLRuntime):
             mpper=gfdl_mp_v3_locals.mpper,
             # tables
             CREVP=self._mp_config.CREVP,
-            table_0=self._saturation_tables.table_0,
-            dtable_0=self._saturation_tables.dtable_0,
+            table_0=self._table_0,
+            dtable_0=self._dtable_0,
         )
 
         # -----------------------------------------------------------------------

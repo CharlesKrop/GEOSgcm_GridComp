@@ -193,6 +193,13 @@ class GFDL1MMacrophysics(NDSLRuntime):
 
         # make saturation tables visible at runtime
         self._saturation_tables = saturation_tables
+        # NOTE: This is an orchestration workaround. Direct call to `self._saturation_tables.X`
+        # fails closure capture for argument reconstruction at call time.
+        self._esx = self._saturation_tables.esx
+        self._esw = self._saturation_tables.esw
+        self._lqu = self._saturation_tables.lqu
+        self._ese = self._saturation_tables.ese
+        self._frz = self._saturation_tables.frz
 
         # make config visible at runtime
         self._config = config
@@ -355,18 +362,18 @@ class GFDL1MMacrophysics(NDSLRuntime):
             use_sc_ice=False,
             sc_ice=self._locals.dummy_field_no_read_write,
             iteration_method=Int(1),
-            ese=self._saturation_tables.ese,
-            esw=self._saturation_tables.esw,
-            esx=self._saturation_tables.esx,
-            estfrz=self._saturation_tables.frz,
-            estlqu=self._saturation_tables.lqu,
+            ese=self._ese,
+            esw=self._esw,
+            esx=self._esx,
+            estfrz=self._frz,
+            estlqu=self._lqu,
         )
 
         self._relative_humidity_after_pdf(
             t=state.t,
             p_mb=locals.p_mb,
             vapor=state.mixing_ratio.vapor,
-            esx=self._saturation_tables.esx,
+            esx=self._esx,
             rh=state.relative_humidity_after_pdf,
         )
 

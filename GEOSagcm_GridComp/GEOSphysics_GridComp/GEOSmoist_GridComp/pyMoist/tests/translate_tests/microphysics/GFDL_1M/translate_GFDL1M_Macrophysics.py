@@ -126,7 +126,7 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
         # Serialized phase-boundary fields are test inputs/outputs, not
         # transient runtime scratch. NDSL's testing API makes them Quantities
         # so the translator can load and inspect them outside the runtime.
-        locals = GFDL1MLocals.make_as_state(self.quantity_factory)
+        locals = GFDL1MLocals.empty(self.quantity_factory)
         code._locals = locals
 
         fields = {

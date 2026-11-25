@@ -1,5 +1,6 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
+from ndsl.dsl.dace.orchestration import orchestrate
 from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.basic_operations import add, copy, set_value
@@ -400,7 +401,7 @@ class GFDL1M(NDSLRuntime):
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory)
 
         # initialize locals
-        self._locals = GFDL1MLocals.make_locals(quantity_factory)
+        self._locals = GFDL1MLocals.empty(quantity_factory)
 
         # make config visible at runtime
         self._config = config
@@ -543,46 +544,40 @@ class GFDL1M(NDSLRuntime):
             lid_level=self._setup.lid_level,
         )
 
+        # Register each subsection of __call__ so DaCe treats their State argument as compile-time data.
+        for method in ("_run_microphysics", "_run_diagnostics"):
+            orchestrate(
+                obj=self,
+                config=stencil_factory.config.dace_config,
+                method_to_orchestrate=method,
+                optimization_config=get_optimization_config(stencil_factory),
+            )
+
     def __call__(
         self,
         state: GFDL1MState,
     ):
-        # miscellaneous setup required for macro and/or microphysics schemes
+        # Miscellaneous setup required for macro and/or microphysics schemes.
         self._setup(
             state=state,
             locals=self._locals,
         )
 
-        self._run_macrophysics(state)
-        self._run_microphysics(state)
-        self._run_diagnostics(state)
-
-    def _run_macrophysics(self, state: GFDL1MState):
-        """Run macrophysics using already initialized state and locals.
-
-        Setup must have run, or the phase-boundary state, locals and initial
-        tendency snapshots must have been supplied by a translate test.
-        This does not rerun setup, microphysics or final driver diagnostics.
-        """
-        # --------------------------------------------------
-        # MACROPHYSICS
-        # --------------------------------------------------
-        # compute macrophysical tendencies, use the hydrostatic pdf to distribute particles,
+        # Run macrophysics: compute macrophysical tendencies, use the hydrostatic pdf to distribute particles,
         # then melt, freeze, and evaporate, all according to options defined in namelist
         self._macrophysics(
             state=state,
             locals=self._locals,
         )
 
-    def _run_microphysics(self, state: GFDL1MState):
-        """Run the complete CLDMICRO section using already initialized locals.
+        # Run the complete cloud microphysics section, including the GFDLMPV3 driver
+        self._run_microphysics(state)
 
-        This boundary matches the GFDL1M-Microphysics savepoints: setup and
-        macrophysics have already run, while final driver diagnostics have not.
-        """
-        # --------------------------------------------------
-        # MICROPHYSICS
-        # --------------------------------------------------
+        # Compute various diagnostic terms outputs
+        self._run_diagnostics(state)
+
+    def _run_microphysics(self, state: GFDL1MState):
+        """Run the complete cloud microphysics section, including the GFDLMPV3 driver"""
         self._copy(input=state.mixing_ratio.vapor, output=state.tendencies.dvapor_dt_micro)
         self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
         self._copy(input=self._locals.temporary_3d, output=state.tendencies.dice_dt_micro)
@@ -942,6 +937,7 @@ class GFDL1M(NDSLRuntime):
         )
 
     def _run_diagnostics(self, state: GFDL1MState):
+        """Compute various diagnostic terms outputs"""
         # --------------------------------------------------
         # DIAGNOSTICS
         # --------------------------------------------------
