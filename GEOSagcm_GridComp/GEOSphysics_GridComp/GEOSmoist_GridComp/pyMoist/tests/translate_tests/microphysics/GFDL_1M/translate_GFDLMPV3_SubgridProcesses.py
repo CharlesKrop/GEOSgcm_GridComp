@@ -95,41 +95,41 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
         # replace gfdl_mp_v3_locals and mp_full_locals with a regular State version (instead of LocalState)
         # so that it can be read from outside and the data can be passed back to the translate test
         gfdl_mp_v3_locals = GFDLMPV3Locals.empty(self.quantity_factory)
-        code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals = gfdl_mp_v3_locals
+        code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals = gfdl_mp_v3_locals
 
         mp_full_locals = MPFullLocals.empty(self.quantity_factory)
-        code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals = mp_full_locals
+        code._microphysics._gfdl_microphysics_v3._driver._mp_full._mp_full_locals = mp_full_locals
 
         # map fortran serialbox names to python state names
         fields = {
-            "DEN_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density,
-            "DENFAC_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density_factor,
-            "T_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.t,
-            "QA_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cloud_fraction,
-            "QV_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.vapor,
-            "QL_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.liquid,
-            "QR_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.rain,
-            "QI_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.ice,
-            "QS_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.snow,
-            "QG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.graupel,
-            "DP_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
-            "CCN_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.ccn,
-            "CIN_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cin,
+            "DEN_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density,
+            "DENFAC_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density_factor,
+            "T_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.t,
+            "QA_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cloud_fraction,
+            "QV_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.vapor,
+            "QL_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.liquid,
+            "QR_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.rain,
+            "QI_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.ice,
+            "QS_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.snow,
+            "QG_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.graupel,
+            "DP_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
+            "CCN_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.ccn,
+            "CIN_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.cin,
             "RSUBL_data_buffered_in_n_loop": state.non_anvil_large_scale.sublimation,
-            "H_VAR_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.h_var,
-            "MPPCW_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppcw,
-            "MPPEW_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppew,
-            "MPPE1_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppe1,
-            "MPPDI_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdi,
-            "MPPD1_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppd1,
-            "MPPDS_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppds,
-            "MPPDG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdg,
-            "MPPSI_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsi,
-            "MPPS1_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mpps1,
-            "MPPSS_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppss,
-            "MPPSG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsg,
-            "MPPFW_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppfw,
-            "ONEMSIG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.one_minus_sigma,
+            "H_VAR_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.h_var,
+            "MPPCW_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppcw,
+            "MPPEW_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppew,
+            "MPPE1_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppe1,
+            "MPPDI_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdi,
+            "MPPD1_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppd1,
+            "MPPDS_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppds,
+            "MPPDG_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppdg,
+            "MPPSI_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsi,
+            "MPPS1_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mpps1,
+            "MPPSS_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppss,
+            "MPPSG_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppsg,
+            "MPPFW_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppfw,
+            "ONEMSIG_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.one_minus_sigma,
         }
 
         # Identify ntimes from the input data shape.
@@ -168,9 +168,9 @@ class TranslateGFDLMPV3_SubgridProcesses(TranslateFortranData2Py):
                     start = 0 if nlevels == destination.shape[-1] else self.level_start
                     safe_assign_array(destination[:, :, start : start + nlevels], unpacked)
 
-            code._gfdl_microphysics_v3._driver._mp_full._subgrid_processes(
+            code._microphysics._gfdl_microphysics_v3._driver._mp_full._subgrid_processes(
                 state,
-                code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals,
+                code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals,
             )
 
             # Fill output data for this iteration.

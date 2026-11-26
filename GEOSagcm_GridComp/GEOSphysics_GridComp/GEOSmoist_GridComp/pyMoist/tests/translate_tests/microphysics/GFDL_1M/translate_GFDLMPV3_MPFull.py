@@ -121,7 +121,7 @@ class TranslateGFDLMPV3_MPFull(TranslateFortranData2Py):
             config=config,
             state=state,
         )
-        driver = code._gfdl_microphysics_v3._driver
+        driver = code._microphysics._gfdl_microphysics_v3._driver
         # Externally accessible test storage, rather than runtime-only locals.
         local = GFDLMPV3Locals.empty(self.quantity_factory)
         driver._gfdl_mp_v3_locals = local

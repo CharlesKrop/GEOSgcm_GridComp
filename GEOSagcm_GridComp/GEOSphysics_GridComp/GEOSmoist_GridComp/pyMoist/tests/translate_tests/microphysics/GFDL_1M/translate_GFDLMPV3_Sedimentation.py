@@ -86,32 +86,32 @@ class TranslateGFDLMPV3_Sedimentation(TranslateFortranData2Py):
         # replace gfdl_mp_v3_locals and mp_full_locals with a regular State version (instead of LocalState)
         # so that it can be read from outside and the data can be passed back to the translate test
         gfdl_mp_v3_locals = GFDLMPV3Locals.empty(self.quantity_factory)
-        code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals = gfdl_mp_v3_locals
+        code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals = gfdl_mp_v3_locals
 
         mp_full_locals = MPFullLocals.empty(self.quantity_factory)
-        code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals = mp_full_locals
+        code._microphysics._gfdl_microphysics_v3._driver._mp_full._mp_full_locals = mp_full_locals
 
         # map fortran serialbox names to python state names
         fields = {
-            "T_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.t,
-            "QV_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.vapor,
-            "QL_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.liquid,
-            "QR_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.rain,
-            "QI_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.ice,
-            "QS_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.snow,
-            "QG_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.graupel,
-            "DZ_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dz,
-            "DP_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
-            "U_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.u,
-            "V_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.v,
-            "W_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.w,
-            "DEN_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density,
-            "DENFAC_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density_factor,
-            "DTE_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.total_energy.delta,
-            "MPPM1_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm1,
-            "MPPM2_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm2,
-            "MPPM3_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm3,
-            "CNV_FRACTION_data_buffered_in_n_loop": code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.convection_fraction,
+            "T_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.t,
+            "QV_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.vapor,
+            "QL_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.liquid,
+            "QR_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.rain,
+            "QI_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.ice,
+            "QS_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.snow,
+            "QG_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mixing_ratio.graupel,
+            "DZ_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dz,
+            "DP_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.dry_dp,
+            "U_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.u,
+            "V_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.v,
+            "W_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.w,
+            "DEN_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density,
+            "DENFAC_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.density_factor,
+            "DTE_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.total_energy.delta,
+            "MPPM1_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm1,
+            "MPPM2_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm2,
+            "MPPM3_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.mppm3,
+            "CNV_FRACTION_data_buffered_in_n_loop": code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals.convection_fraction,
         }
 
         # Identify ntimes from the input data shape.
@@ -150,9 +150,9 @@ class TranslateGFDLMPV3_Sedimentation(TranslateFortranData2Py):
                     start = 0 if nlevels == destination.shape[-1] else self.level_start
                     safe_assign_array(destination[:, :, start : start + nlevels], unpacked)
 
-            code._gfdl_microphysics_v3._driver._mp_full._sedimentation(
-                code._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals,
-                code._gfdl_microphysics_v3._driver._mp_full._mp_full_locals,
+            code._microphysics._gfdl_microphysics_v3._driver._mp_full._sedimentation(
+                code._microphysics._gfdl_microphysics_v3._driver._gfdl_mp_v3_locals,
+                code._microphysics._gfdl_microphysics_v3._driver._mp_full._mp_full_locals,
             )
 
             # Fill output data for this iteration.
