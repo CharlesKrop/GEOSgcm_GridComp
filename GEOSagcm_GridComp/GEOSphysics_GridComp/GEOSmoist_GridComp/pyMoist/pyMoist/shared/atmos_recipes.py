@@ -2,8 +2,8 @@
 These functions perform basic math and calculate fundamental
 meteorological quantities"""
 
-from ndsl.dsl.gt4py import exp, function, computation, FORWARD, PARALLEL, interval, sqrt
-from ndsl.dsl.typing import Float, Bool, FloatField, FloatFieldIJ
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, function, interval, sqrt
+from ndsl.dsl.typing import Bool, Float, FloatField, FloatFieldIJ
 
 from pyMoist.constants import MAPL_CP, MAPL_RGAS
 from pyMoist.shared.constants import SIGMA_DX, SIGMA_EXP
@@ -125,7 +125,7 @@ def fill_negative_q(
         total_precipitable_water_after = total_precipitable_water_after + q * mass
 
     with computation(FORWARD), interval(0, 1):
-        dtpw = total_precipitable_water_before - total_precipitable_water_after  # > 0 means mass was removed
+        dtpw: FloatFieldIJ = total_precipitable_water_before - total_precipitable_water_after  # > 0 means mass was removed
         positive_mass: FloatFieldIJ = 0.0
 
     # redistribute delta TPW to positive layers only
