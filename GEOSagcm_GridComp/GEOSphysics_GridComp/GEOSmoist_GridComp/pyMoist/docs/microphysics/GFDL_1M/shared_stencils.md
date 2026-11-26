@@ -1,3 +1,3 @@
 # stencils
 
-::: pyMoist.microphysics.GFDL_1M.shared_stencils
+::: pyMoist.microphysics.gfdl_1m.shared_stencils

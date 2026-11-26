@@ -1,3 +1,3 @@
 # state
 
-::: pyMoist.microphysics.GFDL_1M.state
+::: pyMoist.microphysics.gfdl_1m.state

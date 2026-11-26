@@ -1,3 +1,3 @@
 # warm_rain
 
-::: pyMoist.microphysics.GFDL_1M.driver.warm_rain
+::: pyMoist.microphysics.gfdl_1m.driver.warm_rain

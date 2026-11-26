@@ -5,12 +5,12 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, interval, float32
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
 
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig, GFDLMPV3TableL3xL10, GFDLMPV3TableL20
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import CFMIN, DT_FR, QCMIN, QVMIN
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import (
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig, GFDLMPV3TableL3xL10, GFDLMPV3TableL20
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.constants import CFMIN, DT_FR, QCMIN, QVMIN
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.locals import GFDLMPV3Locals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.shared import (
     calc_mhc_lhc_wrapper,
     moist_heat_capacity_3,
     p_bigg,
@@ -21,8 +21,8 @@ from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import (
     p_wbf,
     update_hydrometeors_and_temperature,
 )
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
+from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
 
 
 def p_instant(

@@ -10,7 +10,7 @@ from pyMoist.fortran.build_helper import StencilBackendCompilerOverride
 from pyMoist.fortran.cuda_profiler import TimedCUDAProfiler
 from pyMoist.fortran.managed_state import MAPLManagedState
 from pyMoist.fortran.memory_factory import MAPLMemoryRepository
-from pyMoist.microphysics.GFDL_1M import GFDL1M, GFDL1MConfig, GFDL1MState
+from pyMoist.microphysics.gfdl_1m import GFDL1M, GFDL1MConfig, GFDL1MState
 from pyMoist.shared.constants import V12_ICE_POLYNOMIAL, USE_AEROSOL_NN
 
 

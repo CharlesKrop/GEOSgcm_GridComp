@@ -7,7 +7,7 @@ from ndsl.utils import safe_assign_array
 from ndsl.dsl.typing import Int
 
 from pyMoist import GFDL1M, GFDL1MConfig, GFDL1MState
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
+from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
 
 
 class TranslateGFDL1M_Microphysics(TranslateFortranData2Py):

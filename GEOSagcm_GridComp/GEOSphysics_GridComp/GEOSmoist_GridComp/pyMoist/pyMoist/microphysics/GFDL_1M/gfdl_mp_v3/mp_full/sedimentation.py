@@ -7,13 +7,13 @@ from ndsl.dsl.typing import BoolFieldIJ, Float, Float64, FloatField, FloatField6
 from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.mp_full_locals import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import calc_mhc_lhc_wrapper, moist_total_energy, compute_terminal_velocity_graupel_rain_snow_wrapper
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.constants import C_ICE, C_LIQ, CV_AIR, CV_VAP, DZ_MIN, GRAV, QFMIN, RDGAS, TICE
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.locals import GFDLMPV3Locals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.mp_full_locals import MPFullLocals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.shared import calc_mhc_lhc_wrapper, moist_total_energy, compute_terminal_velocity_graupel_rain_snow_wrapper
 from pyMoist.shared.cloud_processes import cloud_effective_radius_ice
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
+from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
 
 
 def compute_terminal_fall(

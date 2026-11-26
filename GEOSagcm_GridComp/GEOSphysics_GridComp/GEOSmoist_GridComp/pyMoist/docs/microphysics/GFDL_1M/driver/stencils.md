@@ -1,3 +1,3 @@
 # stencils
 
-::: pyMoist.microphysics.GFDL_1M.driver.stencils
+::: pyMoist.microphysics.gfdl_1m.driver.stencils

@@ -1,10 +1,10 @@
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, exp, float32, function, interval, log, sqrt, float64
 from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, FloatFieldIJ, Int
 
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL4, GFDLMPV3TableL5
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import C_LIQ, CFMIN, DT_FR, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.config import GFDLMPV3TableL3xL10, GFDLMPV3TableL4, GFDLMPV3TableL5
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.constants import C_LIQ, CFMIN, DT_FR, ONE_R8, QCMIN, QFMIN, QPMIN, RGRAV, RHOW, RVGAS, TCOND, TICE, VDIFU
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable
 from pyMoist.shared.cloud_processes import ice_fraction
 
 

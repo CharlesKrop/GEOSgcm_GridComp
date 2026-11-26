@@ -1,3 +1,3 @@
 # finish
 
-::: pyMoist.microphysics.GFDL_1M.driver.finish
+::: pyMoist.microphysics.gfdl_1m.driver.finish

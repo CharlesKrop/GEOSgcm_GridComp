@@ -1,3 +1,3 @@
 # driver
 
-::: pyMoist.microphysics.GFDL_1M.driver.driver
+::: pyMoist.microphysics.gfdl_1m.driver.driver

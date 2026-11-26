@@ -1,3 +1,3 @@
 # constants
 
-::: pyMoist.microphysics.GFDL_1M.PhaseChange.constants
+::: pyMoist.microphysics.gfdl_1m.PhaseChange.constants

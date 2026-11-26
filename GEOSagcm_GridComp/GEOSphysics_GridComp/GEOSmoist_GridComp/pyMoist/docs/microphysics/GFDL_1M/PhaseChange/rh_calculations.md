@@ -1,3 +1,3 @@
 # rh_calculations
 
-::: pyMoist.microphysics.GFDL_1M.PhaseChange.rh_calculations
+::: pyMoist.microphysics.gfdl_1m.PhaseChange.rh_calculations

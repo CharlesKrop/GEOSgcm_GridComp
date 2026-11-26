@@ -1,3 +1,3 @@
 # ice_cloud
 
-::: pyMoist.microphysics.GFDL_1M.driver.ice_cloud
+::: pyMoist.microphysics.gfdl_1m.driver.ice_cloud

@@ -1,3 +1,3 @@
 # phase_change
 
-::: pyMoist.microphysics.GFDL_1M.PhaseChange.phase_change
+::: pyMoist.microphysics.gfdl_1m.PhaseChange.phase_change

@@ -1,3 +1,3 @@
 # melt_freeze
 
-::: pyMoist.microphysics.GFDL_1M.PhaseChange.melt_freeze
+::: pyMoist.microphysics.gfdl_1m.PhaseChange.melt_freeze

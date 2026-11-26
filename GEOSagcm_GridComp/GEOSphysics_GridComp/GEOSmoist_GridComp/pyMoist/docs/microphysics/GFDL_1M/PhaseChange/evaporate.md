@@ -1,3 +1,3 @@
 # evaporate
 
-::: pyMoist.microphysics.GFDL_1M.PhaseChange.evaporate
+::: pyMoist.microphysics.gfdl_1m.PhaseChange.evaporate

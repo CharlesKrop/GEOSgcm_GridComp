@@ -1,3 +1,3 @@
 # sat_tables
 
-::: pyMoist.microphysics.GFDL_1M.driver.sat_tables
+::: pyMoist.microphysics.gfdl_1m.driver.sat_tables

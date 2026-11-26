@@ -5,13 +5,13 @@ from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.basic_operations import add, copy, set_value
 
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.macrophysics import GFDL1MMacrophysics
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.gfdl_mp_v3 import GFDLMPV3
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
-from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
+from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
+from pyMoist.microphysics.gfdl_1m.macrophysics import GFDL1MMacrophysics
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.gfdl_mp_v3 import GFDLMPV3
+from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
+from pyMoist.microphysics.gfdl_1m.setup import GFDL1MSetup
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
 from pyMoist.saturation_tables import get_saturation_vapor_pressure_table
 from pyMoist.shared.cloud_processes import redistribute_clouds_function, melt_freeze, fix_up_clouds
 from pyMoist.shared.atmos_recipes import fill_negative_q, dissipative_kinetic_energy_heating

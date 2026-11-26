@@ -1,3 +1,3 @@
 # locals
 
-::: pyMoist.microphysics.GFDL_1M.driver.locals
+::: pyMoist.microphysics.gfdl_1m.driver.locals

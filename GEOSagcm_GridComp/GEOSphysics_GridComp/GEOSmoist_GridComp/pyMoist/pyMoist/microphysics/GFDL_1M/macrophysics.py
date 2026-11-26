@@ -6,9 +6,9 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.basic_operations import add, copy
 
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
+from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
 from pyMoist.saturation_tables import SaturationVaporPressureTable, GlobalTable_saturation_tables, saturation_specific_humidity
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, fill_negative_q
 from pyMoist.shared.cloud_processes import evaporate, fix_up_clouds, hydrostatic_pdf, melt_freeze, sublimate

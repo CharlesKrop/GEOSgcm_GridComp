@@ -1,3 +1,3 @@
 # config
 
-::: pyMoist.microphysics.GFDL_1M.PhaseChange.config
+::: pyMoist.microphysics.gfdl_1m.PhaseChange.config

@@ -5,11 +5,11 @@ from ndsl.dsl.typing import Bool, Float, Float64, FloatField, FloatField64, Floa
 from ndsl.stencils.basic_operations import copy, set_value
 from ndsl.stencils.basic_operations_2d import copy_2d, set_value_2d
 
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import (
+from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
+from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
+from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.constants import (
     C_ICE,
     C_LIQ,
     CP_AIR,
@@ -29,11 +29,11 @@ from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import (
     TICE,
     ZVIR,
 )
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.mp_full import MPFull
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import (
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.locals import GFDLMPV3Locals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.mp_full import MPFull
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.shared import (
     calc_mhc_lhc,
     calc_reflectivity_factor,
     moist_heat_capacity_3,
@@ -44,7 +44,7 @@ from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import (
     update_hydrometeors,
     update_hydrometeors_and_temperature,
 )
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, sigma
 
 

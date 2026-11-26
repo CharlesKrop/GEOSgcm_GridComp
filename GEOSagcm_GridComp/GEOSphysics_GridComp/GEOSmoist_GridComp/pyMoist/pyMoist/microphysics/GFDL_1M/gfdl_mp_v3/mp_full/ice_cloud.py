@@ -5,8 +5,8 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, float32, interval, log, tanh
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
 
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import (
+from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.config import (
     GFDLMPV3CloudMPConfig,
     GFDLMPV3NamelistConfig,
     GFDLMPV3TableL2,
@@ -14,12 +14,12 @@ from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import (
     GFDLMPV3TableL4,
     GFDLMPV3TableL20,
 )
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import CFMIN, QCMIN, QPMIN, RDGAS, TFRZ_INST, TICE, TMLT_FAST
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.mp_full import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import (
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.constants import CFMIN, QCMIN, QPMIN, RDGAS, TFRZ_INST, TICE, TMLT_FAST
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.locals import GFDLMPV3Locals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.mp_full import MPFullLocals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.shared import (
     accretion_2d,
     accretion_3d,
     calc_mhc_lhc_wrapper,
@@ -30,7 +30,7 @@ from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import (
     update_hydrometeors,
     update_hydrometeors_and_temperature,
 )
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
+from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
 
 
 def p_graupel_accretion_to_cloud_water_and_rain(

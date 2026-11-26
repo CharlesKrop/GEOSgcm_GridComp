@@ -1,3 +1,3 @@
 # setup
 
-::: pyMoist.microphysics.GFDL_1M.driver.setup
+::: pyMoist.microphysics.gfdl_1m.driver.setup

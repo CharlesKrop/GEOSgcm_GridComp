@@ -9,8 +9,8 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import safe_assign_array
 
 from pyMoist import GFDL1M, GFDL1MConfig, GFDL1MState
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.mp_full_locals import MPFullLocals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.locals import GFDLMPV3Locals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.mp_full_locals import MPFullLocals
 
 
 class TranslateGFDLMPV3_MPFull(TranslateFortranData2Py):

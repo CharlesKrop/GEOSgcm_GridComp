@@ -1,3 +1,3 @@
 # check_flags
 
-::: pyMoist.microphysics.GFDL_1M.driver.check_flags
+::: pyMoist.microphysics.gfdl_1m.driver.check_flags

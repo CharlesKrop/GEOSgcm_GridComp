@@ -1,3 +1,3 @@
 # radiation_coupling
 
-::: pyMoist.microphysics.GFDL_1M.radiation_coupling
+::: pyMoist.microphysics.gfdl_1m.radiation_coupling

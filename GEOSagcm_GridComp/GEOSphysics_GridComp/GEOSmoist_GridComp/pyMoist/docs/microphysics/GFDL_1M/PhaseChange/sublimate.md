@@ -1,3 +1,3 @@
 # sublimate
 
-::: pyMoist.microphysics.GFDL_1M.PhaseChange.sublimate
+::: pyMoist.microphysics.gfdl_1m.PhaseChange.sublimate

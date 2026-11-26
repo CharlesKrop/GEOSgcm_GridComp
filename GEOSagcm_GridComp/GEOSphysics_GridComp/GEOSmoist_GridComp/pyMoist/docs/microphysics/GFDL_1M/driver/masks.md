@@ -1,3 +1,3 @@
 # masks
 
-::: pyMoist.microphysics.GFDL_1M.driver.masks
+::: pyMoist.microphysics.gfdl_1m.driver.masks

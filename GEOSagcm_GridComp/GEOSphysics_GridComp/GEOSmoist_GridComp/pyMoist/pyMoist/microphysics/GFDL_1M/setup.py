@@ -8,9 +8,9 @@ from ndsl.stencils.basic_operations import add, copy, set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 
 from pyMoist.constants import MAPL_GRAV
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
+from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
 from pyMoist.saturation_tables import (
     GlobalTable_saturation_tables,
     SaturationVaporPressureTable,

@@ -3,16 +3,16 @@ from ndsl.constants import I_DIM, J_DIM, K_DIM
 from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.mp_full_locals import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.ice_cloud import IceCloud
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.sedimentation import Sedimentation
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.subgrid_processes import SubgridProcesses
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.warm_rain import WarmRain
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import GFDLMPV3Tables
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.mp_full_locals import MPFullLocals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.locals import GFDLMPV3Locals
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.ice_cloud import IceCloud
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.sedimentation import Sedimentation
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.subgrid_processes import SubgridProcesses
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.mp_full.warm_rain import WarmRain
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_tables import GFDLMPV3Tables
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
+from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
 
 
 def update_precip_fluxes(

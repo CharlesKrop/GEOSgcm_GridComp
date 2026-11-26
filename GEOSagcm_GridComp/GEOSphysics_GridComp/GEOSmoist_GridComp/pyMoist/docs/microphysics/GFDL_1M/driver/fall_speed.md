@@ -1,3 +1,3 @@
 # fall_speed
 
-::: pyMoist.microphysics.GFDL_1M.driver.fall_speed
+::: pyMoist.microphysics.gfdl_1m.driver.fall_speed

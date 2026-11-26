@@ -9,14 +9,14 @@ from ndsl.stencils.basic_operations import set_value
 from ndsl.stencils.basic_operations_2d import set_value_2d
 from ndsl.dsl.gt4py import float64
 
-from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
-from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3 import constants
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.driver import GFDLMPV3Driver
-from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import get_saturation_vapor_pressure_tables
-from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
+from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
+from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
+from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3 import constants
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.driver import GFDLMPV3Driver
+from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.saturation_tables import get_saturation_vapor_pressure_tables
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
 
 
 class GFDLMPV3(NDSLRuntime):
