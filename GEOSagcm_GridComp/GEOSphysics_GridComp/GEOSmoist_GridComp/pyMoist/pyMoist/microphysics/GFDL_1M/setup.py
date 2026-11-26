@@ -149,6 +149,8 @@ class GFDL1MSetup(NDSLRuntime):
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
+        state: GFDL1MState,
+        locals: GFDL1MLocals,
     ):
         """Initialize the GFDL1M microphysics setup class
 
@@ -161,8 +163,7 @@ class GFDL1MSetup(NDSLRuntime):
         # init NDSLRuntime
         super().__init__(stencil_factory)
 
-        # make configuration and saturation tables visible at runtime
-        self.config = config
+        # make saturation tables visible at runtime
         self._saturation_tables = saturation_tables
         # NOTE: This is an orchestration workaround. Direct call to `self._saturation_tables.X`
         # fails closure capture for argument reconstruction at call time.
@@ -172,7 +173,12 @@ class GFDL1MSetup(NDSLRuntime):
         self._ese = self._saturation_tables.ese
         self._frz = self._saturation_tables.frz
 
-        # Configuration supplies a zero-based lid; nonpositive values use TOA.
+        # make config and fields visible at runtime
+        self.config = config
+        self._state = state
+        self._gfdl_1m_locals = locals
+
+        # # if GFDL_MP_KLID is non-negative (default value is -999), macrophysics will be restricted to start at that vertical level
         self.lid_level = max(0, int(config.GFDL_MP_KLID))
 
         # initialize class specific locals
@@ -222,11 +228,7 @@ class GFDL1MSetup(NDSLRuntime):
             },
         )
 
-    def __call__(
-        self,
-        state: GFDL1MState,
-        locals: GFDL1MLocals,
-    ):
+    def __call__(self):
         """Setup the GFDL1M microphysics module
 
         Args:
@@ -235,75 +237,75 @@ class GFDL1MSetup(NDSLRuntime):
         """
         # Initialize reflectivity
         self._set_value(
-            field=locals.reflectivity,
+            field=self._gfdl_1m_locals.reflectivity,
             value=Float(-30.0),
         )
 
         self._calculate_derived_states(
-            p_interface=state.p_interface,
-            p_interface_mb=locals.p_interface_mb,
-            p_mb=locals.p_mb,
-            geopotential_height_interface=state.z_interface,
-            edge_height_above_surface=locals.edge_height_above_surface,
-            layer_height_above_surface=locals.layer_height_above_surface,
-            layer_thickness=locals.layer_thickness,
-            dp=locals.dp,
-            mass=locals.mass,
-            mass_inverse=locals.mass_inverse,
-            t=state.t,
+            p_interface=self._state.p_interface,
+            p_interface_mb=self._gfdl_1m_locals.p_interface_mb,
+            p_mb=self._gfdl_1m_locals.p_mb,
+            geopotential_height_interface=self._state.z_interface,
+            edge_height_above_surface=self._gfdl_1m_locals.edge_height_above_surface,
+            layer_height_above_surface=self._gfdl_1m_locals.layer_height_above_surface,
+            layer_thickness=self._gfdl_1m_locals.layer_thickness,
+            dp=self._gfdl_1m_locals.dp,
+            mass=self._gfdl_1m_locals.mass,
+            mass_inverse=self._gfdl_1m_locals.mass_inverse,
+            t=self._state.t,
             esx=self._esx,
-            sat=locals.saturation_specific_humidity,
-            dsat=locals.dsaturation_specific_humidity,
+            sat=self._gfdl_1m_locals.saturation_specific_humidity,
+            dsat=self._gfdl_1m_locals.dsaturation_specific_humidity,
             esw=self._esw,
             lqu=self._lqu,
             ese=self._ese,
             frz=self._frz,
-            sat_liquid=locals.saturation_specific_humidity_liquid,
-            sat_ice=locals.saturation_specific_humidity_ice,
-            u=state.u,
-            u_unmodified=locals.u_unmodified,
-            v=state.v,
-            v_unmodified=locals.v_unmodified,
+            sat_liquid=self._gfdl_1m_locals.saturation_specific_humidity_liquid,
+            sat_ice=self._gfdl_1m_locals.saturation_specific_humidity_ice,
+            u=self._state.u,
+            u_unmodified=self._gfdl_1m_locals.u_unmodified,
+            v=self._state.v,
+            v_unmodified=self._gfdl_1m_locals.v_unmodified,
         )
 
         self._find_lcl_level(
-            t=state.t,
-            p_mb=locals.p_mb,
-            vapor=state.mixing_ratio.vapor,
+            t=self._state.t,
+            p_mb=self._gfdl_1m_locals.p_mb,
+            vapor=self._state.mixing_ratio.vapor,
             esx=self._esx,
-            lcl_level=locals.lcl_level,
+            lcl_level=self._gfdl_1m_locals.lcl_level,
         )
 
         # set unused exports to zero
-        self._set_value_2d(field=state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
-        self._set_value_2d(field=state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
-        self._set_value_2d(field=state.precipitation_at_surface.anvil_precipitation, value=Float(0.0))
-        self._set_value_2d(field=state.precipitation_at_surface.shallow_convective_snow, value=Float(0.0))
-        self._set_value_2d(field=state.precipitation_at_surface.deep_convective_snow, value=Float(0.0))
-        self._set_value_2d(field=state.precipitation_at_surface.anvil_snow, value=Float(0.0))
+        self._set_value_2d(field=self._state.precipitation_at_surface.shallow_convective_precipitation, value=Float(0.0))
+        self._set_value_2d(field=self._state.precipitation_at_surface.deep_convective_precipitation, value=Float(0.0))
+        self._set_value_2d(field=self._state.precipitation_at_surface.anvil_precipitation, value=Float(0.0))
+        self._set_value_2d(field=self._state.precipitation_at_surface.shallow_convective_snow, value=Float(0.0))
+        self._set_value_2d(field=self._state.precipitation_at_surface.deep_convective_snow, value=Float(0.0))
+        self._set_value_2d(field=self._state.precipitation_at_surface.anvil_snow, value=Float(0.0))
 
         # pre-fill macrophysics exports
-        self._copy(input=state.u, output=state.tendencies.du_dt_macro)
-        self._copy(input=state.v, output=state.tendencies.dv_dt_macro)
-        self._copy(input=state.t, output=state.tendencies.dt_dt_macro)
-        self._copy(input=state.mixing_ratio.vapor, output=state.tendencies.dvapor_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dliquid_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dice_dt_macro)
-        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dcloud_fraction_dt_macro)
-        self._copy(input=state.mixing_ratio.graupel, output=state.tendencies.dgraupel_dt_macro)
-        self._copy(input=state.mixing_ratio.rain, output=state.tendencies.drain_dt_macro)
-        self._copy(input=state.mixing_ratio.snow, output=state.tendencies.dsnow_dt_macro)
-        self._set_value(field=state.cloud_liquid_evaporation, value=Float(0.0))
-        self._set_value(field=state.cloud_ice_sublimation, value=Float(0.0))
-        self._set_value(field=state.hydrostatic_pdf_iterations, value=Float(0.0))
-        self._set_value(field=state.relative_humidity_after_pdf, value=Float(0.0))
+        self._copy(input=self._state.u, output=self._state.tendencies.du_dt_macro)
+        self._copy(input=self._state.v, output=self._state.tendencies.dv_dt_macro)
+        self._copy(input=self._state.t, output=self._state.tendencies.dt_dt_macro)
+        self._copy(input=self._state.mixing_ratio.vapor, output=self._state.tendencies.dvapor_dt_macro)
+        self._add(summand_1=self._state.mixing_ratio.convective_liquid, summand_2=self._state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.tendencies.dliquid_dt_macro)
+        self._add(summand_1=self._state.mixing_ratio.convective_ice, summand_2=self._state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.tendencies.dice_dt_macro)
+        self._add(summand_1=self._state.cloud_fraction.convective, summand_2=self._state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.tendencies.dcloud_fraction_dt_macro)
+        self._copy(input=self._state.mixing_ratio.graupel, output=self._state.tendencies.dgraupel_dt_macro)
+        self._copy(input=self._state.mixing_ratio.rain, output=self._state.tendencies.drain_dt_macro)
+        self._copy(input=self._state.mixing_ratio.snow, output=self._state.tendencies.dsnow_dt_macro)
+        self._set_value(field=self._state.cloud_liquid_evaporation, value=Float(0.0))
+        self._set_value(field=self._state.cloud_ice_sublimation, value=Float(0.0))
+        self._set_value(field=self._state.hydrostatic_pdf_iterations, value=Float(0.0))
+        self._set_value(field=self._state.relative_humidity_after_pdf, value=Float(0.0))
 
         # include shallow precip condensated if present
-        if state.shallow_convection_rain is not None:
-            self._update_precipitation(state.mixing_ratio.rain, state.shallow_convection_rain)
+        if self._state.shallow_convection_rain is not None:
+            self._update_precipitation(self._state.mixing_ratio.rain, self._state.shallow_convection_rain)
 
-        if state.shallow_convection_snow is not None:
-            self._update_precipitation(state.mixing_ratio.snow, state.shallow_convection_snow)
+        if self._state.shallow_convection_snow is not None:
+            self._update_precipitation(self._state.mixing_ratio.snow, self._state.shallow_convection_snow)

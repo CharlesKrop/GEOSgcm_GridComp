@@ -134,18 +134,23 @@ class TranslateGFDL1M_Microphysics(TranslateFortranData2Py):
         if not config.GFDL_MP3:
             raise NotImplementedError("The Python GFDL1M microphysics translator requires GFDL_MP3.")
         state = GFDL1MState.zeros(self.quantity_factory)
-        # Initialize the full runtime, but execute only _run_microphysics
+        locals = GFDL1MLocals.empty(self.quantity_factory)
+        # Initialize the full runtime, but execute only the microphysics phase
         # after loading the savepoint.
         code = GFDL1M(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
+            state=state,
         )
-        # Serialized phase-boundary fields are test inputs/outputs, not
-        # transient runtime scratch. NDSL's testing API makes them Quantities
-        # so the translator can load and inspect them outside the runtime.
-        locals = GFDL1MLocals.empty(self.quantity_factory)
+        # update locals post init
         code._locals = locals
+        # need to replace in all subclasses as well, since locals are passed down at init
+        code._setup._gfdl_1m_locals = locals
+        code._macrophysics._gfdl_1m_locals = locals
+        code._microphysics._locals = locals
+        code._diagnostics._locals = locals
+
         fields = {
             "Q": state.mixing_ratio.vapor,
             "QRAIN": state.mixing_ratio.rain,
@@ -220,8 +225,8 @@ class TranslateGFDL1M_Microphysics(TranslateFortranData2Py):
         for name in self.in_vars["data_vars"]:
             safe_assign_array(fields[name].field[:], inputs[name])
 
-        # Do not call code(state): it would rerun setup and macrophysics and
+        # Do not call code(): it would rerun setup and macrophysics and
         # overwrite the serialized phase-boundary inputs.
-        code._run_microphysics(state=state)
+        code._microphysics()
 
         return {name: fields[name].field[:] for name in self.out_vars}

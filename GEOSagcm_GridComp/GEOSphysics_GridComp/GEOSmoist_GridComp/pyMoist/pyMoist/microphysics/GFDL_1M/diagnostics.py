@@ -44,8 +44,11 @@ def compute_liquid_water_path(
 class GFDL1MDiagnostics(NDSLRuntime):
     """Compute GFDL 1M tendencies and state diagnostics."""
 
-    def __init__(self, stencil_factory: StencilFactory, locals: GFDL1MLocals):
+    def __init__(self, stencil_factory: StencilFactory, state: GFDL1MState, locals: GFDL1MLocals):
         super().__init__(stencil_factory)
+
+        # make fields visible at runtime
+        self._state = state
         self._locals = locals
 
         self._add = stencil_factory.from_dims_halo(func=add, compute_dims=[I_DIM, J_DIM, K_DIM])
@@ -63,24 +66,24 @@ class GFDL1MDiagnostics(NDSLRuntime):
             compute_dims=[I_DIM, J_DIM, K_DIM],
         )
 
-    def __call__(self, state: GFDL1MState):
+    def __call__(self):
         """Compute various diagnostic terms outputs."""
-        if state.large_scale_rainwater_source is not None:
+        if self._state.large_scale_rainwater_source is not None:
             self._add(
-                summand_1=state.tendencies.drain_dt_macro,
-                summand_2=state.tendencies.drain_dt_micro,
-                sum=state.large_scale_rainwater_source,
+                summand_1=self._state.tendencies.drain_dt_macro,
+                summand_2=self._state.tendencies.drain_dt_micro,
+                sum=self._state.large_scale_rainwater_source,
             )
 
-        if state.tendencies.dt_dt_friction_pressure_weighted is not None:
+        if self._state.tendencies.dt_dt_friction_pressure_weighted is not None:
             self._add(
-                summand_1=state.tendencies.du_dt_macro,
-                summand_2=state.tendencies.du_dt_micro,
+                summand_1=self._state.tendencies.du_dt_macro,
+                summand_2=self._state.tendencies.du_dt_micro,
                 sum=self._locals.temporary_3d,
             )
             self._add(
-                summand_1=state.tendencies.dv_dt_macro,
-                summand_2=state.tendencies.dv_dt_micro,
+                summand_1=self._state.tendencies.dv_dt_macro,
+                summand_2=self._state.tendencies.dv_dt_micro,
                 sum=self._locals.temporary_3d_2,
             )
             self._dissipative_kinetic_energy_heating(
@@ -89,34 +92,34 @@ class GFDL1MDiagnostics(NDSLRuntime):
                 v=self._locals.v_unmodified,
                 du=self._locals.temporary_3d,
                 dv=self._locals.temporary_3d_2,
-                dt=state.tendencies.dt_dt_friction_pressure_weighted,
+                dt=self._state.tendencies.dt_dt_friction_pressure_weighted,
             )
 
         # Radar diagnostics are not implemented in the NDSL port yet.
         option_not_implemented = True
 
-        if state.mass_fraction.suspended_graupel is not None:
-            self._copy(input=state.mixing_ratio.graupel, output=state.mass_fraction.suspended_graupel)
-        if state.mass_fraction.suspended_rain is not None:
-            self._copy(input=state.mixing_ratio.rain, output=state.mass_fraction.suspended_rain)
-        if state.mass_fraction.suspended_snow is not None:
-            self._copy(input=state.mixing_ratio.snow, output=state.mass_fraction.suspended_snow)
+        if self._state.mass_fraction.suspended_graupel is not None:
+            self._copy(input=self._state.mixing_ratio.graupel, output=self._state.mass_fraction.suspended_graupel)
+        if self._state.mass_fraction.suspended_rain is not None:
+            self._copy(input=self._state.mixing_ratio.rain, output=self._state.mass_fraction.suspended_rain)
+        if self._state.mass_fraction.suspended_snow is not None:
+            self._copy(input=self._state.mixing_ratio.snow, output=self._state.mass_fraction.suspended_snow)
 
-        if state.ice_water_path is not None:
+        if self._state.ice_water_path is not None:
             self._compute_ice_water_path(
-                convective_ice=state.mixing_ratio.convective_ice,
-                large_scale_ice=state.mixing_ratio.large_scale_ice,
-                graupel=state.mixing_ratio.graupel,
-                snow=state.mixing_ratio.snow,
+                convective_ice=self._state.mixing_ratio.convective_ice,
+                large_scale_ice=self._state.mixing_ratio.large_scale_ice,
+                graupel=self._state.mixing_ratio.graupel,
+                snow=self._state.mixing_ratio.snow,
                 mass=self._locals.mass,
-                ice_water_path=state.ice_water_path,
+                ice_water_path=self._state.ice_water_path,
             )
 
-        if state.liquid_water_path is not None:
+        if self._state.liquid_water_path is not None:
             self._compute_liquid_water_path(
-                convective_liquid=state.mixing_ratio.convective_liquid,
-                large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-                rain=state.mixing_ratio.rain,
+                convective_liquid=self._state.mixing_ratio.convective_liquid,
+                large_scale_liquid=self._state.mixing_ratio.large_scale_liquid,
+                rain=self._state.mixing_ratio.rain,
                 mass=self._locals.mass,
-                liquid_water_path=state.liquid_water_path,
+                liquid_water_path=self._state.liquid_water_path,
             )

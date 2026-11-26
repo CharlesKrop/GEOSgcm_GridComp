@@ -62,16 +62,24 @@ class GFDL1MInterface(UserCode):
             USE_BERGERON=maplpy.get_resource("USE_BERGERON:", mapl_state, default=False),
         )
 
+        # Allocate the state once; MAPL updates its quantities in place each step.
+        state = GFDL1MState.empty(ndsl_stack.quantity_factory)
+
         # Initialize the module
         with StencilBackendCompilerOverride(
             MPI.COMM_WORLD,
             ndsl_stack.stencil_factory.config.dace_config,
         ):
-            self._gfdl_1m = GFDL1M(ndsl_stack.stencil_factory, ndsl_stack.quantity_factory, config)
+            self._gfdl_1m = GFDL1M(
+                ndsl_stack.stencil_factory,
+                ndsl_stack.quantity_factory,
+                config,
+                state=state,
+            )
 
         # Make the state
         self._managed_state = MAPLManagedState(
-            GFDL1MState.empty(ndsl_stack.quantity_factory),
+            state,
             ndsl_stack.interface_type,
         )
 
@@ -288,7 +296,7 @@ class GFDL1MInterface(UserCode):
                 self._managed_state.ndsl_state.boundary_layer_level_for_uw_shallow_conv.field[:] -= 1
 
             with TimedCUDAProfiler("GFDL 1M Numerics", {}):
-                self._get_code()(self._managed_state.ndsl_state)
+                self._get_code()()
 
             with TimedCUDAProfiler("GFDL 1M - State copy-back", {}):
                 self._managed_state.ndsl_state.boundary_layer_level_for_uw_shallow_conv.field[:] += 1

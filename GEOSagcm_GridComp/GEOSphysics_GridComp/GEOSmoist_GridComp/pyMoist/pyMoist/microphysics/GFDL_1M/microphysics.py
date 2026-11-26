@@ -259,11 +259,15 @@ class GFDL1MMicrophysics(NDSLRuntime):
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
+        state: GFDL1MState,
         locals: GFDL1MLocals,
         lid_level: int,
     ):
         super().__init__(stencil_factory)
+
+        # make config and fields visible at runtime
         self._config = config
+        self._state = state
         self._locals = locals
 
         self._add = stencil_factory.from_dims_halo(func=add, compute_dims=[I_DIM, J_DIM, K_DIM])
@@ -344,50 +348,50 @@ class GFDL1MMicrophysics(NDSLRuntime):
             lid_level=lid_level,
         )
 
-    def __call__(self, state: GFDL1MState):
+    def __call__(self):
         """Run the complete cloud microphysics section, including the GFDLMPV3 driver."""
-        self._copy(input=state.mixing_ratio.vapor, output=state.tendencies.dvapor_dt_micro)
-        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dice_dt_micro)
-        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dliquid_dt_micro)
-        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.tendencies.dcloud_fraction_dt_micro)
-        self._copy(input=state.mixing_ratio.graupel, output=state.tendencies.dgraupel_dt_micro)
-        self._copy(input=state.mixing_ratio.rain, output=state.tendencies.drain_dt_micro)
-        self._copy(input=state.mixing_ratio.snow, output=state.tendencies.dsnow_dt_micro)
-        self._copy(input=state.t, output=state.tendencies.dt_dt_micro)
-        self._copy(input=state.u, output=state.tendencies.du_dt_micro)
-        self._copy(input=state.v, output=state.tendencies.dv_dt_micro)
+        self._copy(input=self._state.mixing_ratio.vapor, output=self._state.tendencies.dvapor_dt_micro)
+        self._add(summand_1=self._state.mixing_ratio.convective_ice, summand_2=self._state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.tendencies.dice_dt_micro)
+        self._add(summand_1=self._state.mixing_ratio.convective_liquid, summand_2=self._state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.tendencies.dliquid_dt_micro)
+        self._add(summand_1=self._state.cloud_fraction.convective, summand_2=self._state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.tendencies.dcloud_fraction_dt_micro)
+        self._copy(input=self._state.mixing_ratio.graupel, output=self._state.tendencies.dgraupel_dt_micro)
+        self._copy(input=self._state.mixing_ratio.rain, output=self._state.tendencies.drain_dt_micro)
+        self._copy(input=self._state.mixing_ratio.snow, output=self._state.tendencies.dsnow_dt_micro)
+        self._copy(input=self._state.t, output=self._state.tendencies.dt_dt_micro)
+        self._copy(input=self._state.u, output=self._state.tendencies.du_dt_micro)
+        self._copy(input=self._state.v, output=self._state.tendencies.dv_dt_micro)
 
         self._flip_sign(input=self._locals.layer_thickness, output=self._locals.layer_thickness_negative)
         self._set_value(field=self._locals.dcloud_fraction_dt, value=Float(0.0))
-        self._set_value_k_interface(field=state.non_anvil_large_scale.ice_precip_flux, value=Float(0.0))
-        self._set_value_k_interface(field=state.non_anvil_large_scale.liquid_precip_flux, value=Float(0.0))
+        self._set_value_k_interface(field=self._state.non_anvil_large_scale.ice_precip_flux, value=Float(0.0))
+        self._set_value_k_interface(field=self._state.non_anvil_large_scale.liquid_precip_flux, value=Float(0.0))
 
         self._combine_cloud_fractions(
-            large_scale=state.cloud_fraction.large_scale,
-            convective=state.cloud_fraction.convective,
-            combined=state.radiation_field.cloud_fraction,
+            large_scale=self._state.cloud_fraction.large_scale,
+            convective=self._state.cloud_fraction.convective,
+            combined=self._state.radiation_field.cloud_fraction,
         )
-        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.radiation_field.liquid)
-        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
-        self._copy(input=self._locals.temporary_3d, output=state.radiation_field.ice)
-        self._copy(input=state.mixing_ratio.vapor, output=state.radiation_field.vapor)
-        self._copy(input=state.mixing_ratio.graupel, output=state.radiation_field.graupel)
-        self._copy(input=state.mixing_ratio.rain, output=state.radiation_field.rain)
-        self._copy(input=state.mixing_ratio.snow, output=state.radiation_field.snow)
+        self._add(summand_1=self._state.mixing_ratio.convective_liquid, summand_2=self._state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.radiation_field.liquid)
+        self._add(summand_1=self._state.mixing_ratio.convective_ice, summand_2=self._state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
+        self._copy(input=self._locals.temporary_3d, output=self._state.radiation_field.ice)
+        self._copy(input=self._state.mixing_ratio.vapor, output=self._state.radiation_field.vapor)
+        self._copy(input=self._state.mixing_ratio.graupel, output=self._state.radiation_field.graupel)
+        self._copy(input=self._state.mixing_ratio.rain, output=self._state.radiation_field.rain)
+        self._copy(input=self._state.mixing_ratio.snow, output=self._state.radiation_field.snow)
 
         if self._config.GFDL_MP3:
-            self._gfdl_microphysics_v3(state=state, locals=self._locals)
-            self._convert_mm_per_day_to_kg_per_m2_per_s(state.non_anvil_large_scale.evaporation)
-            self._convert_mm_per_day_to_kg_per_m2_per_s(state.non_anvil_large_scale.sublimation)
-            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.ice_precip_flux)
-            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.liquid_precip_flux)
-            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.rain_precip_flux)
-            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.snow_precip_flux)
-            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(state.non_anvil_large_scale.graupel_precip_flux)
+            self._gfdl_microphysics_v3(state=self._state, locals=self._locals)
+            self._convert_mm_per_day_to_kg_per_m2_per_s(self._state.non_anvil_large_scale.evaporation)
+            self._convert_mm_per_day_to_kg_per_m2_per_s(self._state.non_anvil_large_scale.sublimation)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(self._state.non_anvil_large_scale.ice_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(self._state.non_anvil_large_scale.liquid_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(self._state.non_anvil_large_scale.rain_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(self._state.non_anvil_large_scale.snow_precip_flux)
+            self._convert_mm_per_day_to_kg_per_m2_per_s_interface(self._state.non_anvil_large_scale.graupel_precip_flux)
             if self._config.DO_GFDL_REFLECTIVITY:
                 option_not_implemented = True
 
@@ -397,34 +401,34 @@ class GFDL1MMicrophysics(NDSLRuntime):
                 "The math has still been applied as expected, please use NDSL debug tools to see requested values"
             )
         self._negative_adjustment(
-            graupel=state.radiation_field.graupel,
-            ice=state.radiation_field.ice,
-            liquid=state.radiation_field.liquid,
-            rain=state.radiation_field.rain,
-            snow=state.radiation_field.snow,
-            vapor=state.radiation_field.vapor,
+            graupel=self._state.radiation_field.graupel,
+            ice=self._state.radiation_field.ice,
+            liquid=self._state.radiation_field.liquid,
+            rain=self._state.radiation_field.rain,
+            snow=self._state.radiation_field.snow,
+            vapor=self._state.radiation_field.vapor,
         )
 
         self._post_microphysics_calculations(
-            convective_cloud_fraction=state.cloud_fraction.convective,
-            convective_ice=state.mixing_ratio.convective_ice,
-            convective_liquid=state.mixing_ratio.convective_liquid,
+            convective_cloud_fraction=self._state.cloud_fraction.convective,
+            convective_ice=self._state.mixing_ratio.convective_ice,
+            convective_liquid=self._state.mixing_ratio.convective_liquid,
             dcloud_fraction_dt=self._locals.dcloud_fraction_dt,
-            graupel=state.mixing_ratio.graupel,
-            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
-            large_scale_ice=state.mixing_ratio.large_scale_ice,
-            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-            radiation_cloud_fraction=state.radiation_field.cloud_fraction,
-            radiation_graupel=state.radiation_field.graupel,
-            radiation_ice=state.radiation_field.ice,
-            radiation_liquid=state.radiation_field.liquid,
-            radiation_rain=state.radiation_field.rain,
-            radiation_snow=state.radiation_field.snow,
-            radiation_vapor=state.radiation_field.vapor,
-            rain=state.mixing_ratio.rain,
-            snow=state.mixing_ratio.snow,
-            t=state.t,
-            vapor=state.mixing_ratio.vapor,
+            graupel=self._state.mixing_ratio.graupel,
+            large_scale_cloud_fraction=self._state.cloud_fraction.large_scale,
+            large_scale_ice=self._state.mixing_ratio.large_scale_ice,
+            large_scale_liquid=self._state.mixing_ratio.large_scale_liquid,
+            radiation_cloud_fraction=self._state.radiation_field.cloud_fraction,
+            radiation_graupel=self._state.radiation_field.graupel,
+            radiation_ice=self._state.radiation_field.ice,
+            radiation_liquid=self._state.radiation_field.liquid,
+            radiation_rain=self._state.radiation_field.rain,
+            radiation_snow=self._state.radiation_field.snow,
+            radiation_vapor=self._state.radiation_field.vapor,
+            rain=self._state.mixing_ratio.rain,
+            snow=self._state.mixing_ratio.snow,
+            t=self._state.t,
+            vapor=self._state.mixing_ratio.vapor,
         )
 
         if self._config.REPORT_GFDL_1M_NEGATIVES:
@@ -433,17 +437,17 @@ class GFDL1MMicrophysics(NDSLRuntime):
                 "The math has still been applied as expected, please use NDSL debug tools to see requested values"
             )
         for mixing_ratio in (
-            state.mixing_ratio.convective_ice,
-            state.mixing_ratio.convective_liquid,
-            state.mixing_ratio.graupel,
-            state.mixing_ratio.large_scale_ice,
-            state.mixing_ratio.large_scale_liquid,
-            state.mixing_ratio.rain,
-            state.mixing_ratio.snow,
-            state.mixing_ratio.vapor,
+            self._state.mixing_ratio.convective_ice,
+            self._state.mixing_ratio.convective_liquid,
+            self._state.mixing_ratio.graupel,
+            self._state.mixing_ratio.large_scale_ice,
+            self._state.mixing_ratio.large_scale_liquid,
+            self._state.mixing_ratio.rain,
+            self._state.mixing_ratio.snow,
+            self._state.mixing_ratio.vapor,
         ):
-            tendency = state.fill_negative_tendency_cloud_micro.vapor
-            fill_dqdt = state.fill_negative_tendency_cloud_macro.vapor is not None
+            tendency = self._state.fill_negative_tendency_cloud_micro.vapor
+            fill_dqdt = self._state.fill_negative_tendency_cloud_macro.vapor is not None
             self._fill_negative_q(
                 q=mixing_ratio,
                 dqdt=tendency if fill_dqdt else self._locals._dummy_field_no_read_no_write,
@@ -452,81 +456,81 @@ class GFDL1MMicrophysics(NDSLRuntime):
             )
 
         self._precip_diagnostics(
-            freezing_rainfall=state.freezing_rainfall,
-            icefall=state.icefall,
-            non_anvil_large_scale_precip=state.non_anvil_large_scale.precip,
-            non_anvil_large_scale_snow=state.non_anvil_large_scale.snow,
-            precip_at_surface_graupel=state.precipitation_at_surface.graupel,
-            precip_at_surface_ice=state.precipitation_at_surface.ice,
-            precip_at_surface_rain=state.precipitation_at_surface.rain,
-            precip_at_surface_snow=state.precipitation_at_surface.snow,
-            precip_at_surface_water=state.precipitation_at_surface.water,
+            freezing_rainfall=self._state.freezing_rainfall,
+            icefall=self._state.icefall,
+            non_anvil_large_scale_precip=self._state.non_anvil_large_scale.precip,
+            non_anvil_large_scale_snow=self._state.non_anvil_large_scale.snow,
+            precip_at_surface_graupel=self._state.precipitation_at_surface.graupel,
+            precip_at_surface_ice=self._state.precipitation_at_surface.ice,
+            precip_at_surface_rain=self._state.precipitation_at_surface.rain,
+            precip_at_surface_snow=self._state.precipitation_at_surface.snow,
+            precip_at_surface_water=self._state.precipitation_at_surface.water,
         )
         self._redistribute_precipitation_fluxes(
-            anvil_ice_precip_flux=state.anvil.ice_precip_flux,
-            anvil_liquid_precip_flux=state.anvil.liquid_precip_flux,
-            convective_ice=state.mixing_ratio.convective_ice,
-            convective_liquid=state.mixing_ratio.convective_liquid,
-            non_anvil_large_scale_graupel_precip_flux=state.non_anvil_large_scale.graupel_precip_flux,
-            non_anvil_large_scale_ice_precip_flux=state.non_anvil_large_scale.ice_precip_flux,
-            non_anvil_large_scale_liquid_precip_flux=state.non_anvil_large_scale.liquid_precip_flux,
-            non_anvil_large_scale_rain_precip_flux=state.non_anvil_large_scale.rain_precip_flux,
-            non_anvil_large_scale_snow_precip_flux=state.non_anvil_large_scale.snow_precip_flux,
-            radiation_ice=state.radiation_field.ice,
-            radiation_liquid=state.radiation_field.liquid,
+            anvil_ice_precip_flux=self._state.anvil.ice_precip_flux,
+            anvil_liquid_precip_flux=self._state.anvil.liquid_precip_flux,
+            convective_ice=self._state.mixing_ratio.convective_ice,
+            convective_liquid=self._state.mixing_ratio.convective_liquid,
+            non_anvil_large_scale_graupel_precip_flux=self._state.non_anvil_large_scale.graupel_precip_flux,
+            non_anvil_large_scale_ice_precip_flux=self._state.non_anvil_large_scale.ice_precip_flux,
+            non_anvil_large_scale_liquid_precip_flux=self._state.non_anvil_large_scale.liquid_precip_flux,
+            non_anvil_large_scale_rain_precip_flux=self._state.non_anvil_large_scale.rain_precip_flux,
+            non_anvil_large_scale_snow_precip_flux=self._state.non_anvil_large_scale.snow_precip_flux,
+            radiation_ice=self._state.radiation_field.ice,
+            radiation_liquid=self._state.radiation_field.liquid,
         )
 
         if self._config.MELTFRZ_CLDMICRO:
             self._melt_freeze(
-                convection_fraction=state.convection_fraction,
-                surface_type=state.surface_type,
-                t=state.t,
-                liquid=state.mixing_ratio.convective_liquid,
-                ice=state.mixing_ratio.convective_ice,
+                convection_fraction=self._state.convection_fraction,
+                surface_type=self._state.surface_type,
+                t=self._state.t,
+                liquid=self._state.mixing_ratio.convective_liquid,
+                ice=self._state.mixing_ratio.convective_ice,
             )
             self._melt_freeze(
-                convection_fraction=state.convection_fraction,
-                surface_type=state.surface_type,
-                t=state.t,
-                liquid=state.mixing_ratio.large_scale_liquid,
-                ice=state.mixing_ratio.large_scale_ice,
+                convection_fraction=self._state.convection_fraction,
+                surface_type=self._state.surface_type,
+                t=self._state.t,
+                liquid=self._state.mixing_ratio.large_scale_liquid,
+                ice=self._state.mixing_ratio.large_scale_ice,
             )
             self._fix_up_clouds(
-                t=state.t,
-                vapor=state.mixing_ratio.vapor,
-                type_one_ice=state.mixing_ratio.large_scale_ice,
-                type_one_liquid=state.mixing_ratio.large_scale_liquid,
-                type_one_cloud_fraction=state.cloud_fraction.large_scale,
-                type_two_ice=state.mixing_ratio.convective_ice,
-                type_two_liquid=state.mixing_ratio.convective_liquid,
-                type_two_cloud_fraction=state.cloud_fraction.convective,
+                t=self._state.t,
+                vapor=self._state.mixing_ratio.vapor,
+                type_one_ice=self._state.mixing_ratio.large_scale_ice,
+                type_one_liquid=self._state.mixing_ratio.large_scale_liquid,
+                type_one_cloud_fraction=self._state.cloud_fraction.large_scale,
+                type_two_ice=self._state.mixing_ratio.convective_ice,
+                type_two_liquid=self._state.mixing_ratio.convective_liquid,
+                type_two_cloud_fraction=self._state.cloud_fraction.convective,
             )
 
         self._radiation_coupling_scale_aware(
-            t=state.t,
+            t=self._state.t,
             p_mb=self._locals.p_mb,
-            cloud_particle_effective_radius_liquid=state.cloud_particle_effective_radius.liquid,
-            cloud_particle_effective_radius_ice=state.cloud_particle_effective_radius.ice,
-            concentration_liquid=state.concentration.liquid,
-            concentration_ice=state.concentration.ice,
-            convection_fraction=state.convection_fraction,
-            radiation_cloud_fraction=state.radiation_field.cloud_fraction,
-            radiation_graupel=state.radiation_field.graupel,
-            radiation_ice=state.radiation_field.ice,
-            radiation_liquid=state.radiation_field.liquid,
-            radiation_rain=state.radiation_field.rain,
-            radiation_snow=state.radiation_field.snow,
-            radiation_vapor=state.radiation_field.vapor,
-            anvil_cloud_fraction=state.cloud_fraction.convective,
-            anvil_ice=state.mixing_ratio.convective_ice,
-            anvil_liquid=state.mixing_ratio.convective_liquid,
-            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
-            large_scale_ice=state.mixing_ratio.large_scale_ice,
-            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-            graupel=state.mixing_ratio.graupel,
-            rain=state.mixing_ratio.rain,
-            snow=state.mixing_ratio.snow,
-            vapor=state.mixing_ratio.vapor,
+            cloud_particle_effective_radius_liquid=self._state.cloud_particle_effective_radius.liquid,
+            cloud_particle_effective_radius_ice=self._state.cloud_particle_effective_radius.ice,
+            concentration_liquid=self._state.concentration.liquid,
+            concentration_ice=self._state.concentration.ice,
+            convection_fraction=self._state.convection_fraction,
+            radiation_cloud_fraction=self._state.radiation_field.cloud_fraction,
+            radiation_graupel=self._state.radiation_field.graupel,
+            radiation_ice=self._state.radiation_field.ice,
+            radiation_liquid=self._state.radiation_field.liquid,
+            radiation_rain=self._state.radiation_field.rain,
+            radiation_snow=self._state.radiation_field.snow,
+            radiation_vapor=self._state.radiation_field.vapor,
+            anvil_cloud_fraction=self._state.cloud_fraction.convective,
+            anvil_ice=self._state.mixing_ratio.convective_ice,
+            anvil_liquid=self._state.mixing_ratio.convective_liquid,
+            large_scale_cloud_fraction=self._state.cloud_fraction.large_scale,
+            large_scale_ice=self._state.mixing_ratio.large_scale_ice,
+            large_scale_liquid=self._state.mixing_ratio.large_scale_liquid,
+            graupel=self._state.mixing_ratio.graupel,
+            rain=self._state.mixing_ratio.rain,
+            snow=self._state.mixing_ratio.snow,
+            vapor=self._state.mixing_ratio.vapor,
         )
 
         if self._config.REPORT_GFDL_1M_NEGATIVES:
@@ -535,17 +539,17 @@ class GFDL1MMicrophysics(NDSLRuntime):
                 "The math has still been applied as expected, please use NDSL debug tools to see requested values"
             )
         for mixing_ratio in (
-            state.mixing_ratio.convective_ice,
-            state.mixing_ratio.convective_liquid,
-            state.mixing_ratio.graupel,
-            state.mixing_ratio.large_scale_ice,
-            state.mixing_ratio.large_scale_liquid,
-            state.mixing_ratio.rain,
-            state.mixing_ratio.snow,
-            state.mixing_ratio.vapor,
+            self._state.mixing_ratio.convective_ice,
+            self._state.mixing_ratio.convective_liquid,
+            self._state.mixing_ratio.graupel,
+            self._state.mixing_ratio.large_scale_ice,
+            self._state.mixing_ratio.large_scale_liquid,
+            self._state.mixing_ratio.rain,
+            self._state.mixing_ratio.snow,
+            self._state.mixing_ratio.vapor,
         ):
-            tendency = state.fill_negative_tendency_cloud_micro.vapor
-            fill_dqdt = state.fill_negative_tendency_cloud_macro.vapor is not None
+            tendency = self._state.fill_negative_tendency_cloud_micro.vapor
+            fill_dqdt = self._state.fill_negative_tendency_cloud_macro.vapor is not None
             self._fill_negative_q(
                 q=mixing_ratio,
                 dqdt=tendency if fill_dqdt else self._locals._dummy_field_no_read_no_write,
@@ -554,27 +558,27 @@ class GFDL1MMicrophysics(NDSLRuntime):
             )
 
         self._update_microphysics_tendencies(
-            dcloud_fraction_dt_micro=state.tendencies.dcloud_fraction_dt_micro,
-            dgraupel_dt_micro=state.tendencies.dgraupel_dt_micro,
-            dice_dt_micro=state.tendencies.dice_dt_micro,
-            dliquid_dt_micro=state.tendencies.dliquid_dt_micro,
-            drain_dt_micro=state.tendencies.drain_dt_micro,
-            dsnow_dt_micro=state.tendencies.dsnow_dt_micro,
-            du_dt_micro=state.tendencies.du_dt_micro,
-            dv_dt_micro=state.tendencies.dv_dt_micro,
-            dt_dt_micro=state.tendencies.dt_dt_micro,
-            dvapor_dt_micro=state.tendencies.dvapor_dt_micro,
-            convective_cloud_fraction=state.cloud_fraction.convective,
-            convective_ice=state.mixing_ratio.convective_ice,
-            convective_liquid=state.mixing_ratio.convective_liquid,
-            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
-            large_scale_ice=state.mixing_ratio.large_scale_ice,
-            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-            graupel=state.mixing_ratio.graupel,
-            rain=state.mixing_ratio.rain,
-            snow=state.mixing_ratio.snow,
-            u=state.u,
-            v=state.v,
-            t=state.t,
-            vapor=state.mixing_ratio.vapor,
+            dcloud_fraction_dt_micro=self._state.tendencies.dcloud_fraction_dt_micro,
+            dgraupel_dt_micro=self._state.tendencies.dgraupel_dt_micro,
+            dice_dt_micro=self._state.tendencies.dice_dt_micro,
+            dliquid_dt_micro=self._state.tendencies.dliquid_dt_micro,
+            drain_dt_micro=self._state.tendencies.drain_dt_micro,
+            dsnow_dt_micro=self._state.tendencies.dsnow_dt_micro,
+            du_dt_micro=self._state.tendencies.du_dt_micro,
+            dv_dt_micro=self._state.tendencies.dv_dt_micro,
+            dt_dt_micro=self._state.tendencies.dt_dt_micro,
+            dvapor_dt_micro=self._state.tendencies.dvapor_dt_micro,
+            convective_cloud_fraction=self._state.cloud_fraction.convective,
+            convective_ice=self._state.mixing_ratio.convective_ice,
+            convective_liquid=self._state.mixing_ratio.convective_liquid,
+            large_scale_cloud_fraction=self._state.cloud_fraction.large_scale,
+            large_scale_ice=self._state.mixing_ratio.large_scale_ice,
+            large_scale_liquid=self._state.mixing_ratio.large_scale_liquid,
+            graupel=self._state.mixing_ratio.graupel,
+            rain=self._state.mixing_ratio.rain,
+            snow=self._state.mixing_ratio.snow,
+            u=self._state.u,
+            v=self._state.v,
+            t=self._state.t,
+            vapor=self._state.mixing_ratio.vapor,
         )

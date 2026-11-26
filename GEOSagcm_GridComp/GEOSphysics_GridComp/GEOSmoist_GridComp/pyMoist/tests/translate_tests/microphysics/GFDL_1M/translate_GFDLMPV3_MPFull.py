@@ -119,6 +119,7 @@ class TranslateGFDLMPV3_MPFull(TranslateFortranData2Py):
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
+            state=state,
         )
         driver = code._gfdl_microphysics_v3._driver
         # Externally accessible test storage, rather than runtime-only locals.

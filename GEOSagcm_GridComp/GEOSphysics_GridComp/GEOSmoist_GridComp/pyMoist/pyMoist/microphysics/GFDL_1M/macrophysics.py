@@ -187,6 +187,8 @@ class GFDL1MMacrophysics(NDSLRuntime):
         config: GFDL1MConfig,
         saturation_tables: SaturationVaporPressureTable,
         lid_level: int,
+        state: GFDL1MState,
+        locals: GFDL1MLocals,
     ):
         # init NDSLRuntime
         super().__init__(stencil_factory)
@@ -201,8 +203,10 @@ class GFDL1MMacrophysics(NDSLRuntime):
         self._ese = self._saturation_tables.ese
         self._frz = self._saturation_tables.frz
 
-        # make config visible at runtime
+        # make config and fields visible at runtime
         self._config = config
+        self._state = state
+        self._gfdl_1m_locals = locals
 
         # initialize class specific locals
         self._locals = GFDL1MMacrophysicsLocals.make_locals(quantity_factory)
@@ -290,33 +294,33 @@ class GFDL1MMacrophysics(NDSLRuntime):
             externals={"DTIME": config.DT},
         )
 
-    def __call__(self, state: GFDL1MState, locals: GFDL1MLocals):
+    def __call__(self):
 
         # compute miscellaneous factors used later in macrophysics
         self._compute_macrophysics_factors(
-            estimated_inversion_strength=state.estimated_inversion_strength,
-            surface_type=state.surface_type,
-            layer_height_above_surface=locals.layer_height_above_surface,
-            boundary_layer_level_for_uw_shallow_conv=state.boundary_layer_level_for_uw_shallow_conv,
+            estimated_inversion_strength=self._state.estimated_inversion_strength,
+            surface_type=self._state.surface_type,
+            layer_height_above_surface=self._gfdl_1m_locals.layer_height_above_surface,
+            boundary_layer_level_for_uw_shallow_conv=self._state.boundary_layer_level_for_uw_shallow_conv,
             min_rh_crit=self._locals.min_rh_crit,
             turn_rh_crit=self._locals.turn_rh_crit,
         )
 
         # ensure physically reasonable values before macrophysics
         self._fix_up_clouds(
-            t=state.t,
-            vapor=state.mixing_ratio.vapor,
-            type_one_ice=state.mixing_ratio.large_scale_ice,
-            type_one_liquid=state.mixing_ratio.large_scale_liquid,
-            type_one_cloud_fraction=state.cloud_fraction.large_scale,
-            type_two_ice=state.mixing_ratio.convective_ice,
-            type_two_liquid=state.mixing_ratio.convective_liquid,
-            type_two_cloud_fraction=state.cloud_fraction.convective,
+            t=self._state.t,
+            vapor=self._state.mixing_ratio.vapor,
+            type_one_ice=self._state.mixing_ratio.large_scale_ice,
+            type_one_liquid=self._state.mixing_ratio.large_scale_liquid,
+            type_one_cloud_fraction=self._state.cloud_fraction.large_scale,
+            type_two_ice=self._state.mixing_ratio.convective_ice,
+            type_two_liquid=self._state.mixing_ratio.convective_liquid,
+            type_two_cloud_fraction=self._state.cloud_fraction.convective,
         )
 
         self._compute_critical_relative_humidity(
-            area=state.area,
-            layer_height_above_surface=locals.layer_height_above_surface,
+            area=self._state.area,
+            layer_height_above_surface=self._gfdl_1m_locals.layer_height_above_surface,
             min_rh_crit=self._locals.min_rh_crit,
             turn_rh_crit=self._locals.turn_rh_crit,
             rh_crit=self._locals.rh_crit,
@@ -325,39 +329,39 @@ class GFDL1MMacrophysics(NDSLRuntime):
         )
 
         # export critical relative humidity if the state variable exists
-        if state.critical_relative_humidity_for_pdf is not None:
-            self._copy(input=self._locals.one_minus_alpha, output=state.critical_relative_humidity_for_pdf)
+        if self._state.critical_relative_humidity_for_pdf is not None:
+            self._copy(input=self._locals.one_minus_alpha, output=self._state.critical_relative_humidity_for_pdf)
 
         # macrophysics core - hyrostatic pdf
         self._hydrostatic_pdf(
-            convection_fraction=state.convection_fraction,
-            surface_type=state.surface_type,
-            p_mb=locals.p_mb,
-            layer_height_above_surface=locals.layer_height_above_surface,
-            t=state.t,
+            convection_fraction=self._state.convection_fraction,
+            surface_type=self._state.surface_type,
+            p_mb=self._gfdl_1m_locals.p_mb,
+            layer_height_above_surface=self._gfdl_1m_locals.layer_height_above_surface,
+            t=self._state.t,
             alpha=self._locals.alpha,
-            vapor=state.mixing_ratio.vapor,
-            large_scale_cloud_fraction=state.cloud_fraction.large_scale,
-            large_scale_ice=state.mixing_ratio.large_scale_ice,
-            large_scale_liquid=state.mixing_ratio.large_scale_liquid,
-            convective_cloud_fraction=state.cloud_fraction.convective,
-            convective_ice=state.mixing_ratio.convective_ice,
-            convective_liquid=state.mixing_ratio.convective_liquid,
-            concentration_ice=state.concentration.ice,
-            concentration_liquid=state.concentration.liquid,
-            liquid_water_static_energy_flux=state.liquid_water_static_energy.flux,
-            liquid_water_static_energy_variance=state.liquid_water_static_energy.variance,
-            liquid_water_static_energy_third_moment=state.liquid_water_static_energy.third_moment,
-            total_water_flux=state.total_water.flux,
-            total_water_variance=state.total_water.variance,
-            total_water_third_moment=state.total_water.third_moment,
-            covariance_liquid_water_static_energy_and_total_water_specific_humidity=state.covariance_liquid_water_static_energy_and_total_water_specific_humidity,
-            vertical_motion_variance=state.vertical_motion.variance,
-            vertical_motion_third_moment=state.vertical_motion.third_moment,
-            pdf_first_plume_fractional_area=state.pdf_first_plume_fractional_area,
-            hydrostatic_pdf_iterations=state.hydrostatic_pdf_iterations,
-            buoyancy_flux=state.buoyancy_flux,
-            liquid_water_flux=state.liquid_water_flux,
+            vapor=self._state.mixing_ratio.vapor,
+            large_scale_cloud_fraction=self._state.cloud_fraction.large_scale,
+            large_scale_ice=self._state.mixing_ratio.large_scale_ice,
+            large_scale_liquid=self._state.mixing_ratio.large_scale_liquid,
+            convective_cloud_fraction=self._state.cloud_fraction.convective,
+            convective_ice=self._state.mixing_ratio.convective_ice,
+            convective_liquid=self._state.mixing_ratio.convective_liquid,
+            concentration_ice=self._state.concentration.ice,
+            concentration_liquid=self._state.concentration.liquid,
+            liquid_water_static_energy_flux=self._state.liquid_water_static_energy.flux,
+            liquid_water_static_energy_variance=self._state.liquid_water_static_energy.variance,
+            liquid_water_static_energy_third_moment=self._state.liquid_water_static_energy.third_moment,
+            total_water_flux=self._state.total_water.flux,
+            total_water_variance=self._state.total_water.variance,
+            total_water_third_moment=self._state.total_water.third_moment,
+            covariance_liquid_water_static_energy_and_total_water_specific_humidity=self._state.covariance_liquid_water_static_energy_and_total_water_specific_humidity,
+            vertical_motion_variance=self._state.vertical_motion.variance,
+            vertical_motion_third_moment=self._state.vertical_motion.third_moment,
+            pdf_first_plume_fractional_area=self._state.pdf_first_plume_fractional_area,
+            hydrostatic_pdf_iterations=self._state.hydrostatic_pdf_iterations,
+            buoyancy_flux=self._state.buoyancy_flux,
+            liquid_water_flux=self._state.liquid_water_flux,
             bergeron_needs_preexisting=False,
             use_sc_ice=False,
             sc_ice=self._locals.dummy_field_no_read_write,
@@ -370,122 +374,154 @@ class GFDL1MMacrophysics(NDSLRuntime):
         )
 
         self._relative_humidity_after_pdf(
-            t=state.t,
-            p_mb=locals.p_mb,
-            vapor=state.mixing_ratio.vapor,
+            t=self._state.t,
+            p_mb=self._gfdl_1m_locals.p_mb,
+            vapor=self._state.mixing_ratio.vapor,
             esx=self._esx,
-            rh=state.relative_humidity_after_pdf,
+            rh=self._state.relative_humidity_after_pdf,
         )
 
         # melt/freeze particles if enabled
         if self._config.MELTFRZ_CLDMACRO:
             self._melt_freeze(
-                convection_fraction=state.convection_fraction,
-                surface_type=state.surface_type,
-                t=state.t,
-                liquid=state.mixing_ratio.convective_liquid,
-                ice=state.mixing_ratio.convective_ice,
+                convection_fraction=self._state.convection_fraction,
+                surface_type=self._state.surface_type,
+                t=self._state.t,
+                liquid=self._state.mixing_ratio.convective_liquid,
+                ice=self._state.mixing_ratio.convective_ice,
             )
 
         # cloud water evaporation - if enabled, else done in the GFDL microphysics core
         if self._config.CCW_EVAP_EFF > 0.0:
-            self._copy(input=state.mixing_ratio.vapor, output=state.cloud_liquid_evaporation)
+            self._copy(input=self._state.mixing_ratio.vapor, output=self._state.cloud_liquid_evaporation)
 
             self._evaporate(
-                convection_fraction=state.convection_fraction,
-                p_mb=locals.p_mb,
-                t=state.t,
-                vapor=state.mixing_ratio.vapor,
+                convection_fraction=self._state.convection_fraction,
+                p_mb=self._gfdl_1m_locals.p_mb,
+                t=self._state.t,
+                vapor=self._state.mixing_ratio.vapor,
                 rh_crit=self._locals.one_minus_alpha,
-                liquid=state.mixing_ratio.convective_liquid,
-                ice=state.mixing_ratio.convective_ice,
-                cloud_fraction=state.cloud_fraction.convective,
-                concentration_liquid=state.concentration.liquid,
-                saturation_specific_humidity=locals.saturation_specific_humidity_liquid,
+                liquid=self._state.mixing_ratio.convective_liquid,
+                ice=self._state.mixing_ratio.convective_ice,
+                cloud_fraction=self._state.cloud_fraction.convective,
+                concentration_liquid=self._state.concentration.liquid,
+                saturation_specific_humidity=self._gfdl_1m_locals.saturation_specific_humidity_liquid,
             )
 
-            self._update_output_by_dt(input=state.mixing_ratio.vapor, output=state.cloud_liquid_evaporation)
+            self._update_output_by_dt(input=self._state.mixing_ratio.vapor, output=self._state.cloud_liquid_evaporation)
 
         # cloud ice sublimation - if enabled, else done in the GFDL microphysics core
         if self._config.CCI_EVAP_EFF > 0.0:
-            self._copy(input=state.mixing_ratio.vapor, output=state.cloud_ice_sublimation)
+            self._copy(input=self._state.mixing_ratio.vapor, output=self._state.cloud_ice_sublimation)
 
             self._sublimate(
-                convection_fraction=state.convection_fraction,
-                p_mb=locals.p_mb,
-                t=state.t,
-                vapor=state.mixing_ratio.vapor,
+                convection_fraction=self._state.convection_fraction,
+                p_mb=self._gfdl_1m_locals.p_mb,
+                t=self._state.t,
+                vapor=self._state.mixing_ratio.vapor,
                 rh_crit=self._locals.one_minus_alpha,
-                liquid=state.mixing_ratio.convective_liquid,
-                ice=state.mixing_ratio.convective_ice,
-                cloud_fraction=state.cloud_fraction.convective,
-                saturation_specific_humidity=locals.saturation_specific_humidity_ice,
-                concentration_ice=state.concentration.ice,
+                liquid=self._state.mixing_ratio.convective_liquid,
+                ice=self._state.mixing_ratio.convective_ice,
+                cloud_fraction=self._state.cloud_fraction.convective,
+                saturation_specific_humidity=self._gfdl_1m_locals.saturation_specific_humidity_ice,
+                concentration_ice=self._state.concentration.ice,
             )
 
-            self._update_output_by_dt(input=state.mixing_ratio.vapor, output=state.cloud_ice_sublimation)
+            self._update_output_by_dt(input=self._state.mixing_ratio.vapor, output=self._state.cloud_ice_sublimation)
 
         # repair any remaining non-physical values
         self._fix_up_clouds(
-            t=state.t,
-            vapor=state.mixing_ratio.vapor,
-            type_one_ice=state.mixing_ratio.large_scale_ice,
-            type_one_liquid=state.mixing_ratio.large_scale_liquid,
-            type_one_cloud_fraction=state.cloud_fraction.large_scale,
-            type_two_ice=state.mixing_ratio.convective_ice,
-            type_two_liquid=state.mixing_ratio.convective_liquid,
-            type_two_cloud_fraction=state.cloud_fraction.convective,
+            t=self._state.t,
+            vapor=self._state.mixing_ratio.vapor,
+            type_one_ice=self._state.mixing_ratio.large_scale_ice,
+            type_one_liquid=self._state.mixing_ratio.large_scale_liquid,
+            type_one_cloud_fraction=self._state.cloud_fraction.large_scale,
+            type_two_ice=self._state.mixing_ratio.convective_ice,
+            type_two_liquid=self._state.mixing_ratio.convective_liquid,
+            type_two_cloud_fraction=self._state.cloud_fraction.convective,
         )
 
         # eliminate any negative values in the following quantities
-        if state.fill_negative_tendency_cloud_macro.vapor is not None:
-            self._fill_negative_q(q=state.mixing_ratio.vapor, dqdt=state.fill_negative_tendency_cloud_macro.vapor, mass=locals.mass, fill_dqdt=True)
-        else:
-            self._fill_negative_q(q=state.mixing_ratio.vapor, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
-        if state.fill_negative_tendency_cloud_macro.large_scale_ice is not None:
-            self._fill_negative_q(q=state.mixing_ratio.large_scale_ice, dqdt=state.fill_negative_tendency_cloud_macro.large_scale_ice, mass=locals.mass, fill_dqdt=True)
-        else:
-            self._fill_negative_q(q=state.mixing_ratio.large_scale_ice, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
-        if state.fill_negative_tendency_cloud_macro.large_scale_liquid is not None:
+        if self._state.fill_negative_tendency_cloud_macro.vapor is not None:
             self._fill_negative_q(
-                q=state.mixing_ratio.large_scale_liquid, dqdt=state.fill_negative_tendency_cloud_macro.large_scale_liquid, mass=locals.mass, fill_dqdt=True
+                q=self._state.mixing_ratio.vapor, dqdt=self._state.fill_negative_tendency_cloud_macro.vapor, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
             )
         else:
-            self._fill_negative_q(q=state.mixing_ratio.large_scale_liquid, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
-        if state.fill_negative_tendency_cloud_macro.convective_ice is not None:
-            self._fill_negative_q(q=state.mixing_ratio.convective_ice, dqdt=state.fill_negative_tendency_cloud_macro.convective_ice, mass=locals.mass, fill_dqdt=True)
-        else:
-            self._fill_negative_q(q=state.mixing_ratio.convective_ice, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
-        if state.fill_negative_tendency_cloud_macro.convective_liquid is not None:
+            self._fill_negative_q(q=self._state.mixing_ratio.vapor, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_macro.large_scale_ice is not None:
             self._fill_negative_q(
-                q=state.mixing_ratio.convective_liquid, dqdt=state.fill_negative_tendency_cloud_macro.convective_liquid, mass=locals.mass, fill_dqdt=True
+                q=self._state.mixing_ratio.large_scale_ice,
+                dqdt=self._state.fill_negative_tendency_cloud_macro.large_scale_ice,
+                mass=self._gfdl_1m_locals.mass,
+                fill_dqdt=True,
             )
         else:
-            self._fill_negative_q(q=state.mixing_ratio.convective_liquid, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
-        if state.fill_negative_tendency_cloud_macro.graupel is not None:
-            self._fill_negative_q(q=state.mixing_ratio.graupel, dqdt=state.fill_negative_tendency_cloud_macro.graupel, mass=locals.mass, fill_dqdt=True)
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.large_scale_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
+            )
+        if self._state.fill_negative_tendency_cloud_macro.large_scale_liquid is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.large_scale_liquid,
+                dqdt=self._state.fill_negative_tendency_cloud_macro.large_scale_liquid,
+                mass=self._gfdl_1m_locals.mass,
+                fill_dqdt=True,
+            )
         else:
-            self._fill_negative_q(q=state.mixing_ratio.graupel, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
-        if state.fill_negative_tendency_cloud_macro.rain is not None:
-            self._fill_negative_q(q=state.mixing_ratio.rain, dqdt=state.fill_negative_tendency_cloud_macro.rain, mass=locals.mass, fill_dqdt=True)
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.large_scale_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
+            )
+        if self._state.fill_negative_tendency_cloud_macro.convective_ice is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.convective_ice,
+                dqdt=self._state.fill_negative_tendency_cloud_macro.convective_ice,
+                mass=self._gfdl_1m_locals.mass,
+                fill_dqdt=True,
+            )
         else:
-            self._fill_negative_q(q=state.mixing_ratio.rain, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
-        if state.fill_negative_tendency_cloud_macro.snow is not None:
-            self._fill_negative_q(q=state.mixing_ratio.snow, dqdt=state.fill_negative_tendency_cloud_macro.snow, mass=locals.mass, fill_dqdt=True)
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.convective_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
+            )
+        if self._state.fill_negative_tendency_cloud_macro.convective_liquid is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.convective_liquid,
+                dqdt=self._state.fill_negative_tendency_cloud_macro.convective_liquid,
+                mass=self._gfdl_1m_locals.mass,
+                fill_dqdt=True,
+            )
         else:
-            self._fill_negative_q(q=state.mixing_ratio.snow, dqdt=locals._dummy_field_no_read_no_write, mass=locals.mass, fill_dqdt=False)
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.convective_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
+            )
+        if self._state.fill_negative_tendency_cloud_macro.graupel is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.graupel, dqdt=self._state.fill_negative_tendency_cloud_macro.graupel, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
+            )
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.graupel, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_macro.rain is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.rain, dqdt=self._state.fill_negative_tendency_cloud_macro.rain, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
+            )
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.rain, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_macro.snow is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.snow, dqdt=self._state.fill_negative_tendency_cloud_macro.snow, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
+            )
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.snow, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
 
         # update macrophysics tendencies
-        self._update_output_by_dt(input=state.u, output=state.tendencies.du_dt_macro)
-        self._update_output_by_dt(input=state.v, output=state.tendencies.dv_dt_macro)
-        self._update_output_by_dt(input=state.t, output=state.tendencies.dt_dt_macro)
-        self._update_output_by_dt(input=state.mixing_ratio.vapor, output=state.tendencies.dvapor_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_liquid, summand_2=state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
-        self._update_output_by_dt(input=self._locals.temporary_3d, output=state.tendencies.dliquid_dt_macro)
-        self._add(summand_1=state.mixing_ratio.convective_ice, summand_2=state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
-        self._update_output_by_dt(input=self._locals.temporary_3d, output=state.tendencies.dice_dt_macro)
-        self._add(summand_1=state.cloud_fraction.convective, summand_2=state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
-        self._update_output_by_dt(input=self._locals.temporary_3d, output=state.tendencies.dcloud_fraction_dt_macro)
-        self._update_output_by_dt(input=state.mixing_ratio.graupel, output=state.tendencies.dgraupel_dt_macro)
-        self._update_output_by_dt(input=state.mixing_ratio.rain, output=state.tendencies.drain_dt_macro)
-        self._update_output_by_dt(input=state.mixing_ratio.snow, output=state.tendencies.dsnow_dt_macro)
+        self._update_output_by_dt(input=self._state.u, output=self._state.tendencies.du_dt_macro)
+        self._update_output_by_dt(input=self._state.v, output=self._state.tendencies.dv_dt_macro)
+        self._update_output_by_dt(input=self._state.t, output=self._state.tendencies.dt_dt_macro)
+        self._update_output_by_dt(input=self._state.mixing_ratio.vapor, output=self._state.tendencies.dvapor_dt_macro)
+        self._add(summand_1=self._state.mixing_ratio.convective_liquid, summand_2=self._state.mixing_ratio.large_scale_liquid, sum=self._locals.temporary_3d)
+        self._update_output_by_dt(input=self._locals.temporary_3d, output=self._state.tendencies.dliquid_dt_macro)
+        self._add(summand_1=self._state.mixing_ratio.convective_ice, summand_2=self._state.mixing_ratio.large_scale_ice, sum=self._locals.temporary_3d)
+        self._update_output_by_dt(input=self._locals.temporary_3d, output=self._state.tendencies.dice_dt_macro)
+        self._add(summand_1=self._state.cloud_fraction.convective, summand_2=self._state.cloud_fraction.large_scale, sum=self._locals.temporary_3d)
+        self._update_output_by_dt(input=self._locals.temporary_3d, output=self._state.tendencies.dcloud_fraction_dt_macro)
+        self._update_output_by_dt(input=self._state.mixing_ratio.graupel, output=self._state.tendencies.dgraupel_dt_macro)
+        self._update_output_by_dt(input=self._state.mixing_ratio.rain, output=self._state.tendencies.drain_dt_macro)
+        self._update_output_by_dt(input=self._state.mixing_ratio.snow, output=self._state.tendencies.dsnow_dt_macro)

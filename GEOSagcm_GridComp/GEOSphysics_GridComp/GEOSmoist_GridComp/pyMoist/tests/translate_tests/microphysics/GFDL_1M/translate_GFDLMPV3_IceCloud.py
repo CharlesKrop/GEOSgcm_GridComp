@@ -92,6 +92,7 @@ class TranslateGFDLMPV3_IceCloud(TranslateFortranData2Py):
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
+            state=state,
         )
 
         # replace gfdl_mp_v3_locals and mp_full_locals with a regular State version (instead of LocalState)

@@ -19,10 +19,12 @@ class GFDL1M(NDSLRuntime):
         stencil_factory: StencilFactory,
         quantity_factory: QuantityFactory,
         config: GFDL1MConfig,
+        state: GFDL1MState,
     ):
         super().__init__(stencil_factory, get_optimization_config(stencil_factory))
 
         saturation_tables = get_saturation_vapor_pressure_table(stencil_factory)
+        self._state = state
         self._locals = GFDL1MLocals.empty(quantity_factory)
 
         self._setup = GFDL1MSetup(
@@ -30,6 +32,8 @@ class GFDL1M(NDSLRuntime):
             quantity_factory=quantity_factory,
             config=config,
             saturation_tables=saturation_tables,
+            state=state,
+            locals=self._locals,
         )
         self._macrophysics = GFDL1MMacrophysics(
             stencil_factory=stencil_factory,
@@ -37,21 +41,25 @@ class GFDL1M(NDSLRuntime):
             config=config,
             saturation_tables=saturation_tables,
             lid_level=self._setup.lid_level,
+            state=state,
+            locals=self._locals,
         )
         self._microphysics = GFDL1MMicrophysics(
             stencil_factory=stencil_factory,
             quantity_factory=quantity_factory,
             config=config,
+            state=state,
             locals=self._locals,
             lid_level=self._setup.lid_level,
         )
         self._diagnostics = GFDL1MDiagnostics(
             stencil_factory=stencil_factory,
+            state=state,
             locals=self._locals,
         )
 
-    def __call__(self, state: GFDL1MState):
-        self._setup(state=state, locals=self._locals)
-        self._macrophysics(state=state, locals=self._locals)
-        self._microphysics(state=state)
-        self._diagnostics(state=state)
+    def __call__(self):
+        self._setup()
+        self._macrophysics()
+        self._microphysics()
+        self._diagnostics()

@@ -117,17 +117,21 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
             **constants,
         )
         state = GFDL1MState.zeros(self.quantity_factory)
+        locals = GFDL1MLocals.empty(self.quantity_factory)
         # Initialize the full runtime, but execute only the macrophysics phase.
         code = GFDL1M(
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
+            state=state,
         )
-        # Serialized phase-boundary fields are test inputs/outputs, not
-        # transient runtime scratch. NDSL's testing API makes them Quantities
-        # so the translator can load and inspect them outside the runtime.
-        locals = GFDL1MLocals.empty(self.quantity_factory)
+        # update locals post init
         code._locals = locals
+        # need to replace in all subclasses as well, since locals are passed down at init
+        code._setup._gfdl_1m_locals = locals
+        code._macrophysics._gfdl_1m_locals = locals
+        code._microphysics._locals = locals
+        code._diagnostics._locals = locals
 
         fields = {
             "Q": state.mixing_ratio.vapor,
@@ -211,7 +215,7 @@ class TranslateGFDL1M_Macrophysics(TranslateFortranData2Py):
 
         # Skip full-driver setup, microphysics and diagnostics so the loaded
         # phase-boundary fields and tendency snapshots are preserved.
-        code._run_macrophysics(state=state)
+        code._macrophysics()
 
         outputs = {name: fields[name].field[:] for name in self.out_vars}
         outputs["KPBLSC"] = state.boundary_layer_level_for_uw_shallow_conv.field[:] + 1

@@ -328,10 +328,11 @@ class TranslateGFDL1M(TranslateFortranData2Py):
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
+            state=state,
         )
 
         # execute test code
-        code(state=state)
+        code()
 
         outputs = {
             "AREA": state.area.field[:],
@@ -453,7 +454,7 @@ class TranslateGFDL1M(TranslateFortranData2Py):
         if self._ts > 0:
             s = time.perf_counter()
             for _ in range(self._ts):
-                code(state=state)
+                code()
             e = time.perf_counter()
             ndsl_log.info(f"GFDL1M Driver micro bench: {(e - s) / self._ts:.4f}s")
             self.stencil_factory.config.dace_config.performance_collector.write_out_rank_0(self.stencil_factory.backend, float(config.DT_MOIST), "done")

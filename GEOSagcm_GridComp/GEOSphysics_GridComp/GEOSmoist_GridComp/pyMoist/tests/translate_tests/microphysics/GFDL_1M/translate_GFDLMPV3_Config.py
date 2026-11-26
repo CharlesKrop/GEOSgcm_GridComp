@@ -17,7 +17,7 @@ from ndsl.stencils.testing.translate import TranslateFortranData2Py
 from ndsl.utils import grid_params_from_f90nml, load_f90nml, safe_assign_array
 from ndsl.dsl.typing import Int
 
-from pyMoist import GFDL1M, GFDL1MConfig
+from pyMoist import GFDL1M, GFDL1MConfig, GFDL1MState
 
 
 class TranslateGFDLMPV3_Config(TranslateFortranData2Py):
@@ -380,6 +380,7 @@ class TranslateGFDLMPV3_Config(TranslateFortranData2Py):
             stencil_factory=self.stencil_factory,
             quantity_factory=self.quantity_factory,
             config=config,
+            state=GFDL1MState.zeros(self.quantity_factory),
         )
 
         # map Fortran savepoints to Python configurations
