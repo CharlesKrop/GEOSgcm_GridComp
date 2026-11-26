@@ -572,6 +572,8 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     real, pointer, dimension(:,:)   :: EIS, LTS
     real, pointer, dimension(:,:)   :: DBZ_MAX, DBZ_1KM, DBZ_TOP, DBZ_M10C
     real, pointer, dimension(:,:,:) :: DBZ
+    real, pointer, dimension(:,:)   :: RADAR_DBZ_MAX, RADAR_DBZ_1KM, RADAR_DBZ_TOP, RADAR_DBZ_M10C, REFL10CM_MAX
+    real, pointer, dimension(:,:,:) :: RADAR_DBZ
     real, pointer, dimension(:,:,:) ::   DQVDT_FILL
     real, pointer, dimension(:,:,:) :: DQLLSDT_FILL
     real, pointer, dimension(:,:,:) :: DQLCNDT_FILL
@@ -1412,7 +1414,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
     !$ser data DUDT_micro=DUDT_micro
     !$ser data DVDT_micro=DVDT_micro
     !$ser data DTDT_micro=DTDT_micro
-    !$ser savepoint GFDL1M_Microphysics-In
+    !$ser savepoint GFDL1M_Microphysics-In_part_1
     !$ser data Q=Q
     !$ser data QRAIN=QRAIN
     !$ser data QSNOW=QSNOW
@@ -1542,17 +1544,47 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                call MAPL_GetPointer(EXPORT, DBZ_1KM , 'REF_DBZ_1KM' , RC=STATUS); VERIFY_(STATUS)
                call MAPL_GetPointer(EXPORT, DBZ_TOP , 'REF_DBZ_TOP' , RC=STATUS); VERIFY_(STATUS)
                call MAPL_GetPointer(EXPORT, DBZ_M10C, 'REF_DBZ_M10C', RC=STATUS); VERIFY_(STATUS)
-               if (associated(DBZ)) DBZ = DBZ3D
+                 if (associated(DBZ)) then
+                   !$ser savepoint GFDL1M-In_part_23
+                   !$ser data REF_DBZ=DBZ
+                   !$ser savepoint GFDL1M_Microphysics-In_part_2
+                   !$ser data REF_DBZ=DBZ
+                   DBZ = DBZ3D
+                   !$ser savepoint GFDL1M-Out_part_19
+                   !$ser data REF_DBZ=DBZ
+                   !$ser savepoint GFDL1M_Microphysics-Out_part_2
+                   !$ser data REF_DBZ=DBZ
+                 endif
                if (associated(DBZ_MAX)) then
+                   !$ser savepoint GFDL1M-In_part_24
+                   !$ser data REF_DBZ_MAX=DBZ_MAX
+                   !$ser savepoint GFDL1M_Microphysics-In_part_3
+                   !$ser data REF_DBZ_MAX=DBZ_MAX
                    DBZ_MAX=-9999.0
                    DO L=1,LM ; DO J=1,JM ; DO I=1,IM
                       DBZ_MAX(I,J) = MAX(DBZ_MAX(I,J),DBZ3D(I,J,L))
                    END DO ; END DO ; END DO
+                   !$ser savepoint GFDL1M-Out_part_20
+                   !$ser data REF_DBZ_MAX=DBZ_MAX
+                   !$ser savepoint GFDL1M_Microphysics-Out_part_3
+                   !$ser data REF_DBZ_MAX=DBZ_MAX
                endif
                if (associated(DBZ_1KM)) then
+                   !$ser savepoint GFDL1M-In_part_25
+                   !$ser data REF_DBZ_1KM=DBZ_1KM
+                   !$ser savepoint GFDL1M_Microphysics-In_part_4
+                   !$ser data REF_DBZ_1KM=DBZ_1KM
                    call cs_interpolator(1, IM, 1, JM, LM, DBZ3D, 1000., ZLE0, DBZ_1KM, -20.)
+                   !$ser savepoint GFDL1M-Out_part_21
+                   !$ser data REF_DBZ_1KM=DBZ_1KM
+                   !$ser savepoint GFDL1M_Microphysics-Out_part_4
+                   !$ser data REF_DBZ_1KM=DBZ_1KM
                endif    
                if (associated(DBZ_TOP)) then
+                   !$ser savepoint GFDL1M-In_part_26
+                   !$ser data REF_DBZ_TOP=DBZ_TOP
+                   !$ser savepoint GFDL1M_Microphysics-In_part_5
+                   !$ser data REF_DBZ_TOP=DBZ_TOP
                    DBZ_TOP=MAPL_UNDEF
                    DO J=1,JM ; DO I=1,IM
                       DO L=LM,1,-1   
@@ -1563,8 +1595,16 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                          endif       
                       END DO
                    END DO ; END DO
+                       !$ser savepoint GFDL1M-Out_part_22
+                       !$ser data REF_DBZ_TOP=DBZ_TOP
+                       !$ser savepoint GFDL1M_Microphysics-Out_part_5
+                       !$ser data REF_DBZ_TOP=DBZ_TOP
                endif  
                if (associated(DBZ_M10C)) then
+                       !$ser savepoint GFDL1M-In_part_27
+                       !$ser data REF_DBZ_M10C=DBZ_M10C
+                       !$ser savepoint GFDL1M_Microphysics-In_part_6
+                       !$ser data REF_DBZ_M10C=DBZ_M10C
                    DBZ_M10C=MAPL_UNDEF
                    DO J=1,JM ; DO I=1,IM
                       DO L=LM,1,-1
@@ -1575,6 +1615,10 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
                          endif
                       END DO
                    END DO ; END DO
+                     !$ser savepoint GFDL1M-Out_part_23
+                     !$ser data REF_DBZ_M10C=DBZ_M10C
+                     !$ser savepoint GFDL1M_Microphysics-Out_part_6
+                     !$ser data REF_DBZ_M10C=DBZ_M10C
                endif
                call MAPL_TimerOff(MAPL,"---CLD_REF_DBZ",RC=STATUS); VERIFY_(STATUS)
            endif
@@ -1820,7 +1864,7 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
      enddo
         call MAPL_TimerOff(MAPL,"---CLDMICRO",RC=STATUS); VERIFY_(STATUS)
 
-    !$ser savepoint GFDL1M_Microphysics-Out
+    !$ser savepoint GFDL1M_Microphysics-Out_part_1
     !$ser data NACTL=NACTL
     !$ser data NACTI=NACTI
     !$ser data DZET=DZET
@@ -1942,12 +1986,107 @@ subroutine GFDL_1M_Run (GC, IMPORT, EXPORT, CLOCK, RC)
           !$ser data DTDTFRIC=PTR3D
         endif
 
+        ! Capture the shared radar exports here, to avoid putting serialization code in compute_radar_diagnostics.
+        !$ser verbatim call MAPL_GetPointer(EXPORT, RADAR_DBZ,       'DBZ',          RC=STATUS); VERIFY_(STATUS)
+        !$ser verbatim call MAPL_GetPointer(EXPORT, RADAR_DBZ_MAX,   'DBZ_MAX',      RC=STATUS); VERIFY_(STATUS)
+        !$ser verbatim call MAPL_GetPointer(EXPORT, RADAR_DBZ_1KM,   'DBZ_1KM',      RC=STATUS); VERIFY_(STATUS)
+        !$ser verbatim call MAPL_GetPointer(EXPORT, RADAR_DBZ_TOP,   'DBZ_TOP',      RC=STATUS); VERIFY_(STATUS)
+        !$ser verbatim call MAPL_GetPointer(EXPORT, RADAR_DBZ_M10C,  'DBZ_M10C',     RC=STATUS); VERIFY_(STATUS)
+        !$ser verbatim call MAPL_GetPointer(EXPORT, NACTR,           'NACTR',        RC=STATUS); VERIFY_(STATUS)
+        !$ser verbatim call MAPL_GetPointer(EXPORT, REFL10CM_MAX,    'REFL10CM_MAX', RC=STATUS); VERIFY_(STATUS)
+
+        !$ser verbatim if (associated(RADAR_DBZ)) then
+          !$ser savepoint GFDL1M-In_part_28
+          !$ser data DBZ=RADAR_DBZ
+          !$ser savepoint GFDL1M_Microphysics-In_part_7
+          !$ser data DBZ=RADAR_DBZ
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_MAX)) then
+          !$ser savepoint GFDL1M-In_part_29
+          !$ser data DBZ_MAX=RADAR_DBZ_MAX
+          !$ser savepoint GFDL1M_Microphysics-In_part_8
+          !$ser data DBZ_MAX=RADAR_DBZ_MAX
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_1KM)) then
+          !$ser savepoint GFDL1M-In_part_30
+          !$ser data DBZ_1KM=RADAR_DBZ_1KM
+          !$ser savepoint GFDL1M_Microphysics-In_part_9
+          !$ser data DBZ_1KM=RADAR_DBZ_1KM
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_TOP)) then
+          !$ser savepoint GFDL1M-In_part_31
+          !$ser data DBZ_TOP=RADAR_DBZ_TOP
+          !$ser savepoint GFDL1M_Microphysics-In_part_10
+          !$ser data DBZ_TOP=RADAR_DBZ_TOP
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_M10C)) then
+          !$ser savepoint GFDL1M-In_part_32
+          !$ser data DBZ_M10C=RADAR_DBZ_M10C
+          !$ser savepoint GFDL1M_Microphysics-In_part_11
+          !$ser data DBZ_M10C=RADAR_DBZ_M10C
+        !$ser verbatim endif
+        !$ser verbatim if (associated(NACTR)) then
+          !$ser savepoint GFDL1M-In_part_33
+          !$ser data NACTR=NACTR
+          !$ser savepoint GFDL1M_Microphysics-In_part_12
+          !$ser data NACTR=NACTR
+        !$ser verbatim endif
+        !$ser verbatim if (associated(REFL10CM_MAX)) then
+          !$ser savepoint GFDL1M-In_part_34
+          !$ser data REFL10CM_MAX=REFL10CM_MAX
+          !$ser savepoint GFDL1M_Microphysics-In_part_13
+          !$ser data REFL10CM_MAX=REFL10CM_MAX
+        !$ser verbatim endif
+
         ! Call the shared radar diagnostics routine
         call MAPL_TimerOn(MAPL,"---RADAR_DIAGS",RC=STATUS); VERIFY_(STATUS)
         call compute_radar_diagnostics(EXPORT, CLOCK, IM, JM, LM, &
                                        Q, QRAIN, QSNOW, QGRAUPEL, T, PLmb, W, ZLE0, &
                                        STATUS); VERIFY_(STATUS)
         call MAPL_TimerOff(MAPL,"---RADAR_DIAGS",RC=STATUS); VERIFY_(STATUS)
+
+        !$ser verbatim if (associated(RADAR_DBZ)) then
+          !$ser savepoint GFDL1M-Out_part_24
+          !$ser data DBZ=RADAR_DBZ
+          !$ser savepoint GFDL1M_Microphysics-Out_part_7
+          !$ser data DBZ=RADAR_DBZ
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_MAX)) then
+          !$ser savepoint GFDL1M-Out_part_25
+          !$ser data DBZ_MAX=RADAR_DBZ_MAX
+          !$ser savepoint GFDL1M_Microphysics-Out_part_8
+          !$ser data DBZ_MAX=RADAR_DBZ_MAX
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_1KM)) then
+          !$ser savepoint GFDL1M-Out_part_26
+          !$ser data DBZ_1KM=RADAR_DBZ_1KM
+          !$ser savepoint GFDL1M_Microphysics-Out_part_9
+          !$ser data DBZ_1KM=RADAR_DBZ_1KM
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_TOP)) then
+          !$ser savepoint GFDL1M-Out_part_27
+          !$ser data DBZ_TOP=RADAR_DBZ_TOP
+          !$ser savepoint GFDL1M_Microphysics-Out_part_10
+          !$ser data DBZ_TOP=RADAR_DBZ_TOP
+        !$ser verbatim endif
+        !$ser verbatim if (associated(RADAR_DBZ_M10C)) then
+          !$ser savepoint GFDL1M-Out_part_28
+          !$ser data DBZ_M10C=RADAR_DBZ_M10C
+          !$ser savepoint GFDL1M_Microphysics-Out_part_11
+          !$ser data DBZ_M10C=RADAR_DBZ_M10C
+        !$ser verbatim endif
+        !$ser verbatim if (associated(NACTR)) then
+          !$ser savepoint GFDL1M-Out_part_29
+          !$ser data NACTR=NACTR
+          !$ser savepoint GFDL1M_Microphysics-Out_part_12
+          !$ser data NACTR=NACTR
+        !$ser verbatim endif
+        !$ser verbatim if (associated(REFL10CM_MAX)) then
+          !$ser savepoint GFDL1M-Out_part_30
+          !$ser data REFL10CM_MAX=REFL10CM_MAX
+          !$ser savepoint GFDL1M_Microphysics-Out_part_13
+          !$ser data REFL10CM_MAX=REFL10CM_MAX
+        !$ser verbatim endif
 
         call MAPL_GetPointer(EXPORT, PTR3D, 'QRTOT', RC=STATUS); VERIFY_(STATUS)
         if (associated(PTR3D)) then
