@@ -1,14 +1,13 @@
 from ndsl import NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
 from ndsl.constants import I_DIM, J_DIM, K_DIM, K_INTERFACE_DIM
-from ndsl.dsl.gt4py import PARALLEL, computation, interval, FORWARD
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ
 from ndsl.stencils.basic_operations import add, copy, set_value
 
 from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
 from pyMoist.microphysics.gfdl_1m.gfdl_mp_v3.gfdl_mp_v3 import GFDLMPV3
-from pyMoist.microphysics.gfdl_1m.optimization import get_optimization_config
-from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
 from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
+from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
 from pyMoist.shared.atmos_recipes import fill_negative_q
 from pyMoist.shared.cloud_processes import fix_up_clouds, melt_freeze, redistribute_clouds_function
 from pyMoist.shared.radiation_coupling import radiation_coupling_scale_aware
@@ -436,24 +435,52 @@ class GFDL1MMicrophysics(NDSLRuntime):
                 "[GFDL_1M] fill_negative_q requested with debug output, but NDSL does not support in-stencil prints. "
                 "The math has still been applied as expected, please use NDSL debug tools to see requested values"
             )
-        for mixing_ratio in (
-            self._state.mixing_ratio.convective_ice,
-            self._state.mixing_ratio.convective_liquid,
-            self._state.mixing_ratio.graupel,
-            self._state.mixing_ratio.large_scale_ice,
-            self._state.mixing_ratio.large_scale_liquid,
-            self._state.mixing_ratio.rain,
-            self._state.mixing_ratio.snow,
-            self._state.mixing_ratio.vapor,
-        ):
-            tendency = self._state.fill_negative_tendency_cloud_micro.vapor
-            fill_dqdt = self._state.fill_negative_tendency_cloud_macro.vapor is not None
+        if self._state.fill_negative_tendency_cloud_micro.vapor is not None:
+            self._fill_negative_q(q=self._state.mixing_ratio.vapor, dqdt=self._state.fill_negative_tendency_cloud_micro.vapor, mass=self._locals.mass, fill_dqdt=True)
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.vapor, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_micro.large_scale_liquid is not None:
             self._fill_negative_q(
-                q=mixing_ratio,
-                dqdt=tendency if fill_dqdt else self._locals._dummy_field_no_read_no_write,
+                q=self._state.mixing_ratio.large_scale_liquid,
+                dqdt=self._state.fill_negative_tendency_cloud_micro.large_scale_liquid,
                 mass=self._locals.mass,
-                fill_dqdt=fill_dqdt,
+                fill_dqdt=True,
             )
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.large_scale_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_micro.convective_liquid is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.convective_liquid,
+                dqdt=self._state.fill_negative_tendency_cloud_micro.convective_liquid,
+                mass=self._locals.mass,
+                fill_dqdt=True,
+            )
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.convective_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_micro.large_scale_ice is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.large_scale_ice, dqdt=self._state.fill_negative_tendency_cloud_micro.large_scale_ice, mass=self._locals.mass, fill_dqdt=True
+            )
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.large_scale_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_micro.convective_ice is not None:
+            self._fill_negative_q(
+                q=self._state.mixing_ratio.convective_ice, dqdt=self._state.fill_negative_tendency_cloud_micro.convective_ice, mass=self._locals.mass, fill_dqdt=True
+            )
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.convective_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_micro.rain is not None:
+            self._fill_negative_q(q=self._state.mixing_ratio.rain, dqdt=self._state.fill_negative_tendency_cloud_micro.rain, mass=self._locals.mass, fill_dqdt=True)
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.rain, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_micro.snow is not None:
+            self._fill_negative_q(q=self._state.mixing_ratio.snow, dqdt=self._state.fill_negative_tendency_cloud_micro.snow, mass=self._locals.mass, fill_dqdt=True)
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.snow, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        if self._state.fill_negative_tendency_cloud_micro.graupel is not None:
+            self._fill_negative_q(q=self._state.mixing_ratio.graupel, dqdt=self._state.fill_negative_tendency_cloud_micro.graupel, mass=self._locals.mass, fill_dqdt=True)
+        else:
+            self._fill_negative_q(q=self._state.mixing_ratio.graupel, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
 
         self._precip_diagnostics(
             freezing_rainfall=self._state.freezing_rainfall,
@@ -538,24 +565,15 @@ class GFDL1MMicrophysics(NDSLRuntime):
                 "[GFDL_1M] fill_negative_q requested with debug output, but NDSL does not support in-stencil prints. "
                 "The math has still been applied as expected, please use NDSL debug tools to see requested values"
             )
-        for mixing_ratio in (
-            self._state.mixing_ratio.convective_ice,
-            self._state.mixing_ratio.convective_liquid,
-            self._state.mixing_ratio.graupel,
-            self._state.mixing_ratio.large_scale_ice,
-            self._state.mixing_ratio.large_scale_liquid,
-            self._state.mixing_ratio.rain,
-            self._state.mixing_ratio.snow,
-            self._state.mixing_ratio.vapor,
-        ):
-            tendency = self._state.fill_negative_tendency_cloud_micro.vapor
-            fill_dqdt = self._state.fill_negative_tendency_cloud_macro.vapor is not None
-            self._fill_negative_q(
-                q=mixing_ratio,
-                dqdt=tendency if fill_dqdt else self._locals._dummy_field_no_read_no_write,
-                mass=self._locals.mass,
-                fill_dqdt=fill_dqdt,
-            )
+
+        self._fill_negative_q(q=self._state.mixing_ratio.convective_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        self._fill_negative_q(q=self._state.mixing_ratio.convective_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        self._fill_negative_q(q=self._state.mixing_ratio.graupel, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        self._fill_negative_q(q=self._state.mixing_ratio.large_scale_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        self._fill_negative_q(q=self._state.mixing_ratio.large_scale_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        self._fill_negative_q(q=self._state.mixing_ratio.rain, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        self._fill_negative_q(q=self._state.mixing_ratio.snow, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
+        self._fill_negative_q(q=self._state.mixing_ratio.vapor, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._locals.mass, fill_dqdt=False)
 
         self._update_microphysics_tendencies(
             dcloud_fraction_dt_micro=self._state.tendencies.dcloud_fraction_dt_micro,

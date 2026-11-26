@@ -1,15 +1,15 @@
 import dataclasses
 
-from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory, ndsl_log
+from ndsl import Local, LocalState, NDSLRuntime, QuantityFactory, StencilFactory
 from ndsl.constants import I_DIM, J_DIM, K_DIM
-from ndsl.dsl.gt4py import FORWARD, PARALLEL, K, computation, interval, sqrt
+from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, interval, sqrt
 from ndsl.dsl.typing import Float, FloatField, FloatFieldIJ, Int, IntFieldIJ
 from ndsl.stencils.basic_operations import add, copy
 
 from pyMoist.microphysics.gfdl_1m.config import GFDL1MConfig
 from pyMoist.microphysics.gfdl_1m.locals import GFDL1MLocals
 from pyMoist.microphysics.gfdl_1m.state import GFDL1MState
-from pyMoist.saturation_tables import SaturationVaporPressureTable, GlobalTable_saturation_tables, saturation_specific_humidity
+from pyMoist.saturation_tables import GlobalTable_saturation_tables, SaturationVaporPressureTable, saturation_specific_humidity
 from pyMoist.shared.atmos_recipes import compute_estimated_inversion_strength_factor, fill_negative_q
 from pyMoist.shared.cloud_processes import evaporate, fix_up_clouds, hydrostatic_pdf, melt_freeze, sublimate
 
@@ -447,7 +447,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 q=self._state.mixing_ratio.vapor, dqdt=self._state.fill_negative_tendency_cloud_macro.vapor, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
             )
         else:
-            self._fill_negative_q(q=self._state.mixing_ratio.vapor, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
+            self._fill_negative_q(q=self._state.mixing_ratio.vapor, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
         if self._state.fill_negative_tendency_cloud_macro.large_scale_ice is not None:
             self._fill_negative_q(
                 q=self._state.mixing_ratio.large_scale_ice,
@@ -457,7 +457,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             )
         else:
             self._fill_negative_q(
-                q=self._state.mixing_ratio.large_scale_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
+                q=self._state.mixing_ratio.large_scale_ice, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
             )
         if self._state.fill_negative_tendency_cloud_macro.large_scale_liquid is not None:
             self._fill_negative_q(
@@ -468,7 +468,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
             )
         else:
             self._fill_negative_q(
-                q=self._state.mixing_ratio.large_scale_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
+                q=self._state.mixing_ratio.large_scale_liquid, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
             )
         if self._state.fill_negative_tendency_cloud_macro.convective_ice is not None:
             self._fill_negative_q(
@@ -478,9 +478,7 @@ class GFDL1MMacrophysics(NDSLRuntime):
                 fill_dqdt=True,
             )
         else:
-            self._fill_negative_q(
-                q=self._state.mixing_ratio.convective_ice, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
-            )
+            self._fill_negative_q(q=self._state.mixing_ratio.convective_ice, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
         if self._state.fill_negative_tendency_cloud_macro.convective_liquid is not None:
             self._fill_negative_q(
                 q=self._state.mixing_ratio.convective_liquid,
@@ -490,26 +488,26 @@ class GFDL1MMacrophysics(NDSLRuntime):
             )
         else:
             self._fill_negative_q(
-                q=self._state.mixing_ratio.convective_liquid, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
+                q=self._state.mixing_ratio.convective_liquid, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False
             )
         if self._state.fill_negative_tendency_cloud_macro.graupel is not None:
             self._fill_negative_q(
                 q=self._state.mixing_ratio.graupel, dqdt=self._state.fill_negative_tendency_cloud_macro.graupel, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
             )
         else:
-            self._fill_negative_q(q=self._state.mixing_ratio.graupel, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
+            self._fill_negative_q(q=self._state.mixing_ratio.graupel, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
         if self._state.fill_negative_tendency_cloud_macro.rain is not None:
             self._fill_negative_q(
                 q=self._state.mixing_ratio.rain, dqdt=self._state.fill_negative_tendency_cloud_macro.rain, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
             )
         else:
-            self._fill_negative_q(q=self._state.mixing_ratio.rain, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
+            self._fill_negative_q(q=self._state.mixing_ratio.rain, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
         if self._state.fill_negative_tendency_cloud_macro.snow is not None:
             self._fill_negative_q(
                 q=self._state.mixing_ratio.snow, dqdt=self._state.fill_negative_tendency_cloud_macro.snow, mass=self._gfdl_1m_locals.mass, fill_dqdt=True
             )
         else:
-            self._fill_negative_q(q=self._state.mixing_ratio.snow, dqdt=self._locals._dummy_field_no_read_no_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
+            self._fill_negative_q(q=self._state.mixing_ratio.snow, dqdt=self._locals.dummy_field_no_read_write, mass=self._gfdl_1m_locals.mass, fill_dqdt=False)
 
         # update macrophysics tendencies
         self._update_output_by_dt(input=self._state.u, output=self._state.tendencies.du_dt_macro)
