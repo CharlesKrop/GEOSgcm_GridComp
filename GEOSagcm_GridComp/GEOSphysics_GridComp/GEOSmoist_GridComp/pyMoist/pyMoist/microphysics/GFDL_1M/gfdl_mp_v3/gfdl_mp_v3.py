@@ -12,10 +12,10 @@ from ndsl.dsl.gt4py import float64
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
-from pyMoist.microphysics.GFDL_1M.microphysics import constants
-from pyMoist.microphysics.GFDL_1M.microphysics.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
-from pyMoist.microphysics.GFDL_1M.microphysics.driver import GFDLMPV3Driver
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import get_saturation_vapor_pressure_tables
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3 import constants
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import GFDLMPV3CloudMPConfig, GFDLMPV3NamelistConfig
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.driver import GFDLMPV3Driver
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import get_saturation_vapor_pressure_tables
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
 
 

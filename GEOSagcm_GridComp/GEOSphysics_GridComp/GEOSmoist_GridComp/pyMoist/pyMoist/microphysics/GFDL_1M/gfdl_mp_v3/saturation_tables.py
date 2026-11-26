@@ -4,7 +4,7 @@ from ndsl.dsl.gt4py import FORWARD, GlobalTable, K, computation, exp, interval, 
 from ndsl.dsl.typing import Bool, Float, FloatField, FloatFieldIJ, Int
 from ndsl.constants import I_DIM, J_DIM, K_DIM
 
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import D2_ICE, DC_VAP, DELT, E00, LI2, LV0, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, TICE
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import D2_ICE, DC_VAP, DELT, E00, LI2, LV0, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, TICE
 from pyMoist.shared.cloud_processes import ice_fraction
 
 GFDLMPV3SaturationTable = GlobalTable[(Float, (int(SATURATION_TABLE_LENGTH)))]

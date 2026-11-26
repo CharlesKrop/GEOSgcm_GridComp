@@ -6,7 +6,7 @@ from ndsl.dsl.gt4py import FORWARD, PARALLEL, computation, exp, float32, interva
 from ndsl.dsl.typing import Float, Float64, FloatField, FloatField64, FloatFieldIJ
 
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
-from pyMoist.microphysics.GFDL_1M.microphysics.config import (
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.config import (
     GFDLMPV3CloudMPConfig,
     GFDLMPV3NamelistConfig,
     GFDLMPV3TableL2,
@@ -14,12 +14,12 @@ from pyMoist.microphysics.GFDL_1M.microphysics.config import (
     GFDLMPV3TableL4,
     GFDLMPV3TableL20,
 )
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import CFMIN, QCMIN, QPMIN, RDGAS, TFRZ_INST, TICE, TMLT_FAST
-from pyMoist.microphysics.GFDL_1M.microphysics.locals import GFDLMPV3Locals
-from pyMoist.microphysics.GFDL_1M.microphysics.mp_full.mp_full import MPFullLocals
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_table_functions import saturation_specific_humidity
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
-from pyMoist.microphysics.GFDL_1M.microphysics.shared import (
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import CFMIN, QCMIN, QPMIN, RDGAS, TFRZ_INST, TICE, TMLT_FAST
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.locals import GFDLMPV3Locals
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.mp_full.mp_full import MPFullLocals
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_table_functions import saturation_specific_humidity
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable, GFDLMPV3Tables
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.shared import (
     accretion_2d,
     accretion_3d,
     calc_mhc_lhc_wrapper,
@@ -833,18 +833,18 @@ def p_ice_to_snow_autoconversion(
 
             # Smooth pressure-dependent threshold multiplier using tanh.
             # Baseline critical threshold: critical_qi_factor
-            # 
+            #
             # Physical interpretation:
             #   - Upper troposphere (p <= 450 hPa): Multiplier approaches ~10x.
-            #     Ice must accumulate sgnificantly before converting to snow. 
-            #     This allows ice to stay suspended in strong updrafts and 
+            #     Ice must accumulate sgnificantly before converting to snow.
+            #     This allows ice to stay suspended in strong updrafts and
             #     detrainment regions.
-            #   
-            #   - Mid troposphere (p = 700 hPa): Transition midpoint with 5.5x 
+            #
+            #   - Mid troposphere (p = 700 hPa): Transition midpoint with 5.5x
             #     multiplier, yielding a moderate threshold
-            #   
-            #   - Lower troposphere (p >= 850 hPa): Multiplier drops toward 1x baseline. 
-            #     Effective threshold stays low, meaning ice 
+            #
+            #   - Lower troposphere (p >= 850 hPa): Multiplier drops toward 1x baseline.
+            #     Effective threshold stays low, meaning ice
             #     converts to snow readily as it approaches the surface.
             pressure_norm = (pressure - psaut_p_mid) / psaut_p_width
             pressure_factor = psaut_factor_low + 0.5 * (psaut_factor_high - psaut_factor_low) * (1.0 - tanh(pressure_norm))

@@ -1,8 +1,8 @@
 from ndsl.dsl.gt4py import function, trunc, int32, float32
 from ndsl.dsl.typing import Float, Int
 
-from pyMoist.microphysics.GFDL_1M.microphysics.constants import RDELT, RDGAS, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, ZVIR
-from pyMoist.microphysics.GFDL_1M.microphysics.saturation_tables import GFDLMPV3SaturationTable
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.constants import RDELT, RDGAS, RVGAS, SATURATION_TABLE_LENGTH, SATURATION_TABLE_TMIN, ZVIR
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.saturation_tables import GFDLMPV3SaturationTable
 
 
 @function

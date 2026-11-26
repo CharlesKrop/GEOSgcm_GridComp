@@ -8,7 +8,7 @@ from ndsl.stencils.basic_operations import add, copy, set_value
 from pyMoist.microphysics.GFDL_1M.config import GFDL1MConfig
 from pyMoist.microphysics.GFDL_1M.locals import GFDL1MLocals
 from pyMoist.microphysics.GFDL_1M.macrophysics import GFDL1MMacrophysics
-from pyMoist.microphysics.GFDL_1M.microphysics.gfdl_mp_v3 import GFDLMPV3
+from pyMoist.microphysics.GFDL_1M.gfdl_mp_v3.gfdl_mp_v3 import GFDLMPV3
 from pyMoist.microphysics.GFDL_1M.optimization import get_optimization_config
 from pyMoist.microphysics.GFDL_1M.setup import GFDL1MSetup
 from pyMoist.microphysics.GFDL_1M.state import GFDL1MState
